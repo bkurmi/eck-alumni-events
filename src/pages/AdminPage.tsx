@@ -68,9 +68,11 @@ export const AdminPage: React.FC = () => {
             city: 'Kota',
             state: 'Rajasthan',
             year_of_passing: 2008,
-            engineering_discipline: 'Mechanical Engineering',
+            engineering_discipline: 'Mechanical',
             organization: 'NTPC Limited',
-            professional_category: 'Government',
+            employment_type: 'Full-time (Government / Public Sector)',
+            industry_domain: 'Manufacturing & Engineering',
+            professional_category: 'Full-time (Government / Public Sector) • Manufacturing & Engineering',
             work_location: 'New Delhi',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -96,9 +98,11 @@ export const AdminPage: React.FC = () => {
             city: 'Jaipur',
             state: 'Rajasthan',
             year_of_passing: 2015,
-            engineering_discipline: 'Computer Science & Engineering',
+            engineering_discipline: 'Computer Science',
             organization: 'Oracle',
-            professional_category: 'Private Sector',
+            employment_type: 'Full-time (Private)',
+            industry_domain: 'Information Technology & Services',
+            professional_category: 'Full-time (Private) • Information Technology & Services',
             work_location: 'Bengaluru',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -136,13 +140,19 @@ export const AdminPage: React.FC = () => {
       const regNum = reg.registration_number?.toLowerCase() || '';
       const discipline = reg.alumni?.engineering_discipline?.toLowerCase() || '';
       const city = reg.alumni?.city?.toLowerCase() || '';
+      const empType = reg.alumni?.employment_type?.toLowerCase() || '';
+      const industry = reg.alumni?.industry_domain?.toLowerCase() || '';
+      const org = reg.alumni?.organization?.toLowerCase() || '';
 
       const matchesSearch =
         name.includes(q) ||
         mobile.includes(q) ||
         regNum.includes(q) ||
         discipline.includes(q) ||
-        city.includes(q);
+        city.includes(q) ||
+        empType.includes(q) ||
+        industry.includes(q) ||
+        org.includes(q);
 
       return matchesStatus && matchesSearch;
     });
@@ -414,8 +424,17 @@ export const AdminPage: React.FC = () => {
                 </div>
 
                 <div className="modal-detail-item">
-                  <span className="modal-label">Professional Category</span>
-                  <span className="modal-val">{selectedReg.alumni?.professional_category}</span>
+                  <span className="modal-label">Employment Type</span>
+                  <span className="modal-val">
+                    {selectedReg.alumni?.employment_type || selectedReg.alumni?.professional_category || '—'}
+                  </span>
+                </div>
+
+                <div className="modal-detail-item">
+                  <span className="modal-label">Industry / Domain</span>
+                  <span className="modal-val">
+                    {selectedReg.alumni?.industry_domain || '—'}
+                  </span>
                 </div>
 
                 <div className="modal-detail-item">

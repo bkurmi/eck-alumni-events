@@ -63,7 +63,9 @@ CREATE TABLE IF NOT EXISTS alumni (
   year_of_passing         INTEGER NOT NULL,
   engineering_discipline  TEXT NOT NULL,
   organization            TEXT,
-  professional_category   TEXT NOT NULL,
+  employment_type         TEXT,
+  industry_domain         TEXT,
+  professional_category   TEXT,
   work_location           TEXT,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -192,13 +194,15 @@ CREATE OR REPLACE FUNCTION register_for_event(
   p_state                   TEXT,
   p_year_of_passing         INTEGER,
   p_engineering_discipline  TEXT,
-  p_professional_category   TEXT,
-  p_attendance_status       TEXT,
+  p_professional_category   TEXT DEFAULT NULL,
+  p_attendance_status       TEXT DEFAULT 'yes',
   p_number_of_attendees     INTEGER DEFAULT 1,
   p_email                   TEXT DEFAULT NULL,
   p_organization            TEXT DEFAULT NULL,
   p_work_location           TEXT DEFAULT NULL,
-  p_payment_screenshot_path TEXT DEFAULT NULL
+  p_payment_screenshot_path TEXT DEFAULT NULL,
+  p_employment_type         TEXT DEFAULT NULL,
+  p_industry_domain         TEXT DEFAULT NULL
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -212,7 +216,17 @@ DECLARE
   v_registration_number   TEXT;
   v_fee                   NUMERIC;
   v_total_amount          NUMERIC;
+  v_prof_category         TEXT;
 BEGIN
+  -- Compute category if needed
+  v_prof_category := COALESCE(
+    p_professional_category,
+    CASE 
+      WHEN p_employment_type IS NOT NULL AND p_industry_domain IS NOT NULL THEN p_employment_type || ' • ' || p_industry_domain
+      ELSE COALESCE(p_employment_type, p_industry_domain, 'Other')
+    END
+  );
+
   -- 1. Look up event
   SELECT id, registration_fee
     INTO v_event_id, v_fee
@@ -235,11 +249,11 @@ BEGIN
   INSERT INTO alumni (
     name, email, mobile, address, city, state,
     year_of_passing, engineering_discipline,
-    organization, professional_category, work_location
+    organization, employment_type, industry_domain, professional_category, work_location
   ) VALUES (
     p_name, p_email, p_mobile, p_address, p_city, p_state,
     p_year_of_passing, p_engineering_discipline,
-    p_organization, p_professional_category, p_work_location
+    p_organization, p_employment_type, p_industry_domain, v_prof_category, p_work_location
   )
   ON CONFLICT (mobile) DO UPDATE SET
     name                   = EXCLUDED.name,
@@ -250,7 +264,9 @@ BEGIN
     year_of_passing        = EXCLUDED.year_of_passing,
     engineering_discipline = EXCLUDED.engineering_discipline,
     organization           = COALESCE(EXCLUDED.organization, alumni.organization),
-    professional_category  = EXCLUDED.professional_category,
+    employment_type        = COALESCE(EXCLUDED.employment_type, alumni.employment_type),
+    industry_domain        = COALESCE(EXCLUDED.industry_domain, alumni.industry_domain),
+    professional_category  = COALESCE(EXCLUDED.professional_category, alumni.professional_category),
     work_location          = COALESCE(EXCLUDED.work_location, alumni.work_location),
     updated_at             = NOW()
   RETURNING id INTO v_alumni_id;
@@ -352,3 +368,9 @@ ON CONFLICT (event_slug) DO UPDATE SET
   event_name = EXCLUDED.event_name,
   registration_fee = EXCLUDED.registration_fee,
   status = EXCLUDED.status;
+
+-- Migration helpers if database was initialized with earlier schema:
+ALTER TABLE alumni ADD COLUMN IF NOT EXISTS employment_type TEXT;
+ALTER TABLE alumni ADD COLUMN IF NOT EXISTS industry_domain TEXT;
+ALTER TABLE alumni ALTER COLUMN professional_category DROP NOT NULL;
+

@@ -19,6 +19,8 @@ interface RegistrationPayload {
   year_of_passing: number | string;
   engineering_discipline: string;
   organization?: string;
+  employment_type?: string;
+  industry_domain?: string;
   professional_category: string;
   work_location?: string;
   attendance_status: string;

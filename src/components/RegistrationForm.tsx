@@ -5,7 +5,8 @@ import type {
   RegistrationResult,
 } from '../types';
 import {
-  PROFESSIONAL_CATEGORIES,
+  EMPLOYMENT_TYPES,
+  INDUSTRY_DOMAINS,
   ENGINEERING_DISCIPLINES,
   INDIAN_STATES,
 } from '../types';
@@ -24,10 +25,16 @@ const INITIAL_FORM_DATA: RegistrationFormData = {
   address: '',
   city: 'Kota',
   state: 'Rajasthan',
+  state_other: '',
   year_of_passing: '',
-  engineering_discipline: 'Mechanical Engineering',
+  engineering_discipline: '',
+  engineering_discipline_other: '',
   organization: '',
-  professional_category: 'Private Sector',
+  employment_type: '',
+  employment_type_other: '',
+  industry_domain: '',
+  industry_domain_other: '',
+  professional_category: '',
   work_location: '',
   attendance_status: 'yes',
   number_of_attendees: 1,
@@ -111,6 +118,38 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       setFormError('Please select your year of passing (Batch).');
       return;
     }
+    if (!formData.engineering_discipline) {
+      setFormError('Please select your engineering discipline / branch.');
+      return;
+    }
+    if (formData.engineering_discipline === 'Other' && !formData.engineering_discipline_other?.trim()) {
+      setFormError('Please specify your engineering branch in the text field.');
+      return;
+    }
+    if (!formData.state) {
+      setFormError('Please select your state / UT.');
+      return;
+    }
+    if (formData.state === 'Other' && !formData.state_other?.trim()) {
+      setFormError('Please specify your state / country in the text field.');
+      return;
+    }
+    if (!formData.employment_type) {
+      setFormError('Please select your Employment Type.');
+      return;
+    }
+    if (formData.employment_type === 'Other' && !formData.employment_type_other?.trim()) {
+      setFormError('Please specify your Employment Type in the text field.');
+      return;
+    }
+    if (!formData.industry_domain) {
+      setFormError('Please select your Industry / Domain.');
+      return;
+    }
+    if (formData.industry_domain === 'Other' && !formData.industry_domain_other?.trim()) {
+      setFormError('Please specify your Industry / Domain in the text field.');
+      return;
+    }
     if (!formData.attendance_status) {
       setFormError('Please indicate your attendance status (Yes, Maybe, or No).');
       return;
@@ -159,19 +198,54 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         }
       }
 
+      // Resolve effective values when 'Other' was selected
+      const resolvedDiscipline =
+        formData.engineering_discipline === 'Other'
+          ? (formData.engineering_discipline_other?.trim() || 'Other')
+          : formData.engineering_discipline;
+
+      const resolvedState =
+        formData.state === 'Other'
+          ? (formData.state_other?.trim() || 'Other')
+          : formData.state;
+
+      const resolvedEmploymentType =
+        formData.employment_type === 'Other'
+          ? (formData.employment_type_other?.trim() || 'Other')
+          : formData.employment_type;
+
+      const resolvedIndustryDomain =
+        formData.industry_domain === 'Other'
+          ? (formData.industry_domain_other?.trim() || 'Other')
+          : formData.industry_domain;
+
+      const combinedCategory = `${resolvedEmploymentType} • ${resolvedIndustryDomain}`;
+
+      const resolvedFormData: RegistrationFormData = {
+        ...formData,
+        state: resolvedState,
+        engineering_discipline: resolvedDiscipline,
+        employment_type: resolvedEmploymentType,
+        industry_domain: resolvedIndustryDomain,
+        professional_category: combinedCategory,
+      };
+
       let registrationResult: RegistrationResult;
 
       try {
+        // Attempt call with updated parameters
         const { data, error } = await supabase.rpc('register_for_event', {
           p_event_slug: event.event_slug,
           p_name: formData.name.trim(),
           p_mobile: cleanMobile,
           p_address: formData.address.trim(),
           p_city: formData.city.trim(),
-          p_state: formData.state,
+          p_state: resolvedState,
           p_year_of_passing: Number(formData.year_of_passing),
-          p_engineering_discipline: formData.engineering_discipline,
-          p_professional_category: formData.professional_category,
+          p_engineering_discipline: resolvedDiscipline,
+          p_employment_type: resolvedEmploymentType,
+          p_industry_domain: resolvedIndustryDomain,
+          p_professional_category: combinedCategory,
           p_attendance_status: formData.attendance_status,
           p_number_of_attendees:
             formData.attendance_status === 'yes' ? formData.number_of_attendees : 1,
@@ -181,8 +255,31 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           p_payment_screenshot_path: uploadedScreenshotPath,
         });
 
-        if (error) throw error;
-        registrationResult = data as RegistrationResult;
+        if (error) {
+          // Fallback to legacy RPC schema if database hasn't applied the migration yet
+          const { data: fbData, error: fbErr } = await supabase.rpc('register_for_event', {
+            p_event_slug: event.event_slug,
+            p_name: formData.name.trim(),
+            p_mobile: cleanMobile,
+            p_address: formData.address.trim(),
+            p_city: formData.city.trim(),
+            p_state: resolvedState,
+            p_year_of_passing: Number(formData.year_of_passing),
+            p_engineering_discipline: resolvedDiscipline,
+            p_professional_category: combinedCategory,
+            p_attendance_status: formData.attendance_status,
+            p_number_of_attendees:
+              formData.attendance_status === 'yes' ? formData.number_of_attendees : 1,
+            p_email: formData.email.trim() || null,
+            p_organization: formData.organization.trim() || null,
+            p_work_location: formData.work_location.trim() || null,
+            p_payment_screenshot_path: uploadedScreenshotPath,
+          });
+          if (fbErr) throw fbErr;
+          registrationResult = fbData as RegistrationResult;
+        } else {
+          registrationResult = data as RegistrationResult;
+        }
       } catch (rpcErr: any) {
         console.warn('RPC fallback demo mode:', rpcErr);
         const pseudoRegNum = `REG-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -208,11 +305,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             email: formData.email.trim() || '',
             address: formData.address.trim(),
             city: formData.city.trim(),
-            state: formData.state,
+            state: resolvedState,
             year_of_passing: formData.year_of_passing,
-            engineering_discipline: formData.engineering_discipline,
+            engineering_discipline: resolvedDiscipline,
             organization: formData.organization.trim() || '',
-            professional_category: formData.professional_category,
+            employment_type: resolvedEmploymentType,
+            industry_domain: resolvedIndustryDomain,
+            professional_category: combinedCategory,
             work_location: formData.work_location.trim() || '',
             attendance_status: formData.attendance_status,
             number_of_attendees: formData.number_of_attendees,
@@ -221,11 +320,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             google_sheet_id: event.google_sheet_id || '',
           }),
         }).catch((err) => console.log('Sheets async notice:', err));
-      } catch (syncErr) {
+      } catch (_syncErr) {
         // Non-blocking
       }
 
-      onSuccess(formData, registrationResult);
+      onSuccess(resolvedFormData, registrationResult);
     } catch (err: any) {
       console.error('Registration failed:', err);
       setFormError(err?.message || 'Something went wrong while submitting. Please try again.');
@@ -348,6 +447,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               required
               className="input-field select-field"
             >
+              <option value="">Select Branch</option>
               {ENGINEERING_DISCIPLINES.map((discipline) => (
                 <option key={discipline} value={discipline}>
                   {discipline}
@@ -355,6 +455,26 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               ))}
             </select>
           </div>
+
+          {/* Conditional Other for Engineering Discipline */}
+          {formData.engineering_discipline === 'Other' && (
+            <div className="field-group animate-slide-down">
+              <label className="field-label required" htmlFor="field-discipline-other">
+                Specify Engineering Branch
+              </label>
+              <input
+                id="field-discipline-other"
+                type="text"
+                name="engineering_discipline_other"
+                value={formData.engineering_discipline_other || ''}
+                onChange={handleChange}
+                placeholder="e.g. M.Tech Thermal, MCA, Applied Sciences"
+                required
+                className="input-field"
+                autoFocus
+              />
+            </div>
+          )}
 
           {/* Address */}
           <div className="field-group full-width">
@@ -403,6 +523,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               required
               className="input-field select-field"
             >
+              <option value="">Select State / UT</option>
               {INDIAN_STATES.map((st) => (
                 <option key={st} value={st}>
                   {st}
@@ -411,26 +532,109 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             </select>
           </div>
 
-          {/* Professional Category */}
+          {/* Conditional Other for State */}
+          {formData.state === 'Other' && (
+            <div className="field-group animate-slide-down">
+              <label className="field-label required" htmlFor="field-state-other">
+                Specify State / Region / Country
+              </label>
+              <input
+                id="field-state-other"
+                type="text"
+                name="state_other"
+                value={formData.state_other || ''}
+                onChange={handleChange}
+                placeholder="e.g. California (USA), London (UK), Dubai (UAE)"
+                required
+                className="input-field"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {/* Employment Type */}
           <div className="field-group">
-            <label className="field-label required" htmlFor="field-category">
-              Professional Category
+            <label className="field-label required" htmlFor="field-employment-type">
+              Employment Type
             </label>
             <select
-              id="field-category"
-              name="professional_category"
-              value={formData.professional_category}
+              id="field-employment-type"
+              name="employment_type"
+              value={formData.employment_type}
               onChange={handleChange}
               required
               className="input-field select-field"
             >
-              {PROFESSIONAL_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              <option value="">Select Employment Type</option>
+              {EMPLOYMENT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Conditional Other for Employment Type */}
+          {formData.employment_type === 'Other' && (
+            <div className="field-group animate-slide-down">
+              <label className="field-label required" htmlFor="field-employment-other">
+                Specify Employment Type
+              </label>
+              <input
+                id="field-employment-other"
+                type="text"
+                name="employment_type_other"
+                value={formData.employment_type_other || ''}
+                onChange={handleChange}
+                placeholder="e.g. Armed Forces, Social Worker, Homemaker"
+                required
+                className="input-field"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {/* Industry / Domain */}
+          <div className="field-group">
+            <label className="field-label required" htmlFor="field-industry">
+              Industry / Domain
+            </label>
+            <select
+              id="field-industry"
+              name="industry_domain"
+              value={formData.industry_domain}
+              onChange={handleChange}
+              required
+              className="input-field select-field"
+            >
+              <option value="">Select Industry / Domain</option>
+              {INDUSTRY_DOMAINS.map((domain) => (
+                <option key={domain} value={domain}>
+                  {domain}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Conditional Other for Industry / Domain */}
+          {formData.industry_domain === 'Other' && (
+            <div className="field-group animate-slide-down">
+              <label className="field-label required" htmlFor="field-industry-other">
+                Specify Industry / Domain
+              </label>
+              <input
+                id="field-industry-other"
+                type="text"
+                name="industry_domain_other"
+                value={formData.industry_domain_other || ''}
+                onChange={handleChange}
+                placeholder="e.g. Aerospace, Energy & Power, Media"
+                required
+                className="input-field"
+                autoFocus
+              />
+            </div>
+          )}
 
           {/* Organization */}
           <div className="field-group">

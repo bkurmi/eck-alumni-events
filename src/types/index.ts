@@ -32,6 +32,8 @@ export interface Alumni {
   year_of_passing: number;
   engineering_discipline: string;
   organization: string | null;
+  employment_type?: string;
+  industry_domain?: string;
   professional_category: string;
   work_location: string | null;
   created_at: string;
@@ -62,11 +64,19 @@ export interface RegistrationFormData {
   address: string;
   city: string;
   state: string;
+  state_other?: string;
   year_of_passing: number | '';
   engineering_discipline: string;
+  engineering_discipline_other?: string;
   organization: string;
-  professional_category: string;
+  // Professional info (Employment Type + Industry / Domain)
+  employment_type: string;
+  employment_type_other?: string;
+  industry_domain: string;
+  industry_domain_other?: string;
   work_location: string;
+  // Legacy / combined
+  professional_category?: string;
   // Attendance
   attendance_status: 'yes' | 'maybe' | 'no' | '';
   number_of_attendees: number;
@@ -81,6 +91,28 @@ export interface RegistrationResult {
   attendance_status: string;
 }
 
+export const EMPLOYMENT_TYPES = [
+  'Full-time (Private)',
+  'Full-time (Government / Public Sector)',
+  'Self-Employed / Business Owner',
+  'Freelancer / Independent Contractor',
+  'Student',
+  'Retired',
+  'Not Currently Employed',
+  'Other',
+] as const;
+
+export const INDUSTRY_DOMAINS = [
+  'Information Technology & Services',
+  'Banking, Financial Services & Insurance (BFSI)',
+  'Healthcare & Pharmaceuticals',
+  'Manufacturing & Engineering',
+  'Education & Academia',
+  'Retail & E-Commerce',
+  'Government & Public Administration',
+  'Other',
+] as const;
+
 export const PROFESSIONAL_CATEGORIES = [
   'Government',
   'Private Sector',
@@ -94,15 +126,17 @@ export const PROFESSIONAL_CATEGORIES = [
 ] as const;
 
 export const ENGINEERING_DISCIPLINES = [
-  'Civil Engineering',
-  'Mechanical Engineering',
-  'Electrical Engineering',
-  'Electronics & Communication Engineering',
-  'Computer Science & Engineering',
   'Information Technology',
-  'Chemical Engineering',
-  'Mining Engineering',
-  'Metallurgical Engineering',
+  'Civil',
+  'Mechanical',
+  'Instrumentation',
+  'Electrical',
+  'Computer Science',
+  'Electronics & Communication',
+  'Production & Industrial',
+  'Aeronautical',
+  'Petroleum',
+  'Petrochemical',
   'Other',
 ] as const;
 
