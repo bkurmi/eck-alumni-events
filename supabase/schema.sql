@@ -72,6 +72,9 @@ CREATE TABLE IF NOT EXISTS alumni (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Ensure country column exists if table was previously created
+ALTER TABLE alumni ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT 'India';
+
 DROP TRIGGER IF EXISTS alumni_updated_at ON alumni;
 CREATE TRIGGER alumni_updated_at
   BEFORE UPDATE ON alumni
@@ -191,11 +194,11 @@ CREATE OR REPLACE FUNCTION register_for_event(
   p_name                    TEXT,
   p_mobile                  TEXT,
   p_address                 TEXT,
-  p_country                 TEXT DEFAULT 'India',
   p_city                    TEXT,
   p_state                   TEXT,
   p_year_of_passing         INTEGER,
   p_engineering_discipline  TEXT,
+  p_country                 TEXT DEFAULT 'India',
   p_professional_category   TEXT DEFAULT NULL,
   p_attendance_status       TEXT DEFAULT 'yes',
   p_number_of_attendees     INTEGER DEFAULT 1,
