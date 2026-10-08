@@ -46,6 +46,11 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       ? additionalAmountDue
       : Math.max(0, amount - (previousPaidAmount || 0));
   const isFullyPaid = isPaidUpdate && extraDue === 0;
+  const amountToPay = isPaidUpdate ? extraDue : amount;
+
+  const upiDeepLink = upiId
+    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent('ECK Alumni Association')}&am=${amountToPay}&cu=INR&tn=${encodeURIComponent('ECK Reunion Registration')}`
+    : null;
 
   const recordedReceiptsCount =
     (existingScreenshotPath || '')
@@ -241,22 +246,42 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 
             <p className="qr-instruction">
               Open <strong>PhonePe, Google Pay, Paytm, or BHIM</strong> to scan &amp; pay{' '}
-              <strong>₹{isPaidUpdate ? extraDue : amount}</strong>
+              <strong>₹{amountToPay}</strong>
             </p>
 
             {upiId && (
-              <div className="upi-id-box">
-                <span className="upi-label">UPI ID:</span>
-                <code className="upi-code">{upiId}</code>
-                <button
-                  type="button"
-                  onClick={handleCopyUpi}
-                  className="copy-btn"
-                  title="Copy UPI ID"
-                  id="btn-copy-upi"
-                >
-                  {copied ? '✓ Copied' : '📋 Copy'}
-                </button>
+              <div className="upi-direct-action">
+                <div className="mobile-only-upi">
+                  <div className="upi-or-divider">
+                    <span>OR PAY ON THIS DEVICE</span>
+                  </div>
+
+                  <a
+                    href={upiDeepLink || '#'}
+                    className="btn-pay-upi"
+                    id="btn-pay-upi-app"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                    <span>Pay ₹{amountToPay} via UPI App</span>
+                  </a>
+                  <span className="upi-app-hint">Tap to open GPay, PhonePe, or Paytm installed on this phone</span>
+                </div>
+
+                <div className="upi-id-box">
+                  <span className="upi-label">UPI ID:</span>
+                  <code className="upi-code">{upiId}</code>
+                  <button
+                    type="button"
+                    onClick={handleCopyUpi}
+                    className="copy-btn"
+                    title="Copy UPI ID"
+                    id="btn-copy-upi"
+                  >
+                    {copied ? '✓ Copied' : '📋 Copy'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
