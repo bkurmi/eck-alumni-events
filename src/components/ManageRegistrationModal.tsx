@@ -92,26 +92,49 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
           </p>
 
           <form onSubmit={handleSearch} className="lookup-search-form">
-            <div className="input-prefix-wrap">
-              <span className="input-prefix">+91</span>
-              <input
-                type="tel"
-                value={mobile}
-                onChange={(e) => {
-                  setMobile(e.target.value);
-                  if (searched) setSearched(false);
-                }}
-                placeholder="10-digit mobile number"
-                maxLength={10}
-                className="input-field prefixed-input"
-                autoFocus
-              />
+            <div className="lookup-search-row">
+              <div className="input-prefix-wrap lookup-prefix-wrap">
+                <span className="input-prefix">+91</span>
+                <input
+                  type="tel"
+                  value={mobile}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setMobile(cleaned);
+                    if (searched) setSearched(false);
+                  }}
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  className="input-field prefixed-input lookup-input"
+                  autoFocus
+                  inputMode="numeric"
+                  id="lookup-mobile-input"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={loading || mobile.replace(/\D/g, '').length < 10}
-                className="btn btn-primary btn-search-go"
+                className="btn btn-festive-primary btn-search-go"
+                id="btn-lookup-search"
               >
-                {loading ? <span className="mini-spinner" /> : 'Search'}
+                {loading ? (
+                  <span className="mini-spinner" />
+                ) : (
+                  <>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <span>Search</span>
+                  </>
+                )}
               </button>
             </div>
             {searchError && <p className="error-message">{searchError}</p>}

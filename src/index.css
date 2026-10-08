@@ -2629,12 +2629,90 @@ h1, h2, h3, h4, h5, h6 {
 .lookup-search-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+.lookup-search-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 460px) {
+  .lookup-search-row {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+.lookup-prefix-wrap {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: rgba(10, 12, 22, 0.7);
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.lookup-prefix-wrap:focus-within {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.lookup-prefix-wrap .input-prefix {
+  background: rgba(245, 158, 11, 0.12);
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0 14px;
+  color: var(--primary-light);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.lookup-input {
+  border: none !important;
+  background: transparent !important;
+  font-size: 1.05rem !important;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 12px 14px;
+  height: 48px;
+  color: #fff;
+  box-shadow: none !important;
+  width: 100%;
+}
+
+.lookup-input::placeholder {
+  font-size: 0.92rem;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 .btn-search-go {
-  padding: 0 20px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 24px;
+  font-size: 0.95rem;
+  font-weight: 800;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+@media (max-width: 459px) {
+  .btn-search-go {
+    width: 100%;
+  }
 }
 
 .lookup-loading-box {
@@ -2772,4 +2850,29 @@ h1, h2, h3, h4, h5, h6 {
   border-top: 1px solid var(--border-subtle);
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  .modal-dialog {
+    margin: 8px;
+    border-radius: var(--radius-lg);
+    max-height: 94vh;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-title {
+    font-size: 1.05rem;
+  }
+
+  .modal-body {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+  }
 }
