@@ -7,7 +7,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  title = 'ECK Alumni Association',
+  title = 'ECK Alumni Association, Kota Chapter',
   tagline = 'Engineering College Kota',
 }) => {
   const location = useLocation();

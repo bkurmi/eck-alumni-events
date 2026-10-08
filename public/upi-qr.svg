@@ -16,7 +16,7 @@
 
   <!-- Header -->
   <rect x="24" y="24" width="352" height="48" rx="12" fill="#0f172a"/>
-  <text x="200" y="54" fill="#ffffff" font-family="Inter, sans-serif" font-weight="700" font-size="16" text-anchor="middle" letter-spacing="1">ECK ALUMNI ASSOCIATION</text>
+  <text x="200" y="54" fill="#ffffff" font-family="Inter, sans-serif" font-weight="700" font-size="13" text-anchor="middle" letter-spacing="0.5">ECK ALUMNI ASSOCIATION, KOTA CHAPTER</text>
 
   <!-- Corner finder pattern Top-Left -->
   <rect x="50" y="90" width="70" height="70" rx="8" fill="none" stroke="#0f172a" stroke-width="10"/>

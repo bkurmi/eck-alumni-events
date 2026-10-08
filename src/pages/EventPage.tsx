@@ -19,8 +19,8 @@ const DEFAULT_EVENT: ECKEvent = {
   event_name: 'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
   event_slug: 'pre-diwali-milan-2026',
   event_date: '2026-11-01',
-  event_time: '6:00 PM onwards',
-  location: 'Kota, Rajasthan (Venue to be announced)',
+  event_time: '5:00 PM onwards',
+  location: 'ECK, Kota, Rajasthan (College Ground)',
   description:
     'Reconnect • Relive • Celebrate — Join fellow ECK alumni for an evening of nostalgia, networking, cultural performances, dinner, and celebration before Diwali 2026.',
   registration_fee: 800,
@@ -140,7 +140,7 @@ export const EventPage: React.FC = () => {
   return (
     <div className="app-layout">
       <Header
-        title="ECK Alumni Association"
+        title="ECK Alumni Association, Kota Chapter"
         tagline={event.tagline || 'Engineering College Kota'}
       />
 
@@ -265,7 +265,7 @@ export const EventPage: React.FC = () => {
 
       <footer className="site-footer">
         <div className="footer-content">
-          <p>© {new Date().getFullYear()} Engineering College Kota (ECK) Alumni Association</p>
+          <p>© {new Date().getFullYear()} Engineering College Kota (ECK) Alumni Association, Kota Chapter</p>
           <p className="footer-sub">
             Pre-Diwali Milan 2026 • Kota, Rajasthan
           </p>

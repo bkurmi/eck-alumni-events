@@ -514,16 +514,16 @@ INSERT INTO events (
   'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
   'pre-diwali-milan-2026',
   '2026-11-01',
-  '6:00 PM onwards',
-  'Kota, Rajasthan (Venue to be announced)',
+  '5:00 PM onwards',
+  'ECK, Kota, Rajasthan (College Ground)',
   'Reconnect • Relive • Celebrate — Join fellow ECK alumni for an evening of nostalgia, networking, cultural performances, dinner, and celebration before Diwali 2026.',
   800,
   'eckalumni@upi',
   NULL,
-  'Reconnect • Relive • Celebrate',
+  'Engineering College Kota',
   '#6366f1',
   '#f59e0b',
-  '/upi-qr.png',
+  '/upi-qr.svg',
   'OPEN'
 )
 ON CONFLICT (event_slug) DO UPDATE SET

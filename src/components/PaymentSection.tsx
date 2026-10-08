@@ -49,7 +49,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   const amountToPay = isPaidUpdate ? extraDue : amount;
 
   const upiDeepLink = upiId
-    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent('ECK Alumni Association')}&am=${amountToPay}&cu=INR&tn=${encodeURIComponent('ECK Reunion Registration')}`
+    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent('ECK Alumni Association, Kota Chapter')}&am=${amountToPay}&cu=INR&tn=${encodeURIComponent('ECK Reunion Registration')}`
     : null;
 
   const recordedReceiptsCount =
