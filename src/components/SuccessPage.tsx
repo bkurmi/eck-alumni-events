@@ -101,6 +101,14 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           </div>
 
           <div className="detail-row">
+            <span className="detail-label">Location</span>
+            <span className="detail-val">
+              📍 {formData.city}, {formData.country === 'Other' ? (formData.country_other || formData.state) : formData.state}
+              {formData.country === 'Other' && formData.country_other && formData.state_other ? ` (${formData.country_other})` : ''}
+            </span>
+          </div>
+
+          <div className="detail-row">
             <span className="detail-label">Attendance Status</span>
             <span className="detail-val capitalize">
               {formData.attendance_status === 'yes' ? '✅ Attending' : formData.attendance_status}

@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS alumni (
   email                   TEXT,
   mobile                  TEXT NOT NULL UNIQUE,
   address                 TEXT NOT NULL,
+  country                 TEXT NOT NULL DEFAULT 'India',
   city                    TEXT NOT NULL,
   state                   TEXT NOT NULL,
   year_of_passing         INTEGER NOT NULL,
@@ -190,6 +191,7 @@ CREATE OR REPLACE FUNCTION register_for_event(
   p_name                    TEXT,
   p_mobile                  TEXT,
   p_address                 TEXT,
+  p_country                 TEXT DEFAULT 'India',
   p_city                    TEXT,
   p_state                   TEXT,
   p_year_of_passing         INTEGER,
@@ -247,11 +249,11 @@ BEGIN
 
   -- 3. Upsert alumni (by mobile)
   INSERT INTO alumni (
-    name, email, mobile, address, city, state,
+    name, email, mobile, address, country, city, state,
     year_of_passing, engineering_discipline,
     organization, employment_type, industry_domain, professional_category, work_location
   ) VALUES (
-    p_name, p_email, p_mobile, p_address, p_city, p_state,
+    p_name, p_email, p_mobile, p_address, COALESCE(p_country, 'India'), p_city, p_state,
     p_year_of_passing, p_engineering_discipline,
     p_organization, p_employment_type, p_industry_domain, v_prof_category, p_work_location
   )
@@ -259,6 +261,7 @@ BEGIN
     name                   = EXCLUDED.name,
     email                  = COALESCE(EXCLUDED.email, alumni.email),
     address                = EXCLUDED.address,
+    country                = EXCLUDED.country,
     city                   = EXCLUDED.city,
     state                  = EXCLUDED.state,
     year_of_passing        = EXCLUDED.year_of_passing,

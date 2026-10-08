@@ -27,6 +27,7 @@ export interface Alumni {
   email: string | null;
   mobile: string;
   address: string;
+  country?: string;
   city: string;
   state: string;
   year_of_passing: number;
@@ -62,6 +63,8 @@ export interface RegistrationFormData {
   email: string;
   mobile: string;
   address: string;
+  country: string;
+  country_other?: string;
   city: string;
   state: string;
   state_other?: string;
@@ -152,3 +155,9 @@ export const INDIAN_STATES = [
   'Ladakh', 'Andaman & Nicobar Islands', 'Dadra & Nagar Haveli and Daman & Diu', 'Lakshadweep',
   'Other',
 ] as const;
+
+export const COUNTRY_OPTIONS = [
+  { value: 'India', label: '🇮🇳 India' },
+  { value: 'Other', label: '🌐 Other (International)' },
+] as const;
+

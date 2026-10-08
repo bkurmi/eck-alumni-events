@@ -14,6 +14,7 @@ interface RegistrationPayload {
   mobile: string;
   email?: string;
   address: string;
+  country?: string;
   city: string;
   state: string;
   year_of_passing: number | string;
@@ -156,7 +157,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       body.email || '',
       body.address,
       body.city,
-      body.state,
+      body.country && body.country !== 'India' && !body.state.includes(body.country)
+        ? `${body.state} (${body.country})`
+        : body.state,
       body.year_of_passing,
       body.engineering_discipline,
       body.organization || '',

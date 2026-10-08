@@ -9,6 +9,7 @@ import {
   INDUSTRY_DOMAINS,
   ENGINEERING_DISCIPLINES,
   INDIAN_STATES,
+  COUNTRY_OPTIONS,
 } from '../types';
 import { PaymentSection } from './PaymentSection';
 import { supabase } from '../lib/supabase';
@@ -23,6 +24,8 @@ const INITIAL_FORM_DATA: RegistrationFormData = {
   email: '',
   mobile: '',
   address: '',
+  country: 'India',
+  country_other: '',
   city: 'Kota',
   state: 'Rajasthan',
   state_other: '',
@@ -65,6 +68,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+
+    if (name === 'country') {
+      setFormData((prev) => ({
+        ...prev,
+        country: value,
+        country_other: value === 'India' ? '' : prev.country_other,
+        state: value === 'India' ? (prev.state || 'Rajasthan') : '',
+        state_other: value === 'India' ? '' : prev.state_other,
+        city: value === 'Other' && prev.city === 'Kota' ? '' : prev.city,
+      }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]:
@@ -110,8 +126,27 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       setFormError('Please enter your residential or permanent address.');
       return;
     }
+    if (formData.country === 'India') {
+      if (!formData.state) {
+        setFormError('Please select your state / UT.');
+        return;
+      }
+      if (formData.state === 'Other' && !formData.state_other?.trim()) {
+        setFormError('Please specify your state / UT in the text field.');
+        return;
+      }
+    } else {
+      if (!formData.country_other?.trim()) {
+        setFormError('Please specify your country name.');
+        return;
+      }
+    }
     if (!formData.city.trim()) {
-      setFormError('Please enter your city.');
+      setFormError(
+        formData.country === 'India'
+          ? 'Please enter your city.'
+          : 'Please enter your city / town / region.'
+      );
       return;
     }
     if (!formData.year_of_passing) {
@@ -124,14 +159,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     }
     if (formData.engineering_discipline === 'Other' && !formData.engineering_discipline_other?.trim()) {
       setFormError('Please specify your engineering branch in the text field.');
-      return;
-    }
-    if (!formData.state) {
-      setFormError('Please select your state / UT.');
-      return;
-    }
-    if (formData.state === 'Other' && !formData.state_other?.trim()) {
-      setFormError('Please specify your state / country in the text field.');
       return;
     }
     if (!formData.employment_type) {
@@ -199,15 +226,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       }
 
       // Resolve effective values when 'Other' was selected
+      const isIndia = formData.country === 'India';
+      const resolvedCountry = isIndia
+        ? 'India'
+        : (formData.country_other?.trim() || 'Other');
+
       const resolvedDiscipline =
         formData.engineering_discipline === 'Other'
           ? (formData.engineering_discipline_other?.trim() || 'Other')
           : formData.engineering_discipline;
 
-      const resolvedState =
-        formData.state === 'Other'
-          ? (formData.state_other?.trim() || 'Other')
-          : formData.state;
+      const resolvedState = isIndia
+        ? (formData.state === 'Other' ? (formData.state_other?.trim() || 'Other') : formData.state)
+        : (formData.state_other?.trim() || resolvedCountry);
 
       const resolvedEmploymentType =
         formData.employment_type === 'Other'
@@ -223,6 +254,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
       const resolvedFormData: RegistrationFormData = {
         ...formData,
+        country: resolvedCountry,
         state: resolvedState,
         engineering_discipline: resolvedDiscipline,
         employment_type: resolvedEmploymentType,
@@ -239,6 +271,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           p_name: formData.name.trim(),
           p_mobile: cleanMobile,
           p_address: formData.address.trim(),
+          p_country: resolvedCountry,
           p_city: formData.city.trim(),
           p_state: resolvedState,
           p_year_of_passing: Number(formData.year_of_passing),
@@ -304,6 +337,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             mobile: cleanMobile,
             email: formData.email.trim() || '',
             address: formData.address.trim(),
+            country: resolvedCountry,
             city: formData.city.trim(),
             state: resolvedState,
             year_of_passing: formData.year_of_passing,
@@ -493,50 +527,76 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             />
           </div>
 
-          {/* City */}
+          {/* Country */}
           <div className="field-group">
-            <label className="field-label required" htmlFor="field-city">
-              City
-            </label>
-            <input
-              id="field-city"
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              placeholder="e.g. Kota, Jaipur, Delhi"
-              required
-              className="input-field"
-            />
-          </div>
-
-          {/* State */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-state">
-              State / UT
+            <label className="field-label required" htmlFor="field-country">
+              Country
             </label>
             <select
-              id="field-state"
-              name="state"
-              value={formData.state}
+              id="field-country"
+              name="country"
+              value={formData.country}
               onChange={handleChange}
               required
               className="input-field select-field"
             >
-              <option value="">Select State / UT</option>
-              {INDIAN_STATES.map((st) => (
-                <option key={st} value={st}>
-                  {st}
+              {COUNTRY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Conditional Other for State */}
-          {formData.state === 'Other' && (
+          {/* If Country is Other: Specify Country Name */}
+          {formData.country === 'Other' && (
+            <div className="field-group animate-slide-down">
+              <label className="field-label required" htmlFor="field-country-other">
+                Country Name
+              </label>
+              <input
+                id="field-country-other"
+                type="text"
+                name="country_other"
+                value={formData.country_other || ''}
+                onChange={handleChange}
+                placeholder="e.g. United States, United Kingdom, UAE, Singapore"
+                required
+                className="input-field"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {/* If Country is India: State Dropdown */}
+          {formData.country === 'India' && (
+            <div className="field-group animate-slide-down">
+              <label className="field-label required" htmlFor="field-state">
+                State / UT
+              </label>
+              <select
+                id="field-state"
+                name="state"
+                value={formData.state}
+                onChange={handleChange}
+                required
+                className="input-field select-field"
+              >
+                <option value="">Select State / UT</option>
+                {INDIAN_STATES.map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Conditional Other for State within India */}
+          {formData.country === 'India' && formData.state === 'Other' && (
             <div className="field-group animate-slide-down">
               <label className="field-label required" htmlFor="field-state-other">
-                Specify State / Region / Country
+                Specify State / Region
               </label>
               <input
                 id="field-state-other"
@@ -544,13 +604,48 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 name="state_other"
                 value={formData.state_other || ''}
                 onChange={handleChange}
-                placeholder="e.g. California (USA), London (UK), Dubai (UAE)"
+                placeholder="e.g. New State / UT"
                 required
                 className="input-field"
                 autoFocus
               />
             </div>
           )}
+
+          {/* If Country is Other: State/Province/Emirate (Optional) */}
+          {formData.country === 'Other' && (
+            <div className="field-group animate-slide-down">
+              <label className="field-label" htmlFor="field-state-other">
+                State / Province / Emirate <span className="label-optional">(Optional)</span>
+              </label>
+              <input
+                id="field-state-other"
+                type="text"
+                name="state_other"
+                value={formData.state_other || ''}
+                onChange={handleChange}
+                placeholder="e.g. California, Ontario, Dubai"
+                className="input-field"
+              />
+            </div>
+          )}
+
+          {/* City */}
+          <div className="field-group">
+            <label className="field-label required" htmlFor="field-city">
+              {formData.country === 'India' ? 'City' : 'City / Town / Region'}
+            </label>
+            <input
+              id="field-city"
+              type="text"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              placeholder={formData.country === 'India' ? 'e.g. Kota, Jaipur, Delhi' : 'e.g. Dubai, London, San Jose'}
+              required
+              className="input-field"
+            />
+          </div>
 
           {/* Employment Type */}
           <div className="field-group">

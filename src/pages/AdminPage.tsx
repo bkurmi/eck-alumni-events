@@ -140,6 +140,8 @@ export const AdminPage: React.FC = () => {
       const regNum = reg.registration_number?.toLowerCase() || '';
       const discipline = reg.alumni?.engineering_discipline?.toLowerCase() || '';
       const city = reg.alumni?.city?.toLowerCase() || '';
+      const state = reg.alumni?.state?.toLowerCase() || '';
+      const country = reg.alumni?.country?.toLowerCase() || '';
       const empType = reg.alumni?.employment_type?.toLowerCase() || '';
       const industry = reg.alumni?.industry_domain?.toLowerCase() || '';
       const org = reg.alumni?.organization?.toLowerCase() || '';
@@ -150,6 +152,8 @@ export const AdminPage: React.FC = () => {
         regNum.includes(q) ||
         discipline.includes(q) ||
         city.includes(q) ||
+        state.includes(q) ||
+        country.includes(q) ||
         empType.includes(q) ||
         industry.includes(q) ||
         org.includes(q);
@@ -340,6 +344,7 @@ export const AdminPage: React.FC = () => {
                         </p>
                         <p className="alumni-contact">
                           📞 {reg.alumni?.mobile} • 📍 {reg.alumni?.city}, {reg.alumni?.state}
+                          {reg.alumni?.country && reg.alumni.country !== 'India' ? ` (${reg.alumni.country})` : ''}
                         </p>
                         {reg.alumni?.organization && (
                           <p className="alumni-org">💼 {reg.alumni.organization} ({reg.alumni.professional_category})</p>
@@ -420,6 +425,9 @@ export const AdminPage: React.FC = () => {
                   <span className="modal-label">Location</span>
                   <span className="modal-val">
                     {selectedReg.alumni?.city}, {selectedReg.alumni?.state}
+                    {selectedReg.alumni?.country && selectedReg.alumni.country !== 'India'
+                      ? ` • 🌐 ${selectedReg.alumni.country}`
+                      : ' • 🇮🇳 India'}
                   </span>
                 </div>
 
