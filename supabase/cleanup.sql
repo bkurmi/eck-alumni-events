@@ -13,6 +13,7 @@ DROP SEQUENCE IF EXISTS registration_seq CASCADE;
 
 -- 3. Drop stored functions
 DROP FUNCTION IF EXISTS register_for_event CASCADE;
+DROP FUNCTION IF EXISTS get_registration_by_mobile CASCADE;
 DROP FUNCTION IF EXISTS generate_registration_number CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at CASCADE;
 

@@ -75,6 +75,9 @@ export async function lookupRegistrationByMobile(
             registration_number: regData.registration_number,
             attendance_status: regData.attendance_status,
             number_of_attendees: regData.number_of_attendees,
+            adults_count: regData.adults_count ?? 1,
+            children_above_7_count: regData.children_above_7_count ?? 0,
+            children_under_7_count: regData.children_under_7_count ?? 0,
             amount: regData.amount,
             payment_screenshot_path: regData.payment_screenshot_path,
             created_at: regData.created_at,
@@ -131,7 +134,8 @@ export function cacheRegistrationLocally(
 export function recordCompletedRegistrationLocally(
   eventSlug: string,
   formData: RegistrationFormData,
-  result: RegistrationResult
+  result: RegistrationResult,
+  screenshotPath?: string | null
 ): void {
   const cleanMobile = cleanMobileNumber(formData.mobile);
   const lookupObj: ExistingRegistrationLookup = {
@@ -140,8 +144,11 @@ export function recordCompletedRegistrationLocally(
     registration_number: result.registration_number,
     attendance_status: (formData.attendance_status || 'yes') as 'yes' | 'maybe' | 'no',
     number_of_attendees: formData.number_of_attendees || 1,
+    adults_count: formData.adults_count ?? 1,
+    children_above_7_count: formData.children_above_7_count ?? 0,
+    children_under_7_count: formData.children_under_7_count ?? 0,
     amount: result.amount,
-    payment_screenshot_path: null,
+    payment_screenshot_path: screenshotPath || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     alumni: {
@@ -173,7 +180,12 @@ export function recordCompletedRegistrationLocally(
 export function convertLookupToFormData(lookup: ExistingRegistrationLookup): RegistrationFormData {
   const alumni = lookup.alumni;
   const isAttending = lookup.attendance_status === 'yes';
-  const attendeesCount = lookup.number_of_attendees || 1;
+  const adults = isAttending
+    ? (lookup.adults_count !== undefined ? lookup.adults_count : Math.max(1, lookup.number_of_attendees || 1))
+    : 1;
+  const kidsAbove7 = isAttending ? (lookup.children_above_7_count ?? 0) : 0;
+  const kidsUnder7 = isAttending ? (lookup.children_under_7_count ?? 0) : 0;
+  const attendeesCount = lookup.number_of_attendees || (adults + kidsAbove7 + kidsUnder7);
 
   const isIndia = (alumni?.country || 'India') === 'India';
 
@@ -199,8 +211,8 @@ export function convertLookupToFormData(lookup: ExistingRegistrationLookup): Reg
     work_location: alumni?.work_location || '',
     attendance_status: (lookup.attendance_status || 'yes') as 'yes' | 'maybe' | 'no',
     number_of_attendees: attendeesCount,
-    adults_count: isAttending ? Math.max(1, attendeesCount) : 1,
-    children_above_7_count: 0,
-    children_under_7_count: 0,
+    adults_count: adults,
+    children_above_7_count: kidsAbove7,
+    children_under_7_count: kidsUnder7,
   };
 }

@@ -95,6 +95,9 @@ CREATE TABLE IF NOT EXISTS event_registrations (
   attendance_status           TEXT NOT NULL
                                 CHECK (attendance_status IN ('yes', 'maybe', 'no')),
   number_of_attendees         INTEGER NOT NULL DEFAULT 1,
+  adults_count                INTEGER NOT NULL DEFAULT 1,
+  children_above_7_count      INTEGER NOT NULL DEFAULT 0,
+  children_under_7_count      INTEGER NOT NULL DEFAULT 0,
   amount                      NUMERIC NOT NULL DEFAULT 0,
   payment_screenshot_path     TEXT,
   created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -102,6 +105,10 @@ CREATE TABLE IF NOT EXISTS event_registrations (
 
   UNIQUE(event_id, alumni_id)
 );
+
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS adults_count INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS children_above_7_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS children_under_7_count INTEGER NOT NULL DEFAULT 0;
 
 CREATE OR REPLACE FUNCTION generate_registration_number()
 RETURNS TRIGGER AS $$
@@ -206,7 +213,10 @@ CREATE OR REPLACE FUNCTION register_for_event(
   p_work_location           TEXT DEFAULT NULL,
   p_payment_screenshot_path TEXT DEFAULT NULL,
   p_employment_type         TEXT DEFAULT NULL,
-  p_industry_domain         TEXT DEFAULT NULL
+  p_industry_domain         TEXT DEFAULT NULL,
+  p_adults_count            INTEGER DEFAULT 1,
+  p_children_above_7_count  INTEGER DEFAULT 0,
+  p_children_under_7_count  INTEGER DEFAULT 0
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -245,7 +255,20 @@ BEGIN
 
   -- 2. Calculate total (if not attending, fee is 0)
   IF p_attendance_status = 'yes' THEN
-    v_total_amount := v_fee * GREATEST(COALESCE(p_number_of_attendees, 1), 1);
+    IF p_adults_count IS NOT NULL THEN
+      IF p_adults_count <= 0 THEN
+        v_total_amount := 0;
+      ELSIF p_adults_count = 1 THEN
+        v_total_amount := 800;
+      ELSIF p_adults_count = 2 THEN
+        v_total_amount := 1500;
+      ELSE
+        v_total_amount := 1500 + (p_adults_count - 2) * 800;
+      END IF;
+      v_total_amount := v_total_amount + (COALESCE(p_children_above_7_count, 0) * 300);
+    ELSE
+      v_total_amount := v_fee * GREATEST(COALESCE(p_number_of_attendees, 1), 1);
+    END IF;
   ELSE
     v_total_amount := 0;
   END IF;
@@ -286,14 +309,19 @@ BEGIN
   -- 4. Create or update registration
   INSERT INTO event_registrations (
     event_id, alumni_id, attendance_status,
-    number_of_attendees, amount, payment_screenshot_path
+    number_of_attendees, adults_count, children_above_7_count, children_under_7_count,
+    amount, payment_screenshot_path
   ) VALUES (
     v_event_id, v_alumni_id, p_attendance_status,
-    p_number_of_attendees, v_total_amount, p_payment_screenshot_path
+    p_number_of_attendees, COALESCE(p_adults_count, 1), COALESCE(p_children_above_7_count, 0), COALESCE(p_children_under_7_count, 0),
+    v_total_amount, p_payment_screenshot_path
   )
   ON CONFLICT (event_id, alumni_id) DO UPDATE SET
     attendance_status       = EXCLUDED.attendance_status,
     number_of_attendees     = EXCLUDED.number_of_attendees,
+    adults_count            = EXCLUDED.adults_count,
+    children_above_7_count  = EXCLUDED.children_above_7_count,
+    children_under_7_count  = EXCLUDED.children_under_7_count,
     amount                  = EXCLUDED.amount,
     payment_screenshot_path = CASE
       WHEN EXCLUDED.payment_screenshot_path IS NOT NULL AND EXCLUDED.payment_screenshot_path <> '' THEN
@@ -364,6 +392,9 @@ BEGIN
     r.registration_number,
     r.attendance_status,
     r.number_of_attendees,
+    COALESCE(r.adults_count, 1) AS adults_count,
+    COALESCE(r.children_above_7_count, 0) AS children_above_7_count,
+    COALESCE(r.children_under_7_count, 0) AS children_under_7_count,
     r.amount,
     r.payment_screenshot_path,
     r.created_at,
@@ -404,6 +435,9 @@ BEGIN
     'registration_number',     v_reg_record.registration_number,
     'attendance_status',       v_reg_record.attendance_status,
     'number_of_attendees',     v_reg_record.number_of_attendees,
+    'adults_count',            v_reg_record.adults_count,
+    'children_above_7_count',  v_reg_record.children_above_7_count,
+    'children_under_7_count',  v_reg_record.children_under_7_count,
     'amount',                  v_reg_record.amount,
     'payment_screenshot_path', v_reg_record.payment_screenshot_path,
     'created_at',              v_reg_record.created_at,

@@ -115,6 +115,31 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
   const totalAmount = pricing.totalAmount;
 
+  // Minimum count enforcement for update mode (cannot reduce below previously registered count)
+  const isEnforcingMinCounts = Boolean(
+    isUpdateMode && activeExistingReg && activeExistingReg.attendance_status === 'yes'
+  );
+
+  const minAdults = isEnforcingMinCounts ? Math.max(1, activeExistingReg?.adults_count ?? 1) : 1;
+  const minKidsAbove7 = isEnforcingMinCounts ? (activeExistingReg?.children_above_7_count ?? 0) : 0;
+  const minKidsUnder7 = isEnforcingMinCounts ? (activeExistingReg?.children_under_7_count ?? 0) : 0;
+
+  // Previously paid contribution calculation
+  const previousPaidAmount = useMemo(() => {
+    if (!isUpdateMode || !activeExistingReg || activeExistingReg.attendance_status !== 'yes') {
+      return 0;
+    }
+    if (typeof activeExistingReg.amount === 'number' && activeExistingReg.amount > 0) {
+      return activeExistingReg.amount;
+    }
+    const prevAdults = activeExistingReg.adults_count ?? 1;
+    const prevKids7 = activeExistingReg.children_above_7_count ?? 0;
+    const prevKidsUnder7 = activeExistingReg.children_under_7_count ?? 0;
+    return calculateContribution(prevAdults, prevKids7, prevKidsUnder7).totalAmount;
+  }, [isUpdateMode, activeExistingReg]);
+
+  const additionalAmountDue = Math.max(0, totalAmount - previousPaidAmount);
+
   // Check registration when 10-digit mobile is typed & auto-preload
   const checkMobileForExistingRegistration = async (rawMobile: string) => {
     const clean = cleanMobileNumber(rawMobile);
@@ -214,8 +239,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     delta: number
   ) => {
     setFormData((prev) => {
-      const minVal = field === 'adults_count' ? 1 : 0;
-      const current = prev[field] ?? minVal;
+      let minVal = 0;
+      if (field === 'adults_count') minVal = minAdults;
+      else if (field === 'children_above_7_count') minVal = minKidsAbove7;
+      else if (field === 'children_under_7_count') minVal = minKidsUnder7;
+
+      const current = prev[field] ?? (field === 'adults_count' ? 1 : 0);
       const nextVal = Math.max(minVal, Math.min(10, current + delta));
 
       const updated = {
@@ -309,10 +338,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     }
 
     const hasExistingScreenshot = Boolean(activeExistingReg?.payment_screenshot_path);
-    if (formData.attendance_status === 'yes' && !screenshotFile && !hasExistingScreenshot) {
-      setScreenshotError('Please upload your payment screenshot before submitting.');
-      setFormError('Payment screenshot is required for attending participants.');
-      return;
+    if (formData.attendance_status === 'yes') {
+      if (isUpdateMode && additionalAmountDue > 0 && !screenshotFile) {
+        setScreenshotError(
+          `Please upload the payment screenshot for the additional ₹${additionalAmountDue}.`
+        );
+        setFormError(
+          `Payment screenshot is required for the additional amount (₹${additionalAmountDue}).`
+        );
+        return;
+      }
+      if (!isUpdateMode && !screenshotFile && !hasExistingScreenshot) {
+        setScreenshotError('Please upload your payment screenshot before submitting.');
+        setFormError('Payment screenshot is required for attending participants.');
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -418,6 +458,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           p_attendance_status: formData.attendance_status,
           p_number_of_attendees:
             formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
+          p_adults_count:
+            formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
+          p_children_above_7_count:
+            formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
+          p_children_under_7_count:
+            formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
           p_email: formData.email.trim() || null,
           p_organization: formData.organization.trim() || null,
           p_work_location: formData.work_location.trim() || null,
@@ -458,6 +504,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               const syncPayload: Record<string, any> = {
                 amount: totalAmount,
                 number_of_attendees: pricing.totalAttendees,
+                adults_count:
+                  formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
+                children_above_7_count:
+                  formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
+                children_under_7_count:
+                  formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
               };
               if (finalCombinedScreenshotPath) {
                 syncPayload.payment_screenshot_path = finalCombinedScreenshotPath;
@@ -494,7 +546,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         is_update: isUpdateMode || Boolean(registrationResult?.is_update),
       };
 
-      recordCompletedRegistrationLocally(event.event_slug, resolvedFormData, finalResult);
+      recordCompletedRegistrationLocally(
+        event.event_slug,
+        resolvedFormData,
+        finalResult,
+        finalCombinedScreenshotPath
+      );
       onSuccess(resolvedFormData, finalResult);
     } catch (err: any) {
       console.error('Registration failed:', err);
@@ -1024,10 +1081,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCountStep('adults_count', -1)}
-                    disabled={(formData.adults_count ?? 1) <= 1}
+                    disabled={(formData.adults_count ?? 1) <= minAdults}
                     className="stepper-btn"
                     aria-label="Decrease adults"
                     id="btn-dec-adults"
+                    title={
+                      isEnforcingMinCounts && (formData.adults_count ?? 1) <= minAdults
+                        ? 'Cannot reduce below previously registered count'
+                        : undefined
+                    }
                   >
                     −
                   </button>
@@ -1062,10 +1124,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCountStep('children_above_7_count', -1)}
-                    disabled={(formData.children_above_7_count ?? 0) <= 0}
+                    disabled={(formData.children_above_7_count ?? 0) <= minKidsAbove7}
                     className="stepper-btn"
                     aria-label="Decrease children above 7"
                     id="btn-dec-kids-above-7"
+                    title={
+                      isEnforcingMinCounts && (formData.children_above_7_count ?? 0) <= minKidsAbove7
+                        ? 'Cannot reduce below previously registered count'
+                        : undefined
+                    }
                   >
                     −
                   </button>
@@ -1101,10 +1168,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCountStep('children_under_7_count', -1)}
-                    disabled={(formData.children_under_7_count ?? 0) <= 0}
+                    disabled={(formData.children_under_7_count ?? 0) <= minKidsUnder7}
                     className="stepper-btn"
                     aria-label="Decrease children under 7"
                     id="btn-dec-kids-under-7"
+                    title={
+                      isEnforcingMinCounts && (formData.children_under_7_count ?? 0) <= minKidsUnder7
+                        ? 'Cannot reduce below previously registered count'
+                        : undefined
+                    }
                   >
                     −
                   </button>
@@ -1127,6 +1199,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* In Update Mode: Inform user why counts cannot decrease */}
+            {isEnforcingMinCounts && (
+              <div className="attendee-locked-callout">
+                <span className="locked-icon">🔒</span>
+                <span className="locked-text">
+                  Previously registered counts cannot be reduced. You can increase counts to register additional family members.
+                </span>
+              </div>
+            )}
 
             {/* Total Summary Row */}
             <div className="attendee-total-pill-bar">
@@ -1160,6 +1242,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           isUpdateMode={isUpdateMode}
           hasExistingScreenshot={Boolean(activeExistingReg?.payment_screenshot_path)}
           existingScreenshotPath={activeExistingReg?.payment_screenshot_path}
+          previousPaidAmount={previousPaidAmount}
+          additionalAmountDue={additionalAmountDue}
         />
       )}
 
@@ -1181,11 +1265,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           ) : (
             <>
               <span>
-                {isUpdateMode
-                  ? `Save & Update Registration (${activeExistingReg?.registration_number || 'REG'})`
-                  : formData.attendance_status === 'yes'
-                  ? `Complete Registration • ₹${totalAmount}`
-                  : 'Submit Alumni Record'}
+                {isUpdateMode ? (
+                  additionalAmountDue > 0 ? (
+                    `Save & Update Registration • Pay Additional ₹${additionalAmountDue}`
+                  ) : (
+                    `Save & Update Registration (${activeExistingReg?.registration_number || 'REG'})`
+                  )
+                ) : formData.attendance_status === 'yes' ? (
+                  `Complete Registration • ₹${totalAmount}`
+                ) : (
+                  'Submit Alumni Record'
+                )}
               </span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="9 18 15 12 9 6"/>

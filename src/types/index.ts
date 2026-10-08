@@ -47,6 +47,9 @@ export interface EventRegistration {
   alumni_id: string;
   attendance_status: 'yes' | 'maybe' | 'no';
   number_of_attendees: number;
+  adults_count?: number;
+  children_above_7_count?: number;
+  children_under_7_count?: number;
   amount: number;
   payment_screenshot_path: string | null;
   created_at: string;
@@ -103,6 +106,9 @@ export interface ExistingRegistrationLookup {
   registration_number?: string;
   attendance_status?: 'yes' | 'maybe' | 'no';
   number_of_attendees?: number;
+  adults_count?: number;
+  children_above_7_count?: number;
+  children_under_7_count?: number;
   amount?: number;
   payment_screenshot_path?: string | null;
   created_at?: string;

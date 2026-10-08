@@ -178,6 +178,31 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
                       <span className="found-value font-semibold">
                         👥 {foundReg.number_of_attendees}{' '}
                         {foundReg.number_of_attendees === 1 ? 'person' : 'persons'}
+                        {Boolean(
+                          foundReg.adults_count ||
+                            foundReg.children_above_7_count ||
+                            foundReg.children_under_7_count
+                        ) && (
+                          <span
+                            style={{
+                              display: 'block',
+                              fontSize: '0.8rem',
+                              color: 'var(--text-secondary)',
+                              fontWeight: 'normal',
+                              marginTop: '2px',
+                            }}
+                          >
+                            ({foundReg.adults_count ?? 1} Adult
+                            {(foundReg.adults_count ?? 1) > 1 ? 's' : ''}
+                            {foundReg.children_above_7_count
+                              ? `, ${foundReg.children_above_7_count} Child (7+)`
+                              : ''}
+                            {foundReg.children_under_7_count
+                              ? `, ${foundReg.children_under_7_count} Child (<7)`
+                              : ''}
+                            )
+                          </span>
+                        )}
                       </span>
                     </div>
 

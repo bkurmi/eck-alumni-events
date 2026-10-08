@@ -1404,6 +1404,118 @@ h1, h2, h3, h4, h5, h6 {
   color: #0f121d;
 }
 
+/* ── Additional Payment & Difference Badges ── */
+.amount-deduct-row {
+  opacity: 0.95;
+  background: rgba(16, 185, 129, 0.08);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  margin: 4px 0;
+}
+
+.text-paid-credit {
+  color: #34d399 !important;
+}
+
+.text-paid-credit-sub {
+  color: rgba(52, 211, 153, 0.75) !important;
+  font-size: 0.72rem;
+}
+
+.amount-due-highlight-row {
+  background: rgba(245, 158, 11, 0.1);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  margin-top: 6px;
+}
+
+.text-cleared {
+  color: #34d399 !important;
+  font-size: 1.3rem !important;
+}
+
+.text-due {
+  color: #fbbf24 !important;
+  font-size: 1.45rem !important;
+}
+
+.fully-paid-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.08));
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  margin-bottom: 22px;
+}
+
+.fully-paid-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.fully-paid-content h4 {
+  color: #34d399;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.fully-paid-content p {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.additional-payment-alert {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.alert-flex {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.alert-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.alert-body strong {
+  display: block;
+  color: #fbbf24;
+  font-size: 0.98rem;
+  margin-bottom: 2px;
+}
+
+.alert-body p {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.attendee-locked-callout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: #fbbf24;
+  margin-top: 10px;
+}
+
 /* ── Screenshot Dropzone ── */
 .screenshot-upload-section {
   display: flex;
