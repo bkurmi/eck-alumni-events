@@ -11,6 +11,9 @@ interface PaymentSectionProps {
   screenshotFile: File | null;
   onScreenshotChange: (file: File | null) => void;
   error?: string | null;
+  isUpdateMode?: boolean;
+  hasExistingScreenshot?: boolean;
+  existingScreenshotPath?: string | null;
 }
 
 export const PaymentSection: React.FC<PaymentSectionProps> = ({
@@ -23,12 +26,20 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   screenshotFile,
   onScreenshotChange,
   error,
+  isUpdateMode = false,
+  hasExistingScreenshot = false,
+  existingScreenshotPath,
 }) => {
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const displayQr = qrImageUrl || '/upi-qr.svg';
+
+  const recordedReceiptsCount = (existingScreenshotPath || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean).length || (hasExistingScreenshot ? 1 : 0);
 
   const handleCopyUpi = () => {
     if (upiId) {
@@ -157,12 +168,27 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 
       {/* Screenshot Upload Dropzone */}
       <div className="screenshot-upload-section">
-        <label className="field-label required">
-          Upload Payment Screenshot
+        <label className={`field-label ${isUpdateMode && hasExistingScreenshot ? '' : 'required'}`}>
+          {isUpdateMode && hasExistingScreenshot
+            ? 'Add Payment Screenshot (For additional members / attendees)'
+            : 'Upload Payment Screenshot'}
         </label>
         <p className="field-hint">
-          Attach the successful payment screen from your UPI app (JPG or PNG, max 5 MB).
+          {isUpdateMode && hasExistingScreenshot
+            ? 'If you increased your attendee count, scan QR and upload the additional payment screenshot below. Both previous and new screenshots will be preserved for admin verification.'
+            : 'Attach the successful payment screen from your UPI app (JPG or PNG, max 5 MB).'}
         </p>
+
+        {isUpdateMode && hasExistingScreenshot && !screenshotFile && (
+          <div className="existing-screenshot-badge">
+            <span className="badge-icon">✓</span>
+            <span className="badge-text">
+              {recordedReceiptsCount === 1
+                ? 'Previous payment screenshot recorded on file'
+                : `${recordedReceiptsCount} previous payment screenshots recorded on file`}
+            </span>
+          </div>
+        )}
 
         {!screenshotFile ? (
           <div
@@ -186,7 +212,11 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                   <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
               </div>
-              <span className="dropzone-text">Tap to select or take photo of payment</span>
+              <span className="dropzone-text">
+                {isUpdateMode && hasExistingScreenshot
+                  ? 'Tap to select replacement payment screenshot'
+                  : 'Tap to select or take photo of payment'}
+              </span>
               <span className="dropzone-subtext">JPG, PNG, WebP • Max size 5 MB</span>
             </div>
           </div>

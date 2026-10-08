@@ -4,9 +4,14 @@ import type { ECKEvent } from '../types';
 interface EventCardProps {
   event: ECKEvent;
   onRegisterClick?: () => void;
+  onManageRegistrationClick?: () => void;
 }
 
-export const EventCard: React.FC<EventCardProps> = ({ event, onRegisterClick }) => {
+export const EventCard: React.FC<EventCardProps> = ({
+  event,
+  onRegisterClick,
+  onManageRegistrationClick,
+}) => {
   const formattedDate = new Date(event.event_date).toLocaleDateString('en-IN', {
     weekday: 'long',
     year: 'numeric',
@@ -122,19 +127,33 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onRegisterClick }) 
           </div>
         )}
 
-        {event.status === 'OPEN' && onRegisterClick && (
+        {event.status === 'OPEN' && (
           <div className="event-action-bar">
-            <button
-              type="button"
-              onClick={onRegisterClick}
-              className="btn btn-festive-primary btn-large btn-block"
-              id="btn-register-now"
-            >
-              <span>Join Reunion &amp; Register Now</span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
+            {onRegisterClick && (
+              <button
+                type="button"
+                onClick={onRegisterClick}
+                className="btn btn-festive-primary btn-large btn-block"
+                id="btn-register-now"
+              >
+                <span>Join Reunion &amp; Register Now</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+            )}
+
+            {onManageRegistrationClick && (
+              <button
+                type="button"
+                onClick={onManageRegistrationClick}
+                className="btn btn-lookup-trigger btn-block"
+                id="btn-lookup-registration"
+              >
+                <span>🔍 Already Registered? View / Update Details</span>
+              </button>
+            )}
+
             <p className="cta-subtext">✨ Limited capacity • Family &amp; batchmates welcome ✨</p>
           </div>
         )}

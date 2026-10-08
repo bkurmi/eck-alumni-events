@@ -4,8 +4,15 @@ import { Header } from '../components/Header';
 import { EventCard } from '../components/EventCard';
 import { RegistrationForm } from '../components/RegistrationForm';
 import { SuccessPage } from '../components/SuccessPage';
+import { ManageRegistrationModal } from '../components/ManageRegistrationModal';
 import { supabase } from '../lib/supabase';
-import type { ECKEvent, RegistrationFormData, RegistrationResult } from '../types';
+import { convertLookupToFormData } from '../lib/registrations';
+import type {
+  ECKEvent,
+  RegistrationFormData,
+  RegistrationResult,
+  ExistingRegistrationLookup,
+} from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
   id: 'mock-diwali-2026',
@@ -39,6 +46,12 @@ export const EventPage: React.FC = () => {
     formData: RegistrationFormData;
     result: RegistrationResult;
   } | null>(null);
+
+  // Manage registration modal & preloaded data state
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [preloadedRegistration, setPreloadedRegistration] =
+    useState<ExistingRegistrationLookup | null>(null);
+  const [preloadedFormData, setPreloadedFormData] = useState<RegistrationFormData | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -89,6 +102,20 @@ export const EventPage: React.FC = () => {
   }, [event.theme_primary_color, event.theme_accent_color]);
 
   const handleStartRegistration = () => {
+    setPreloadedRegistration(null);
+    setPreloadedFormData(null);
+    setCurrentStep('form');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenManageModal = () => {
+    setIsManageModalOpen(true);
+  };
+
+  const handleSelectRegistrationForEdit = (reg: ExistingRegistrationLookup) => {
+    setPreloadedRegistration(reg);
+    setPreloadedFormData(convertLookupToFormData(reg));
+    setIsManageModalOpen(false);
     setCurrentStep('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -104,6 +131,8 @@ export const EventPage: React.FC = () => {
 
   const handleResetRegistration = () => {
     setSubmittedData(null);
+    setPreloadedRegistration(null);
+    setPreloadedFormData(null);
     setCurrentStep('overview');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -149,6 +178,8 @@ export const EventPage: React.FC = () => {
               <RegistrationForm
                 event={event}
                 onSuccess={handleRegistrationSuccess}
+                initialData={preloadedFormData}
+                existingRegistration={preloadedRegistration}
               />
             </div>
           ) : (
@@ -156,6 +187,7 @@ export const EventPage: React.FC = () => {
               <EventCard
                 event={event}
                 onRegisterClick={handleStartRegistration}
+                onManageRegistrationClick={handleOpenManageModal}
               />
 
               {/* Event Highlights & Features for Alumni */}
@@ -206,12 +238,30 @@ export const EventPage: React.FC = () => {
                       <polyline points="9 18 15 12 9 6"/>
                     </svg>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenManageModal}
+                    className="btn btn-secondary-festive btn-block"
+                    style={{ marginTop: '0.75rem' }}
+                  >
+                    <span>🔍 Already Registered? View / Update Details</span>
+                  </button>
                 </div>
               </div>
             </div>
           )}
         </div>
       </main>
+
+      {/* Self-service Manage Registration Modal */}
+      <ManageRegistrationModal
+        isOpen={isManageModalOpen}
+        event={event}
+        onClose={() => setIsManageModalOpen(false)}
+        onSelectForEdit={handleSelectRegistrationForEdit}
+        onNewRegistration={handleStartRegistration}
+      />
 
       <footer className="site-footer">
         <div className="footer-content">

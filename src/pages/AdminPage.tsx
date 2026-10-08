@@ -357,7 +357,9 @@ export const AdminPage: React.FC = () => {
                         </span>
                         {reg.payment_screenshot_path ? (
                           <span className="screenshot-tag tag-has-ss">
-                            📷 Screenshot Attached
+                            📷 {reg.payment_screenshot_path.includes(',')
+                                ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Receipts Attached`
+                                : 'Screenshot Attached'}
                           </span>
                         ) : (
                           <span className="screenshot-tag tag-no-ss">
@@ -472,22 +474,42 @@ export const AdminPage: React.FC = () => {
 
               {/* Payment Screenshot Display */}
               <div className="modal-screenshot-section">
-                <h4 className="modal-section-title">Payment Screenshot</h4>
+                <h4 className="modal-section-title">
+                  Payment Receipts ({
+                    (selectedReg.payment_screenshot_path || '')
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean).length || 0
+                  })
+                </h4>
                 {selectedReg.payment_screenshot_path ? (
-                  <div className="screenshot-display-box">
-                    <img
-                      src={getPublicScreenshotUrl(selectedReg.payment_screenshot_path) || ''}
-                      alt="Payment screenshot"
-                      className="modal-screenshot-img"
-                    />
-                    <a
-                      href={getPublicScreenshotUrl(selectedReg.payment_screenshot_path) || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-secondary btn-sm mt-3"
-                    >
-                      🔗 Open Original Screenshot
-                    </a>
+                  <div className="multi-screenshots-container">
+                    {(selectedReg.payment_screenshot_path || '')
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                      .map((singlePath, idx) => (
+                        <div key={idx} className="screenshot-display-box" style={{ marginBottom: '16px' }}>
+                          <span className="screenshot-item-label" style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: 'var(--primary-light)' }}>
+                            {idx === 0
+                              ? '📄 Receipt 1 (Initial Payment)'
+                              : `📄 Receipt ${idx + 1} (Additional Payment / Extra Attendees)`}
+                          </span>
+                          <img
+                            src={getPublicScreenshotUrl(singlePath) || ''}
+                            alt={`Payment screenshot ${idx + 1}`}
+                            className="modal-screenshot-img"
+                          />
+                          <a
+                            href={getPublicScreenshotUrl(singlePath) || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-secondary btn-sm mt-3"
+                          >
+                            🔗 Open Original Screenshot #{idx + 1}
+                          </a>
+                        </div>
+                      ))}
                   </div>
                 ) : (
                   <p className="text-muted">No screenshot attached (attendance status: {selectedReg.attendance_status}).</p>

@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type {
   ECKEvent,
   RegistrationFormData,
   RegistrationResult,
+  ExistingRegistrationLookup,
 } from '../types';
 import {
   EMPLOYMENT_TYPES,
@@ -14,10 +15,19 @@ import {
 import { PaymentSection } from './PaymentSection';
 import { supabase } from '../lib/supabase';
 import { calculateContribution } from '../lib/pricing';
+import {
+  lookupRegistrationByMobile,
+  convertLookupToFormData,
+  recordCompletedRegistrationLocally,
+  cleanMobileNumber,
+} from '../lib/registrations';
 
 interface RegistrationFormProps {
   event: ECKEvent;
   onSuccess: (formData: RegistrationFormData, result: RegistrationResult) => void;
+  initialData?: RegistrationFormData | null;
+  existingRegistration?: ExistingRegistrationLookup | null;
+  onCancelUpdate?: () => void;
 }
 
 const INITIAL_FORM_DATA: RegistrationFormData = {
@@ -50,12 +60,35 @@ const INITIAL_FORM_DATA: RegistrationFormData = {
 export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   event,
   onSuccess,
+  initialData,
+  existingRegistration,
 }) => {
-  const [formData, setFormData] = useState<RegistrationFormData>(INITIAL_FORM_DATA);
+  const [formData, setFormData] = useState<RegistrationFormData>(() => initialData || INITIAL_FORM_DATA);
+  const [activeExistingReg, setActiveExistingReg] = useState<ExistingRegistrationLookup | null>(
+    () => existingRegistration || null
+  );
+  const [isUpdateMode, setIsUpdateMode] = useState<boolean>(
+    () => Boolean(existingRegistration?.found || initialData)
+  );
+
+  // Auto-detection state for mobile lookup
+  const [checkingMobile, setCheckingMobile] = useState(false);
+
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotError, setScreenshotError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Sync when initialData or existingRegistration changes from parent
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+    if (existingRegistration) {
+      setActiveExistingReg(existingRegistration);
+      setIsUpdateMode(true);
+    }
+  }, [initialData, existingRegistration]);
 
   const currentYear = new Date().getFullYear();
   const passingYears = Array.from(
@@ -82,6 +115,42 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
   const totalAmount = pricing.totalAmount;
 
+  // Check registration when 10-digit mobile is typed & auto-preload
+  const checkMobileForExistingRegistration = async (rawMobile: string) => {
+    const clean = cleanMobileNumber(rawMobile);
+    if (clean.length !== 10) {
+      return;
+    }
+    // If already in update mode with this exact mobile, no need to re-check
+    if (isUpdateMode && activeExistingReg?.alumni?.mobile === clean) {
+      return;
+    }
+
+    setCheckingMobile(true);
+    try {
+      const result = await lookupRegistrationByMobile(event.event_slug, clean);
+      if (result.found) {
+        // Auto-preload details immediately
+        const loadedForm = convertLookupToFormData(result);
+        setFormData(loadedForm);
+        setActiveExistingReg(result);
+        setIsUpdateMode(true);
+        setScreenshotError(null);
+        setFormError(null);
+      }
+    } catch (err) {
+      console.warn('Mobile lookup error:', err);
+    } finally {
+      setCheckingMobile(false);
+    }
+  };
+
+  const handleMobileBlur = () => {
+    if (formData.mobile) {
+      checkMobileForExistingRegistration(formData.mobile);
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -97,6 +166,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         city: value === 'Other' && prev.city === 'Kota' ? '' : prev.city,
       }));
       return;
+    }
+
+    if (name === 'mobile') {
+      const clean = cleanMobileNumber(value);
+      // If user edits phone number to something else, reset update mode if it was tied to the previous number
+      if (isUpdateMode && activeExistingReg && activeExistingReg.alumni?.mobile !== clean) {
+        setIsUpdateMode(false);
+        setActiveExistingReg(null);
+      }
+
+      if (clean.length === 10) {
+        checkMobileForExistingRegistration(value);
+      }
     }
 
     setFormData((prev) => ({
@@ -226,7 +308,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       return;
     }
 
-    if (formData.attendance_status === 'yes' && !screenshotFile) {
+    const hasExistingScreenshot = Boolean(activeExistingReg?.payment_screenshot_path);
+    if (formData.attendance_status === 'yes' && !screenshotFile && !hasExistingScreenshot) {
       setScreenshotError('Please upload your payment screenshot before submitting.');
       setFormError('Payment screenshot is required for attending participants.');
       return;
@@ -236,29 +319,45 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
     try {
       let uploadedScreenshotPath: string | null = null;
+      let finalCombinedScreenshotPath: string | null = activeExistingReg?.payment_screenshot_path || null;
 
-      if (formData.attendance_status === 'yes' && screenshotFile) {
-        const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
-        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const fileName = `${event.event_slug}/${Date.now()}_${cleanMobile}.${cleanExt}`;
+      if (formData.attendance_status === 'yes') {
+        if (screenshotFile) {
+          const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
+          const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const fileName = `${event.event_slug}/${Date.now()}_${cleanMobile}.${cleanExt}`;
 
-        try {
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('payment-screenshots')
-            .upload(fileName, screenshotFile, {
-              cacheControl: '3600',
-              upsert: true,
-            });
+          try {
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('payment-screenshots')
+              .upload(fileName, screenshotFile, {
+                cacheControl: '3600',
+                upsert: true,
+              });
 
-          if (uploadError) {
-            console.warn('Storage upload note:', uploadError);
-            uploadedScreenshotPath = fileName;
-          } else if (uploadData) {
-            uploadedScreenshotPath = uploadData.path;
+            if (uploadError) {
+              console.warn('Storage upload note:', uploadError);
+              uploadedScreenshotPath = fileName;
+            } else if (uploadData) {
+              uploadedScreenshotPath = uploadData.path;
+            }
+          } catch (storageErr) {
+            console.warn('Storage fallback note:', storageErr);
+            uploadedScreenshotPath = `offline_${Date.now()}_${cleanMobile}.jpg`;
           }
-        } catch (storageErr) {
-          console.warn('Storage fallback note:', storageErr);
-          uploadedScreenshotPath = `offline_${Date.now()}_${cleanMobile}.jpg`;
+
+          // Combine with existing screenshots if any
+          if (uploadedScreenshotPath) {
+            if (activeExistingReg?.payment_screenshot_path) {
+              finalCombinedScreenshotPath = `${activeExistingReg.payment_screenshot_path},${uploadedScreenshotPath}`;
+            } else {
+              finalCombinedScreenshotPath = uploadedScreenshotPath;
+            }
+          }
+        } else if (hasExistingScreenshot) {
+          // Preserve existing screenshot path if no new one was provided
+          uploadedScreenshotPath = activeExistingReg?.payment_screenshot_path || null;
+          finalCombinedScreenshotPath = activeExistingReg?.payment_screenshot_path || null;
         }
       }
 
@@ -351,17 +450,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           registrationResult = data as RegistrationResult;
         }
 
-        // Keep DB amount synced to client pricing rule without modifying table schemas
+        // Keep DB amount and combined screenshots synced
         if (registrationResult) {
           registrationResult.amount = totalAmount;
           if (registrationResult.registration_id && formData.attendance_status === 'yes') {
             try {
+              const syncPayload: Record<string, any> = {
+                amount: totalAmount,
+                number_of_attendees: pricing.totalAttendees,
+              };
+              if (finalCombinedScreenshotPath) {
+                syncPayload.payment_screenshot_path = finalCombinedScreenshotPath;
+              }
               await supabase
                 .from('event_registrations')
-                .update({
-                  amount: totalAmount,
-                  number_of_attendees: pricing.totalAttendees,
-                })
+                .update(syncPayload)
                 .eq('id', registrationResult.registration_id);
             } catch (syncErr) {
               console.warn('Sync registration amount note:', syncErr);
@@ -370,18 +473,29 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         }
       } catch (rpcErr: any) {
         console.warn('RPC fallback demo mode:', rpcErr);
-        const pseudoRegNum = `REG-${Math.floor(10000 + Math.random() * 90000)}`;
+        const pseudoRegNum =
+          activeExistingReg?.registration_number ||
+          `REG-${Math.floor(10000 + Math.random() * 90000)}`;
         registrationResult = {
           success: true,
-          registration_id: crypto.randomUUID ? crypto.randomUUID() : 'mock-reg-id',
+          registration_id:
+            activeExistingReg?.registration_id ||
+            (crypto.randomUUID ? crypto.randomUUID() : 'mock-reg-id'),
           registration_number: pseudoRegNum,
-          alumni_id: 'mock-alumni-id',
+          alumni_id: activeExistingReg?.alumni?.id || 'mock-alumni-id',
           amount: totalAmount,
           attendance_status: formData.attendance_status,
+          is_update: isUpdateMode,
         };
       }
 
-      onSuccess(resolvedFormData, registrationResult);
+      const finalResult: RegistrationResult = {
+        ...registrationResult,
+        is_update: isUpdateMode || Boolean(registrationResult?.is_update),
+      };
+
+      recordCompletedRegistrationLocally(event.event_slug, resolvedFormData, finalResult);
+      onSuccess(resolvedFormData, finalResult);
     } catch (err: any) {
       console.error('Registration failed:', err);
       setFormError(err?.message || 'Something went wrong while submitting. Please try again.');
@@ -400,6 +514,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <span>{formError}</span>
+        </div>
+      )}
+
+      {/* Feature 2: Update Mode Notice Banner */}
+      {isUpdateMode && (
+        <div className="update-mode-badge-card animate-slide-down">
+          <div className="update-badge-left">
+            <span className="update-pill">🔒 Existing Registration Preloaded &amp; Locked</span>
+            <h3 className="update-reg-num">
+              {activeExistingReg?.registration_number || 'REGISTRATION FOUND'}
+            </h3>
+            <p className="update-reg-desc">
+              Your registered details for <strong>{formData.name || 'Alumni'}</strong> have been preloaded. Fresh registrations are not allowed for this mobile number; you can update your details or add attendees below.
+            </p>
+          </div>
         </div>
       )}
 
@@ -443,13 +572,29 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 name="mobile"
                 value={formData.mobile}
                 onChange={handleChange}
+                onBlur={handleMobileBlur}
                 placeholder="10-digit number"
                 maxLength={10}
                 required
                 className="input-field prefixed-input"
                 autoComplete="tel-national"
               />
+              {checkingMobile && (
+                <span className="input-field-spinner" title="Checking registration...">
+                  <span className="mini-spinner" />
+                </span>
+              )}
             </div>
+
+            {/* Confirmation indicator when mobile is matched and preloaded */}
+            {isUpdateMode && activeExistingReg && (
+              <div className="existing-reg-locked-badge animate-slide-down">
+                <span className="badge-icon">✓</span>
+                <span>
+                  Existing registration <strong>{activeExistingReg.registration_number}</strong> ({activeExistingReg.alumni?.name}) preloaded. Updates will save directly to this registration.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Email */}
@@ -1012,6 +1157,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             setScreenshotError(null);
           }}
           error={screenshotError}
+          isUpdateMode={isUpdateMode}
+          hasExistingScreenshot={Boolean(activeExistingReg?.payment_screenshot_path)}
+          existingScreenshotPath={activeExistingReg?.payment_screenshot_path}
         />
       )}
 
@@ -1026,12 +1174,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           {submitting ? (
             <div className="spinner-wrap">
               <div className="spinner" />
-              <span>Submitting Your Registration...</span>
+              <span>
+                {isUpdateMode ? 'Saving Updated Registration...' : 'Submitting Your Registration...'}
+              </span>
             </div>
           ) : (
             <>
               <span>
-                {formData.attendance_status === 'yes'
+                {isUpdateMode
+                  ? `Save & Update Registration (${activeExistingReg?.registration_number || 'REG'})`
+                  : formData.attendance_status === 'yes'
                   ? `Complete Registration • ₹${totalAmount}`
                   : 'Submit Alumni Record'}
               </span>

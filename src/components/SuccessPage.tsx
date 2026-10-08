@@ -48,9 +48,13 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       </div>
 
       <div className="success-header">
-        <h2 className="success-title">Registration Confirmed!</h2>
+        <h2 className="success-title">
+          {result.is_update ? 'Registration Updated Successfully!' : 'Registration Confirmed!'}
+        </h2>
         <p className="success-sub">
-          {formData.attendance_status === 'yes'
+          {result.is_update
+            ? 'Your alumni details and reunion registration have been updated.'
+            : formData.attendance_status === 'yes'
             ? 'Shubh Deepawali! We eagerly look forward to seeing you at the reunion.'
             : 'Thank you for keeping your alumni directory details updated.'}
         </p>
@@ -58,7 +62,9 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
 
       {/* Prominent Golden Registration Number Card */}
       <div className="registration-badge-card">
-        <span className="badge-subtitle">OFFICIAL REGISTRATION ID</span>
+        <span className="badge-subtitle">
+          {result.is_update ? 'CONFIRMED REGISTRATION ID' : 'OFFICIAL REGISTRATION ID'}
+        </span>
         <div className="badge-reg-code">{result.registration_number}</div>
         <button
           type="button"
@@ -73,7 +79,9 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       {/* Perfectly Aligned Receipt Table */}
       <div className="success-details-card">
         <div className="details-header-row">
-          <h4 className="details-header">Registration Receipt</h4>
+          <h4 className="details-header">
+            {result.is_update ? 'Updated Registration Summary' : 'Registration Receipt'}
+          </h4>
           <span className="receipt-date">{new Date().toLocaleDateString('en-IN')}</span>
         </div>
 

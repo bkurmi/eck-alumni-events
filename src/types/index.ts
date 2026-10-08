@@ -94,6 +94,21 @@ export interface RegistrationResult {
   alumni_id: string;
   amount: number;
   attendance_status: string;
+  is_update?: boolean;
+}
+
+export interface ExistingRegistrationLookup {
+  found: boolean;
+  registration_id?: string;
+  registration_number?: string;
+  attendance_status?: 'yes' | 'maybe' | 'no';
+  number_of_attendees?: number;
+  amount?: number;
+  payment_screenshot_path?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  alumni?: Alumni;
+  error?: string;
 }
 
 export const EMPLOYMENT_TYPES = [
