@@ -11,7 +11,7 @@ const DEFAULT_EVENT: ECKEvent = {
   id: 'mock-diwali-2026',
   event_name: 'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
   event_slug: 'pre-diwali-milan-2026',
-  event_date: '2026-10-18',
+  event_date: '2026-11-01',
   event_time: '6:00 PM onwards',
   location: 'Kota, Rajasthan (Venue to be announced)',
   description:

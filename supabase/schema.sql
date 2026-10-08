@@ -350,7 +350,7 @@ INSERT INTO events (
 ) VALUES (
   'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
   'pre-diwali-milan-2026',
-  '2026-10-18',
+  '2026-11-01',
   '6:00 PM onwards',
   'Kota, Rajasthan (Venue to be announced)',
   'Reconnect • Relive • Celebrate — Join fellow ECK alumni for an evening of nostalgia, networking, cultural performances, dinner, and celebration before Diwali 2026.',
@@ -366,6 +366,10 @@ INSERT INTO events (
 )
 ON CONFLICT (event_slug) DO UPDATE SET
   event_name = EXCLUDED.event_name,
+  event_date = EXCLUDED.event_date,
+  event_time = EXCLUDED.event_time,
+  location = EXCLUDED.location,
+  description = EXCLUDED.description,
   registration_fee = EXCLUDED.registration_fee,
   status = EXCLUDED.status;
 
