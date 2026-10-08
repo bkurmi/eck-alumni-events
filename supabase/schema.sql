@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS events (
   theme_primary_color TEXT DEFAULT '#6366f1',
   theme_accent_color  TEXT DEFAULT '#f59e0b',
   qr_image_url        TEXT,
-  google_sheet_id     TEXT,
   status              TEXT NOT NULL DEFAULT 'OPEN'
                         CHECK (status IN ('DRAFT', 'OPEN', 'CLOSED', 'COMPLETED')),
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -351,7 +350,6 @@ INSERT INTO events (
   theme_primary_color,
   theme_accent_color,
   qr_image_url,
-  google_sheet_id,
   status
 ) VALUES (
   'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
@@ -367,7 +365,6 @@ INSERT INTO events (
   '#6366f1',
   '#f59e0b',
   '/upi-qr.png',
-  NULL,
   'OPEN'
 )
 ON CONFLICT (event_slug) DO UPDATE SET
@@ -383,4 +380,5 @@ ON CONFLICT (event_slug) DO UPDATE SET
 ALTER TABLE alumni ADD COLUMN IF NOT EXISTS employment_type TEXT;
 ALTER TABLE alumni ADD COLUMN IF NOT EXISTS industry_domain TEXT;
 ALTER TABLE alumni ALTER COLUMN professional_category DROP NOT NULL;
+ALTER TABLE events DROP COLUMN IF EXISTS google_sheet_id;
 

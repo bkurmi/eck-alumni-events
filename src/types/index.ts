@@ -15,7 +15,6 @@ export interface ECKEvent {
   theme_primary_color: string;
   theme_accent_color: string;
   qr_image_url: string | null;
-  google_sheet_id: string | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'COMPLETED';
   created_at: string;
   updated_at: string;

@@ -200,7 +200,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       <div className="payment-note-box">
         <div className="note-icon">💡</div>
         <div className="note-text">
-          <strong>No transaction reference / UTR required.</strong> Your screenshot will be automatically linked to the organizer&apos;s Google Sheet for seamless reconciliation.
+          <strong>No transaction reference / UTR required.</strong> Your payment screenshot is securely uploaded and verified directly on the portal.
         </div>
       </div>
     </div>

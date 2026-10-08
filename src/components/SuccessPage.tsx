@@ -141,7 +141,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
             <strong>Organizer Verification:</strong>
           </p>
           <p>
-            Your response and payment screenshot have been archived. The organizing committee will cross-check with Google Sheet accounts. Please keep a screenshot of this receipt.
+            Your response and payment screenshot have been recorded in the system. The organizing committee will verify your payment details shortly. Please keep a screenshot of this receipt.
           </p>
         </div>
       </div>

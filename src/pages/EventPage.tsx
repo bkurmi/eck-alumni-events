@@ -23,7 +23,6 @@ const DEFAULT_EVENT: ECKEvent = {
   theme_primary_color: '#6366f1',
   theme_accent_color: '#f59e0b',
   qr_image_url: '/upi-qr.svg',
-  google_sheet_id: null,
   status: 'OPEN',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),

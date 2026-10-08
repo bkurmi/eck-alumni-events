@@ -192,7 +192,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
     try {
       let uploadedScreenshotPath: string | null = null;
-      let publicScreenshotUrl: string | null = null;
 
       if (formData.attendance_status === 'yes' && screenshotFile) {
         const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
@@ -213,12 +212,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           } else if (uploadData) {
             uploadedScreenshotPath = uploadData.path;
           }
-
-          const { data: urlData } = supabase.storage
-            .from('payment-screenshots')
-            .getPublicUrl(uploadedScreenshotPath || fileName);
-
-          publicScreenshotUrl = urlData?.publicUrl || null;
         } catch (storageErr) {
           console.warn('Storage fallback note:', storageErr);
           uploadedScreenshotPath = `offline_${Date.now()}_${cleanMobile}.jpg`;
@@ -324,38 +317,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           amount: totalAmount,
           attendance_status: formData.attendance_status,
         };
-      }
-
-      try {
-        fetch('/api/sync-sheet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event_slug: event.event_slug,
-            registration_number: registrationResult.registration_number,
-            name: formData.name.trim(),
-            mobile: cleanMobile,
-            email: formData.email.trim() || '',
-            address: formData.address.trim(),
-            country: resolvedCountry,
-            city: formData.city.trim(),
-            state: resolvedState,
-            year_of_passing: formData.year_of_passing,
-            engineering_discipline: resolvedDiscipline,
-            organization: formData.organization.trim() || '',
-            employment_type: resolvedEmploymentType,
-            industry_domain: resolvedIndustryDomain,
-            professional_category: combinedCategory,
-            work_location: formData.work_location.trim() || '',
-            attendance_status: formData.attendance_status,
-            number_of_attendees: formData.number_of_attendees,
-            amount: registrationResult.amount,
-            screenshot_url: publicScreenshotUrl || uploadedScreenshotPath || '',
-            google_sheet_id: event.google_sheet_id || '',
-          }),
-        }).catch((err) => console.log('Sheets async notice:', err));
-      } catch (_syncErr) {
-        // Non-blocking
       }
 
       onSuccess(resolvedFormData, registrationResult);
