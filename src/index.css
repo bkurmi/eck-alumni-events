@@ -978,7 +978,144 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-muted);
 }
 
-/* ── Attendees Stepper ── */
+/* ── Attendees Breakdown Container ── */
+.attendees-breakdown-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  background: rgba(245, 158, 11, 0.04);
+  border: 1px dashed var(--border-gold);
+  border-radius: var(--radius-lg);
+  margin-top: 8px;
+}
+
+.breakdown-header-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakdown-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.rates-summary-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--primary-light);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.attendee-tiers-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tier-counter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(15, 18, 30, 0.7);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+@media (min-width: 480px) {
+  .tier-counter-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.tier-counter-card:hover {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(20, 24, 40, 0.8);
+}
+
+.tier-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tier-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tier-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tier-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tier-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.couple-badge {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid var(--border-gold);
+  color: var(--primary-light);
+}
+
+.free-badge {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.attendee-total-pill-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+}
+
+@media (min-width: 480px) {
+  .attendee-total-pill-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.attendee-total-text {
+  color: var(--text-secondary);
+}
+
+.attendee-total-amount {
+  color: var(--primary-light);
+}
+
+/* ── Attendees Stepper (Legacy / Common) ── */
 .attendees-stepper-box {
   display: flex;
   flex-direction: column;
@@ -1081,14 +1218,30 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 20px;
 }
 
+.pricing-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .amount-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+.amount-label-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
 .amount-label {
   font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.amount-sublabel {
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
@@ -1096,6 +1249,16 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+.amount-free-tag {
+  color: #34d399;
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .amount-divider {
@@ -1110,16 +1273,34 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
 }
 
+.total-label-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
 .total-label {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
 }
 
+.total-attendees-hint {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .total-number {
   font-size: 1.45rem;
   font-weight: 800;
   color: var(--primary-light);
+}
+
+.detail-subval-tag {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--primary-light);
+  margin-left: 4px;
 }
 
 /* QR Code Display */

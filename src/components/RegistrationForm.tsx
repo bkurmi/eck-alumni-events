@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type {
   ECKEvent,
   RegistrationFormData,
@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { PaymentSection } from './PaymentSection';
 import { supabase } from '../lib/supabase';
+import { calculateContribution } from '../lib/pricing';
 
 interface RegistrationFormProps {
   event: ECKEvent;
@@ -41,6 +42,9 @@ const INITIAL_FORM_DATA: RegistrationFormData = {
   work_location: '',
   attendance_status: 'yes',
   number_of_attendees: 1,
+  adults_count: 1,
+  children_above_7_count: 0,
+  children_under_7_count: 0,
 };
 
 export const RegistrationForm: React.FC<RegistrationFormProps> = ({
@@ -59,10 +63,24 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     (_, i) => currentYear - i
   );
 
-  const totalAmount =
-    formData.attendance_status === 'yes'
-      ? event.registration_fee * formData.number_of_attendees
-      : 0;
+  // Pricing calculation managed purely in codebase
+  const pricing = useMemo(() => {
+    if (formData.attendance_status !== 'yes') {
+      return calculateContribution(0, 0, 0);
+    }
+    return calculateContribution(
+      formData.adults_count ?? 1,
+      formData.children_above_7_count ?? 0,
+      formData.children_under_7_count ?? 0
+    );
+  }, [
+    formData.attendance_status,
+    formData.adults_count,
+    formData.children_above_7_count,
+    formData.children_under_7_count,
+  ]);
+
+  const totalAmount = pricing.totalAmount;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -93,18 +111,44 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   };
 
   const handleAttendanceChange = (status: 'yes' | 'maybe' | 'no') => {
-    setFormData((prev) => ({
-      ...prev,
-      attendance_status: status,
-      number_of_attendees: status === 'yes' ? prev.number_of_attendees || 1 : 1,
-    }));
+    setFormData((prev) => {
+      const adults = status === 'yes' ? (prev.adults_count || 1) : 1;
+      const kidsAbove7 = status === 'yes' ? (prev.children_above_7_count || 0) : 0;
+      const kidsUnder7 = status === 'yes' ? (prev.children_under_7_count || 0) : 0;
+      return {
+        ...prev,
+        attendance_status: status,
+        adults_count: adults,
+        children_above_7_count: kidsAbove7,
+        children_under_7_count: kidsUnder7,
+        number_of_attendees: status === 'yes' ? adults + kidsAbove7 + kidsUnder7 : 1,
+      };
+    });
     setScreenshotError(null);
   };
 
-  const handleAttendeeStep = (delta: number) => {
+  const handleCountStep = (
+    field: 'adults_count' | 'children_above_7_count' | 'children_under_7_count',
+    delta: number
+  ) => {
     setFormData((prev) => {
-      const nextVal = Math.max(1, Math.min(10, (prev.number_of_attendees || 1) + delta));
-      return { ...prev, number_of_attendees: nextVal };
+      const minVal = field === 'adults_count' ? 1 : 0;
+      const current = prev[field] ?? minVal;
+      const nextVal = Math.max(minVal, Math.min(10, current + delta));
+
+      const updated = {
+        ...prev,
+        [field]: nextVal,
+      };
+
+      const adults = field === 'adults_count' ? nextVal : (updated.adults_count ?? 1);
+      const kidsAbove7 =
+        field === 'children_above_7_count' ? nextVal : (updated.children_above_7_count ?? 0);
+      const kidsUnder7 =
+        field === 'children_under_7_count' ? nextVal : (updated.children_under_7_count ?? 0);
+
+      updated.number_of_attendees = adults + kidsAbove7 + kidsUnder7;
+      return updated;
     });
   };
 
@@ -274,7 +318,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           p_professional_category: combinedCategory,
           p_attendance_status: formData.attendance_status,
           p_number_of_attendees:
-            formData.attendance_status === 'yes' ? formData.number_of_attendees : 1,
+            formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
           p_email: formData.email.trim() || null,
           p_organization: formData.organization.trim() || null,
           p_work_location: formData.work_location.trim() || null,
@@ -295,7 +339,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             p_professional_category: combinedCategory,
             p_attendance_status: formData.attendance_status,
             p_number_of_attendees:
-              formData.attendance_status === 'yes' ? formData.number_of_attendees : 1,
+              formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
             p_email: formData.email.trim() || null,
             p_organization: formData.organization.trim() || null,
             p_work_location: formData.work_location.trim() || null,
@@ -305,6 +349,24 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           registrationResult = fbData as RegistrationResult;
         } else {
           registrationResult = data as RegistrationResult;
+        }
+
+        // Keep DB amount synced to client pricing rule without modifying table schemas
+        if (registrationResult) {
+          registrationResult.amount = totalAmount;
+          if (registrationResult.registration_id && formData.attendance_status === 'yes') {
+            try {
+              await supabase
+                .from('event_registrations')
+                .update({
+                  amount: totalAmount,
+                  number_of_attendees: pricing.totalAttendees,
+                })
+                .eq('id', registrationResult.registration_id);
+            } catch (syncErr) {
+              console.warn('Sync registration amount note:', syncErr);
+            }
+          }
         }
       } catch (rpcErr: any) {
         console.warn('RPC fallback demo mode:', rpcErr);
@@ -782,37 +844,154 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         </div>
 
         {formData.attendance_status === 'yes' && (
-          <div className="attendees-stepper-box">
-            <div className="stepper-label-wrap">
-              <label className="field-label">Total People Attending (Including Family)</label>
-              <span className="field-hint">Contribution is ₹{event.registration_fee} per person</span>
-            </div>
-
-            <div className="stepper-controls">
-              <button
-                type="button"
-                onClick={() => handleAttendeeStep(-1)}
-                disabled={formData.number_of_attendees <= 1}
-                className="stepper-btn"
-                aria-label="Decrease attendees"
-              >
-                −
-              </button>
-              <div className="stepper-count-wrap">
-                <span className="stepper-count">{formData.number_of_attendees}</span>
-                <span className="stepper-person-label">
-                  {formData.number_of_attendees === 1 ? 'person' : 'persons'}
+          <div className="attendees-breakdown-container">
+            <div className="breakdown-header-box">
+              <div className="breakdown-title-wrap">
+                <label className="field-label">Who is joining you at the reunion?</label>
+                <span className="field-hint">
+                  Specify adults &amp; kids accompanying you. Contribution calculates automatically.
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => handleAttendeeStep(1)}
-                disabled={formData.number_of_attendees >= 10}
-                className="stepper-btn"
-                aria-label="Increase attendees"
-              >
-                +
-              </button>
+              <div className="rates-summary-badge">
+                <span>₹800 Single • ₹1,500 Couple • ₹300 Kids (7+) • Free (&lt;7)</span>
+              </div>
+            </div>
+
+            <div className="attendee-tiers-grid">
+              {/* Adults Counter */}
+              <div className="tier-counter-card">
+                <div className="tier-info">
+                  <div className="tier-name-row">
+                    <span className="tier-title">Adults</span>
+                    {(formData.adults_count ?? 1) === 2 && (
+                      <span className="tier-badge couple-badge">Couple Rate</span>
+                    )}
+                  </div>
+                  <span className="tier-desc">
+                    {(formData.adults_count ?? 1) === 1
+                      ? '₹800 for 1 adult'
+                      : (formData.adults_count ?? 1) === 2
+                      ? '₹1,500 for couple'
+                      : `₹1,500 couple + ₹800/extra adult`}
+                  </span>
+                </div>
+                <div className="stepper-controls">
+                  <button
+                    type="button"
+                    onClick={() => handleCountStep('adults_count', -1)}
+                    disabled={(formData.adults_count ?? 1) <= 1}
+                    className="stepper-btn"
+                    aria-label="Decrease adults"
+                    id="btn-dec-adults"
+                  >
+                    −
+                  </button>
+                  <div className="stepper-count-wrap">
+                    <span className="stepper-count">{formData.adults_count ?? 1}</span>
+                    <span className="stepper-person-label">
+                      {(formData.adults_count ?? 1) === 1 ? 'Adult' : 'Adults'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCountStep('adults_count', 1)}
+                    disabled={(formData.adults_count ?? 1) >= 10}
+                    className="stepper-btn"
+                    aria-label="Increase adults"
+                    id="btn-inc-adults"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Children (>7 years) Counter */}
+              <div className="tier-counter-card">
+                <div className="tier-info">
+                  <div className="tier-name-row">
+                    <span className="tier-title">Children (7+ Years)</span>
+                  </div>
+                  <span className="tier-desc">₹300 per child</span>
+                </div>
+                <div className="stepper-controls">
+                  <button
+                    type="button"
+                    onClick={() => handleCountStep('children_above_7_count', -1)}
+                    disabled={(formData.children_above_7_count ?? 0) <= 0}
+                    className="stepper-btn"
+                    aria-label="Decrease children above 7"
+                    id="btn-dec-kids-above-7"
+                  >
+                    −
+                  </button>
+                  <div className="stepper-count-wrap">
+                    <span className="stepper-count">{formData.children_above_7_count ?? 0}</span>
+                    <span className="stepper-person-label">
+                      {(formData.children_above_7_count ?? 0) === 1 ? 'Child' : 'Children'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCountStep('children_above_7_count', 1)}
+                    disabled={(formData.children_above_7_count ?? 0) >= 10}
+                    className="stepper-btn"
+                    aria-label="Increase children above 7"
+                    id="btn-inc-kids-above-7"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Children (<7 years) Counter */}
+              <div className="tier-counter-card">
+                <div className="tier-info">
+                  <div className="tier-name-row">
+                    <span className="tier-title">Children (Under 7 Years)</span>
+                    <span className="tier-badge free-badge">Free</span>
+                  </div>
+                  <span className="tier-desc">Complimentary reunion entry</span>
+                </div>
+                <div className="stepper-controls">
+                  <button
+                    type="button"
+                    onClick={() => handleCountStep('children_under_7_count', -1)}
+                    disabled={(formData.children_under_7_count ?? 0) <= 0}
+                    className="stepper-btn"
+                    aria-label="Decrease children under 7"
+                    id="btn-dec-kids-under-7"
+                  >
+                    −
+                  </button>
+                  <div className="stepper-count-wrap">
+                    <span className="stepper-count">{formData.children_under_7_count ?? 0}</span>
+                    <span className="stepper-person-label">
+                      {(formData.children_under_7_count ?? 0) === 1 ? 'Child' : 'Children'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCountStep('children_under_7_count', 1)}
+                    disabled={(formData.children_under_7_count ?? 0) >= 10}
+                    className="stepper-btn"
+                    aria-label="Increase children under 7"
+                    id="btn-inc-kids-under-7"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Summary Row */}
+            <div className="attendee-total-pill-bar">
+              <span className="attendee-total-text">
+                👥 Total Attending: <strong>{pricing.totalAttendees}</strong>{' '}
+                {pricing.totalAttendees === 1 ? 'person' : 'persons'}
+              </span>
+              <span className="attendee-total-amount">
+                Total Contribution: <strong>₹{pricing.totalAmount}</strong>
+              </span>
             </div>
           </div>
         )}
@@ -822,8 +1001,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       {formData.attendance_status === 'yes' && (
         <PaymentSection
           amount={totalAmount}
-          attendeesCount={formData.number_of_attendees}
+          attendeesCount={pricing.totalAttendees}
           feePerPerson={event.registration_fee}
+          pricing={pricing}
           qrImageUrl={event.qr_image_url}
           upiId={event.upi_id}
           screenshotFile={screenshotFile}

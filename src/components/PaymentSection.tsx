@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
+import type { PricingBreakdown } from '../lib/pricing';
 
 interface PaymentSectionProps {
   amount: number;
   attendeesCount: number;
-  feePerPerson: number;
+  feePerPerson?: number;
+  pricing?: PricingBreakdown;
   qrImageUrl?: string | null;
   upiId?: string | null;
   screenshotFile: File | null;
@@ -14,7 +16,8 @@ interface PaymentSectionProps {
 export const PaymentSection: React.FC<PaymentSectionProps> = ({
   amount,
   attendeesCount,
-  feePerPerson,
+  feePerPerson = 800,
+  pricing,
   qrImageUrl,
   upiId = 'eckalumni@upi',
   screenshotFile,
@@ -74,15 +77,38 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 
       {/* Amount Breakdown Card */}
       <div className="amount-summary-box">
-        <div className="amount-row">
-          <span className="amount-label">
-            {attendeesCount} {attendeesCount === 1 ? 'Attendee' : 'Attendees'} × ₹{feePerPerson}
-          </span>
-          <span className="amount-rate">₹{amount}</span>
-        </div>
+        {pricing && pricing.items.length > 0 ? (
+          <div className="pricing-items-list">
+            {pricing.items.map((item, idx) => (
+              <div key={idx} className="amount-row">
+                <div className="amount-label-wrap">
+                  <span className="amount-label">{item.label}</span>
+                  <span className="amount-sublabel">{item.rateDescription}</span>
+                </div>
+                <span className={`amount-rate ${item.isFree ? 'amount-free-tag' : ''}`}>
+                  {item.isFree ? 'FREE' : `₹${item.amount}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="amount-row">
+            <span className="amount-label">
+              {attendeesCount} {attendeesCount === 1 ? 'Attendee' : 'Attendees'} × ₹{feePerPerson}
+            </span>
+            <span className="amount-rate">₹{amount}</span>
+          </div>
+        )}
+
         <div className="amount-divider" />
+
         <div className="amount-total-row">
-          <span className="total-label">Total Contribution:</span>
+          <div className="total-label-wrap">
+            <span className="total-label">Total Contribution:</span>
+            <span className="total-attendees-hint">
+              ({attendeesCount} {attendeesCount === 1 ? 'attendee' : 'attendees'})
+            </span>
+          </div>
           <span className="total-number font-accent">₹{amount}</span>
         </div>
       </div>

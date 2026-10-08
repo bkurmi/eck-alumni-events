@@ -121,6 +121,17 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
                 <span className="detail-label">Confirmed Attendees</span>
                 <span className="detail-val font-semibold">
                   {formData.number_of_attendees} {formData.number_of_attendees === 1 ? 'Person' : 'Persons'}
+                  {formData.adults_count !== undefined && (
+                    <span className="detail-subval-tag">
+                      {' ('}
+                      {formData.adults_count === 2
+                        ? 'Couple'
+                        : `${formData.adults_count} Adult${formData.adults_count > 1 ? 's' : ''}`}
+                      {formData.children_above_7_count ? `, ${formData.children_above_7_count} Child (7+)` : ''}
+                      {formData.children_under_7_count ? `, ${formData.children_under_7_count} Child (<7)` : ''}
+                      {')'}
+                    </span>
+                  )}
                 </span>
               </div>
 

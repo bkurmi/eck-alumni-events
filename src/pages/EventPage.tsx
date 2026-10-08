@@ -143,7 +143,7 @@ export const EventPage: React.FC = () => {
 
               <div className="form-event-summary-bar">
                 <span className="summary-title">{event.event_name}</span>
-                <span className="summary-fee">₹{event.registration_fee} / person</span>
+                <span className="summary-fee">₹800 Single • ₹1,500 Couple</span>
               </div>
 
               <RegistrationForm

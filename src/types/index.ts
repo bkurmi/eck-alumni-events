@@ -79,9 +79,12 @@ export interface RegistrationFormData {
   work_location: string;
   // Legacy / combined
   professional_category?: string;
-  // Attendance
+  // Attendance & Guest breakdown
   attendance_status: 'yes' | 'maybe' | 'no' | '';
   number_of_attendees: number;
+  adults_count?: number;
+  children_above_7_count?: number;
+  children_under_7_count?: number;
 }
 
 export interface RegistrationResult {

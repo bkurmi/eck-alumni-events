@@ -110,7 +110,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onRegisterClick }) 
             <div className="meta-text-col">
               <span className="meta-label">Contribution</span>
               <span className="meta-value fee-highlight">
-                ₹{event.registration_fee} <span className="fee-sub">/ attendee</span>
+                ₹800 <span className="fee-sub">Single / ₹1,500 Couple</span>
               </span>
             </div>
           </div>
