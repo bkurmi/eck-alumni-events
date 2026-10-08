@@ -300,7 +300,6 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleFileSelect}
               style={{ display: 'none' }}
               id="payment-screenshot-input"
