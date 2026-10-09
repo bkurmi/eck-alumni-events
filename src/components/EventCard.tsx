@@ -31,12 +31,6 @@ export const EventCard: React.FC<EventCardProps> = ({
           className="event-banner-img"
           loading="eager"
         />
-        <div className="banner-overlay-gradient" />
-        <div className="banner-badge-floating">
-          <span className="diya-sparkle">🪔</span>
-          <span>Pre-Diwali Milan 2026</span>
-          <span className="diya-sparkle">✨</span>
-        </div>
       </div>
 
       <div className="event-hero-body">
