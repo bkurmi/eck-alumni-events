@@ -320,6 +320,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           <div
             className={`dropzone ${error ? 'dropzone-error' : ''}`}
             onClick={() => fileInputRef.current?.click()}
+            id="screenshot-upload-dropzone"
           >
             <input
               ref={fileInputRef}

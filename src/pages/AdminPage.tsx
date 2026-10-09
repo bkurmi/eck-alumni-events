@@ -67,8 +67,12 @@ export const AdminPage: React.FC = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Admin Portal] Failed to fetch registrations:', error);
+        throw error;
+      }
       const list = (data as any) || [];
+      console.log(`[Admin Portal] Successfully loaded ${list.length} registrations.`);
       setRegistrations(list);
       if (list.length > 0 && list[0]?.events) {
         setActiveEvent(list[0].events);
@@ -281,7 +285,9 @@ export const AdminPage: React.FC = () => {
     if (!path) return null;
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(path);
-    return data?.publicUrl || null;
+    const resolvedUrl = data?.publicUrl || null;
+    console.log('[Admin Portal Screenshot URL]', { path, resolvedUrl });
+    return resolvedUrl;
   };
 
   if (loadingAuth) {
@@ -667,6 +673,16 @@ export const AdminPage: React.FC = () => {
                             src={getPublicScreenshotUrl(singlePath) || ''}
                             alt={`Payment screenshot ${idx + 1}`}
                             className="modal-screenshot-img"
+                            onLoad={() => {
+                              console.log(`[Admin Portal Screenshot Loaded OK]:`, singlePath);
+                            }}
+                            onError={(e) => {
+                              console.error(`[Admin Portal Screenshot Load Failed]:`, {
+                                path: singlePath,
+                                resolvedUrl: getPublicScreenshotUrl(singlePath),
+                                event: e,
+                              });
+                            }}
                           />
                           <a
                             href={getPublicScreenshotUrl(singlePath) || '#'}

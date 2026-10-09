@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type {
   ECKEvent,
   RegistrationFormData,
@@ -78,6 +78,45 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const [screenshotError, setScreenshotError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [errorFieldId, setErrorFieldId] = useState<string | null>(null);
+  const formTopRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToError = (errorMessage: string, fieldId?: string) => {
+    setFormError(errorMessage);
+    if (fieldId) {
+      setErrorFieldId(fieldId);
+    }
+
+    // Smoothly scroll window to top immediately
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Ensure the top anchor / error element is in full view across devices
+    setTimeout(() => {
+      if (formTopRef.current) {
+        formTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      if (fieldId) {
+        const el = document.getElementById(fieldId);
+        if (el) {
+          try {
+            el.focus({ preventScroll: true });
+          } catch {
+            // Older browser fallback
+          }
+        }
+      }
+    }, 60);
+  };
+
+  // Safety net to smoothly scroll to top whenever formError is updated
+  useEffect(() => {
+    if (formError) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [formError]);
 
   // Sync when initialData or existingRegistration changes from parent
   useEffect(() => {
@@ -179,6 +218,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
+    if (formError) setFormError(null);
+    if (errorFieldId) setErrorFieldId(null);
     const { name, value } = e.target;
 
     if (name === 'country') {
@@ -218,6 +259,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   };
 
   const handleAttendanceChange = (status: 'yes' | 'maybe' | 'no') => {
+    if (formError) setFormError(null);
+    if (errorFieldId) setErrorFieldId(null);
     setFormData((prev) => {
       const adults = status === 'yes' ? (prev.adults_count || 1) : 1;
       const kidsAbove7 = status === 'yes' ? (prev.children_above_7_count || 0) : 0;
@@ -266,74 +309,76 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setErrorFieldId(null);
     setScreenshotError(null);
 
     if (!formData.name.trim()) {
-      setFormError('Please enter your full name.');
+      scrollToError('Please enter your full name.', 'field-name');
       return;
     }
     const cleanMobile = formData.mobile.trim().replace(/\D/g, '');
     if (cleanMobile.length < 10) {
-      setFormError('Please enter a valid 10-digit mobile / WhatsApp number.');
+      scrollToError('Please enter a valid 10-digit mobile / WhatsApp number.', 'field-mobile');
       return;
     }
     if (!formData.address.trim()) {
-      setFormError('Please enter your residential or permanent address.');
+      scrollToError('Please enter your residential or permanent address.', 'field-address');
       return;
     }
     if (formData.country === 'India') {
       if (!formData.state) {
-        setFormError('Please select your state / UT.');
+        scrollToError('Please select your state / UT.', 'field-state');
         return;
       }
       if (formData.state === 'Other' && !formData.state_other?.trim()) {
-        setFormError('Please specify your state / UT in the text field.');
+        scrollToError('Please specify your state / UT in the text field.', 'field-state-other');
         return;
       }
     } else {
       if (!formData.country_other?.trim()) {
-        setFormError('Please specify your country name.');
+        scrollToError('Please specify your country name.', 'field-country-other');
         return;
       }
     }
     if (!formData.city.trim()) {
-      setFormError(
+      scrollToError(
         formData.country === 'India'
           ? 'Please enter your city.'
-          : 'Please enter your city / town / region.'
+          : 'Please enter your city / town / region.',
+        'field-city'
       );
       return;
     }
     if (!formData.year_of_passing) {
-      setFormError('Please select your year of passing (Batch).');
+      scrollToError('Please select your year of passing (Batch).', 'field-year');
       return;
     }
     if (!formData.engineering_discipline) {
-      setFormError('Please select your engineering discipline / branch.');
+      scrollToError('Please select your engineering discipline / branch.', 'field-discipline');
       return;
     }
     if (formData.engineering_discipline === 'Other' && !formData.engineering_discipline_other?.trim()) {
-      setFormError('Please specify your engineering branch in the text field.');
+      scrollToError('Please specify your engineering branch in the text field.', 'field-discipline-other');
       return;
     }
     if (!formData.employment_type) {
-      setFormError('Please select your Employment Type.');
+      scrollToError('Please select your Employment Type.', 'field-employment-type');
       return;
     }
     if (formData.employment_type === 'Other' && !formData.employment_type_other?.trim()) {
-      setFormError('Please specify your Employment Type in the text field.');
+      scrollToError('Please specify your Employment Type in the text field.', 'field-employment-other');
       return;
     }
     if (!formData.industry_domain) {
-      setFormError('Please select your Industry / Domain.');
+      scrollToError('Please select your Industry / Domain.', 'field-industry');
       return;
     }
     if (formData.industry_domain === 'Other' && !formData.industry_domain_other?.trim()) {
-      setFormError('Please specify your Industry / Domain in the text field.');
+      scrollToError('Please specify your Industry / Domain in the text field.', 'field-industry-other');
       return;
     }
     if (!formData.attendance_status) {
-      setFormError('Please indicate your attendance status (Yes, Maybe, or No).');
+      scrollToError('Please indicate your attendance status (Yes, Maybe, or No).', 'attend-yes');
       return;
     }
 
@@ -343,14 +388,18 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         setScreenshotError(
           `Please upload the payment screenshot for the additional ₹${additionalAmountDue}.`
         );
-        setFormError(
-          `Payment screenshot is required for the additional amount (₹${additionalAmountDue}).`
+        scrollToError(
+          `Payment screenshot is required for the additional amount (₹${additionalAmountDue}).`,
+          'screenshot-upload-dropzone'
         );
         return;
       }
       if (!isUpdateMode && !screenshotFile && !hasExistingScreenshot) {
         setScreenshotError('Please upload your payment screenshot before submitting.');
-        setFormError('Payment screenshot is required for attending participants.');
+        scrollToError(
+          'Payment screenshot is required for attending participants. Please attach your payment screenshot.',
+          'screenshot-upload-dropzone'
+        );
         return;
       }
     }
@@ -358,47 +407,55 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     setSubmitting(true);
 
     try {
+      const cleanName = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
       let uploadedScreenshotPath: string | null = null;
       let finalCombinedScreenshotPath: string | null = activeExistingReg?.payment_screenshot_path || null;
 
-      if (formData.attendance_status === 'yes') {
-        if (screenshotFile) {
-          const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
-          const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const fileName = `${event.event_slug}/${Date.now()}_${cleanMobile}.${cleanExt}`;
+      // If updating an existing registration with known registration_number, upload screenshot upfront
+      if (formData.attendance_status === 'yes' && screenshotFile && isUpdateMode && activeExistingReg?.registration_number) {
+        const regNumber = activeExistingReg.registration_number;
+        const timestamp = Date.now();
+        const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
+        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const fileName = `${event.event_slug}/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
 
-          try {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('payment-screenshots')
-              .upload(fileName, screenshotFile, {
-                cacheControl: '3600',
-                upsert: true,
-              });
+        console.log('[Storage Upload] Uploading screenshot for existing registration:', {
+          regNumber,
+          fileName,
+          fileSize: screenshotFile.size,
+          mimeType: screenshotFile.type,
+          bucket: 'payment-screenshots',
+        });
 
-            if (uploadError) {
-              console.warn('Storage upload note:', uploadError);
-              uploadedScreenshotPath = fileName;
-            } else if (uploadData) {
-              uploadedScreenshotPath = uploadData.path;
-            }
-          } catch (storageErr) {
-            console.warn('Storage fallback note:', storageErr);
-            uploadedScreenshotPath = `offline_${Date.now()}_${cleanMobile}.jpg`;
+        try {
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('payment-screenshots')
+            .upload(fileName, screenshotFile, {
+              cacheControl: '3600',
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error('[Storage Upload Error]:', uploadError);
+            alert(`Screenshot upload warning: ${uploadError.message}. Please check connection or contact admin.`);
+          } else if (uploadData) {
+            console.log('[Storage Upload Success]:', uploadData);
+            uploadedScreenshotPath = uploadData.path;
           }
-
-          // Combine with existing screenshots if any
-          if (uploadedScreenshotPath) {
-            if (activeExistingReg?.payment_screenshot_path) {
-              finalCombinedScreenshotPath = `${activeExistingReg.payment_screenshot_path},${uploadedScreenshotPath}`;
-            } else {
-              finalCombinedScreenshotPath = uploadedScreenshotPath;
-            }
-          }
-        } else if (hasExistingScreenshot) {
-          // Preserve existing screenshot path if no new one was provided
-          uploadedScreenshotPath = activeExistingReg?.payment_screenshot_path || null;
-          finalCombinedScreenshotPath = activeExistingReg?.payment_screenshot_path || null;
+        } catch (storageErr) {
+          console.error('[Storage Upload Exception]:', storageErr);
         }
+
+        if (uploadedScreenshotPath) {
+          if (activeExistingReg?.payment_screenshot_path) {
+            finalCombinedScreenshotPath = `${activeExistingReg.payment_screenshot_path},${uploadedScreenshotPath}`;
+          } else {
+            finalCombinedScreenshotPath = uploadedScreenshotPath;
+          }
+        }
+      } else if (hasExistingScreenshot && !screenshotFile) {
+        uploadedScreenshotPath = activeExistingReg?.payment_screenshot_path || null;
+        finalCombinedScreenshotPath = activeExistingReg?.payment_screenshot_path || null;
       }
 
       // Resolve effective values when 'Other' was selected
@@ -496,6 +553,81 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           registrationResult = data as RegistrationResult;
         }
 
+        // For NEW registrations with a screenshot: upload using the newly generated registration number!
+        if (
+          registrationResult &&
+          formData.attendance_status === 'yes' &&
+          screenshotFile &&
+          !isUpdateMode &&
+          registrationResult.registration_number
+        ) {
+          const regNumber = registrationResult.registration_number;
+          const timestamp = Date.now();
+          const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
+          const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const fileName = `${event.event_slug}/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
+
+          console.log('[Storage Upload] Uploading screenshot for new registration:', {
+            regNumber,
+            fileName,
+            fileSize: screenshotFile.size,
+            mimeType: screenshotFile.type,
+            bucket: 'payment-screenshots',
+          });
+
+          try {
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('payment-screenshots')
+              .upload(fileName, screenshotFile, {
+                cacheControl: '3600',
+                upsert: true,
+              });
+
+            if (uploadError) {
+              console.error('[Storage Upload Error]:', uploadError);
+              alert(
+                `Warning: Screenshot upload failed (${uploadError.message}). Your registration number is ${regNumber}. Please send your receipt to the organizer.`
+              );
+            } else if (uploadData) {
+              console.log('[Storage Upload Success]:', uploadData);
+              uploadedScreenshotPath = uploadData.path;
+              finalCombinedScreenshotPath = uploadData.path;
+
+              // Save uploaded screenshot path back to the registration record
+              try {
+                await supabase.rpc('register_for_event', {
+                  p_event_slug: event.event_slug,
+                  p_name: formData.name.trim(),
+                  p_mobile: cleanMobile,
+                  p_address: formData.address.trim(),
+                  p_country: resolvedCountry,
+                  p_city: formData.city.trim(),
+                  p_state: resolvedState,
+                  p_year_of_passing: Number(formData.year_of_passing),
+                  p_engineering_discipline: resolvedDiscipline,
+                  p_employment_type: resolvedEmploymentType,
+                  p_industry_domain: resolvedIndustryDomain,
+                  p_professional_category: combinedCategory,
+                  p_attendance_status: formData.attendance_status,
+                  p_number_of_attendees: pricing.totalAttendees,
+                  p_adults_count: formData.adults_count ?? 1,
+                  p_children_above_7_count: formData.children_above_7_count ?? 0,
+                  p_children_under_7_count: formData.children_under_7_count ?? 0,
+                  p_email: formData.email.trim() || null,
+                  p_organization: formData.organization.trim() || null,
+                  p_work_location: formData.work_location.trim() || null,
+                  p_payment_screenshot_path: uploadData.path,
+                });
+                console.log('[Registration Record Updated with Screenshot Path]:', uploadData.path);
+              } catch (updateErr) {
+                console.warn('[Registration Screenshot Sync Note]:', updateErr);
+              }
+            }
+          } catch (storageErr) {
+            console.error('[Storage Upload Exception]:', storageErr);
+          }
+        }
+
         // Keep DB amount and combined screenshots synced
         if (registrationResult) {
           registrationResult.amount = totalAmount;
@@ -555,7 +687,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       onSuccess(resolvedFormData, finalResult);
     } catch (err: any) {
       console.error('Registration failed:', err);
-      setFormError(err?.message || 'Something went wrong while submitting. Please try again.');
+      scrollToError(err?.message || 'Something went wrong while submitting. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -563,14 +695,37 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
   return (
     <form className="registration-form" onSubmit={handleSubmit} noValidate>
+      {/* Scroll anchor placed right at top of form */}
+      <div ref={formTopRef} id="form-top-anchor" style={{ scrollMarginTop: '80px' }} />
+
+      {/* Prominent High-Visibility Error Banner at Top */}
       {formError && (
-        <div className="alert-box alert-error" role="alert">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span>{formError}</span>
+        <div className="registration-error-alert animate-alert-shake" role="alert" tabIndex={-1}>
+          <div className="alert-error-left">
+            <div className="alert-error-icon-bubble">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <div className="alert-error-details">
+              <strong className="alert-error-heading">Please complete the required information</strong>
+              <p className="alert-error-text">{formError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="alert-dismiss-btn"
+            onClick={() => {
+              setFormError(null);
+              setErrorFieldId(null);
+            }}
+            title="Dismiss notice"
+            aria-label="Dismiss error notice"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -611,7 +766,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               onChange={handleChange}
               placeholder="e.g. Er. Bhawesh Kurmi"
               required
-              className="input-field"
+              className={`input-field ${errorFieldId === 'field-name' ? 'input-error-highlight' : ''}`}
               autoComplete="name"
             />
           </div>
@@ -633,7 +788,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 placeholder="10-digit number"
                 maxLength={10}
                 required
-                className="input-field prefixed-input"
+                className={`input-field prefixed-input ${errorFieldId === 'field-mobile' ? 'input-error-highlight' : ''}`}
                 autoComplete="tel-national"
               />
               {checkingMobile && (
@@ -682,7 +837,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.year_of_passing}
               onChange={handleChange}
               required
-              className="input-field select-field"
+              className={`input-field select-field ${errorFieldId === 'field-year' ? 'input-error-highlight' : ''}`}
             >
               <option value="">Select Passing Year</option>
               {passingYears.map((year) => (
@@ -704,7 +859,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.engineering_discipline}
               onChange={handleChange}
               required
-              className="input-field select-field"
+              className={`input-field select-field ${errorFieldId === 'field-discipline' ? 'input-error-highlight' : ''}`}
             >
               <option value="">Select Branch</option>
               {ENGINEERING_DISCIPLINES.map((discipline) => (
@@ -729,7 +884,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. M.Tech Thermal, MCA, Applied Sciences"
                 required
-                className="input-field"
+                className={`input-field ${errorFieldId === 'field-discipline-other' ? 'input-error-highlight' : ''}`}
                 autoFocus
               />
             </div>
@@ -748,7 +903,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               rows={2}
               placeholder="House/Plot No., Street, Colony/Locality"
               required
-              className="input-field textarea-field"
+              className={`input-field textarea-field ${errorFieldId === 'field-address' ? 'input-error-highlight' : ''}`}
             />
           </div>
 
@@ -787,7 +942,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. United States, United Kingdom, UAE, Singapore"
                 required
-                className="input-field"
+                className={`input-field ${errorFieldId === 'field-country-other' ? 'input-error-highlight' : ''}`}
                 autoFocus
               />
             </div>
@@ -805,7 +960,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 value={formData.state}
                 onChange={handleChange}
                 required
-                className="input-field select-field"
+                className={`input-field select-field ${errorFieldId === 'field-state' ? 'input-error-highlight' : ''}`}
               >
                 <option value="">Select State / UT</option>
                 {INDIAN_STATES.map((st) => (
@@ -831,7 +986,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. New State / UT"
                 required
-                className="input-field"
+                className={`input-field ${errorFieldId === 'field-state-other' ? 'input-error-highlight' : ''}`}
                 autoFocus
               />
             </div>
@@ -868,7 +1023,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               onChange={handleChange}
               placeholder={formData.country === 'India' ? 'e.g. Kota, Jaipur, Delhi' : 'e.g. Dubai, London, San Jose'}
               required
-              className="input-field"
+              className={`input-field ${errorFieldId === 'field-city' ? 'input-error-highlight' : ''}`}
             />
           </div>
 
@@ -883,7 +1038,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.employment_type}
               onChange={handleChange}
               required
-              className="input-field select-field"
+              className={`input-field select-field ${errorFieldId === 'field-employment-type' ? 'input-error-highlight' : ''}`}
             >
               <option value="">Select Employment Type</option>
               {EMPLOYMENT_TYPES.map((type) => (
@@ -908,7 +1063,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. Armed Forces, Social Worker, Homemaker"
                 required
-                className="input-field"
+                className={`input-field ${errorFieldId === 'field-employment-other' ? 'input-error-highlight' : ''}`}
                 autoFocus
               />
             </div>
@@ -925,7 +1080,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.industry_domain}
               onChange={handleChange}
               required
-              className="input-field select-field"
+              className={`input-field select-field ${errorFieldId === 'field-industry' ? 'input-error-highlight' : ''}`}
             >
               <option value="">Select Industry / Domain</option>
               {INDUSTRY_DOMAINS.map((domain) => (
@@ -950,7 +1105,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. Aerospace, Energy & Power, Media"
                 required
-                className="input-field"
+                className={`input-field ${errorFieldId === 'field-industry-other' ? 'input-error-highlight' : ''}`}
                 autoFocus
               />
             </div>
@@ -998,7 +1153,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           <p className="card-subtitle">Will you be attending the Pre-Diwali Milan celebration?</p>
         </div>
 
-        <div className="attendance-options-grid">
+        <div className={`attendance-options-grid ${errorFieldId === 'attend-yes' ? 'input-error-highlight' : ''}`}>
           <button
             type="button"
             className={`attendance-chip ${formData.attendance_status === 'yes' ? 'selected' : ''}`}
@@ -1249,6 +1404,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
       {/* SUBMIT BUTTON */}
       <div className="form-submit-bar">
+        {formError && (
+          <div
+            className="submit-error-banner"
+            onClick={() => scrollToError(formError, errorFieldId || undefined)}
+            role="button"
+            tabIndex={0}
+            title="Click to scroll to top to review error"
+          >
+            <div className="submit-error-banner-left">
+              <span className="submit-error-badge">Action Required</span>
+              <span className="submit-error-summary">{formError}</span>
+            </div>
+            <span className="submit-error-scroll-link">
+              Scroll to Error ↑
+            </span>
+          </div>
+        )}
         <button
           type="submit"
           disabled={submitting}
