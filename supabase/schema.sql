@@ -477,12 +477,17 @@ ON CONFLICT (id) DO UPDATE SET public = true;
 
 DROP POLICY IF EXISTS "anon_upload_screenshots" ON storage.objects;
 CREATE POLICY "anon_upload_screenshots"
-  ON storage.objects FOR INSERT TO anon
+  ON storage.objects FOR INSERT TO public
   WITH CHECK (bucket_id = 'payment-screenshots');
+
+DROP POLICY IF EXISTS "anon_update_screenshots" ON storage.objects;
+CREATE POLICY "anon_update_screenshots"
+  ON storage.objects FOR UPDATE TO public
+  USING (bucket_id = 'payment-screenshots');
 
 DROP POLICY IF EXISTS "public_read_screenshots" ON storage.objects;
 CREATE POLICY "public_read_screenshots"
-  ON storage.objects FOR SELECT TO anon
+  ON storage.objects FOR SELECT TO public
   USING (bucket_id = 'payment-screenshots');
 
 DROP POLICY IF EXISTS "admin_read_screenshots" ON storage.objects;
