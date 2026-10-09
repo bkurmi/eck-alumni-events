@@ -1,8 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from '../components/Header';
 import { AdminLogin } from '../components/AdminLogin';
+import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { supabase } from '../lib/supabase';
-import type { EventRegistration } from '../types';
+import type { EventRegistration, ECKEvent } from '../types';
+
+const DEFAULT_EVENT: ECKEvent = {
+  id: 'mock-diwali-2026',
+  event_name: 'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
+  event_slug: 'pre-diwali-milan-2026',
+  event_date: '2026-11-01',
+  event_time: '5:00 PM onwards',
+  location: 'ECK, Kota, Rajasthan (College Ground)',
+  description:
+    'Reconnect • Relive • Celebrate — Join fellow ECK alumni for an evening of nostalgia, networking, cultural performances, dinner, and celebration before Diwali 2026.',
+  registration_fee: 800,
+  upi_id: 'eckalumni@upi',
+  banner_image_url: null,
+  tagline: 'Reconnect • Relive • Celebrate',
+  theme_primary_color: '#6366f1',
+  theme_accent_color: '#f59e0b',
+  qr_image_url: '/upi-qr.svg',
+  status: 'OPEN',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
 
 export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -12,6 +34,9 @@ export const AdminPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'yes' | 'maybe' | 'no'>('all');
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
+  const [singleCopied, setSingleCopied] = useState(false);
 
   // Check auth
   useEffect(() => {
@@ -43,7 +68,11 @@ export const AdminPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setRegistrations((data as any) || []);
+      const list = (data as any) || [];
+      setRegistrations(list);
+      if (list.length > 0 && list[0]?.events) {
+        setActiveEvent(list[0].events);
+      }
     } catch (err) {
       console.warn('Registrations fetch note:', err);
       // Fallback demo data if Supabase is fresh or unconfigured
@@ -124,6 +153,78 @@ export const AdminPage: React.FC = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
+  };
+
+  const buildSingleAlumnusText = (reg: EventRegistration) => {
+    const name = reg.alumni?.name || 'Alumnus';
+    const batch = reg.alumni?.year_of_passing ? `Class of ${reg.alumni.year_of_passing}` : '';
+    const disc = reg.alumni?.engineering_discipline || '';
+    const city = reg.alumni?.city ? `${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
+    const count = reg.number_of_attendees || 1;
+    const status = reg.attendance_status === 'yes' ? 'Confirmed Attending' : reg.attendance_status;
+    const eventDate = activeEvent?.event_date || '01 Nov 2026';
+    const venue = activeEvent?.location || 'ECK Campus, Kota';
+    const webUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
+
+    const lines = [
+      '🪔✨ *ECK ALUMNI PRE-DIWALI MILAN 2026* ✨🪔',
+      `🎉 *Registration Details: ${name}*`,
+      '',
+      `🎫 *Registration ID:* ${reg.registration_number}`,
+      `👤 *Alumni Name:* ${name}`,
+      batch ? `🎓 *Batch:* ${batch}${disc ? ` • ${disc}` : ''}` : '',
+      city ? `📍 *Location:* ${city}` : '',
+      `👥 *Attendees:* ${count} ${count === 1 ? 'Person' : 'People'}${count > 1 ? ` (Self + ${count - 1} accompanying)` : ''}`,
+      `✨ *Attendance Status:* ${status.toUpperCase()}`,
+      reg.attendance_status === 'yes' ? `💰 *Contribution:* ₹${reg.amount}` : '',
+      '',
+      '━━━━━━━━━━━━━━━━━━━━━',
+      `📅 *Date:* ${eventDate}`,
+      `📍 *Venue:* ${venue}`,
+      `🔗 *Portal:* ${webUrl}`,
+      '🪔 *Looking forward to celebrating with you! Shubh Deepawali in advance!* ✨',
+    ];
+
+    return lines.filter(Boolean).join('\n');
+  };
+
+  const handleShareSingleAlumnus = (reg: EventRegistration) => {
+    const text = buildSingleAlumnusText(reg);
+    const encoded = encodeURIComponent(text);
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      window.open(`whatsapp://send?text=${encoded}`, '_self');
+      setTimeout(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+      }, 700);
+    } else {
+      window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleCopySingleAlumnus = async (reg: EventRegistration) => {
+    const text = buildSingleAlumnusText(reg);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setSingleCopied(true);
+      setTimeout(() => setSingleCopied(false), 2500);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Filtered registrations
@@ -215,6 +316,14 @@ export const AdminPage: React.FC = () => {
                 <div className="admin-actions">
                   <button
                     type="button"
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="btn btn-whatsapp-header"
+                    title="Broadcast Attendee List on WhatsApp"
+                  >
+                    💬 Share on WhatsApp
+                  </button>
+                  <button
+                    type="button"
                     onClick={fetchRegistrations}
                     disabled={loadingData}
                     className="btn btn-secondary btn-sm"
@@ -231,6 +340,26 @@ export const AdminPage: React.FC = () => {
                     Sign Out
                   </button>
                 </div>
+              </div>
+
+              {/* Mobile-First WhatsApp Broadcast Banner */}
+              <div className="admin-mobile-share-banner">
+                <div className="admin-mobile-share-info">
+                  <span className="admin-mobile-share-icon">🪔</span>
+                  <div>
+                    <h3 className="admin-mobile-share-title">Diwali WhatsApp Broadcast</h3>
+                    <p className="admin-mobile-share-subtitle">
+                      Share registered alumni list with passing year, location &amp; accompanying guests to WhatsApp!
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="btn btn-whatsapp-primary btn-sm"
+                >
+                  💬 Broadcast List
+                </button>
               </div>
 
               {/* Stats Cards */}
@@ -366,6 +495,17 @@ export const AdminPage: React.FC = () => {
                             No Screenshot
                           </span>
                         )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShareSingleAlumnus(reg);
+                          }}
+                          className="btn-card-whatsapp"
+                          title="Share on WhatsApp"
+                        >
+                          💬 Share
+                        </button>
                       </div>
                     </div>
                   ))
@@ -385,13 +525,23 @@ export const AdminPage: React.FC = () => {
                 <span className="modal-tag">{selectedReg.registration_number}</span>
                 <h2 className="modal-title">{selectedReg.alumni?.name}</h2>
               </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setSelectedReg(null)}
-              >
-                ✕
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleShareSingleAlumnus(selectedReg)}
+                  className="btn btn-whatsapp-primary btn-sm"
+                  title="Share registration via WhatsApp"
+                >
+                  💬 WhatsApp
+                </button>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => setSelectedReg(null)}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="modal-body">
@@ -472,6 +622,24 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Single Share Action Bar */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleShareSingleAlumnus(selectedReg)}
+                  className="btn btn-whatsapp-primary btn-sm"
+                >
+                  💬 Share Details on WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopySingleAlumnus(selectedReg)}
+                  className={`btn btn-secondary btn-sm ${singleCopied ? 'btn-copied' : ''}`}
+                >
+                  {singleCopied ? '✓ Copied Details!' : '📋 Copy Details'}
+                </button>
+              </div>
+
               {/* Payment Screenshot Display */}
               <div className="modal-screenshot-section">
                 <h4 className="modal-section-title">
@@ -519,6 +687,15 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* WhatsApp Broadcast Modal */}
+      <ShareWhatsAppModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        registrations={registrations}
+        filteredRegistrations={filteredRegistrations}
+        event={activeEvent}
+      />
     </div>
   );
 };
