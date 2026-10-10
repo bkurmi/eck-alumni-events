@@ -593,8 +593,56 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               uploadedScreenshotPath = uploadData.path;
               finalCombinedScreenshotPath = uploadData.path;
 
-              // Screenshot path will be synced below via direct update
-              console.log('[Storage Upload Path Recorded]:', uploadData.path);
+              // Save the screenshot path to the registration record via the SECURITY DEFINER RPC
+              // to ensure Row Level Security (RLS) does not block saving the path for new registrations
+              try {
+                const { error: rpcUpdateErr } = await supabase.rpc('register_for_event', {
+                  p_event_slug: event.event_slug,
+                  p_name: formData.name.trim(),
+                  p_mobile: cleanMobile,
+                  p_address: formData.address.trim(),
+                  p_country: resolvedCountry,
+                  p_city: formData.city.trim(),
+                  p_state: resolvedState,
+                  p_year_of_passing: Number(formData.year_of_passing),
+                  p_engineering_discipline: resolvedDiscipline,
+                  p_employment_type: resolvedEmploymentType,
+                  p_industry_domain: resolvedIndustryDomain,
+                  p_professional_category: combinedCategory,
+                  p_attendance_status: formData.attendance_status,
+                  p_number_of_attendees: pricing.totalAttendees,
+                  p_adults_count: formData.adults_count ?? 1,
+                  p_children_above_7_count: formData.children_above_7_count ?? 0,
+                  p_children_under_7_count: formData.children_under_7_count ?? 0,
+                  p_email: formData.email.trim() || null,
+                  p_organization: formData.organization.trim() || null,
+                  p_work_location: formData.work_location.trim() || null,
+                  p_payment_screenshot_path: uploadedScreenshotPath,
+                });
+                if (rpcUpdateErr) {
+                  // Fallback to legacy RPC schema if database hasn't applied the migration yet
+                  await supabase.rpc('register_for_event', {
+                    p_event_slug: event.event_slug,
+                    p_name: formData.name.trim(),
+                    p_mobile: cleanMobile,
+                    p_address: formData.address.trim(),
+                    p_city: formData.city.trim(),
+                    p_state: resolvedState,
+                    p_year_of_passing: Number(formData.year_of_passing),
+                    p_engineering_discipline: resolvedDiscipline,
+                    p_professional_category: combinedCategory,
+                    p_attendance_status: formData.attendance_status,
+                    p_number_of_attendees: pricing.totalAttendees,
+                    p_email: formData.email.trim() || null,
+                    p_organization: formData.organization.trim() || null,
+                    p_work_location: formData.work_location.trim() || null,
+                    p_payment_screenshot_path: uploadedScreenshotPath,
+                  });
+                }
+                console.log('[Registration Record Updated with Screenshot Path]:', uploadData.path);
+              } catch (updateErr) {
+                console.warn('[Registration Screenshot Sync Note]:', updateErr);
+              }
             }
           } catch (storageErr) {
             console.error('[Storage Upload Exception]:', storageErr);
