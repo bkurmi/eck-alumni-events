@@ -1,5 +1,10 @@
 // Types for ECK Alumni Events
 
+export interface UpiPaymentConfig {
+  upi_id: string;
+  qr_image_url: string;
+}
+
 export interface ECKEvent {
   id: string;
   event_name: string;
@@ -15,6 +20,7 @@ export interface ECKEvent {
   theme_primary_color: string;
   theme_accent_color: string;
   qr_image_url: string | null;
+  upi_rotation_configs?: UpiPaymentConfig[] | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'COMPLETED';
   created_at: string;
   updated_at: string;

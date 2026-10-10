@@ -6,7 +6,8 @@ import { RegistrationForm } from '../components/RegistrationForm';
 import { SuccessPage } from '../components/SuccessPage';
 import { ManageRegistrationModal } from '../components/ManageRegistrationModal';
 import { supabase } from '../lib/supabase';
-import { convertLookupToFormData } from '../lib/registrations';
+import { convertLookupToFormData, getEventRegistrationCount } from '../lib/registrations';
+import { resolveActivePaymentConfig } from '../lib/paymentRotation';
 import type {
   ECKEvent,
   RegistrationFormData,
@@ -24,12 +25,12 @@ const DEFAULT_EVENT: ECKEvent = {
   description:
     'Join fellow ECK and RTU alumni for an evening of nostalgic reunions, networking, cultural performances, gala dinner, and Diwali celebrations.',
   registration_fee: 800,
-  upi_id: 'eckalumni@upi',
+  upi_id: '9799951857@upi',
   banner_image_url: '/deepaura-banner.jpg',
   tagline: '“दीप जले, यादें मुस्कुराएँ।”',
   theme_primary_color: '#6366f1',
   theme_accent_color: '#f59e0b',
-  qr_image_url: '/upi-qr.svg',
+  qr_image_url: '/qr-1.png',
   status: 'OPEN',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -41,6 +42,7 @@ export const EventPage: React.FC = () => {
 
   const [event, setEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [loading, setLoading] = useState(true);
+  const [, setRegistrationCount] = useState<number>(0);
   const [currentStep, setCurrentStep] = useState<'overview' | 'form' | 'success'>('overview');
   const [submittedData, setSubmittedData] = useState<{
     formData: RegistrationFormData;
@@ -59,26 +61,40 @@ export const EventPage: React.FC = () => {
     async function loadEvent() {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('events')
-          .select('*')
-          .eq('event_slug', activeSlug)
-          .single();
+        const [{ data, error }, regCount] = await Promise.all([
+          supabase
+            .from('events')
+            .select('*')
+            .eq('event_slug', activeSlug)
+            .single(),
+          getEventRegistrationCount(activeSlug),
+        ]);
 
-        if (error || !data) {
-          console.log('Using default event configuration for:', activeSlug);
-          if (isMounted) {
-            setEvent({
-              ...DEFAULT_EVENT,
-              event_slug: activeSlug,
-            });
-          }
-        } else if (isMounted) {
-          setEvent(data as ECKEvent);
+        const rawEvent: ECKEvent =
+          error || !data
+            ? { ...DEFAULT_EVENT, event_slug: activeSlug }
+            : (data as ECKEvent);
+
+        const rotation = resolveActivePaymentConfig(rawEvent, regCount);
+
+        if (isMounted) {
+          setRegistrationCount(regCount);
+          setEvent({
+            ...rawEvent,
+            upi_id: rotation.activeConfig.upi_id,
+            qr_image_url: rotation.activeConfig.qr_image_url,
+          });
         }
       } catch (err) {
         console.warn('Event fetch error handled:', err);
-        if (isMounted) setEvent(DEFAULT_EVENT);
+        const rotation = resolveActivePaymentConfig(DEFAULT_EVENT, 0);
+        if (isMounted) {
+          setEvent({
+            ...DEFAULT_EVENT,
+            upi_id: rotation.activeConfig.upi_id,
+            qr_image_url: rotation.activeConfig.qr_image_url,
+          });
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -106,6 +122,19 @@ export const EventPage: React.FC = () => {
     setPreloadedFormData(null);
     setCurrentStep('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Refresh live count right before registration to ensure up-to-date rotation
+    getEventRegistrationCount(activeSlug)
+      .then((count) => {
+        setRegistrationCount(count);
+        const rotation = resolveActivePaymentConfig(event, count);
+        setEvent((prev) => ({
+          ...prev,
+          upi_id: rotation.activeConfig.upi_id,
+          qr_image_url: rotation.activeConfig.qr_image_url,
+        }));
+      })
+      .catch(() => { });
   };
 
   const handleOpenManageModal = () => {
@@ -127,6 +156,18 @@ export const EventPage: React.FC = () => {
     setSubmittedData({ formData, result });
     setCurrentStep('success');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Rotate sequence forward for the next registration
+    setRegistrationCount((prev) => {
+      const nextCount = prev + 1;
+      const rotation = resolveActivePaymentConfig(event, nextCount);
+      setEvent((prevEvent) => ({
+        ...prevEvent,
+        upi_id: rotation.activeConfig.upi_id,
+        qr_image_url: rotation.activeConfig.qr_image_url,
+      }));
+      return nextCount;
+    });
   };
 
   const handleResetRegistration = () => {
@@ -135,6 +176,19 @@ export const EventPage: React.FC = () => {
     setPreloadedFormData(null);
     setCurrentStep('overview');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Ensure next registration in the same browser session gets latest rotation
+    getEventRegistrationCount(activeSlug)
+      .then((count) => {
+        setRegistrationCount(count);
+        const rotation = resolveActivePaymentConfig(event, count);
+        setEvent((prev) => ({
+          ...prev,
+          upi_id: rotation.activeConfig.upi_id,
+          qr_image_url: rotation.activeConfig.qr_image_url,
+        }));
+      })
+      .catch(() => {});
   };
 
   return (
@@ -235,7 +289,7 @@ export const EventPage: React.FC = () => {
                   >
                     <span>Register for DeepAura 2K26</span>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="9 18 15 12 9 6"/>
+                      <polyline points="9 18 15 12 9 6" />
                     </svg>
                   </button>
 

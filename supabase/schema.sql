@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS events (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE events ADD COLUMN IF NOT EXISTS upi_rotation_configs JSONB DEFAULT NULL;
+
 DROP TRIGGER IF EXISTS events_updated_at ON events;
 CREATE TRIGGER events_updated_at
   BEFORE UPDATE ON events
@@ -301,17 +303,25 @@ BEGIN
   RETURNING id INTO v_alumni_id;
 
   -- Check if this is an update to an existing registration
-  SELECT EXISTS (
-    SELECT 1 FROM event_registrations
-    WHERE event_id = v_event_id AND alumni_id = v_alumni_id
-  ) INTO v_is_update;
+  SELECT registration_number INTO v_registration_number
+  FROM event_registrations
+  WHERE event_id = v_event_id AND alumni_id = v_alumni_id;
+
+  IF v_registration_number IS NOT NULL THEN
+    v_is_update := true;
+  ELSE
+    v_is_update := false;
+    v_registration_number := 'REG-' || LPAD(nextval('registration_seq')::TEXT, 5, '0');
+  END IF;
 
   -- 4. Create or update registration
   INSERT INTO event_registrations (
+    registration_number,
     event_id, alumni_id, attendance_status,
     number_of_attendees, adults_count, children_above_7_count, children_under_7_count,
     amount, payment_screenshot_path
   ) VALUES (
+    v_registration_number,
     v_event_id, v_alumni_id, p_attendance_status,
     p_number_of_attendees, COALESCE(p_adults_count, 1), COALESCE(p_children_above_7_count, 0), COALESCE(p_children_under_7_count, 0),
     v_total_amount, p_payment_screenshot_path
@@ -468,6 +478,35 @@ GRANT EXECUTE ON FUNCTION get_registration_by_mobile TO authenticated;
 
 
 -- ────────────────────────────────────────────────────────────
+-- 8C. RPC FUNCTION: get_event_registration_count (SECURITY DEFINER)
+-- ────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION get_event_registration_count(
+  p_event_slug TEXT
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  SELECT COUNT(*)::INTEGER
+    INTO v_count
+    FROM event_registrations r
+    JOIN events e ON e.id = r.event_id
+   WHERE e.event_slug = p_event_slug;
+
+  RETURN COALESCE(v_count, 0);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_event_registration_count TO anon;
+GRANT EXECUTE ON FUNCTION get_event_registration_count TO authenticated;
+
+
+-- ────────────────────────────────────────────────────────────
 -- 9. STORAGE: payment-screenshots bucket (public)
 -- ────────────────────────────────────────────────────────────
 
@@ -497,7 +536,7 @@ CREATE POLICY "admin_read_screenshots"
 
 
 -- ────────────────────────────────────────────────────────────
--- 10. SEED: First Event (Pre-Diwali Milan 2026)
+-- 10. SEED: First Event (DeepAura 2K26)
 -- ────────────────────────────────────────────────────────────
 
 INSERT INTO events (
@@ -516,19 +555,19 @@ INSERT INTO events (
   qr_image_url,
   status
 ) VALUES (
-  'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
-  'pre-diwali-milan-2026',
+  'ECK-RTU Alumni DeepAura 2K26',
+  'deepaura-2k26',
   '2026-11-01',
   '5:00 PM onwards',
-  'ECK, Kota, Rajasthan (College Ground)',
-  'Reconnect • Relive • Celebrate — Join fellow ECK alumni for an evening of nostalgia, networking, cultural performances, dinner, and celebration before Diwali 2026.',
+  'ECK Campus, Kota, Rajasthan (College Ground)',
+  'Join fellow ECK and RTU alumni for an evening of nostalgic reunions, networking, cultural performances, gala dinner, and Diwali celebrations.',
   800,
-  'eckalumni@upi',
-  NULL,
-  'Engineering College Kota',
+  '9799951857@upi',
+  '/deepaura-banner.jpg',
+  '“दीप जले, यादें मुस्कुराएँ।”',
   '#6366f1',
   '#f59e0b',
-  '/upi-qr.svg',
+  '/qr-1.png',
   'OPEN'
 )
 ON CONFLICT (event_slug) DO UPDATE SET
@@ -538,6 +577,8 @@ ON CONFLICT (event_slug) DO UPDATE SET
   location = EXCLUDED.location,
   description = EXCLUDED.description,
   registration_fee = EXCLUDED.registration_fee,
+  upi_id = EXCLUDED.upi_id,
+  qr_image_url = EXCLUDED.qr_image_url,
   status = EXCLUDED.status;
 
 -- Migration helpers if database was initialized with earlier schema:

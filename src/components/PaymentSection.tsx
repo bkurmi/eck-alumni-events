@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { PricingBreakdown } from '../lib/pricing';
 
 interface PaymentSectionProps {
@@ -24,7 +24,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   feePerPerson = 800,
   pricing,
   qrImageUrl,
-  upiId = 'eckalumni@upi',
+  upiId,
   screenshotFile,
   onScreenshotChange,
   error,
@@ -36,9 +36,12 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [qrError, setQrError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const displayQr = qrImageUrl || '/upi-qr.svg';
+  useEffect(() => {
+    setQrError(false);
+  }, [qrImageUrl]);
 
   const isPaidUpdate = Boolean(isUpdateMode && previousPaidAmount > 0);
   const extraDue =
@@ -226,28 +229,49 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           {/* QR Code Container */}
           <div className="qr-container">
             <div className="qr-card-frame">
-              <div className="qr-wrapper">
-                <img
-                  src={displayQr}
-                  alt="ECK Alumni UPI QR Code"
-                  className="qr-image"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    if (!target.src.endsWith('/upi-qr.svg')) {
-                      target.src = '/upi-qr.svg';
-                    }
-                  }}
-                />
-              </div>
-              <div className="qr-scan-badge">
-                <span>📷 Scan to Pay {isPaidUpdate ? `₹${extraDue}` : `₹${amount}`}</span>
-              </div>
+              {qrError || !qrImageUrl ? (
+                <div className="qr-wrapper qr-error-wrapper">
+                  <div className="qr-error-box">
+                    <span className="qr-error-icon">⚠️</span>
+                    <strong className="qr-error-title">QR failed to load</strong>
+                    {!upiId && (
+                      <p className="qr-error-subtext">
+                        Payment details unavailable — please contact event organizers
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="qr-wrapper">
+                    <img
+                      src={qrImageUrl}
+                      alt="ECK Alumni UPI QR Code"
+                      className="qr-image"
+                      onError={() => setQrError(true)}
+                    />
+                  </div>
+                  <div className="qr-scan-badge">
+                    <span>📷 Scan to Pay {isPaidUpdate ? `₹${extraDue}` : `₹${amount}`}</span>
+                  </div>
+                </>
+              )}
             </div>
 
-            <p className="qr-instruction">
-              Open <strong>PhonePe, Google Pay, Paytm, or BHIM</strong> to scan &amp; pay{' '}
-              <strong>₹{amountToPay}</strong>
-            </p>
+            {!qrError && qrImageUrl ? (
+              <p className="qr-instruction">
+                Open <strong>PhonePe, Google Pay, Paytm, or BHIM</strong> to scan &amp; pay{' '}
+                <strong>₹{amountToPay}</strong>
+              </p>
+            ) : upiId ? (
+              <p className="qr-instruction">
+                Please pay <strong>₹{amountToPay}</strong> using the UPI ID below
+              </p>
+            ) : (
+              <p className="qr-instruction qr-unavailable-text">
+                Payment details unavailable — please contact event organizers
+              </p>
+            )}
 
             {upiId && (
               <div className="upi-direct-action">

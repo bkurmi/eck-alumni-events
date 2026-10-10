@@ -216,3 +216,33 @@ export function convertLookupToFormData(lookup: ExistingRegistrationLookup): Reg
     children_under_7_count: kidsUnder7,
   };
 }
+
+/**
+ * Fetches current total count of registrations for an event.
+ * Tries RPC get_event_registration_count, falls back to direct table count.
+ */
+export async function getEventRegistrationCount(eventSlug: string): Promise<number> {
+  try {
+    const { data, error } = await supabase.rpc('get_event_registration_count', {
+      p_event_slug: eventSlug,
+    });
+    if (!error && typeof data === 'number') {
+      return data;
+    }
+  } catch (rpcErr) {
+    // Silent fallback
+  }
+
+  try {
+    const { count, error } = await supabase
+      .from('event_registrations')
+      .select('id', { count: 'exact', head: true });
+    if (!error && typeof count === 'number') {
+      return count;
+    }
+  } catch (countErr) {
+    // Silent fallback
+  }
+
+  return 0;
+}

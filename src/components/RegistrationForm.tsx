@@ -593,35 +593,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               uploadedScreenshotPath = uploadData.path;
               finalCombinedScreenshotPath = uploadData.path;
 
-              // Save uploaded screenshot path back to the registration record
-              try {
-                await supabase.rpc('register_for_event', {
-                  p_event_slug: event.event_slug,
-                  p_name: formData.name.trim(),
-                  p_mobile: cleanMobile,
-                  p_address: formData.address.trim(),
-                  p_country: resolvedCountry,
-                  p_city: formData.city.trim(),
-                  p_state: resolvedState,
-                  p_year_of_passing: Number(formData.year_of_passing),
-                  p_engineering_discipline: resolvedDiscipline,
-                  p_employment_type: resolvedEmploymentType,
-                  p_industry_domain: resolvedIndustryDomain,
-                  p_professional_category: combinedCategory,
-                  p_attendance_status: formData.attendance_status,
-                  p_number_of_attendees: pricing.totalAttendees,
-                  p_adults_count: formData.adults_count ?? 1,
-                  p_children_above_7_count: formData.children_above_7_count ?? 0,
-                  p_children_under_7_count: formData.children_under_7_count ?? 0,
-                  p_email: formData.email.trim() || null,
-                  p_organization: formData.organization.trim() || null,
-                  p_work_location: formData.work_location.trim() || null,
-                  p_payment_screenshot_path: uploadData.path,
-                });
-                console.log('[Registration Record Updated with Screenshot Path]:', uploadData.path);
-              } catch (updateErr) {
-                console.warn('[Registration Screenshot Sync Note]:', updateErr);
-              }
+              // Screenshot path will be synced below via direct update
+              console.log('[Storage Upload Path Recorded]:', uploadData.path);
             }
           } catch (storageErr) {
             console.error('[Storage Upload Exception]:', storageErr);
