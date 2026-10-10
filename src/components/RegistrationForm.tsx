@@ -1183,7 +1183,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </span>
               </div>
               <div className="rates-summary-badge">
-                <span>₹800 Single • ₹1,500 Couple • ₹300 Kids (7+) • Free (&lt;7)</span>
+                <span>₹800 Single • ₹1,500 Couple • ₹300 Kids (10+) • Free (&lt;10)</span>
               </div>
             </div>
 
@@ -1240,11 +1240,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </div>
               </div>
 
-              {/* Children (>7 years) Counter */}
+              {/* Children (>10 years) Counter */}
               <div className="tier-counter-card">
                 <div className="tier-info">
                   <div className="tier-name-row">
-                    <span className="tier-title">Children (7+ Years)</span>
+                    <span className="tier-title">Children (10+ Years)</span>
                   </div>
                   <span className="tier-desc">₹300 per child</span>
                 </div>
@@ -1254,7 +1254,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     onClick={() => handleCountStep('children_above_7_count', -1)}
                     disabled={(formData.children_above_7_count ?? 0) <= minKidsAbove7}
                     className="stepper-btn"
-                    aria-label="Decrease children above 7"
+                    aria-label="Decrease children 10 and above"
                     id="btn-dec-kids-above-7"
                     title={
                       isEnforcingMinCounts && (formData.children_above_7_count ?? 0) <= minKidsAbove7
@@ -1275,7 +1275,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     onClick={() => handleCountStep('children_above_7_count', 1)}
                     disabled={(formData.children_above_7_count ?? 0) >= 10}
                     className="stepper-btn"
-                    aria-label="Increase children above 7"
+                    aria-label="Increase children 10 and above"
                     id="btn-inc-kids-above-7"
                   >
                     +
@@ -1283,11 +1283,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </div>
               </div>
 
-              {/* Children (<7 years) Counter */}
+              {/* Children (<10 years) Counter */}
               <div className="tier-counter-card">
                 <div className="tier-info">
                   <div className="tier-name-row">
-                    <span className="tier-title">Children (Under 7 Years)</span>
+                    <span className="tier-title">Children (Under 10 Years)</span>
                     <span className="tier-badge free-badge">Free</span>
                   </div>
                   <span className="tier-desc">Complimentary reunion entry</span>
@@ -1298,7 +1298,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     onClick={() => handleCountStep('children_under_7_count', -1)}
                     disabled={(formData.children_under_7_count ?? 0) <= minKidsUnder7}
                     className="stepper-btn"
-                    aria-label="Decrease children under 7"
+                    aria-label="Decrease children under 10"
                     id="btn-dec-kids-under-7"
                     title={
                       isEnforcingMinCounts && (formData.children_under_7_count ?? 0) <= minKidsUnder7
@@ -1319,7 +1319,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     onClick={() => handleCountStep('children_under_7_count', 1)}
                     disabled={(formData.children_under_7_count ?? 0) >= 10}
                     className="stepper-btn"
-                    aria-label="Increase children under 7"
+                    aria-label="Increase children under 10"
                     id="btn-inc-kids-under-7"
                   >
                     +

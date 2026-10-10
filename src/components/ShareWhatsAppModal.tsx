@@ -67,8 +67,8 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 
     const parts: string[] = [];
     if (adults > 0) parts.push(`${adults} Adults`);
-    if (kids7Plus > 0) parts.push(`${kids7Plus} Kids (7+)`);
-    if (kidsUnder7 > 0) parts.push(`${kidsUnder7} Kids (<7)`);
+    if (kids7Plus > 0) parts.push(`${kids7Plus} Kids (10+)`);
+    if (kidsUnder7 > 0) parts.push(`${kidsUnder7} Kids (<10)`);
 
     if (parts.length > 1) {
       return `${total} Total (${parts.join(', ')})`;

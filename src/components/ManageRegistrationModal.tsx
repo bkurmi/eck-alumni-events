@@ -218,10 +218,10 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
                             ({foundReg.adults_count ?? 1} Adult
                             {(foundReg.adults_count ?? 1) > 1 ? 's' : ''}
                             {foundReg.children_above_7_count
-                              ? `, ${foundReg.children_above_7_count} Child (7+)`
+                              ? `, ${foundReg.children_above_7_count} Child (10+)`
                               : ''}
                             {foundReg.children_under_7_count
-                              ? `, ${foundReg.children_under_7_count} Child (<7)`
+                              ? `, ${foundReg.children_under_7_count} Child (<10)`
                               : ''}
                             )
                           </span>

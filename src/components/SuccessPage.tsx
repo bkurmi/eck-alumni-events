@@ -145,8 +145,8 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
                       {formData.adults_count === 2
                         ? 'Couple'
                         : `${formData.adults_count} Adult${formData.adults_count > 1 ? 's' : ''}`}
-                      {formData.children_above_7_count ? `, ${formData.children_above_7_count} Child (7+)` : ''}
-                      {formData.children_under_7_count ? `, ${formData.children_under_7_count} Child (<7)` : ''}
+                      {formData.children_above_7_count ? `, ${formData.children_above_7_count} Child (10+)` : ''}
+                      {formData.children_under_7_count ? `, ${formData.children_under_7_count} Child (<10)` : ''}
                       {')'}
                     </span>
                   )}

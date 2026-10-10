@@ -33,8 +33,8 @@ export const PRICING_RULES = {
  * - 1 Adult: ₹800
  * - Couple (2 Adults): ₹1,500
  * - >2 Adults: ₹1,500 (couple) + ₹800 for each additional adult
- * - Kids under 7: Free (₹0)
- * - Kids above 7: ₹300 per child
+ * - Kids under 10: Free (₹0)
+ * - Kids above 10: ₹300 per child
  */
 export function calculateContribution(
   adults: number = 1,
@@ -86,7 +86,7 @@ export function calculateContribution(
   const kidsAbove7Amount = safeKidsAbove7 * PRICING_RULES.KID_ABOVE_7;
   if (safeKidsAbove7 > 0) {
     items.push({
-      label: `Child${safeKidsAbove7 > 1 ? 'ren' : ''} (7+ yrs)`,
+      label: `Child${safeKidsAbove7 > 1 ? 'ren' : ''} (10+ yrs)`,
       count: safeKidsAbove7,
       rateDescription: `${safeKidsAbove7} × ₹${PRICING_RULES.KID_ABOVE_7}`,
       amount: kidsAbove7Amount,
@@ -96,7 +96,7 @@ export function calculateContribution(
   const kidsUnder7Amount = 0;
   if (safeKidsUnder7 > 0) {
     items.push({
-      label: `Child${safeKidsUnder7 > 1 ? 'ren' : ''} (<7 yrs)`,
+      label: `Child${safeKidsUnder7 > 1 ? 'ren' : ''} (<10 yrs)`,
       count: safeKidsUnder7,
       rateDescription: 'Complimentary',
       amount: 0,
