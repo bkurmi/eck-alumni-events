@@ -14,11 +14,11 @@ export const DEFAULT_UPI_CONFIGS: UpiPaymentConfig[] = [
     qr_image_url: '/qr-2.png',
   },
   {
-    upi_id: '9414936876@ibl',
+    upi_id: '9414936876@ybl',
     qr_image_url: '/qr-3.png',
   },
   {
-    upi_id: 'jyotibala.nagar@axisbank',
+    upi_id: '9001017275@ybl',
     qr_image_url: '/qr-4.png',
   },
 ];
