@@ -1150,7 +1150,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         <div className="card-header-badge">
           <div className="step-tag-pill">Step 2 of 3</div>
           <h2 className="card-title">Attendance &amp; Guests</h2>
-          <p className="card-subtitle">Will you be attending the Pre-Diwali Milan celebration?</p>
+          <p className="card-subtitle">Will you be attending the ECK-RTU Alumni DeepAura 2K26 celebration?</p>
         </div>
 
         <div className={`attendance-options-grid ${errorFieldId === 'attend-yes' ? 'input-error-highlight' : ''}`}>

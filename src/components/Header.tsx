@@ -7,8 +7,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  title = 'ECK Alumni Association, Kota Chapter',
-  tagline = 'Engineering College Kota',
+  title = 'ECK-RTU Alumni Kota Chapter',
+  tagline = '“दीप जले, यादें मुस्कुराएँ।”',
 }) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
@@ -16,13 +16,26 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="site-header">
       <div className="header-container">
-        <Link to="/" className="brand-link" aria-label="Home">
-          <div className="brand-logo-festive">
-            <span className="brand-diya-icon">🪔</span>
+        <Link to="/" className="brand-link" aria-label="ECK-RTU Alumni Kota Chapter">
+          <div className="brand-logos-cluster" title="ECK & RTU Kota">
+            <img
+              src="/logo-eck.png"
+              alt="Engineering College Kota"
+              className="brand-crest-emblem brand-crest-eck"
+              width="44"
+              height="44"
+            />
+            <img
+              src="/logo-rtu.png"
+              alt="Rajasthan Technical University"
+              className="brand-crest-emblem brand-crest-rtu"
+              width="44"
+              height="44"
+            />
           </div>
           <div className="brand-text">
             <span className="brand-title">{title}</span>
-            <span className="brand-subtitle">{tagline}</span>
+            <span className="brand-subtitle hindi-tagline">{tagline}</span>
           </div>
         </Link>
 

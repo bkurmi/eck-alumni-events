@@ -15,18 +15,18 @@ import type {
 } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
-  id: 'mock-diwali-2026',
-  event_name: 'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
-  event_slug: 'pre-diwali-milan-2026',
+  id: 'mock-deepaura-2026',
+  event_name: 'ECK-RTU Alumni DeepAura 2K26',
+  event_slug: 'deepaura-2k26',
   event_date: '2026-11-01',
   event_time: '5:00 PM onwards',
-  location: 'ECK, Kota, Rajasthan (College Ground)',
+  location: 'ECK Campus, Kota, Rajasthan (College Ground)',
   description:
-    'Reconnect • Relive • Celebrate — Join fellow ECK alumni for an evening of nostalgia, networking, cultural performances, dinner, and celebration before Diwali 2026.',
+    'Join fellow ECK and RTU alumni for an evening of nostalgic reunions, networking, cultural performances, gala dinner, and Diwali celebrations.',
   registration_fee: 800,
   upi_id: 'eckalumni@upi',
-  banner_image_url: null,
-  tagline: 'Reconnect • Relive • Celebrate',
+  banner_image_url: '/deepaura-banner.jpg',
+  tagline: '“दीप जले, यादें मुस्कुराएँ।”',
   theme_primary_color: '#6366f1',
   theme_accent_color: '#f59e0b',
   qr_image_url: '/upi-qr.svg',
@@ -37,7 +37,7 @@ const DEFAULT_EVENT: ECKEvent = {
 
 export const EventPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
-  const activeSlug = slug || 'pre-diwali-milan-2026';
+  const activeSlug = slug || 'deepaura-2k26';
 
   const [event, setEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [loading, setLoading] = useState(true);
@@ -140,8 +140,8 @@ export const EventPage: React.FC = () => {
   return (
     <div className="app-layout">
       <Header
-        title="ECK Alumni Association, Kota Chapter"
-        tagline={event.tagline || 'Engineering College Kota'}
+        title="ECK-RTU Alumni Kota Chapter"
+        tagline={event.tagline || '“दीप जले, यादें मुस्कुराएँ।”'}
       />
 
       <main className="main-content">
@@ -233,7 +233,7 @@ export const EventPage: React.FC = () => {
                     onClick={handleStartRegistration}
                     className="btn btn-primary btn-large btn-block"
                   >
-                    <span>Register for Pre-Diwali Milan</span>
+                    <span>Register for DeepAura 2K26</span>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="9 18 15 12 9 6"/>
                     </svg>
@@ -265,9 +265,17 @@ export const EventPage: React.FC = () => {
 
       <footer className="site-footer">
         <div className="footer-content">
-          <p>© {new Date().getFullYear()} Engineering College Kota (ECK) Alumni Association, Kota Chapter</p>
+          <div className="footer-logos-row">
+            <img src="/logo-eck.png" alt="ECK Kota" className="footer-crest-img" width="44" height="44" />
+            <img src="/logo-rtu.png" alt="RTU Kota" className="footer-crest-img" width="44" height="44" />
+          </div>
+          <p className="footer-org-name">ECK-RTU Alumni Kota Chapter</p>
+          <p className="footer-tagline-text">“दीप जले, यादें मुस्कुराएँ।”</p>
           <p className="footer-sub">
-            Pre-Diwali Milan 2026 • Kota, Rajasthan
+            ECK-RTU Alumni DeepAura 2K26 • Kota, Rajasthan
+          </p>
+          <p className="footer-copyright">
+            © {new Date().getFullYear()} ECK-RTU Alumni Kota Chapter. All Rights Reserved.
           </p>
         </div>
       </footer>

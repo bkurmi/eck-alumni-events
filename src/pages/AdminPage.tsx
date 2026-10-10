@@ -6,18 +6,18 @@ import { supabase } from '../lib/supabase';
 import type { EventRegistration, ECKEvent } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
-  id: 'mock-diwali-2026',
-  event_name: 'Engineering College Kota Alumni – Pre-Diwali Milan 2026',
-  event_slug: 'pre-diwali-milan-2026',
+  id: 'mock-deepaura-2026',
+  event_name: 'ECK-RTU Alumni DeepAura 2K26',
+  event_slug: 'deepaura-2k26',
   event_date: '2026-11-01',
   event_time: '5:00 PM onwards',
-  location: 'ECK, Kota, Rajasthan (College Ground)',
+  location: 'ECK Campus, Kota, Rajasthan (College Ground)',
   description:
-    'Reconnect • Relive • Celebrate — Join fellow ECK alumni for an evening of nostalgia, networking, cultural performances, dinner, and celebration before Diwali 2026.',
+    'Join fellow ECK and RTU alumni for an evening of nostalgic reunions, networking, cultural celebrations, gala dinner, and Diwali celebrations.',
   registration_fee: 800,
   upi_id: 'eckalumni@upi',
-  banner_image_url: null,
-  tagline: 'Reconnect • Relive • Celebrate',
+  banner_image_url: '/deepaura-banner.jpg',
+  tagline: '“दीप जले, यादें मुस्कुराएँ।”',
   theme_primary_color: '#6366f1',
   theme_accent_color: '#f59e0b',
   qr_image_url: '/upi-qr.svg',
@@ -171,7 +171,9 @@ export const AdminPage: React.FC = () => {
     const webUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
 
     const lines = [
-      '🪔✨ *ECK ALUMNI PRE-DIWALI MILAN 2026* ✨🪔',
+      '🪔✨ *ECK-RTU ALUMNI DEEPAURA 2K26* ✨🪔',
+      '🏛️ *Organised By:* ECK-RTU Alumni Kota Chapter',
+      '✨ *Tagline:* “दीप जले, यादें मुस्कुराएँ।”',
       `🎉 *Registration Details: ${name}*`,
       '',
       `🎫 *Registration ID:* ${reg.registration_number}`,
@@ -186,7 +188,7 @@ export const AdminPage: React.FC = () => {
       `📅 *Date:* ${eventDate}`,
       `📍 *Venue:* ${venue}`,
       `🔗 *Portal:* ${webUrl}`,
-      '🪔 *Looking forward to celebrating with you! Shubh Deepawali in advance!* ✨',
+      '🪔 *“दीप जले, यादें मुस्कुराएँ।” See you at DeepAura 2K26!* ✨',
     ];
 
     return lines.filter(Boolean).join('\n');
@@ -303,7 +305,7 @@ export const AdminPage: React.FC = () => {
 
   return (
     <div className="app-layout">
-      <Header title="Organizer Portal" tagline="ECK Alumni Registrations" />
+      <Header title="Organizer Portal" tagline="ECK-RTU Alumni Registrations" />
 
       <main className="main-content">
         <div className="content-container">

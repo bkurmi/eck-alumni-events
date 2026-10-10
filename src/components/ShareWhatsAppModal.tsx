@@ -78,7 +78,7 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 
   // Generate the formatted WhatsApp message
   const generatedMessage = useMemo(() => {
-    const eventName = event?.event_name || 'Engineering College Kota – Pre-Diwali Milan 2026';
+    const eventName = event?.event_name || 'ECK-RTU Alumni DeepAura 2K26';
     const eventDate = event?.event_date || '01 Nov 2026';
     const eventVenue = event?.location || 'ECK Campus, Kota';
     const websiteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
@@ -87,10 +87,12 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 
     // Festive Header
     lines.push(`🪔✨ *${eventName.toUpperCase()}* ✨🪔`);
+    lines.push('🏛️ *Organised By:* ECK-RTU Alumni Kota Chapter');
+    lines.push('✨ *“दीप जले, यादें मुस्कुराएँ।”*');
     lines.push('🎉 *Registered Alumni & Attendees List* 🎉');
     lines.push('');
-    lines.push('Dear ECKites & Respected Alumni,');
-    lines.push('The celebration is getting bigger and brighter! 🪔 Here is the latest list of our enthusiastic alumni who have registered to celebrate Pre-Diwali Milan together:');
+    lines.push('Dear ECK-RTU Alumni & Friends,');
+    lines.push('The celebration is getting bigger and brighter! 🪔 Here is the latest list of our enthusiastic alumni who have registered for ECK-RTU Alumni DeepAura 2K26:');
     lines.push('');
 
     // Summary Highlights
@@ -207,13 +209,13 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 
     // Festive Outro & Event Details
     lines.push('━━━━━━━━━━━━━━━━━━━━━');
-    lines.push('🪔 *Let’s illuminate this Diwali with golden college memories!*');
+    lines.push('🪔 *“दीप जले, यादें मुस्कुराएँ।” Let’s illuminate this reunion together!*');
     lines.push(`📅 *Date:* ${eventDate}`);
     lines.push(`📍 *Venue:* ${eventVenue}`);
     if (includeEventLink) {
       lines.push(`🔗 *Register / Update Details:* ${websiteUrl}`);
     }
-    lines.push('✨ *See you all at ECK! Shubh Deepawali in advance!* ✨🪔');
+    lines.push('✨ *See you all at ECK-RTU Alumni DeepAura 2K26! Shubh Deepawali!* ✨🪔');
 
     return lines.join('\n');
   }, [
@@ -296,7 +298,7 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'ECK Alumni Pre-Diwali Milan 2026 - Attendees',
+          title: 'ECK-RTU Alumni DeepAura 2K26 - Attendees',
           text: generatedMessage,
         });
         setShareStatus('Shared successfully!');

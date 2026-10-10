@@ -27,7 +27,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       <div className="event-banner-wrap">
         <img
           src={bannerImg}
-          alt="ECK Alumni Pre-Diwali Milan 2026 Celebration"
+          alt="ECK-RTU Alumni DeepAura 2K26"
           className="event-banner-img"
           loading="eager"
         />
@@ -47,7 +47,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         <h1 className="event-title">{event.event_name}</h1>
 
         {event.tagline && (
-          <p className="event-tagline">
+          <p className="event-tagline hindi-tagline-hero">
             <span className="tagline-flourish">✦</span> {event.tagline}{' '}
             <span className="tagline-flourish">✦</span>
           </p>
@@ -130,7 +130,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                 className="btn btn-festive-primary btn-large btn-block"
                 id="btn-register-now"
               >
-                <span>Join Reunion &amp; Register Now</span>
+                <span>Join DeepAura 2K26 • Register Now</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="9 18 15 12 9 6"/>
                 </svg>

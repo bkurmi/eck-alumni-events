@@ -28,7 +28,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       navigator
         .share({
           title: `Registered for ${event.event_name}`,
-          text: `I have registered for ${event.event_name} (Registration No: ${result.registration_number})! Reconnecting with ECK alumni!`,
+          text: `I have registered for ${event.event_name} (Registration No: ${result.registration_number})! “दीप जले, यादें मुस्कुराएँ।” Reconnecting with ECK-RTU alumni!`,
           url: window.location.href,
         })
         .catch(() => {});
@@ -39,6 +39,16 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
 
   return (
     <div className="success-page-card">
+      {/* Official Organiser & Institution Crests */}
+      <div className="success-crest-header">
+        <div className="success-crests-pair">
+          <img src="/logo-eck.png" alt="Engineering College Kota" className="success-crest-img" width="48" height="48" />
+          <img src="/logo-rtu.png" alt="Rajasthan Technical University" className="success-crest-img" width="48" height="48" />
+        </div>
+        <span className="success-org-label">ECK-RTU Alumni Kota Chapter</span>
+        <span className="success-tagline-pill">“दीप जले, यादें मुस्कुराएँ।”</span>
+      </div>
+
       {/* Celebratory Icon */}
       <div className="success-icon-wrap">
         <div className="success-pulse-ring" />
