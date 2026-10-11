@@ -16,8 +16,20 @@ export function cleanMobileNumber(mobile: string): string {
 
 const LOCAL_STORAGE_PREFIX = 'eck_reg_cache_';
 
+// Purge any legacy registration caches from browser so database is strictly the single source of truth
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith(LOCAL_STORAGE_PREFIX) || k.startsWith('eck_latest_mobile_'))
+      .forEach((k) => localStorage.removeItem(k));
+  }
+} catch (_) {
+  // Ignore localStorage access failures
+}
+
 /**
- * Queries Supabase (and local fallback cache) to check if a user is already registered for an event.
+ * Queries Supabase directly to check if a user is already registered for an event.
+ * Database is strictly the single source of truth (no stale cache fallback).
  */
 export async function lookupRegistrationByMobile(
   eventSlug: string,
@@ -35,17 +47,17 @@ export async function lookupRegistrationByMobile(
       p_mobile: cleanMobile,
     });
 
-    if (!error && data && data.found) {
-      const reg = data as ExistingRegistrationLookup;
-      // Cache locally for offline/instant reload
-      cacheRegistrationLocally(eventSlug, cleanMobile, reg);
-      return reg;
+    if (!error && data) {
+      if (data.found) {
+        return data as ExistingRegistrationLookup;
+      }
+      return { found: false };
     }
   } catch (rpcErr) {
     console.warn('RPC get_registration_by_mobile notice:', rpcErr);
   }
 
-  // 2. Secondary fallback: Query Supabase tables directly (if RLS allows)
+  // 2. Secondary fallback: Query Supabase tables directly (if RPC failed or RLS allows)
   try {
     const { data: eventData } = await supabase
       .from('events')
@@ -84,7 +96,6 @@ export async function lookupRegistrationByMobile(
             updated_at: regData.updated_at,
             alumni: alumniData as Alumni,
           };
-          cacheRegistrationLocally(eventSlug, cleanMobile, result);
           return result;
         }
       }
@@ -93,39 +104,19 @@ export async function lookupRegistrationByMobile(
     console.warn('Table fallback lookup notice:', tableErr);
   }
 
-  // 3. Fallback to browser local cache
-  try {
-    const cacheKey = `${LOCAL_STORAGE_PREFIX}${eventSlug}_${cleanMobile}`;
-    const cachedStr = localStorage.getItem(cacheKey);
-    if (cachedStr) {
-      const parsed = JSON.parse(cachedStr) as ExistingRegistrationLookup;
-      return parsed;
-    }
-  } catch (cacheErr) {
-    console.warn('Local cache read notice:', cacheErr);
-  }
-
+  // 3. Strictly return not found (no local cache fallback)
   return { found: false };
 }
 
 /**
- * Cache registration in localStorage
+ * Cache registration helper retained for backwards compatibility (no-op)
  */
 export function cacheRegistrationLocally(
-  eventSlug: string,
-  mobile: string,
-  reg: ExistingRegistrationLookup
+  _eventSlug: string,
+  _mobile: string,
+  _reg: ExistingRegistrationLookup
 ): void {
-  try {
-    const cleanMobile = cleanMobileNumber(mobile);
-    if (!cleanMobile) return;
-    const cacheKey = `${LOCAL_STORAGE_PREFIX}${eventSlug}_${cleanMobile}`;
-    localStorage.setItem(cacheKey, JSON.stringify(reg));
-    // Also save latest mobile for current event for quick access
-    localStorage.setItem(`eck_latest_mobile_${eventSlug}`, cleanMobile);
-  } catch (e) {
-    // Ignore localStorage write failures
-  }
+  // No-op: cache disabled to ensure database is always the single source of truth
 }
 
 /**
