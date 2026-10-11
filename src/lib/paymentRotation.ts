@@ -6,7 +6,7 @@ import type { ECKEvent, UpiPaymentConfig } from '../types';
  */
 export const DEFAULT_UPI_CONFIGS: UpiPaymentConfig[] = [
   {
-    upi_id: '9799951857@upi',
+    upi_id: '9414177517@sbi',
     qr_image_url: '/qr-1.png',
   },
   {
