@@ -321,6 +321,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       scrollToError('Please enter a valid 10-digit mobile / WhatsApp number.', 'field-mobile');
       return;
     }
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        scrollToError('Please enter a valid email address (e.g. name@example.com) or leave it blank.', 'field-email');
+        return;
+      }
+    }
     if (!formData.address.trim()) {
       scrollToError('Please enter your residential or permanent address.', 'field-address');
       return;
@@ -842,7 +849,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.email}
               onChange={handleChange}
               placeholder="alumni@example.com"
-              className="input-field"
+              className={`input-field ${errorFieldId === 'field-email' ? 'input-error-highlight' : ''}`}
               autoComplete="email"
             />
           </div>
