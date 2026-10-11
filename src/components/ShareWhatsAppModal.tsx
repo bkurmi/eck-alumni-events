@@ -11,6 +11,7 @@ interface ShareWhatsAppModalProps {
 
 type FilterOption = 'attending' | 'all' | 'filtered';
 type GroupOption = 'grouped' | 'numbered' | 'compact';
+type SortOption = 'first_registered' | 'latest_registered';
 
 export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
   isOpen,
@@ -21,20 +22,63 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 }) => {
   const [filterOption, setFilterOption] = useState<FilterOption>('attending');
   const [groupOption, setGroupOption] = useState<GroupOption>('grouped');
+  const [sortOrder, setSortOrder] = useState<SortOption>('first_registered');
   const [includeLocation, setIncludeLocation] = useState(true);
   const [includeDiscipline, setIncludeDiscipline] = useState(true);
   const [includeAttendees, setIncludeAttendees] = useState(true);
+  const [includeRegNumber, setIncludeRegNumber] = useState(false);
   const [includeEventLink, setIncludeEventLink] = useState(true);
   const [copied, setCopied] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
 
-  // Determine active registrations based on filterOption
+  // Helper to compare registrations in chronological order (earliest/first registration comes first)
+  const compareFirstRegistered = (a: EventRegistration, b: EventRegistration): number => {
+    // 1. Try registration_number numeric sequence (e.g. REG-00001 before REG-00002)
+    const matchA = (a.registration_number || '').match(/\d+/);
+    const matchB = (b.registration_number || '').match(/\d+/);
+    if (matchA && matchB) {
+      const numA = parseInt(matchA[0], 10);
+      const numB = parseInt(matchB[0], 10);
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+        return numA - numB;
+      }
+    }
+
+    // 2. Try created_at timestamp
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (timeA && timeB && timeA !== timeB) {
+      return timeA - timeB;
+    }
+
+    // 3. Fallback alphanumeric comparison
+    return (a.registration_number || a.id || '').localeCompare(
+      b.registration_number || b.id || '',
+      undefined,
+      { numeric: true }
+    );
+  };
+
+  // Determine active registrations based on filterOption and sortOrder (default: first registration first)
   const activeList = useMemo(() => {
-    if (filterOption === 'all') return registrations;
-    if (filterOption === 'filtered') return filteredRegistrations;
-    // Default: 'attending'
-    return registrations.filter((r) => r.attendance_status === 'yes');
-  }, [filterOption, registrations, filteredRegistrations]);
+    let list: EventRegistration[] = [];
+    if (filterOption === 'all') {
+      list = [...registrations];
+    } else if (filterOption === 'filtered') {
+      list = [...filteredRegistrations];
+    } else {
+      // Default: 'attending'
+      list = registrations.filter((r) => r.attendance_status === 'yes');
+    }
+
+    return list.sort((a, b) => {
+      if (sortOrder === 'first_registered') {
+        return compareFirstRegistered(a, b);
+      } else {
+        return compareFirstRegistered(b, a);
+      }
+    });
+  }, [filterOption, registrations, filteredRegistrations, sortOrder]);
 
   // Aggregate stats
   const listStats = useMemo(() => {
@@ -136,11 +180,12 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 
         batchRegs.forEach((reg) => {
           const name = reg.alumni?.name || 'Alumnus';
+          const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
           const discipline = includeDiscipline && reg.alumni?.engineering_discipline ? ` • ${reg.alumni.engineering_discipline}` : '';
           const location = includeLocation && reg.alumni?.city ? `📍 ${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
           const attendees = includeAttendees ? `👥 ${formatAttendeeDetail(reg)}` : '';
 
-          lines.push(`  • *${name}*${discipline}`);
+          lines.push(`  • *${name}*${regCode}${discipline}`);
           if (location && attendees) {
             lines.push(`    ${location} | ${attendees}`);
           } else if (location) {
@@ -156,11 +201,12 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
         lines.push(`🎓 *OTHER BATCHES* (${noYearList.length})`);
         noYearList.forEach((reg) => {
           const name = reg.alumni?.name || 'Alumnus';
+          const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
           const discipline = includeDiscipline && reg.alumni?.engineering_discipline ? ` • ${reg.alumni.engineering_discipline}` : '';
           const location = includeLocation && reg.alumni?.city ? `📍 ${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
           const attendees = includeAttendees ? `👥 ${formatAttendeeDetail(reg)}` : '';
 
-          lines.push(`  • *${name}*${discipline}`);
+          lines.push(`  • *${name}*${regCode}${discipline}`);
           if (location && attendees) {
             lines.push(`    ${location} | ${attendees}`);
           } else if (location) {
@@ -175,23 +221,25 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
       // Compact one-liner list
       activeList.forEach((reg, idx) => {
         const name = reg.alumni?.name || 'Alumnus';
+        const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
         const year = reg.alumni?.year_of_passing ? `'${String(reg.alumni.year_of_passing).slice(-2)}` : '';
         const disc = includeDiscipline && reg.alumni?.engineering_discipline ? ` (${reg.alumni.engineering_discipline})` : '';
         const loc = includeLocation && reg.alumni?.city ? ` - ${reg.alumni.city}` : '';
         const att = includeAttendees ? ` [👥 ${reg.number_of_attendees || 1}]` : '';
 
-        lines.push(`${idx + 1}. *${name}* ${year ? `(${year})` : ''}${disc}${loc}${att}`);
+        lines.push(`${idx + 1}. *${name}*${regCode} ${year ? `(${year})` : ''}${disc}${loc}${att}`);
       });
       lines.push('');
     } else {
       // Numbered sequential list
       activeList.forEach((reg, idx) => {
         const name = reg.alumni?.name || 'Alumnus';
+        const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
         const batch = reg.alumni?.year_of_passing ? `Batch ${reg.alumni.year_of_passing}` : '';
         const disc = includeDiscipline && reg.alumni?.engineering_discipline ? reg.alumni.engineering_discipline : '';
         const batchDisc = [batch, disc].filter(Boolean).join(' • ');
 
-        lines.push(`${idx + 1}. *${name}* ${batchDisc ? `(${batchDisc})` : ''}`);
+        lines.push(`${idx + 1}. *${name}*${regCode} ${batchDisc ? `(${batchDisc})` : ''}`);
 
         const loc = includeLocation && reg.alumni?.city ? `📍 ${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
         const att = includeAttendees ? `👥 ${formatAttendeeDetail(reg)}` : '';
@@ -226,6 +274,7 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     includeLocation,
     includeDiscipline,
     includeAttendees,
+    includeRegNumber,
     includeEventLink,
   ]);
 
@@ -403,6 +452,29 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
               </div>
             </div>
 
+            {/* Order of Registrations */}
+            <div className="share-control-group">
+              <label className="share-control-label">Order of Registrations:</label>
+              <div className="share-pill-group">
+                <button
+                  type="button"
+                  className={`share-pill-btn ${sortOrder === 'first_registered' ? 'active' : ''}`}
+                  onClick={() => setSortOrder('first_registered')}
+                  title="First registered person comes first (#1, #2...)"
+                >
+                  ⏳ First Registered First (Oldest to Newest)
+                </button>
+                <button
+                  type="button"
+                  className={`share-pill-btn ${sortOrder === 'latest_registered' ? 'active' : ''}`}
+                  onClick={() => setSortOrder('latest_registered')}
+                  title="Most recently registered person comes first"
+                >
+                  🆕 Latest Registered First
+                </button>
+              </div>
+            </div>
+
             {/* Field Toggles */}
             <div className="share-control-group">
               <label className="share-control-label">Include in Message:</label>
@@ -433,6 +505,15 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
                     className="share-checkbox"
                   />
                   <span>👥 Accompanying Count</span>
+                </label>
+                <label className="share-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={includeRegNumber}
+                    onChange={(e) => setIncludeRegNumber(e.target.checked)}
+                    className="share-checkbox"
+                  />
+                  <span>🎫 Registration ID</span>
                 </label>
                 <label className="share-checkbox-label">
                   <input
