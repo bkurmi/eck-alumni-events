@@ -34,6 +34,21 @@ const getPublicScreenshotUrl = (path: string | null | undefined) => {
 };
 
 
+// Receiving accounts tracked specifically for UPI Reconciliation Reporting
+const RECONCILIATION_ACCOUNTS: { upi_id: string; bankName: string }[] = [
+  ...DEFAULT_UPI_CONFIGS.map((c) => {
+    let bank = 'UPI';
+    if (c.upi_id.includes('sbi')) bank = 'SBI';
+    else if (c.upi_id.includes('axis')) bank = 'Axis';
+    else if (c.upi_id.includes('ybl')) bank = 'Yes Bank';
+    return { upi_id: c.upi_id, bankName: bank };
+  }),
+  {
+    upi_id: '9799951857@upi',
+    bankName: 'UPI',
+  },
+];
+
 export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = ({
   registrations,
   verifications,
@@ -42,21 +57,14 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   loading = false,
   currentUserEmail,
 }) => {
-  // Known accounts list
+  // Known accounts list specifically for reconciliation reporting
   const knownAccounts: KnownAccount[] = useMemo(() => {
-    return DEFAULT_UPI_CONFIGS.map((c, idx) => {
-      let bank = 'UPI';
-      if (c.upi_id.includes('sbi')) bank = 'SBI';
-      else if (c.upi_id.includes('axis')) bank = 'Axis';
-      else if (c.upi_id.includes('ybl')) bank = 'Yes Bank';
-
-      return {
-        upi_id: c.upi_id.toLowerCase().trim(),
-        label: `QR ${idx + 1} (${bank})`,
-        badge: `QR ${idx + 1}`,
-        bankName: bank,
-      };
-    });
+    return RECONCILIATION_ACCOUNTS.map((c, idx) => ({
+      upi_id: c.upi_id.toLowerCase().trim(),
+      label: `QR ${idx + 1} (${c.bankName})`,
+      badge: `QR ${idx + 1}`,
+      bankName: c.bankName,
+    }));
   }, []);
 
   // All filterable account keys: known accounts + 'unassigned'
