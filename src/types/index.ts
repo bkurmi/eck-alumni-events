@@ -3,6 +3,7 @@
 export interface UpiPaymentConfig {
   upi_id: string;
   qr_image_url: string;
+  account_name?: string;
 }
 
 export interface ECKEvent {

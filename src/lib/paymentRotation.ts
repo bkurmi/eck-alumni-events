@@ -1,25 +1,47 @@
 import type { ECKEvent, UpiPaymentConfig } from '../types';
 
 /**
- * 5 Pre-configured UPI and QR Code endpoints.
+ * Display names for receiving UPI accounts (used in Reconciliation Report).
+ * 👉 Update these placeholder names ("Account 1", "Account 2", etc.) with your desired custom names.
+ */
+export const UPI_ACCOUNT_NAMES: Record<string, string> = {
+  '9414177517@sbi': 'Hari Narayan',
+  'jyotibala.nagar@axisbank': 'Mitesh',
+  '9414936876@ibl': 'Rajeev',
+  '9001017275@ybl': 'Mukesh',
+  '9799951857@upi': 'Chetan',
+};
+
+export function getUpiAccountName(upiId?: string | null): string {
+  if (!upiId) return '';
+  const normalized = upiId.toLowerCase().trim();
+  return UPI_ACCOUNT_NAMES[normalized] || '';
+}
+
+/**
+ * 4 Pre-configured UPI and QR Code endpoints.
  * These act as fallback or default sequence unless overridden dynamically in Supabase `events.upi_rotation_configs`.
  */
 export const DEFAULT_UPI_CONFIGS: UpiPaymentConfig[] = [
   {
     upi_id: '9414177517@sbi',
     qr_image_url: '/qr-1.png',
+    account_name: UPI_ACCOUNT_NAMES['9414177517@sbi'] || 'Account 1',
   },
   {
     upi_id: 'jyotibala.nagar@axisbank',
     qr_image_url: '/qr-2.png',
+    account_name: UPI_ACCOUNT_NAMES['jyotibala.nagar@axisbank'] || 'Account 2',
   },
   {
     upi_id: '9414936876@ibl',
     qr_image_url: '/qr-3.png',
+    account_name: UPI_ACCOUNT_NAMES['9414936876@ibl'] || 'Account 3',
   },
   {
     upi_id: '9001017275@ybl',
     qr_image_url: '/qr-4.png',
+    account_name: UPI_ACCOUNT_NAMES['9001017275@ybl'] || 'Account 4',
   },
 ];
 

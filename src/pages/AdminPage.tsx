@@ -3,7 +3,6 @@ import { Header } from '../components/Header';
 import { AdminLogin } from '../components/AdminLogin';
 import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
-import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
 import type { EventRegistration, ECKEvent, PaymentVerification } from '../types';
 
@@ -38,8 +37,6 @@ export const AdminPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'yes' | 'maybe' | 'no'>('all');
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
-  const [modalAssignedUpi, setModalAssignedUpi] = useState<string>('');
-  const [savingModalUpi, setSavingModalUpi] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [singleCopied, setSingleCopied] = useState(false);
@@ -61,13 +58,6 @@ export const AdminPage: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sync modal assigned UPI when selectedReg changes
-  useEffect(() => {
-    if (selectedReg) {
-      const existing = selectedReg.payment_verifications?.[0]?.upi_id || '';
-      setModalAssignedUpi(existing);
-    }
-  }, [selectedReg]);
 
   // Fetch registrations and payment verifications
   const fetchRegistrations = async () => {
@@ -760,72 +750,6 @@ export const AdminPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Quick UPI Verification Box inside Modal */}
-              <div className="modal-verify-box">
-                <div className="modal-verify-title">
-                  <span>💳 Receiving UPI ID:</span>
-                  {selectedReg.payment_verifications?.[0]?.upi_id ? (
-                    <span className="assigned-upi-pill">
-                      {selectedReg.payment_verifications[0].upi_id}
-                    </span>
-                  ) : (
-                    <span className="unassigned-warning-pill">⚠️ Not Tagged Yet</span>
-                  )}
-                </div>
-                <div className="modal-verify-row">
-                  <select
-                    value={modalAssignedUpi}
-                    onChange={(e) => setModalAssignedUpi(e.target.value)}
-                    className="form-input"
-                    disabled={savingModalUpi}
-                    style={{ flex: 1, minWidth: '220px' }}
-                  >
-                    <option value="">-- Select Receiving UPI ID --</option>
-                    {DEFAULT_UPI_CONFIGS.map((c, idx) => (
-                      <option key={c.upi_id} value={c.upi_id}>
-                        UPI {idx + 1} ({c.upi_id})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    disabled={savingModalUpi || !modalAssignedUpi}
-                    onClick={async () => {
-                      if (!modalAssignedUpi) return;
-                      setSavingModalUpi(true);
-                      const ok = await handleSaveVerification(
-                        selectedReg.id,
-                        modalAssignedUpi,
-                        selectedReg.amount || 800
-                      );
-                      setSavingModalUpi(false);
-                      if (ok) {
-                        setSelectedReg((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                payment_verifications: [
-                                  {
-                                    id: 'local',
-                                    registration_id: prev.id,
-                                    upi_id: modalAssignedUpi,
-                                    amount: prev.amount,
-                                    verified_status: 'VERIFIED',
-                                    created_at: new Date().toISOString(),
-                                    updated_at: new Date().toISOString(),
-                                  },
-                                ],
-                              }
-                            : null
-                        );
-                      }
-                    }}
-                    className="btn btn-primary btn-sm"
-                  >
-                    {savingModalUpi ? 'Saving...' : '💾 Save QR Account'}
-                  </button>
-                </div>
-              </div>
 
               {/* Payment Screenshot Display */}
               <div className="modal-screenshot-section">

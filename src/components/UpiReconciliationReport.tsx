@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { EventRegistration, PaymentVerification } from '../types';
-import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
+import { DEFAULT_UPI_CONFIGS, UPI_ACCOUNT_NAMES } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
 
 interface UpiReconciliationReportProps {
@@ -22,6 +22,7 @@ interface KnownAccount {
   label: string;
   badge: string;
   bankName: string;
+  accountName: string;
 }
 
 const getPublicScreenshotUrl = (path: string | null | undefined) => {
@@ -35,18 +36,24 @@ const getPublicScreenshotUrl = (path: string | null | undefined) => {
 
 
 // Receiving accounts tracked specifically for UPI Reconciliation Reporting
-const RECONCILIATION_ACCOUNTS: { upi_id: string; bankName: string }[] = [
-  ...DEFAULT_UPI_CONFIGS.map((c) => {
+const RECONCILIATION_ACCOUNTS: { upi_id: string; bankName: string; accountName: string }[] = [
+  ...DEFAULT_UPI_CONFIGS.map((c, idx) => {
     let bank = 'UPI';
-    if (c.upi_id.includes('sbi')) bank = 'SBI';
-    else if (c.upi_id.includes('axis')) bank = 'Axis';
-    else if (c.upi_id.includes('ybl')) bank = 'Yes Bank';
-    else if (c.upi_id.includes('ibl')) bank = 'ICICI';
-    return { upi_id: c.upi_id, bankName: bank };
+    const upi = c.upi_id.toLowerCase().trim();
+    if (upi.includes('sbi')) bank = 'SBI';
+    else if (upi.includes('axis')) bank = 'Axis';
+    else if (upi.includes('ybl')) bank = 'Yes Bank';
+    else if (upi.includes('ibl')) bank = 'ICICI';
+    return {
+      upi_id: upi,
+      bankName: bank,
+      accountName: c.account_name || UPI_ACCOUNT_NAMES[upi] || `Account ${idx + 1}`,
+    };
   }),
   {
     upi_id: '9799951857@upi',
     bankName: 'UPI',
+    accountName: UPI_ACCOUNT_NAMES['9799951857@upi'] || 'Chetan',
   },
 ];
 
@@ -60,13 +67,37 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 }) => {
   // Known accounts list specifically for reconciliation reporting
   const knownAccounts: KnownAccount[] = useMemo(() => {
-    return RECONCILIATION_ACCOUNTS.map((c, idx) => ({
+    const list: KnownAccount[] = RECONCILIATION_ACCOUNTS.map((c) => ({
       upi_id: c.upi_id.toLowerCase().trim(),
-      label: `QR ${idx + 1} (${c.bankName})`,
-      badge: `QR ${idx + 1}`,
+      label: `${c.accountName} (${c.bankName})`,
+      badge: c.accountName,
       bankName: c.bankName,
+      accountName: c.accountName,
     }));
-  }, []);
+
+    // Include any verified UPI IDs from database not already in default list
+    verifications.forEach((v) => {
+      if (!v.upi_id) return;
+      const upi = v.upi_id.toLowerCase().trim();
+      if (!list.some((a) => a.upi_id === upi)) {
+        let bank = 'UPI';
+        if (upi.includes('sbi')) bank = 'SBI';
+        else if (upi.includes('axis')) bank = 'Axis';
+        else if (upi.includes('ybl')) bank = 'Yes Bank';
+        else if (upi.includes('ibl')) bank = 'ICICI';
+        const name = UPI_ACCOUNT_NAMES[upi] || upi;
+        list.push({
+          upi_id: upi,
+          label: `${name} (${bank})`,
+          badge: name,
+          bankName: bank,
+          accountName: name,
+        });
+      }
+    });
+
+    return list;
+  }, [verifications]);
 
   // All filterable account keys: known accounts + 'unassigned'
   const allAccountKeys = useMemo(() => {
@@ -1019,14 +1050,23 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   <select
                     value={editUpiId}
                     onChange={(e) => setEditUpiId(e.target.value)}
-                    className="upi-form-select font-mono"
+                    className="upi-form-select"
                   >
-                    {knownAccounts.map((acc) => (
-                      <option key={acc.upi_id} value={acc.upi_id}>
-                        {acc.upi_id}
-                      </option>
-                    ))}
-                    <option value="custom">Other / Custom UPI ID...</option>
+                    {knownAccounts.map((acc) => {
+                      const name = acc.accountName || UPI_ACCOUNT_NAMES[acc.upi_id] || '';
+                      const hasName = name && name.toLowerCase().trim() !== acc.upi_id.toLowerCase().trim();
+                      const bankLabel = acc.bankName && acc.bankName !== 'UPI' ? ` (${acc.bankName})` : '';
+                      const displayText = hasName
+                        ? `${name} — ${acc.upi_id}${bankLabel}`
+                        : `${acc.upi_id}${bankLabel}`;
+
+                      return (
+                        <option key={acc.upi_id} value={acc.upi_id}>
+                          {displayText}
+                        </option>
+                      );
+                    })}
+                    <option value="custom">✏️ Other / Custom UPI ID...</option>
                   </select>
                 </div>
 
