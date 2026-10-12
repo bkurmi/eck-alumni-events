@@ -14,7 +14,7 @@ export const DEFAULT_UPI_CONFIGS: UpiPaymentConfig[] = [
     qr_image_url: '/qr-2.png',
   },
   {
-    upi_id: '9414936876@ybl',
+    upi_id: '9414936876@ibl',
     qr_image_url: '/qr-3.png',
   },
   {

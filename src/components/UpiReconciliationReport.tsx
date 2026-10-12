@@ -41,6 +41,7 @@ const RECONCILIATION_ACCOUNTS: { upi_id: string; bankName: string }[] = [
     if (c.upi_id.includes('sbi')) bank = 'SBI';
     else if (c.upi_id.includes('axis')) bank = 'Axis';
     else if (c.upi_id.includes('ybl')) bank = 'Yes Bank';
+    else if (c.upi_id.includes('ibl')) bank = 'ICICI';
     return { upi_id: c.upi_id, bankName: bank };
   }),
   {
