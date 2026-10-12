@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from '../components/Header';
 import { AdminLogin } from '../components/AdminLogin';
 import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
+import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
+import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
-import type { EventRegistration, ECKEvent } from '../types';
+import type { EventRegistration, ECKEvent, PaymentVerification } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
   id: 'mock-deepaura-2026',
@@ -29,14 +31,19 @@ const DEFAULT_EVENT: ECKEvent = {
 export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [activeTab, setActiveTab] = useState<'registrations' | 'upi_report'>('registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+  const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'yes' | 'maybe' | 'no'>('all');
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
+  const [modalAssignedUpi, setModalAssignedUpi] = useState<string>('');
+  const [savingModalUpi, setSavingModalUpi] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [singleCopied, setSingleCopied] = useState(false);
+
 
   // Check auth
   useEffect(() => {
@@ -54,26 +61,48 @@ export const AdminPage: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch registrations
+  // Sync modal assigned UPI when selectedReg changes
+  useEffect(() => {
+    if (selectedReg) {
+      const existing = selectedReg.payment_verifications?.[0]?.upi_id || '';
+      setModalAssignedUpi(existing);
+    }
+  }, [selectedReg]);
+
+  // Fetch registrations and payment verifications
   const fetchRegistrations = async () => {
     setLoadingData(true);
     try {
-      const { data, error } = await supabase
-        .from('event_registrations')
-        .select(`
-          *,
-          alumni:alumni_id (*),
-          events:event_id (*)
-        `)
-        .order('created_at', { ascending: false });
+      const [regRes, verifRes] = await Promise.all([
+        supabase
+          .from('event_registrations')
+          .select(`
+            *,
+            alumni:alumni_id (*),
+            events:event_id (*)
+          `)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('payment_verifications')
+          .select('*')
+          .order('created_at', { ascending: false }),
+      ]);
 
-      if (error) {
-        console.error('[Admin Portal] Failed to fetch registrations:', error);
-        throw error;
+      if (regRes.error) {
+        console.error('[Admin Portal] Failed to fetch registrations:', regRes.error);
+        throw regRes.error;
       }
-      const list = (data as any) || [];
-      console.log(`[Admin Portal] Successfully loaded ${list.length} registrations.`);
+      const list = (regRes.data as any) || [];
+      const verifList = (verifRes.data as any) || [];
+
+      // Attach payment verification entries to each registration
+      list.forEach((reg: any) => {
+        reg.payment_verifications = verifList.filter((v: any) => v.registration_id === reg.id);
+      });
+
+      console.log(`[Admin Portal] Loaded ${list.length} registrations and ${verifList.length} verifications.`);
       setRegistrations(list);
+      setVerifications(verifList);
       if (list.length > 0 && list[0]?.events) {
         setActiveEvent(list[0].events);
       }
@@ -145,6 +174,43 @@ export const AdminPage: React.FC = () => {
       setRegistrations(sampleList);
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  const handleSaveVerification = async (
+    registrationId: string,
+    upiId: string,
+    amount: number,
+    notes?: string
+  ): Promise<boolean> => {
+    try {
+      const verifiedBy = session?.user?.email || 'admin';
+      const { error } = await supabase
+        .from('payment_verifications')
+        .upsert(
+          {
+            registration_id: registrationId,
+            upi_id: upiId.toLowerCase().trim(),
+            amount: amount,
+            verified_status: 'VERIFIED',
+            notes: notes || null,
+            verified_by: verifiedBy,
+          },
+          { onConflict: 'registration_id' }
+        );
+
+      if (error) {
+        console.error('Error saving payment verification:', error);
+        alert('Failed to save payment verification: ' + error.message);
+        return false;
+      }
+
+      await fetchRegistrations();
+      return true;
+    } catch (err: any) {
+      console.error('Error in handleSaveVerification:', err);
+      alert('Error saving verification: ' + (err?.message || 'Unknown error'));
+      return false;
     }
   };
 
@@ -350,175 +416,216 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Mobile-First WhatsApp Broadcast Banner */}
-              <div className="admin-mobile-share-banner">
-                <div className="admin-mobile-share-info">
-                  <span className="admin-mobile-share-icon">🪔</span>
-                  <div>
-                    <h3 className="admin-mobile-share-title">Diwali WhatsApp Broadcast</h3>
-                    <p className="admin-mobile-share-subtitle">
-                      Share registered alumni list with passing year, location &amp; accompanying guests to WhatsApp!
-                    </p>
-                  </div>
-                </div>
+              {/* View Mode Navigation Tabs */}
+              <div className="admin-view-tabs">
                 <button
                   type="button"
-                  onClick={() => setIsShareModalOpen(true)}
-                  className="btn btn-whatsapp-primary btn-sm"
+                  className={`admin-view-tab-btn ${activeTab === 'registrations' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('registrations')}
                 >
-                  💬 Broadcast List
+                  📋 Registrations Directory
+                  <span className="admin-tab-count">{registrations.length}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`admin-view-tab-btn ${activeTab === 'upi_report' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('upi_report')}
+                >
+                  💳 UPI Reconciliation Ledger
+                  <span className="admin-tab-count">{verifications.length} Tagged</span>
                 </button>
               </div>
 
-              {/* Stats Cards */}
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <span className="stat-label">Total Submissions</span>
-                  <span className="stat-value">{stats.totalRegs}</span>
-                  <span className="stat-hint">{stats.maybeCount} Maybe</span>
-                </div>
-
-                <div className="stat-card">
-                  <span className="stat-label">Total Attending</span>
-                  <span className="stat-value font-success">{stats.totalAttendees}</span>
-                  <span className="stat-hint">Confirmed Guests</span>
-                </div>
-
-                <div className="stat-card">
-                  <span className="stat-label">Estimated Collection</span>
-                  <span className="stat-value font-accent">₹{stats.totalAmount.toLocaleString('en-IN')}</span>
-                  <span className="stat-hint">Via UPI screenshot</span>
-                </div>
-              </div>
-
-              {/* Search & Filter Toolbar */}
-              <div className="admin-toolbar">
-                <div className="search-box">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search by name, mobile, branch, city..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="search-input"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="search-clear-btn"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                <div className="filter-chips">
-                  <button
-                    type="button"
-                    className={`filter-chip ${statusFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setStatusFilter('all')}
-                  >
-                    All ({registrations.length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`filter-chip ${statusFilter === 'yes' ? 'active' : ''}`}
-                    onClick={() => setStatusFilter('yes')}
-                  >
-                    Attending ({registrations.filter((r) => r.attendance_status === 'yes').length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`filter-chip ${statusFilter === 'maybe' ? 'active' : ''}`}
-                    onClick={() => setStatusFilter('maybe')}
-                  >
-                    Maybe ({registrations.filter((r) => r.attendance_status === 'maybe').length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`filter-chip ${statusFilter === 'no' ? 'active' : ''}`}
-                    onClick={() => setStatusFilter('no')}
-                  >
-                    No ({registrations.filter((r) => r.attendance_status === 'no').length})
-                  </button>
-                </div>
-              </div>
-
-              {/* Registrations List */}
-              <div className="registrations-list">
-                {filteredRegistrations.length === 0 ? (
-                  <div className="empty-state-card">
-                    <p className="empty-title">No registrations found</p>
-                    <p className="empty-desc">Try clearing your search query or filters.</p>
-                  </div>
-                ) : (
-                  filteredRegistrations.map((reg) => (
-                    <div
-                      key={reg.id}
-                      className="reg-card"
-                      onClick={() => setSelectedReg(reg)}
-                    >
-                      <div className="reg-card-header">
-                        <div className="reg-code-wrap">
-                          <span className="reg-code">{reg.registration_number}</span>
-                          <span className={`status-pill pill-${reg.attendance_status}`}>
-                            {reg.attendance_status === 'yes' ? 'Attending' : reg.attendance_status}
-                          </span>
-                        </div>
-                        <span className="reg-amount">
-                          {reg.attendance_status === 'yes' ? `₹${reg.amount}` : '—'}
-                        </span>
-                      </div>
-
-                      <div className="reg-card-body">
-                        <h3 className="alumni-name">{reg.alumni?.name || 'Unknown Alumni'}</h3>
-                        <p className="alumni-batch">
-                          Batch of {reg.alumni?.year_of_passing || '—'} • {reg.alumni?.engineering_discipline || '—'}
+              {activeTab === 'upi_report' ? (
+                <UpiReconciliationReport
+                  registrations={registrations}
+                  verifications={verifications}
+                  onSaveVerification={handleSaveVerification}
+                  onRefresh={fetchRegistrations}
+                  loading={loadingData}
+                  currentUserEmail={session?.user?.email}
+                />
+              ) : (
+                <>
+                  {/* Mobile-First WhatsApp Broadcast Banner */}
+                  <div className="admin-mobile-share-banner">
+                    <div className="admin-mobile-share-info">
+                      <span className="admin-mobile-share-icon">🪔</span>
+                      <div>
+                        <h3 className="admin-mobile-share-title">Diwali WhatsApp Broadcast</h3>
+                        <p className="admin-mobile-share-subtitle">
+                          Share registered alumni list with passing year, location &amp; accompanying guests to WhatsApp!
                         </p>
-                        <p className="alumni-contact">
-                          📞 {reg.alumni?.mobile} • 📍 {reg.alumni?.city}, {reg.alumni?.state}
-                          {reg.alumni?.country && reg.alumni.country !== 'India' ? ` (${reg.alumni.country})` : ''}
-                        </p>
-                        {reg.alumni?.organization && (
-                          <p className="alumni-org">💼 {reg.alumni.organization} ({reg.alumni.professional_category})</p>
-                        )}
-                      </div>
-
-                      <div className="reg-card-footer">
-                        <span className="reg-attendees">
-                          👥 {reg.number_of_attendees} {reg.number_of_attendees === 1 ? 'Person' : 'People'}
-                        </span>
-                        {reg.payment_screenshot_path ? (
-                          <span className="screenshot-tag tag-has-ss">
-                            📷 {reg.payment_screenshot_path.includes(',')
-                                ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Receipts Attached`
-                                : 'Screenshot Attached'}
-                          </span>
-                        ) : (
-                          <span className="screenshot-tag tag-no-ss">
-                            No Screenshot
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShareSingleAlumnus(reg);
-                          }}
-                          className="btn-card-whatsapp"
-                          title="Share on WhatsApp"
-                        >
-                          💬 Share
-                        </button>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsShareModalOpen(true)}
+                      className="btn btn-whatsapp-primary btn-sm"
+                    >
+                      💬 Broadcast List
+                    </button>
+                  </div>
+
+                  {/* Stats Cards */}
+                  <div className="stats-grid">
+                    <div className="stat-card">
+                      <span className="stat-label">Total Submissions</span>
+                      <span className="stat-value">{stats.totalRegs}</span>
+                      <span className="stat-hint">{stats.maybeCount} Maybe</span>
+                    </div>
+
+                    <div className="stat-card">
+                      <span className="stat-label">Total Attending</span>
+                      <span className="stat-value font-success">{stats.totalAttendees}</span>
+                      <span className="stat-hint">Confirmed Guests</span>
+                    </div>
+
+                    <div className="stat-card">
+                      <span className="stat-label">Estimated Collection</span>
+                      <span className="stat-value font-accent">₹{stats.totalAmount.toLocaleString('en-IN')}</span>
+                      <span className="stat-hint">Via UPI screenshot</span>
+                    </div>
+                  </div>
+
+                  {/* Search & Filter Toolbar */}
+                  <div className="admin-toolbar">
+                    <div className="search-box">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder="Search by name, mobile, branch, city..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="search-input"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="search-clear-btn"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="filter-chips">
+                      <button
+                        type="button"
+                        className={`filter-chip ${statusFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('all')}
+                      >
+                        All ({registrations.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`filter-chip ${statusFilter === 'yes' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('yes')}
+                      >
+                        Attending ({registrations.filter((r) => r.attendance_status === 'yes').length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`filter-chip ${statusFilter === 'maybe' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('maybe')}
+                      >
+                        Maybe ({registrations.filter((r) => r.attendance_status === 'maybe').length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`filter-chip ${statusFilter === 'no' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('no')}
+                      >
+                        No ({registrations.filter((r) => r.attendance_status === 'no').length})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Registrations List */}
+                  <div className="registrations-list">
+                    {filteredRegistrations.length === 0 ? (
+                      <div className="empty-state-card">
+                        <p className="empty-title">No registrations found</p>
+                        <p className="empty-desc">Try clearing your search query or filters.</p>
+                      </div>
+                    ) : (
+                      filteredRegistrations.map((reg) => (
+                        <div
+                          key={reg.id}
+                          className="reg-card"
+                          onClick={() => setSelectedReg(reg)}
+                        >
+                          <div className="reg-card-header">
+                            <div className="reg-code-wrap">
+                              <span className="reg-code">{reg.registration_number}</span>
+                              <span className={`status-pill pill-${reg.attendance_status}`}>
+                                {reg.attendance_status === 'yes' ? 'Attending' : reg.attendance_status}
+                              </span>
+                            </div>
+                            <span className="reg-amount">
+                              {reg.attendance_status === 'yes' ? `₹${reg.amount}` : '—'}
+                            </span>
+                          </div>
+
+                          <div className="reg-card-body">
+                            <h3 className="alumni-name">{reg.alumni?.name || 'Unknown Alumni'}</h3>
+                            <p className="alumni-batch">
+                              Batch of {reg.alumni?.year_of_passing || '—'} • {reg.alumni?.engineering_discipline || '—'}
+                            </p>
+                            <p className="alumni-contact">
+                              📞 {reg.alumni?.mobile} • 📍 {reg.alumni?.city}, {reg.alumni?.state}
+                              {reg.alumni?.country && reg.alumni.country !== 'India' ? ` (${reg.alumni.country})` : ''}
+                            </p>
+                            {reg.alumni?.organization && (
+                              <p className="alumni-org">💼 {reg.alumni.organization} ({reg.alumni.professional_category})</p>
+                            )}
+                          </div>
+
+                          <div className="reg-card-footer">
+                            <span className="reg-attendees">
+                              👥 {reg.number_of_attendees} {reg.number_of_attendees === 1 ? 'Person' : 'People'}
+                            </span>
+
+                            {reg.payment_verifications?.[0]?.upi_id ? (
+                              <span className="assigned-upi-pill" title={`Credited to ${reg.payment_verifications[0].upi_id}`}>
+                                <span className="upi-pill-dot" />
+                                {reg.payment_verifications[0].upi_id.split('@')[0]}
+                              </span>
+                            ) : null}
+
+                            {reg.payment_screenshot_path ? (
+                              <span className="screenshot-tag tag-has-ss">
+                                📷 {reg.payment_screenshot_path.includes(',')
+                                    ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Receipts Attached`
+                                    : 'Screenshot Attached'}
+                              </span>
+                            ) : (
+                              <span className="screenshot-tag tag-no-ss">
+                                No Screenshot
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareSingleAlumnus(reg);
+                              }}
+                              className="btn-card-whatsapp"
+                              title="Share on WhatsApp"
+                            >
+                              💬 Share
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -646,6 +753,73 @@ export const AdminPage: React.FC = () => {
                 >
                   {singleCopied ? '✓ Copied Details!' : '📋 Copy Details'}
                 </button>
+              </div>
+
+              {/* Quick UPI Verification Box inside Modal */}
+              <div className="modal-verify-box">
+                <div className="modal-verify-title">
+                  <span>💳 Receiving UPI ID:</span>
+                  {selectedReg.payment_verifications?.[0]?.upi_id ? (
+                    <span className="assigned-upi-pill">
+                      {selectedReg.payment_verifications[0].upi_id}
+                    </span>
+                  ) : (
+                    <span className="unassigned-warning-pill">⚠️ Not Tagged Yet</span>
+                  )}
+                </div>
+                <div className="modal-verify-row">
+                  <select
+                    value={modalAssignedUpi}
+                    onChange={(e) => setModalAssignedUpi(e.target.value)}
+                    className="form-input"
+                    disabled={savingModalUpi}
+                    style={{ flex: 1, minWidth: '220px' }}
+                  >
+                    <option value="">-- Select Receiving UPI ID --</option>
+                    {DEFAULT_UPI_CONFIGS.map((c, idx) => (
+                      <option key={c.upi_id} value={c.upi_id}>
+                        UPI {idx + 1} ({c.upi_id})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={savingModalUpi || !modalAssignedUpi}
+                    onClick={async () => {
+                      if (!modalAssignedUpi) return;
+                      setSavingModalUpi(true);
+                      const ok = await handleSaveVerification(
+                        selectedReg.id,
+                        modalAssignedUpi,
+                        selectedReg.amount || 800
+                      );
+                      setSavingModalUpi(false);
+                      if (ok) {
+                        setSelectedReg((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                payment_verifications: [
+                                  {
+                                    id: 'local',
+                                    registration_id: prev.id,
+                                    upi_id: modalAssignedUpi,
+                                    amount: prev.amount,
+                                    verified_status: 'VERIFIED',
+                                    created_at: new Date().toISOString(),
+                                    updated_at: new Date().toISOString(),
+                                  },
+                                ],
+                              }
+                            : null
+                        );
+                      }
+                    }}
+                    className="btn btn-primary btn-sm"
+                  >
+                    {savingModalUpi ? 'Saving...' : '💾 Save QR Account'}
+                  </button>
+                </div>
               </div>
 
               {/* Payment Screenshot Display */}

@@ -1,7 +1,31 @@
 -- ============================================================
--- ECK Alumni Events — 400 Test Users & Registrations Seed Script
+-- ECK Alumni Events — 20 Test Users & Registrations Seed Script
+-- Includes Payment Verifications Ledger Data
 -- Run this in: Supabase Dashboard -> SQL Editor -> New Query -> Run
 -- ============================================================
+
+-- Ensure payment_verifications table exists if migration v2 hasn't been run yet
+CREATE TABLE IF NOT EXISTS payment_verifications (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  registration_id     UUID NOT NULL REFERENCES event_registrations(id) ON DELETE CASCADE,
+  upi_id              TEXT NOT NULL,
+  amount              NUMERIC NOT NULL DEFAULT 0,
+  payment_date        DATE NOT NULL DEFAULT CURRENT_DATE,
+  verified_status     TEXT NOT NULL DEFAULT 'VERIFIED'
+                        CHECK (verified_status IN ('VERIFIED', 'MISMATCH', 'PENDING', 'REJECTED')),
+  notes               TEXT,
+  verified_by         TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unique_registration_verification UNIQUE (registration_id)
+);
+
+ALTER TABLE payment_verifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin_manage_payment_verifications" ON payment_verifications;
+CREATE POLICY "admin_manage_payment_verifications"
+  ON payment_verifications FOR ALL TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
 DO $$
 DECLARE
@@ -36,6 +60,14 @@ DECLARE
   v_emp_types TEXT[] := ARRAY['Private Sector', 'Government / PSU', 'Self-Employed / Business', 'Higher Studies'];
   v_statuses TEXT[] := ARRAY['yes', 'yes', 'yes', 'maybe', 'no']; -- 60% yes, 20% maybe, 20% no
   
+  -- 4 Pre-configured UPI Accounts rotating across verified registrations
+  v_upi_accounts TEXT[] := ARRAY[
+    '9414177517@sbi',
+    'jyotibala.nagar@axisbank',
+    '9414936876@ybl',
+    '9001017275@ybl'
+  ];
+
   -- Single shared test screenshot path stored in the 'payment-screenshots' bucket
   v_test_screenshot_path TEXT := 'deepaura-2k26/test_payment_screenshot.png';
 
@@ -60,6 +92,10 @@ DECLARE
   v_amount NUMERIC;
   v_alumni_id UUID;
   v_reg_no TEXT;
+  v_reg_id UUID;
+  v_assigned_upi TEXT;
+  v_verif_status TEXT;
+  v_payment_date DATE;
 BEGIN
   -- 1. Locate the event
   SELECT id INTO v_event_id FROM events WHERE event_slug = 'deepaura-2k26' LIMIT 1;
@@ -67,8 +103,8 @@ BEGIN
     RAISE EXCEPTION 'Event "deepaura-2k26" not found. Please ensure the events table is seeded.';
   END IF;
 
-  -- 2. Generate 400 records
-  FOR v_idx IN 1..400 LOOP
+  -- 2. Generate 20 records
+  FOR v_idx IN 1..20 LOOP
     v_fname := v_first_names[1 + ((v_idx * 7) % array_length(v_first_names, 1))];
     v_lname := v_last_names[1 + ((v_idx * 13) % array_length(v_last_names, 1))];
     v_full_name := v_fname || ' ' || v_lname;
@@ -162,9 +198,51 @@ BEGIN
       children_above_7_count = EXCLUDED.children_above_7_count,
       children_under_7_count = EXCLUDED.children_under_7_count,
       amount = EXCLUDED.amount,
-      payment_screenshot_path = EXCLUDED.payment_screenshot_path;
+      payment_screenshot_path = EXCLUDED.payment_screenshot_path
+    RETURNING id INTO v_reg_id;
+
+    -- Upsert Payment Verification for confirmed attendees
+    IF v_status = 'yes' THEN
+      v_assigned_upi := v_upi_accounts[1 + (v_idx % array_length(v_upi_accounts, 1))];
+      v_payment_date := CURRENT_DATE - ((v_idx % 7) || ' days')::INTERVAL;
+
+      -- Realistic test statuses: predominantly VERIFIED with sample PENDING and MISMATCH
+      IF (v_idx % 7) = 0 THEN
+        v_verif_status := 'PENDING';
+      ELSIF (v_idx % 9) = 0 THEN
+        v_verif_status := 'MISMATCH';
+      ELSE
+        v_verif_status := 'VERIFIED';
+      END IF;
+
+      INSERT INTO payment_verifications (
+        registration_id,
+        upi_id,
+        amount,
+        payment_date,
+        verified_status,
+        notes,
+        verified_by
+      ) VALUES (
+        v_reg_id,
+        v_assigned_upi,
+        v_amount,
+        v_payment_date,
+        v_verif_status,
+        'Seeded UPI test verification for ' || v_full_name,
+        'admin@eckalumni.org'
+      )
+      ON CONFLICT (registration_id) DO UPDATE SET
+        upi_id = EXCLUDED.upi_id,
+        amount = EXCLUDED.amount,
+        payment_date = EXCLUDED.payment_date,
+        verified_status = EXCLUDED.verified_status,
+        notes = EXCLUDED.notes,
+        verified_by = EXCLUDED.verified_by,
+        updated_at = NOW();
+    END IF;
 
   END LOOP;
 
-  RAISE NOTICE 'Successfully generated and loaded 400 test alumni and registrations!';
+  RAISE NOTICE 'Successfully generated and loaded 20 test alumni, registrations, and payment verifications!';
 END $$;

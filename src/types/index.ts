@@ -46,6 +46,19 @@ export interface Alumni {
   updated_at: string;
 }
 
+export interface PaymentVerification {
+  id: string;
+  registration_id: string;
+  upi_id: string;
+  amount: number;
+  payment_date?: string;
+  verified_status: 'VERIFIED' | 'MISMATCH' | 'PENDING' | 'REJECTED';
+  notes?: string | null;
+  verified_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EventRegistration {
   id: string;
   registration_number: string;
@@ -63,7 +76,9 @@ export interface EventRegistration {
   // Joined fields
   alumni?: Alumni;
   events?: ECKEvent;
+  payment_verifications?: PaymentVerification[];
 }
+
 
 export interface RegistrationFormData {
   // Alumni info

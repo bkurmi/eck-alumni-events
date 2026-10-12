@@ -2325,6 +2325,37 @@ h1, h2, h3, h4, h5, h6 {
   color: #0f121d;
 }
 
+.badge-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.btn-share-whatsapp-badge {
+  background: #25d366;
+  border: 1px solid #20bd5a;
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+}
+
+.btn-share-whatsapp-badge:hover {
+  background: #20bd5a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.45);
+}
+
 /* Aligned Success Receipt Table */
 .success-details-card {
   width: 100%;
@@ -3820,4 +3851,1291 @@ h1, h2, h3, h4, h5, h6 {
     align-items: flex-start;
   }
 }
+
+/* ============================================================
+   UPI & QR Code Reconciliation Ledger & Reports
+   ============================================================ */
+
+/* ── Top View Navigation Tabs ── */
+.admin-view-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  background: var(--bg-surface);
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-gold);
+}
+
+.admin-view-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-view-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.admin-view-tab-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--text-inverse);
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+.admin-tab-count {
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+}
+
+/* ── UPI Report Container & Header ── */
+.upi-report-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.upi-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.upi-report-title {
+  font-family: var(--font-festive);
+  font-size: 1.5rem;
+  color: var(--text-gold);
+  margin-bottom: 4px;
+}
+
+.upi-report-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  max-width: 650px;
+}
+
+.upi-report-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Per-Account KPI Tabs / Grid ── */
+.upi-accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.upi-account-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upi-account-card:hover {
+  border-color: var(--border-gold);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.upi-account-card.active {
+  border-color: var(--primary);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.12) 0%, var(--bg-surface) 100%);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.2);
+}
+
+.upi-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upi-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.badge-all {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.badge-qr {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.badge-pending {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.upi-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.upi-id-text {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
+  min-height: 2.2em;
+  display: flex;
+  align-items: center;
+}
+
+.upi-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 8px;
+  margin-top: 2px;
+}
+
+.upi-amount-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.upi-amount-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary-light);
+  font-family: var(--font-festive);
+}
+
+/* ── Filter Toolbar ── */
+.upi-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+}
+
+.upi-search {
+  flex: 1;
+  min-width: 260px;
+}
+
+.upi-date-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upi-filter-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.upi-select-input {
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.upi-select-input:focus {
+  border-color: var(--primary);
+}
+
+.upi-active-metrics {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.metric-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* ── Date Groups & Tables ── */
+.upi-date-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.upi-date-group-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: visible;
+  box-shadow: var(--shadow-sm);
+}
+
+.upi-date-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.upi-date-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upi-calendar-icon {
+  font-size: 1.3rem;
+}
+
+.upi-date-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.upi-date-raw {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.upi-date-subtotal-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.upi-date-subtotal-badge .divider {
+  opacity: 0.4;
+}
+
+.upi-table-responsive {
+  width: 100%;
+  overflow-x: hidden; /* ABSOLUTELY NO HORIZONTAL SCROLLBAR */
+}
+
+.upi-report-table {
+  width: 100%;
+  table-layout: fixed; /* STRICTLY 100% WIDTH - PREVENTS HORIZONTAL OVERFLOW */
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.84rem;
+}
+
+.upi-report-table th {
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upi-report-table td {
+  padding: 6px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upi-report-table td.td-nowrap {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
+}
+
+.upi-report-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.upi-report-table tbody tr.row-unassigned {
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.subtotal-row td {
+  background: rgba(245, 158, 11, 0.04);
+  border-top: 1px solid var(--border-subtle);
+  padding: 8px 6px;
+  overflow: visible;
+}
+
+.reg-id-badge {
+  display: inline-block;
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 0.76rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--primary-light);
+  letter-spacing: -0.01em;
+}
+
+.alumni-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alumni-sub-contact {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.alumni-batch-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+}
+
+.cell-muted {
+  color: var(--text-muted);
+}
+
+.font-mono {
+  font-family: monospace;
+}
+
+.assigned-upi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-family: monospace;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upi-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.unassigned-warning-pill {
+  display: inline-block;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.amount-cell {
+  font-weight: 700;
+  color: var(--primary-light);
+  font-size: 0.95rem;
+}
+
+.receipt-avail-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--primary-light);
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.receipt-none-badge {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.btn-assign-action {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+/* ── Grand Total Card ── */
+.upi-grand-total-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), var(--bg-surface));
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.grand-total-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.grand-total-icon {
+  font-size: 2rem;
+}
+
+.grand-total-title {
+  font-family: var(--font-festive);
+  font-size: 1.25rem;
+  color: var(--text-gold);
+}
+
+.grand-total-sub {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.grand-total-right {
+  display: flex;
+  align-items: center;
+}
+
+.grand-total-amount {
+  font-family: var(--font-festive);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary-light);
+  text-shadow: 0 0 15px var(--primary-glow);
+}
+
+/* ── Modal Styles for UPI Verification ── */
+.upi-modal-content {
+  max-width: 520px;
+}
+
+.upi-modal-alumni-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 18px;
+}
+
+.upi-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.upi-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ── Inline Verification Box inside Main Registration Modal ── */
+.modal-verify-box {
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.modal-verify-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-gold);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-verify-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.modal-verify-row .form-input,
+.modal-verify-row .form-select {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* ── View Mode Switcher (Day-wise vs Overall) ── */
+.view-mode-toggle-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.view-mode-toggle-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-gold);
+}
+
+.view-mode-buttons {
+  display: flex;
+  gap: 8px;
+  width: auto;
+}
+
+.view-toggle-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.view-toggle-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--text-inverse);
+  border-color: var(--primary-light);
+  box-shadow: 0 2px 10px var(--primary-glow);
+}
+
+/* ── Multi-Select QR Code Checkbox Section ── */
+.qr-checkbox-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qr-checkbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qr-checkbox-section-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qr-checkbox-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-link-action {
+  background: none;
+  border: none;
+  color: var(--primary-light);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color var(--transition-fast);
+}
+
+.btn-link-action:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.qr-checkbox-quick-actions .divider {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.qr-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.qr-checkbox-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  min-height: 48px;
+}
+
+.qr-checkbox-card:hover {
+  border-color: var(--border-gold);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.qr-checkbox-card.checked {
+  border-color: var(--primary);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.1) 0%, var(--bg-surface) 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+}
+
+.qr-native-checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.qr-checkbox-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.qr-checkbox-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qr-checkbox-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.badge-unassigned {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.qr-checkbox-count {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.qr-checkbox-upi {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qr-checkbox-amount {
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: var(--font-festive);
+  color: var(--primary-light);
+  margin-top: 2px;
+}
+
+/* ── Live Dynamic Selection Banner ── */
+.live-selection-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(17, 20, 37, 0.95) 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.live-banner-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.live-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.live-banner-icon {
+  font-size: 1.6rem;
+}
+
+.live-banner-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.live-banner-sub {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.live-banner-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.live-banner-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.live-banner-amount {
+  font-family: var(--font-festive);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary-light);
+  text-shadow: 0 0 12px var(--primary-glow);
+  white-space: nowrap;
+}
+
+/* ── Overall Flat Card Table ── */
+.upi-overall-flat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.date-cell {
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
+/* ── Mobile-First Responsive Adjustments (≤ 640px) ── */
+@media (max-width: 640px) {
+  .view-mode-toggle-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .view-mode-buttons {
+    width: 100%;
+  }
+
+  .view-toggle-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 10px;
+    font-size: 0.82rem;
+  }
+
+  .qr-checkbox-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .qr-checkbox-card {
+    padding: 10px;
+  }
+
+  .live-selection-banner {
+    flex-direction: column;
+    padding: 12px 14px;
+  }
+
+  .live-banner-amount {
+    font-size: 1.35rem;
+  }
+
+  .upi-report-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .upi-report-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .upi-report-actions .btn {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .upi-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .upi-search {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .upi-date-filter-wrap {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .upi-select-input {
+    flex: 1;
+  }
+
+  .upi-report-table th,
+  .upi-report-table td {
+    padding: 6px 4px;
+    font-size: 0.8rem;
+  }
+
+  .subtotal-row td {
+    padding: 8px 4px;
+  }
+}
+
+/* ── Compact UPI ID Pill (Single-line green badge, truncated with ellipsis) ── */
+.assigned-upi-pill {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.unassigned-warning-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.live-banner-selected-upis {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #fde68a;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+/* ── Compact Minimalist Edit Button ── */
+.btn-edit-compact {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: var(--primary-light);
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 3px 4px;
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-edit-compact:hover {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary-light);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+/* ── Lean Name Text ── */
+.alumni-name-text {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+  text-align: center;
+}
+
+
+/* ── Edit Modal Receipt Box ── */
+.modal-edit-receipt-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-edit-receipt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.modal-edit-receipt-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary-light);
+}
+
+.modal-edit-receipt-img-wrap {
+  width: 100%;
+  max-height: 220px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-edit-receipt-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+}
+
+.modal-no-receipt-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── UPI Edit Modal (Mobile-First Sleek Dark UI) ── */
+.upi-modal-content {
+  max-width: 480px;
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card, #111422);
+  border: 1px solid var(--border-gold, rgba(245, 158, 11, 0.35));
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(245, 158, 11, 0.08);
+  animation: fadeInFast 0.2s ease-out;
+  overflow: hidden;
+  position: relative;
+}
+
+.upi-modal-content .modal-header {
+  flex-shrink: 0;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--bg-card, #111422);
+  z-index: 5;
+}
+
+.upi-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 20px 10px;
+}
+
+.upi-modal-alumni-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.upi-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.upi-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.upi-form-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  letter-spacing: 0.02em;
+}
+
+.upi-form-select,
+.upi-form-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 0.92rem;
+  outline: none;
+  transition: all var(--transition-fast, 0.2s ease);
+}
+
+.upi-form-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.upi-form-select option {
+  background: #0f172a;
+  color: #fff;
+  padding: 10px;
+}
+
+.upi-form-select:focus,
+.upi-form-input:focus {
+  border-color: var(--primary-light, #fbbf24);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  background: rgba(15, 23, 42, 0.98);
+}
+
+.upi-form-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.upi-modal-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--bg-card, #111422);
+  z-index: 10;
+}
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .upi-modal-content {
+    max-width: 100%;
+    max-height: 90vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-top: auto;
+  }
+
+  .upi-modal-body {
+    padding: 16px 16px 10px;
+  }
+
+  .upi-modal-actions {
+    padding: 12px 16px 18px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .upi-modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: 0.92rem;
+  }
+}
+
+/* ── UPI Ledger Attendance Chips & Verified By Styles ── */
+.upi-filter-section {
+  margin-bottom: 12px;
+}
+
+.upi-attendance-chips {
+  margin-bottom: 10px;
+}
+
+.verified-by-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upi-verified-by-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upi-verified-by-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.upi-badge-user-current {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--primary-light);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.upi-verified-by-prev {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-left: 2px;
+}
+
+
+
+
 

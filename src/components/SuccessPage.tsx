@@ -23,17 +23,51 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
     });
   };
 
-  const handleShare = () => {
-    if ('share' in navigator) {
-      navigator
-        .share({
-          title: `Registered for ${event.event_name}`,
-          text: `I have registered for ${event.event_name} (Registration No: ${result.registration_number})! “दीप जले, यादें मुस्कुराएँ।” Reconnecting with ECK-RTU alumni!`,
-          url: window.location.href,
-        })
-        .catch(() => {});
+  const buildWhatsAppMessage = () => {
+    const isAttending = formData.attendance_status === 'yes';
+    const count = formData.number_of_attendees || 1;
+    const batchText = formData.year_of_passing ? `${formData.year_of_passing} Batch` : 'Alumnus';
+    const attendanceText = isAttending
+      ? `${count} ${count === 1 ? 'Person' : 'Persons'}`
+      : formData.attendance_status === 'maybe' ? 'Maybe' : 'Not Attending';
+    const eventDate = event.event_date || '1 Nov 2026';
+    const venue = event.location || 'ECK Campus, Kota';
+    const eventLink = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
+
+    const lines = [
+      '🪔✨ *ECK-RTU Alumni DeepAura 2K26* ✨🪔',
+      '✨✨ *दीप जले, यादें मुस्कुराएँ।* ✨✨',
+      '',
+      '🎉 Registration Confirmed!',
+      `🎫 ID: ${result.registration_number}`,
+      `👤 ${formData.name} | 🎓 ${batchText}`,
+      `👥 Attendance: ${attendanceText}`,
+      '',
+      '🙏 Thank you, ECK-RTU Alumni Kota Chapter!',
+      'Looking forward to celebrating with seniors, batchmates & juniors!',
+      '',
+      `📅 ${eventDate} | 📍 ${venue}`,
+      '',
+      `🔗 ${eventLink}`,
+    ];
+
+    return lines.join('\n');
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = buildWhatsAppMessage();
+    const encoded = encodeURIComponent(text);
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      window.open(`whatsapp://send?text=${encoded}`, '_self');
+      setTimeout(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+      }, 700);
     } else {
-      handleCopyRegNumber();
+      window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -65,8 +99,8 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           {result.is_update
             ? 'Your alumni details and reunion registration have been updated.'
             : formData.attendance_status === 'yes'
-            ? 'Shubh Deepawali! We eagerly look forward to seeing you at the reunion.'
-            : 'Thank you for keeping your alumni directory details updated.'}
+              ? 'Shubh Deepawali! We eagerly look forward to seeing you at the reunion.'
+              : 'Thank you for keeping your alumni directory details updated.'}
         </p>
       </div>
 
@@ -76,14 +110,26 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           {result.is_update ? 'CONFIRMED REGISTRATION ID' : 'OFFICIAL REGISTRATION ID'}
         </span>
         <div className="badge-reg-code">{result.registration_number}</div>
-        <button
-          type="button"
-          onClick={handleCopyRegNumber}
-          className="btn-copy-reg"
-          id="btn-copy-reg-number"
-        >
-          {copied ? '✓ Copied ID' : '📋 Copy ID'}
-        </button>
+        <div className="badge-actions-row">
+          <button
+            type="button"
+            onClick={handleCopyRegNumber}
+            className="btn-copy-reg"
+            id="btn-copy-reg-number"
+            title="Copy Registration ID"
+          >
+            {copied ? '✓ Copied ID' : '📋 Copy ID'}
+          </button>
+          <button
+            type="button"
+            onClick={handleShareWhatsApp}
+            className="btn-share-whatsapp-badge"
+            id="btn-share-whatsapp-badge"
+            title="Share confirmation on WhatsApp"
+          >
+            💬 Share on WhatsApp
+          </button>
+        </div>
       </div>
 
       {/* Perfectly Aligned Receipt Table */}
@@ -177,15 +223,13 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
 
       {/* Actions */}
       <div className="success-actions-row">
-        {'share' in navigator && (
-          <button
-            type="button"
-            onClick={handleShare}
-            className="btn btn-festive-primary btn-block"
-          >
-            <span>Share With Batchmates</span>
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleShareWhatsApp}
+          className="btn btn-whatsapp-primary btn-block"
+        >
+          <span>💬 Share Confirmation on WhatsApp</span>
+        </button>
 
         <button
           type="button"

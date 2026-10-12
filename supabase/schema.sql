@@ -587,3 +587,43 @@ ALTER TABLE alumni ADD COLUMN IF NOT EXISTS industry_domain TEXT;
 ALTER TABLE alumni ALTER COLUMN professional_category DROP NOT NULL;
 ALTER TABLE events DROP COLUMN IF EXISTS google_sheet_id;
 
+-- ────────────────────────────────────────────────────────────
+-- 10. TABLE: payment_verifications (Manual UPI Reconciliation Ledger)
+-- ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS payment_verifications (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  registration_id     UUID NOT NULL REFERENCES event_registrations(id) ON DELETE CASCADE,
+  upi_id              TEXT NOT NULL,
+  amount              NUMERIC NOT NULL DEFAULT 0,
+  payment_date        DATE NOT NULL DEFAULT CURRENT_DATE,
+  verified_status     TEXT NOT NULL DEFAULT 'VERIFIED'
+                        CHECK (verified_status IN ('VERIFIED', 'MISMATCH', 'PENDING', 'REJECTED')),
+  notes               TEXT,
+  verified_by         TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT unique_registration_verification UNIQUE (registration_id)
+);
+
+DROP TRIGGER IF EXISTS payment_verifications_updated_at ON payment_verifications;
+CREATE TRIGGER payment_verifications_updated_at
+  BEFORE UPDATE ON payment_verifications
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_payment_verifications_reg_id ON payment_verifications(registration_id);
+CREATE INDEX IF NOT EXISTS idx_payment_verifications_upi_id ON payment_verifications(upi_id);
+CREATE INDEX IF NOT EXISTS idx_payment_verifications_date ON payment_verifications(payment_date);
+
+ALTER TABLE payment_verifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "admin_manage_payment_verifications" ON payment_verifications;
+CREATE POLICY "admin_manage_payment_verifications"
+  ON payment_verifications FOR ALL TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+GRANT ALL ON payment_verifications TO authenticated;
+
+
