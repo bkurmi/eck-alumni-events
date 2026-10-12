@@ -123,7 +123,12 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
   // Generate the formatted WhatsApp message
   const generatedMessage = useMemo(() => {
     const eventName = event?.event_name || 'ECK-RTU Alumni DeepAura 2K26';
-    const eventDate = event?.event_date || '01 Nov 2026';
+    const rawDate = event?.event_date || '2026-11-01';
+    let eventDate = rawDate;
+    const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (dateMatch) {
+      eventDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+    }
     const eventVenue = event?.location || 'ECK Campus, Kota';
     const websiteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
 

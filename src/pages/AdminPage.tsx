@@ -232,7 +232,12 @@ export const AdminPage: React.FC = () => {
     const city = reg.alumni?.city ? `${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
     const count = reg.number_of_attendees || 1;
     const status = reg.attendance_status === 'yes' ? 'Confirmed Attending' : reg.attendance_status;
-    const eventDate = activeEvent?.event_date || '01 Nov 2026';
+    const rawDate = activeEvent?.event_date || '2026-11-01';
+    let eventDate = rawDate;
+    const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (dateMatch) {
+      eventDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+    }
     const venue = activeEvent?.location || 'ECK Campus, Kota';
     const webUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
 

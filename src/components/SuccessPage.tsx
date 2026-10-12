@@ -30,7 +30,15 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
     const attendanceText = isAttending
       ? `${count} ${count === 1 ? 'Person' : 'Persons'}`
       : formData.attendance_status === 'maybe' ? 'Maybe' : 'Not Attending';
-    const eventDate = event.event_date || '1 Nov 2026';
+    let formattedEventDate = '01-11-2026';
+    if (event.event_date) {
+      const match = event.event_date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        formattedEventDate = `${match[3]}-${match[2]}-${match[1]}`;
+      } else {
+        formattedEventDate = event.event_date;
+      }
+    }
     const venue = event.location || 'ECK Campus, Kota';
     const eventLink = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
 
@@ -46,7 +54,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       '🙏 Thank you, ECK-RTU Alumni Kota Chapter!',
       'Looking forward to celebrating with seniors, batchmates & juniors!',
       '',
-      `📅 ${eventDate} | 📍 ${venue}`,
+      `📅 ${formattedEventDate} | 📍 ${venue}`,
       '',
       `🔗 ${eventLink}`,
     ];
