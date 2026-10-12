@@ -377,20 +377,26 @@ export const AdminPage: React.FC = () => {
               {/* Top Bar with Sign Out */}
               <div className="admin-header-row">
                 <div>
-                  <h1 className="admin-title">Registrations Overview</h1>
+                  <h1 className="admin-title">
+                    {activeTab === 'upi_report' ? 'UPI Reconciliation Ledger' : 'Registrations Overview'}
+                  </h1>
                   <p className="admin-subtitle">
-                    Verify screenshots and alumni submissions.
+                    {activeTab === 'upi_report'
+                      ? 'Track collections & verify payments across receiving UPI accounts.'
+                      : 'Verify screenshots and alumni submissions.'}
                   </p>
                 </div>
                 <div className="admin-actions">
-                  <button
-                    type="button"
-                    onClick={() => setIsShareModalOpen(true)}
-                    className="btn btn-whatsapp-header"
-                    title="Broadcast Attendee List on WhatsApp"
-                  >
-                    💬 Share on WhatsApp
-                  </button>
+                  {activeTab === 'registrations' && (
+                    <button
+                      type="button"
+                      onClick={() => setIsShareModalOpen(true)}
+                      className="btn btn-whatsapp-header"
+                      title="Broadcast Attendee List on WhatsApp"
+                    >
+                      💬 Share on WhatsApp
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={fetchRegistrations}

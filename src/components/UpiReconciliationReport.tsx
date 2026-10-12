@@ -513,44 +513,127 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     }
   };
 
+  // Render a Mobile-First Transaction Card for mobile screens (<= 640px)
+  const renderMobileCard = (item: (typeof enrichedList)[0], index: number) => {
+    const alumni = item.registration.alumni;
+    const isUnassigned = !item.assignedUpi;
+    const hasMultipleGuests =
+      item.registration.attendance_status === 'yes' && item.registration.number_of_attendees > 1;
+
+    return (
+      <div
+        key={item.registration.id}
+        className={`upi-m-card ${isUnassigned ? 'upi-m-card-unassigned' : 'upi-m-card-tagged'}`}
+      >
+        {/* Card Header: Index, Reg ID, Date, Amount */}
+        <div className="upi-m-card-header">
+          <div className="upi-m-card-meta">
+            <span className="upi-m-card-idx font-mono">#{index + 1}</span>
+            <span className="reg-id-badge">{item.registration.registration_number}</span>
+            <span className="upi-m-card-date font-mono">{formatDDMMYYYY(item.paymentDate)}</span>
+          </div>
+          <div className="upi-m-card-amount font-accent">
+            ₹{item.amount.toLocaleString('en-IN')}
+          </div>
+        </div>
+
+        {/* Card Body: Alumnus Name & Academic Background */}
+        <div className="upi-m-card-body">
+          <div className="upi-m-name-row">
+            <h4 className="upi-m-name" title={alumni?.name || 'Unknown Alumni'}>
+              {alumni?.name || 'Unknown Alumni'}
+            </h4>
+            <span className={`status-pill pill-${item.registration.attendance_status}`}>
+              {item.registration.attendance_status === 'yes'
+                ? `Attending${hasMultipleGuests ? ` (${item.registration.number_of_attendees})` : ''}`
+                : item.registration.attendance_status === 'maybe'
+                ? 'Maybe'
+                : 'No'}
+            </span>
+          </div>
+          <div className="upi-m-alumni-meta">
+            <span>Batch {alumni?.year_of_passing || '—'}</span>
+            <span className="meta-sep">•</span>
+            <span>{alumni?.engineering_discipline || '—'}</span>
+            {alumni?.city && (
+              <>
+                <span className="meta-sep">•</span>
+                <span>📍 {alumni.city}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Card Footer: Credited Account Tag & Edit Action */}
+        <div className="upi-m-card-footer">
+          <div className="upi-m-account-wrap">
+            <span className="upi-m-account-label">Credited To:</span>
+            {item.assignedUpi ? (
+              <span className="assigned-upi-pill" title={item.assignedUpi}>
+                <span className="upi-pill-dot" />
+                <span className="upi-pill-name">
+                  {item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}
+                </span>
+                <span className="upi-pill-raw font-mono">{item.assignedUpi}</span>
+              </span>
+            ) : (
+              <span className="unassigned-warning-pill">⚠️ Untagged</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenEdit(item)}
+            className="upi-m-edit-btn"
+            title="Edit Receiving UPI Account"
+            aria-label="Edit UPI Account"
+          >
+            ✏️ Edit
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="upi-report-container">
       {/* ── TOP ACTIONS (Mobile-First) ── */}
-      <div className="upi-report-header" style={{ justifyContent: 'flex-end', marginBottom: '14px' }}>
+      <div className="upi-report-header">
         <div className="upi-report-actions">
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="btn btn-whatsapp-primary btn-sm"
+            className="btn btn-whatsapp-primary upi-btn-share-main"
             title="Broadcast report on WhatsApp"
           >
             💬 Broadcast on WhatsApp
           </button>
-          <button
-            type="button"
-            onClick={handleCopySummary}
-            className={`btn btn-secondary btn-sm ${copiedSummary ? 'btn-copied' : ''}`}
-            title="Copy WhatsApp text summary"
-          >
-            {copiedSummary ? '✓ Copied' : '📋 Copy'}
-          </button>
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="btn btn-secondary btn-sm"
-            title="Download CSV to open in Excel"
-          >
-            📥 CSV
-          </button>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className="btn btn-secondary btn-sm"
-            title="Refresh database records"
-          >
-            🔄 Refresh
-          </button>
+          <div className="upi-secondary-actions-group">
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className={`btn btn-secondary btn-sm ${copiedSummary ? 'btn-copied' : ''}`}
+              title="Copy WhatsApp text summary"
+            >
+              {copiedSummary ? '✓ Copied' : '📋 Copy'}
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="btn btn-secondary btn-sm"
+              title="Download CSV to open in Excel"
+            >
+              📥 CSV
+            </button>
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={loading}
+              className="btn btn-secondary btn-sm"
+              title="Refresh database records"
+            >
+              🔄 Refresh
+            </button>
+          </div>
         </div>
       </div>
 
@@ -623,8 +706,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                     <span className="qr-checkbox-badge">{acc.badge}</span>
                     <span className="qr-checkbox-count">{stats.count} Regs</span>
                   </div>
-                  <span className="qr-checkbox-upi" title={acc.upi_id}>
-                    {acc.bankName} • {acc.upi_id}
+                  <div className="qr-checkbox-account-label">
+                    <strong className="qr-checkbox-name">{acc.accountName}</strong>
+                    <span className="qr-checkbox-bank"> • {acc.bankName}</span>
+                  </div>
+                  <span className="qr-checkbox-upi font-mono" title={acc.upi_id}>
+                    {acc.upi_id}
                   </span>
                   <span className="qr-checkbox-amount font-accent">
                     ₹{stats.totalAmount.toLocaleString('en-IN')}
@@ -647,7 +734,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 <span className="qr-checkbox-badge badge-unassigned">Untagged</span>
                 <span className="qr-checkbox-count">{accountStats['unassigned']?.count || 0} Regs</span>
               </div>
-              <span className="qr-checkbox-upi">Unassigned Payments</span>
+              <div className="qr-checkbox-account-label">
+                <strong className="qr-checkbox-name">Unassigned Payments</strong>
+              </div>
+              <span className="qr-checkbox-upi font-mono">Not Linked to Account</span>
               <span className="qr-checkbox-amount font-accent">
                 ₹{(accountStats['unassigned']?.totalAmount || 0).toLocaleString('en-IN')}
               </span>
@@ -667,25 +757,34 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   ? `All (${selectedAccounts.length}) UPI Accounts Selected`
                   : `${selectedAccounts.length} UPI Account${selectedAccounts.length === 1 ? '' : 's'} Selected`}
               </span>
-              <span className="live-banner-sub" style={{ marginTop: '2px' }}>
+              <span className="live-banner-sub">
                 {currentTotals.totalCount} matching registrations
               </span>
             </div>
           </div>
           <div className="live-banner-right">
             <span className="live-banner-label">Total Amount</span>
-            <span className="live-banner-amount">₹{currentTotals.totalAmount.toLocaleString('en-IN')}</span>
+            <span className="live-banner-amount font-accent">₹{currentTotals.totalAmount.toLocaleString('en-IN')}</span>
           </div>
         </div>
-        <div className="live-banner-selected-upis font-mono">
-          {selectedAccounts.length === 0
-            ? 'None'
-            : selectedAccounts
-              .map((key) => {
+        <div className="live-banner-chips-row">
+          {selectedAccounts.length === allAccountKeys.length ? (
+            <span className="live-chip-all">✓ Showing all 6 receiving accounts</span>
+          ) : selectedAccounts.length === 0 ? (
+            <span className="live-chip-none">⚠️ No accounts selected (showing 0)</span>
+          ) : (
+            <div className="live-chips-container">
+              {selectedAccounts.map((key) => {
                 const match = knownAccounts.find((a) => a.upi_id === key);
-                return match ? match.upi_id : key === 'unassigned' ? 'Untagged' : key;
-              })
-              .join(', ')}
+                const label = match ? `${match.bankName} (${match.accountName})` : 'Untagged';
+                return (
+                  <span key={key} className="live-account-chip">
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -723,41 +822,41 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
 
         <div className="upi-toolbar">
-        <div className="search-box upi-search">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search by Person Name, mobile, reg ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
-          {searchQuery && (
-            <button type="button" onClick={() => setSearchQuery('')} className="search-clear-btn">
-              ✕
-            </button>
-          )}
-        </div>
+          <div className="search-box upi-search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by Name, mobile, reg ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+            {searchQuery && (
+              <button type="button" onClick={() => setSearchQuery('')} className="search-clear-btn">
+                ✕
+              </button>
+            )}
+          </div>
 
-        <div className="upi-date-filter-wrap">
-          <label className="upi-filter-label">Date:</label>
-          <select
-            value={selectedDateFilter}
-            onChange={(e) => setSelectedDateFilter(e.target.value)}
-            className="upi-select-input"
-          >
-            <option value="all">All Dates ({availableDates.length})</option>
-            {availableDates.map((d) => (
-              <option key={d} value={d}>
-                {formatDDMMYYYY(d)}
-              </option>
-            ))}
-          </select>
+          <div className="upi-date-filter-wrap">
+            <label className="upi-filter-label">Date:</label>
+            <select
+              value={selectedDateFilter}
+              onChange={(e) => setSelectedDateFilter(e.target.value)}
+              className="upi-select-input"
+            >
+              <option value="all">All Dates ({availableDates.length})</option>
+              {availableDates.map((d) => (
+                <option key={d} value={d}>
+                  {formatDDMMYYYY(d)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
       </div>
 
       {/* ── REPORT CONTENT (DAY-WISE vs OVERALL FLAT VIEW) ── */}
@@ -793,8 +892,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 </div>
               </div>
 
-              {/* Table for This Day */}
-              <div className="upi-table-responsive">
+              {/* 1. Desktop Table (Screens > 640px) */}
+              <div className="upi-table-responsive upi-desktop-only">
                 <table className="upi-report-table">
                   <thead>
                     <tr>
@@ -872,6 +971,17 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   </tfoot>
                 </table>
               </div>
+
+              {/* 2. Mobile Cards List (Screens <= 640px) */}
+              <div className="upi-mobile-card-list upi-mobile-only">
+                {group.items.map((item, idx) => renderMobileCard(item, idx))}
+                <div className="upi-m-subtotal-card">
+                  <span>Day Subtotal ({group.subtotalCount} {group.subtotalCount === 1 ? 'Person' : 'People'})</span>
+                  <span className="upi-m-subtotal-val font-accent">
+                    ₹{group.subtotalAmount.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
             </div>
           ))}
 
@@ -880,7 +990,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             <div className="grand-total-left">
               <span className="grand-total-icon">🏆</span>
               <div>
-                <h4 className="grand-total-title">Total for Selected UPI Account(s)</h4>
+                <h4 className="grand-total-title">Total for Selected Accounts</h4>
                 <p className="grand-total-sub">
                   {currentTotals.totalCount} Alumni across {selectedAccounts.length} selected UPI account{selectedAccounts.length === 1 ? '' : 's'}
                 </p>
@@ -894,7 +1004,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       ) : (
         /* ════════════ OVERALL FLAT VIEW ════════════ */
         <div className="upi-overall-flat-card">
-          <div className="upi-table-responsive">
+          {/* 1. Desktop Table (Screens > 640px) */}
+          <div className="upi-table-responsive upi-desktop-only">
             <table className="upi-report-table">
               <thead>
                 <tr>
@@ -975,6 +1086,27 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* 2. Mobile Cards List (Screens <= 640px) */}
+          <div className="upi-mobile-card-list upi-mobile-only" style={{ padding: '8px 0' }}>
+            {filteredList.map((item, idx) => renderMobileCard(item, idx))}
+            
+            {/* Mobile Grand Total Summary Card */}
+            <div className="upi-grand-total-card upi-mobile-grand-total">
+              <div className="grand-total-left">
+                <span className="grand-total-icon">🏆</span>
+                <div>
+                  <h4 className="grand-total-title">Total for Selected Accounts</h4>
+                  <p className="grand-total-sub">
+                    {currentTotals.totalCount} Alumni • {selectedAccounts.length} Accounts
+                  </p>
+                </div>
+              </div>
+              <div className="grand-total-right">
+                <span className="grand-total-amount">₹{currentTotals.totalAmount.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
