@@ -602,13 +602,6 @@ export const AdminPage: React.FC = () => {
                               👥 {reg.number_of_attendees} {reg.number_of_attendees === 1 ? 'Person' : 'People'}
                             </span>
 
-                            {reg.payment_verifications?.[0]?.upi_id ? (
-                              <span className="assigned-upi-pill" title={`Credited to ${reg.payment_verifications[0].upi_id}`}>
-                                <span className="upi-pill-dot" />
-                                {reg.payment_verifications[0].upi_id.split('@')[0]}
-                              </span>
-                            ) : null}
-
                             {reg.payment_screenshot_path ? (
                               <span className="screenshot-tag tag-has-ss">
                                 📷 {reg.payment_screenshot_path.includes(',')
