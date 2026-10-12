@@ -3865,15 +3865,19 @@ h1, h2, h3, h4, h5, h6 {
   padding: 6px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-gold);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .admin-view-tab-btn {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 12px 18px;
+  gap: 8px;
+  padding: 12px 16px;
   background: transparent;
   border: none;
   border-radius: var(--radius-md);
@@ -3883,6 +3887,35 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.tab-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.tab-icon {
+  flex-shrink: 0;
+}
+
+.tab-text-full {
+  display: inline;
+}
+
+.tab-text-short {
+  display: none;
+}
+
+.tab-count-full {
+  display: inline;
+}
+
+.tab-count-short {
+  display: none;
 }
 
 .admin-view-tab-btn:hover {
@@ -3902,6 +3935,42 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius-full);
   background: rgba(0, 0, 0, 0.25);
   color: inherit;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .admin-view-tabs {
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .admin-view-tab-btn {
+    padding: 10px 6px;
+    font-size: 0.82rem;
+    gap: 5px;
+  }
+
+  .tab-text-full {
+    display: none !important;
+  }
+
+  .tab-text-short {
+    display: inline !important;
+  }
+
+  .tab-count-full {
+    display: none !important;
+  }
+
+  .tab-count-short {
+    display: inline !important;
+  }
+
+  .admin-tab-count {
+    font-size: 0.72rem;
+    padding: 2px 6px;
+  }
 }
 
 /* ── UPI Report Container & Header ── */

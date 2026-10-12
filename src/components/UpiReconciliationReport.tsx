@@ -703,12 +703,11 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 />
                 <div className="qr-checkbox-info">
                   <div className="qr-checkbox-top">
-                    <span className="qr-checkbox-badge">{acc.badge}</span>
+                    <span className="qr-checkbox-badge">{acc.bankName}</span>
                     <span className="qr-checkbox-count">{stats.count} Regs</span>
                   </div>
                   <div className="qr-checkbox-account-label">
                     <strong className="qr-checkbox-name">{acc.accountName}</strong>
-                    <span className="qr-checkbox-bank"> • {acc.bankName}</span>
                   </div>
                   <span className="qr-checkbox-upi font-mono" title={acc.upi_id}>
                     {acc.upi_id}

@@ -424,7 +424,11 @@ export const AdminPage: React.FC = () => {
                   className={`admin-view-tab-btn ${activeTab === 'registrations' ? 'active' : ''}`}
                   onClick={() => setActiveTab('registrations')}
                 >
-                  📋 Registrations Directory
+                  <span className="tab-title">
+                    <span className="tab-icon">📋</span>
+                    <span className="tab-text-full">Registrations Directory</span>
+                    <span className="tab-text-short">Directory</span>
+                  </span>
                   <span className="admin-tab-count">{registrations.length}</span>
                 </button>
                 <button
@@ -432,8 +436,15 @@ export const AdminPage: React.FC = () => {
                   className={`admin-view-tab-btn ${activeTab === 'upi_report' ? 'active' : ''}`}
                   onClick={() => setActiveTab('upi_report')}
                 >
-                  💳 UPI Reconciliation Ledger
-                  <span className="admin-tab-count">{verifications.length} Tagged</span>
+                  <span className="tab-title">
+                    <span className="tab-icon">💳</span>
+                    <span className="tab-text-full">UPI Reconciliation Ledger</span>
+                    <span className="tab-text-short">UPI Ledger</span>
+                  </span>
+                  <span className="admin-tab-count">
+                    <span className="tab-count-full">{verifications.length} Tagged</span>
+                    <span className="tab-count-short">{verifications.length}</span>
+                  </span>
                 </button>
               </div>
 
@@ -493,8 +504,8 @@ export const AdminPage: React.FC = () => {
                   <div className="admin-toolbar">
                     <div className="search-box">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
                       </svg>
                       <input
                         type="text"
@@ -601,8 +612,8 @@ export const AdminPage: React.FC = () => {
                             {reg.payment_screenshot_path ? (
                               <span className="screenshot-tag tag-has-ss">
                                 📷 {reg.payment_screenshot_path.includes(',')
-                                    ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Receipts Attached`
-                                    : 'Screenshot Attached'}
+                                  ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Receipts Attached`
+                                  : 'Screenshot Attached'}
                               </span>
                             ) : (
                               <span className="screenshot-tag tag-no-ss">
