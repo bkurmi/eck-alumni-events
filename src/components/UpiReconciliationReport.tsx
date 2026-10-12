@@ -734,9 +734,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 <span className="qr-checkbox-count">{accountStats['unassigned']?.count || 0} Regs</span>
               </div>
               <div className="qr-checkbox-account-label">
-                <strong className="qr-checkbox-name">Unassigned Payments</strong>
+                <strong className="qr-checkbox-name">Unassigned</strong>
               </div>
-              <span className="qr-checkbox-upi font-mono">Not Linked to Account</span>
+              <span className="qr-checkbox-upi font-mono">Not Linked</span>
               <span className="qr-checkbox-amount font-accent">
                 ₹{(accountStats['unassigned']?.totalAmount || 0).toLocaleString('en-IN')}
               </span>
