@@ -545,8 +545,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               {item.registration.attendance_status === 'yes'
                 ? `Attending${hasMultipleGuests ? ` (${item.registration.number_of_attendees})` : ''}`
                 : item.registration.attendance_status === 'maybe'
-                ? 'Maybe'
-                : 'No'}
+                  ? 'Maybe'
+                  : 'No'}
             </span>
           </div>
           <div className="upi-m-alumni-meta">
@@ -594,35 +594,42 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
   return (
     <div className="upi-report-container">
-      {/* ── TOP ACTIONS (Mobile-First) ── */}
-      <div className="upi-report-header">
-        <div className="upi-report-actions">
+      {/* ── WhatsApp Broadcast Banner ── */}
+      <div className="admin-mobile-share-banner">
+        <div className="admin-mobile-share-info">
+          <span className="admin-mobile-share-icon">💳</span>
+          <div>
+            <h3 className="admin-mobile-share-title">UPI WhatsApp Broadcast</h3>
+            <p className="admin-mobile-share-subtitle">
+              Share account-wise collections report to WhatsApp, copy summary or export CSV!
+            </p>
+          </div>
+        </div>
+        <div className="admin-mobile-share-actions">
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="btn btn-whatsapp-primary upi-btn-share-main"
+            className="btn btn-whatsapp-primary btn-sm"
             title="Broadcast report on WhatsApp"
           >
-            💬 Broadcast on WhatsApp
+            💬 Broadcast Report
           </button>
-          <div className="upi-secondary-actions-group">
-            <button
-              type="button"
-              onClick={handleCopySummary}
-              className={`btn btn-secondary btn-sm ${copiedSummary ? 'btn-copied' : ''}`}
-              title="Copy WhatsApp text summary"
-            >
-              {copiedSummary ? '✓ Copied' : '📋 Copy'}
-            </button>
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="btn btn-secondary btn-sm"
-              title="Download CSV to open in Excel"
-            >
-              📥 CSV
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleCopySummary}
+            className={`btn btn-secondary btn-sm ${copiedSummary ? 'btn-copied' : ''}`}
+            title="Copy WhatsApp text summary"
+          >
+            {copiedSummary ? '✓ Copied' : '📋 Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="btn btn-secondary btn-sm"
+            title="Download CSV to open in Excel"
+          >
+            📥 CSV
+          </button>
         </div>
       </div>
 
@@ -1079,7 +1086,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           {/* 2. Mobile Cards List (Screens <= 640px) */}
           <div className="upi-mobile-card-list upi-mobile-only" style={{ padding: '8px 0' }}>
             {filteredList.map((item, idx) => renderMobileCard(item, idx))}
-            
+
             {/* Mobile Grand Total Summary Card */}
             <div className="upi-grand-total-card upi-mobile-grand-total">
               <div className="grand-total-left">

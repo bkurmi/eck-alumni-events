@@ -460,13 +460,15 @@ export const AdminPage: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsShareModalOpen(true)}
-                      className="btn btn-whatsapp-primary btn-sm"
-                    >
-                      💬 Broadcast List
-                    </button>
+                    <div className="admin-mobile-share-actions">
+                      <button
+                        type="button"
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="btn btn-whatsapp-primary btn-sm"
+                      >
+                        💬 Broadcast List
+                      </button>
+                    </div>
                   </div>
 
                   {/* Stats Cards */}

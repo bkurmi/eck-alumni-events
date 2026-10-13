@@ -5,26 +5,38 @@
 
 /* ── CSS Custom Properties ── */
 :root {
-  --primary: #f59e0b;            /* Warm Amber Gold */
-  --primary-light: #fbbf24;      /* Shimmering Gold */
-  --primary-dark: #d97706;       /* Deep Gold */
+  --primary: #f59e0b;
+  /* Warm Amber Gold */
+  --primary-light: #fbbf24;
+  /* Shimmering Gold */
+  --primary-dark: #d97706;
+  /* Deep Gold */
   --primary-glow: rgba(245, 158, 11, 0.35);
 
-  --accent: #f97316;             /* Festive Marigold */
+  --accent: #f97316;
+  /* Festive Marigold */
   --accent-light: #fdba74;
-  --accent-crimson: #e11d48;     /* Royal Crimson */
+  --accent-crimson: #e11d48;
+  /* Royal Crimson */
 
-  --bg-base: #0a0c16;            /* Deep Royal Midnight Navy */
-  --bg-surface: #111425;         /* Surface Card */
-  --bg-elevated: #1a1e36;        /* Elevated Card */
+  --bg-base: #0a0c16;
+  /* Deep Royal Midnight Navy */
+  --bg-surface: #111425;
+  /* Surface Card */
+  --bg-elevated: #1a1e36;
+  /* Elevated Card */
   --bg-card: rgba(17, 20, 37, 0.88);
   --bg-glass: rgba(255, 255, 255, 0.04);
   --bg-gold-tint: rgba(245, 158, 11, 0.07);
 
-  --text-primary: #f8fafc;       /* Crisp White */
-  --text-secondary: #cbd5e1;     /* Soft Slate */
-  --text-muted: #94a3b8;         /* Subdued Slate */
-  --text-gold: #fbbf24;          /* Festive Gold */
+  --text-primary: #f8fafc;
+  /* Crisp White */
+  --text-secondary: #cbd5e1;
+  /* Soft Slate */
+  --text-muted: #94a3b8;
+  /* Subdued Slate */
+  --text-gold: #fbbf24;
+  /* Festive Gold */
   --text-inverse: #0a0c16;
 
   --border-gold: rgba(245, 158, 11, 0.3);
@@ -74,7 +86,7 @@ html {
 body {
   font-family: var(--font-family);
   background-color: var(--bg-base);
-  background-image: 
+  background-image:
     radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.12) 0%, transparent 60%),
     radial-gradient(ellipse at 100% 50%, rgba(225, 29, 72, 0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 0% 80%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
@@ -97,6 +109,7 @@ a {
   text-decoration: none;
   transition: color var(--transition-fast);
 }
+
 a:hover {
   color: var(--gold-bright);
 }
@@ -108,22 +121,55 @@ img {
 }
 
 /* ── Typography Helpers ── */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-family);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.25;
 }
 
-.text-muted { color: var(--text-muted); }
-.text-gold { color: var(--text-gold); }
-.text-error { color: var(--error); }
-.font-semibold { font-weight: 600; }
-.font-bold { font-weight: 700; }
-.font-accent { color: var(--primary-light); }
-.font-success { color: var(--success); }
-.capitalize { text-transform: capitalize; }
-.flex-center { display: flex; align-items: center; justify-content: center; }
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-gold {
+  color: var(--text-gold);
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-accent {
+  color: var(--primary-light);
+}
+
+.font-success {
+  color: var(--success);
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ── App Layout ── */
 .app-layout {
@@ -246,19 +292,24 @@ h1, h2, h3, h4, h5, h6 {
   .header-container {
     padding: 10px 12px;
   }
+
   .brand-link {
     gap: 8px;
   }
+
   .brand-crest-emblem {
     width: 32px;
     height: 32px;
   }
+
   .brand-title {
     font-size: 0.84rem;
   }
+
   .hindi-tagline {
     font-size: 0.68rem;
   }
+
   .nav-btn {
     padding: 6px 10px;
     font-size: 0.74rem;
@@ -269,6 +320,7 @@ h1, h2, h3, h4, h5, h6 {
   .nav-btn span {
     display: none;
   }
+
   .brand-title {
     font-size: 0.78rem;
   }
@@ -401,8 +453,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
 }
 
 /* ── Organiser Crest Authority Bar ── */
@@ -481,10 +542,12 @@ h1, h2, h3, h4, h5, h6 {
     gap: 10px;
     margin: 8px 0 14px;
   }
+
   .crest-badge-circle {
     width: 38px;
     height: 38px;
   }
+
   .organiser-name {
     font-size: 0.88rem;
   }
@@ -1008,6 +1071,7 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1694,6 +1758,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 5px 6px 5px 10px;
     gap: 4px;
   }
+
   .copy-btn {
     padding: 4px 8px;
     font-size: 0.72rem;
@@ -2075,9 +2140,21 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Shake Animation for Top Error Alert ── */
 @keyframes alertShake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-6px); }
-  40%, 80% { transform: translateX(6px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
 }
 
 .animate-alert-shake {
@@ -2178,7 +2255,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Success Page ── */
@@ -3794,6 +3873,14 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
+.admin-mobile-share-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
 .btn-card-whatsapp {
   background: rgba(37, 211, 102, 0.12);
   border: 1px solid rgba(37, 211, 102, 0.35);
@@ -3819,15 +3906,33 @@ h1, h2, h3, h4, h5, h6 {
   .share-metrics-strip {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .share-footer-actions {
     flex-direction: column;
   }
+
   .share-action-btn {
     width: 100%;
   }
+
   .admin-mobile-share-banner {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+  }
+
+  .admin-mobile-share-banner>.btn,
+  .admin-mobile-share-banner>button {
+    align-self: center;
+  }
+
+  .admin-mobile-share-actions {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 
@@ -3957,33 +4062,6 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.upi-report-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.upi-report-title {
-  font-family: var(--font-festive);
-  font-size: 1.5rem;
-  color: var(--text-gold);
-  margin-bottom: 4px;
-}
-
-.upi-report-subtitle {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  max-width: 650px;
-}
-
-.upi-report-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 /* ── Per-Account KPI Tabs / Grid ── */
@@ -4211,12 +4289,14 @@ h1, h2, h3, h4, h5, h6 {
 
 .upi-table-responsive {
   width: 100%;
-  overflow-x: hidden; /* ABSOLUTELY NO HORIZONTAL SCROLLBAR */
+  overflow-x: hidden;
+  /* ABSOLUTELY NO HORIZONTAL SCROLLBAR */
 }
 
 .upi-report-table {
   width: 100%;
-  table-layout: fixed; /* STRICTLY 100% WIDTH - PREVENTS HORIZONTAL OVERFLOW */
+  table-layout: fixed;
+  /* STRICTLY 100% WIDTH - PREVENTS HORIZONTAL OVERFLOW */
   border-collapse: collapse;
   text-align: left;
   font-size: 0.84rem;
@@ -4777,15 +4857,18 @@ h1, h2, h3, h4, h5, h6 {
   .upi-mobile-only {
     display: none !important;
   }
+
   .upi-desktop-only {
     display: block !important;
   }
+
   .upi-report-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
   }
+
   .upi-secondary-actions-group {
     display: flex;
     align-items: center;
@@ -4797,6 +4880,7 @@ h1, h2, h3, h4, h5, h6 {
   .upi-desktop-only {
     display: none !important;
   }
+
   .upi-mobile-only {
     display: flex !important;
   }
@@ -4877,42 +4961,6 @@ h1, h2, h3, h4, h5, h6 {
 
   .live-banner-amount {
     font-size: 1.35rem;
-  }
-
-  .upi-report-header {
-    flex-direction: column;
-    align-items: stretch;
-    margin-bottom: 12px;
-  }
-
-  .upi-report-actions {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .upi-btn-share-main {
-    width: 100%;
-    justify-content: center;
-    padding: 11px 16px;
-    font-size: 0.92rem;
-    font-weight: 700;
-  }
-
-  .upi-secondary-actions-group {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    width: 100%;
-  }
-
-  .upi-secondary-actions-group .btn {
-    width: 100%;
-    justify-content: center;
-    padding: 8px 4px;
-    font-size: 0.78rem;
-    white-space: nowrap;
   }
 
   .upi-toolbar {
@@ -5330,8 +5378,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes fadeInFast {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── UPI Edit Modal (Mobile-First Sleek Dark UI) ── */
@@ -5545,8 +5600,3 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-muted);
   padding-left: 2px;
 }
-
-
-
-
-
