@@ -327,6 +327,16 @@ export const AdminPage: React.FC = () => {
         org.includes(q);
 
       return matchesStatus && matchesSearch;
+    }).sort((a, b) => {
+      const regA = a.registration_number || '';
+      const regB = b.registration_number || '';
+      if (regA && regB) {
+        const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+      }
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return timeB - timeA;
     });
   }, [registrations, searchQuery, statusFilter]);
 

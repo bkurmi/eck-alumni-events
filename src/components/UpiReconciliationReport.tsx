@@ -178,7 +178,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     }).sort((a, b) => {
       const regA = a.registration.registration_number || '';
       const regB = b.registration.registration_number || '';
-      return regA.localeCompare(regB, undefined, { numeric: true, sensitivity: 'base' });
+      if (regA && regB) {
+        const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+      }
+      const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
+      const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
+      return timeB - timeA;
     });
   }, [registrations, verifByRegId, knownAccounts]);
 
@@ -279,7 +285,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     }).sort((a, b) => {
       const regA = a.registration.registration_number || '';
       const regB = b.registration.registration_number || '';
-      return regA.localeCompare(regB, undefined, { numeric: true, sensitivity: 'base' });
+      if (regA && regB) {
+        const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+      }
+      const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
+      const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
+      return timeB - timeA;
     });
   }, [enrichedList, attendanceFilter, selectedAccounts, selectedDateFilter, searchQuery]);
 
@@ -315,7 +327,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       const items = map.get(d)!.sort((a, b) => {
         const regA = a.registration.registration_number || '';
         const regB = b.registration.registration_number || '';
-        return regA.localeCompare(regB, undefined, { numeric: true, sensitivity: 'base' });
+        if (regA && regB) {
+          const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
+          if (cmp !== 0) return cmp;
+        }
+        const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
+        const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
+        return timeB - timeA;
       });
       const subtotalAmount = items.reduce((sum, i) => sum + i.amount, 0);
       groups.push({
