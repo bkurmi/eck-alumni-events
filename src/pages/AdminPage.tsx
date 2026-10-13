@@ -387,16 +387,6 @@ export const AdminPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="admin-actions">
-                  {activeTab === 'registrations' && (
-                    <button
-                      type="button"
-                      onClick={() => setIsShareModalOpen(true)}
-                      className="btn btn-whatsapp-header"
-                      title="Broadcast Attendee List on WhatsApp"
-                    >
-                      💬 Share on WhatsApp
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={fetchRegistrations}

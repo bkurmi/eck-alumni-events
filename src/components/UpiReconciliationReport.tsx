@@ -12,7 +12,7 @@ interface UpiReconciliationReportProps {
     amount: number,
     notes?: string
   ) => Promise<boolean>;
-  onRefresh: () => void;
+  onRefresh?: () => void;
   loading?: boolean;
   currentUserEmail?: string;
 }
@@ -61,8 +61,6 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   registrations,
   verifications,
   onSaveVerification,
-  onRefresh,
-  loading = false,
   currentUserEmail,
 }) => {
   // Known accounts list specifically for reconciliation reporting
@@ -623,15 +621,6 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               title="Download CSV to open in Excel"
             >
               📥 CSV
-            </button>
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={loading}
-              className="btn btn-secondary btn-sm"
-              title="Refresh database records"
-            >
-              🔄 Refresh
             </button>
           </div>
         </div>
