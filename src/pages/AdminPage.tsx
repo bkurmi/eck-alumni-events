@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { AdminLogin } from '../components/AdminLogin';
 import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
+import { QuickManualRegistrationModal } from '../components/QuickManualRegistrationModal';
 import { supabase } from '../lib/supabase';
 import type { EventRegistration, ECKEvent, PaymentVerification } from '../types';
 
@@ -38,6 +39,7 @@ export const AdminPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'yes' | 'maybe' | 'no'>('all');
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [singleCopied, setSingleCopied] = useState(false);
 
@@ -399,6 +401,22 @@ export const AdminPage: React.FC = () => {
                 <div className="admin-actions">
                   <button
                     type="button"
+                    onClick={() => setIsManualEntryOpen(true)}
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
+                    }}
+                    title="Quickly register alumnus who paid via QR/UPI directly"
+                  >
+                    <span>⚡</span>
+                    <span>+ Quick Manual Entry</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={fetchRegistrations}
                     disabled={loadingData}
                     className="btn btn-secondary btn-sm"
@@ -471,6 +489,14 @@ export const AdminPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="admin-mobile-share-actions">
+                      <button
+                        type="button"
+                        onClick={() => setIsManualEntryOpen(true)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                      >
+                        ⚡ + Manual Entry
+                      </button>
                       <button
                         type="button"
                         onClick={() => setIsShareModalOpen(true)}
@@ -828,6 +854,15 @@ export const AdminPage: React.FC = () => {
         registrations={registrations}
         filteredRegistrations={filteredRegistrations}
         event={activeEvent}
+      />
+
+      {/* Quick Manual Offline Registration Modal */}
+      <QuickManualRegistrationModal
+        isOpen={isManualEntryOpen}
+        onClose={() => setIsManualEntryOpen(false)}
+        event={activeEvent}
+        onSuccess={fetchRegistrations}
+        currentUserEmail={session?.user?.email}
       />
     </div>
   );
