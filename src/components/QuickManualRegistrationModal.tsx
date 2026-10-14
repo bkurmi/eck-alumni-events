@@ -758,11 +758,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
   const isNameInvalid = Boolean(nameError && !name.trim());
 
   return (
-    <div className="modal-overlay" onClick={handleClose} role="dialog" aria-modal="true">
+    <div className="modal-overlay quick-manual-modal-overlay" onClick={handleClose} role="dialog" aria-modal="true">
       <div
         className="modal-content quick-manual-modal-card"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '640px', width: '100%', maxHeight: '92vh', overflowY: 'auto' }}
       >
         {/* Header */}
         <div className="modal-header" style={{ alignItems: 'flex-start' }}>
@@ -1128,105 +1127,139 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                   ))}
                 </div>
 
-                {/* Steppers for counts if Yes */}
+                {/* Steppers for counts if Yes - Consistent with main registration form */}
                 {attendanceStatus === 'yes' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-                    {/* Adults Count */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Adults (12+ Years)
-                      </label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className="attendee-tiers-grid" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {/* Adults Counter */}
+                    <div className="tier-counter-card">
+                      <div className="tier-info">
+                        <div className="tier-name-row">
+                          <span className="tier-title">Adults</span>
+                          {adultsCount === 2 && (
+                            <span className="tier-badge couple-badge">Couple Rate</span>
+                          )}
+                        </div>
+                        <span className="tier-desc">
+                          {adultsCount === 1
+                            ? '₹800 for 1 adult'
+                            : adultsCount === 2
+                            ? '₹1,500 for couple'
+                            : `₹1,500 couple + ₹800/extra adult`}
+                        </span>
+                      </div>
+                      <div className="stepper-controls">
                         <button
                           type="button"
                           onClick={() => {
                             setIsCustomAmount(false);
                             setAdultsCount((prev) => Math.max(1, prev - 1));
                           }}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px 12px' }}
+                          disabled={adultsCount <= 1}
+                          className="stepper-btn"
+                          aria-label="Decrease adults"
                         >
-                          -
+                          −
                         </button>
-                        <span style={{ fontWeight: 700, minWidth: '32px', textAlign: 'center', fontSize: '1rem', color: '#fff' }}>
-                          {adultsCount}
-                        </span>
+                        <div className="stepper-count-wrap">
+                          <span className="stepper-count">{adultsCount}</span>
+                          <span className="stepper-person-label">
+                            {adultsCount === 1 ? 'ADULT' : 'ADULTS'}
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
                             setIsCustomAmount(false);
                             setAdultsCount((prev) => prev + 1);
                           }}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px 12px' }}
+                          disabled={adultsCount >= 10}
+                          className="stepper-btn"
+                          aria-label="Increase adults"
                         >
                           +
                         </button>
                       </div>
                     </div>
 
-                    {/* Children (10+ Years) */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Children (10+ Years) (+₹300)
-                      </label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {/* Children (10+ Years) Counter */}
+                    <div className="tier-counter-card">
+                      <div className="tier-info">
+                        <div className="tier-name-row">
+                          <span className="tier-title">Children (10+ Years)</span>
+                        </div>
+                        <span className="tier-desc">₹300 per child</span>
+                      </div>
+                      <div className="stepper-controls">
                         <button
                           type="button"
                           onClick={() => {
                             setIsCustomAmount(false);
                             setKidsAbove10((prev) => Math.max(0, prev - 1));
                           }}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px 12px' }}
+                          disabled={kidsAbove10 <= 0}
+                          className="stepper-btn"
+                          aria-label="Decrease children 10 and above"
                         >
-                          -
+                          −
                         </button>
-                        <span style={{ fontWeight: 700, minWidth: '32px', textAlign: 'center', fontSize: '1rem', color: '#fff' }}>
-                          {kidsAbove10}
-                        </span>
+                        <div className="stepper-count-wrap">
+                          <span className="stepper-count">{kidsAbove10}</span>
+                          <span className="stepper-person-label">
+                            {kidsAbove10 === 1 ? 'CHILD' : 'CHILDREN'}
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
                             setIsCustomAmount(false);
                             setKidsAbove10((prev) => prev + 1);
                           }}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px 12px' }}
+                          disabled={kidsAbove10 >= 10}
+                          className="stepper-btn"
+                          aria-label="Increase children 10 and above"
                         >
                           +
                         </button>
                       </div>
                     </div>
 
-                    {/* Children (Under 10 Years) */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Children (Under 10 Years) (Free)
-                      </label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {/* Children (Under 10 Years) Counter */}
+                    <div className="tier-counter-card">
+                      <div className="tier-info">
+                        <div className="tier-name-row">
+                          <span className="tier-title">Children (Under 10 Years)</span>
+                          <span className="tier-badge free-badge">FREE</span>
+                        </div>
+                        <span className="tier-desc">Complimentary reunion entry</span>
+                      </div>
+                      <div className="stepper-controls">
                         <button
                           type="button"
                           onClick={() => {
                             setIsCustomAmount(false);
                             setKidsUnder10((prev) => Math.max(0, prev - 1));
                           }}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px 12px' }}
+                          disabled={kidsUnder10 <= 0}
+                          className="stepper-btn"
+                          aria-label="Decrease children under 10"
                         >
-                          -
+                          −
                         </button>
-                        <span style={{ fontWeight: 700, minWidth: '32px', textAlign: 'center', fontSize: '1rem', color: '#fff' }}>
-                          {kidsUnder10}
-                        </span>
+                        <div className="stepper-count-wrap">
+                          <span className="stepper-count">{kidsUnder10}</span>
+                          <span className="stepper-person-label">
+                            {kidsUnder10 === 1 ? 'CHILD' : 'CHILDREN'}
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
                             setIsCustomAmount(false);
                             setKidsUnder10((prev) => prev + 1);
                           }}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px 12px' }}
+                          disabled={kidsUnder10 >= 10}
+                          className="stepper-btn"
+                          aria-label="Increase children under 10"
                         >
                           +
                         </button>
@@ -1588,8 +1621,17 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                 )}
               </div>
 
-              {/* Form Action Buttons */}
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              {/* Form Action Buttons (Mobile-first sticky bottom bar) */}
+              <div
+                className="quick-manual-sticky-footer"
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  justifyContent: 'flex-end',
+                  paddingTop: '10px',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                }}
+              >
                 <button
                   type="button"
                   onClick={handleClose}

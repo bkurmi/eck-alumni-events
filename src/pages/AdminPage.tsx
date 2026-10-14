@@ -402,18 +402,20 @@ export const AdminPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsManualEntryOpen(true)}
-                    className="btn btn-primary btn-sm"
+                    className="btn btn-primary btn-sm admin-quick-entry-btn"
                     style={{
                       background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
                       boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
                     }}
                     title="Quickly register alumnus who paid via QR/UPI directly"
                   >
                     <span>⚡</span>
-                    <span>+ Quick Manual Entry</span>
+                    <span>+ Quick Entry</span>
                   </button>
                   <button
                     type="button"
@@ -489,14 +491,6 @@ export const AdminPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="admin-mobile-share-actions">
-                      <button
-                        type="button"
-                        onClick={() => setIsManualEntryOpen(true)}
-                        className="btn btn-secondary btn-sm"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                      >
-                        ⚡ + Manual Entry
-                      </button>
                       <button
                         type="button"
                         onClick={() => setIsShareModalOpen(true)}

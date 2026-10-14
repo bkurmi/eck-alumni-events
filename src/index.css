@@ -5600,3 +5600,55 @@ h6 {
   color: var(--text-muted);
   padding-left: 2px;
 }
+
+/* ── Admin Quick Manual Registration (Mobile-First Sheet) ── */
+.admin-quick-entry-btn {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .quick-manual-modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  .quick-manual-modal-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 94vh !important;
+    max-height: 94vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    display: flex;
+    flex-direction: column;
+    margin: 0 !important;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .quick-manual-modal-card .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-surface);
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .quick-manual-modal-card .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px !important;
+  }
+
+  .quick-manual-sticky-footer {
+    position: sticky;
+    bottom: 0;
+    background: #181926;
+    padding: 12px 16px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+  }
+}
