@@ -36,7 +36,7 @@ export const AdminPage: React.FC = () => {
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'yes' | 'maybe' | 'no'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'yes' | 'maybe' | 'no' | 'awaiting_screenshot'>('all');
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
@@ -296,11 +296,27 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  const handlePingMissingScreenshot = (e: React.MouseEvent, reg: EventRegistration) => {
+    e.stopPropagation();
+    const mobile = (reg.alumni?.mobile || '').replace(/[^0-9]/g, '');
+    if (!mobile) return;
+    const target = mobile.length === 10 ? `91${mobile}` : mobile;
+    const name = reg.alumni?.name || 'Alumnus';
+    const batch = reg.alumni?.year_of_passing ? `Batch of ${reg.alumni.year_of_passing}` : '';
+    const amount = reg.amount || 800;
+    const text = `Namaste ${name} Ji! We noticed you started your registration for ECK-RTU Alumni DeepAura 2K26${batch ? ` (${batch})` : ''}, but the payment screenshot hasn't been uploaded yet. If you have completed your UPI payment of ₹${amount}, please reply with your screenshot here so we can confirm your official pass. Warm regards, ECK Alumni Team.`;
+    window.open(`https://wa.me/${target}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   // Filtered registrations
   const filteredRegistrations = useMemo(() => {
     return registrations.filter((reg) => {
       const matchesStatus =
-        statusFilter === 'all' || reg.attendance_status === statusFilter;
+        statusFilter === 'all'
+          ? true
+          : statusFilter === 'awaiting_screenshot'
+          ? reg.attendance_status === 'yes' && !reg.payment_screenshot_path && Number(reg.amount || 0) > 0
+          : reg.attendance_status === statusFilter;
 
       const q = searchQuery.toLowerCase().trim();
       if (!q) return matchesStatus;
@@ -564,6 +580,14 @@ export const AdminPage: React.FC = () => {
                       </button>
                       <button
                         type="button"
+                        className={`filter-chip filter-chip-awaiting ${statusFilter === 'awaiting_screenshot' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('awaiting_screenshot')}
+                        title="Attending entries without an uploaded payment screenshot"
+                      >
+                        ⚠️ Awaiting Proof ({registrations.filter((r) => r.attendance_status === 'yes' && !r.payment_screenshot_path && Number(r.amount || 0) > 0).length})
+                      </button>
+                      <button
+                        type="button"
                         className={`filter-chip ${statusFilter === 'maybe' ? 'active' : ''}`}
                         onClick={() => setStatusFilter('maybe')}
                       >
@@ -632,9 +656,21 @@ export const AdminPage: React.FC = () => {
                               </span>
                             ) : (
                               <span className="screenshot-tag tag-no-ss">
-                                No Screenshot
+                                {reg.attendance_status === 'yes' ? '⚠️ Awaiting Proof' : 'No Screenshot'}
                               </span>
                             )}
+
+                            {reg.attendance_status === 'yes' && !reg.payment_screenshot_path && (
+                              <button
+                                type="button"
+                                onClick={(e) => handlePingMissingScreenshot(e, reg)}
+                                className="btn-card-reminder"
+                                title="Send WhatsApp reminder to submit payment screenshot"
+                              >
+                                🔔 Remind Proof
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               onClick={(e) => {

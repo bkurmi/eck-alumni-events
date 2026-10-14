@@ -16,6 +16,8 @@ interface PaymentSectionProps {
   existingScreenshotPath?: string | null;
   previousPaidAmount?: number;
   additionalAmountDue?: number;
+  onPayViaUpiApp?: (deepLink: string) => void;
+  isPreSavingUpi?: boolean;
 }
 
 export const PaymentSection: React.FC<PaymentSectionProps> = ({
@@ -33,6 +35,8 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   existingScreenshotPath,
   previousPaidAmount = 0,
   additionalAmountDue,
+  onPayViaUpiApp,
+  isPreSavingUpi = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -280,17 +284,41 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                     <span>OR PAY ON THIS DEVICE</span>
                   </div>
 
-                  <a
-                    href={upiDeepLink || '#'}
-                    className="btn-pay-upi"
-                    id="btn-pay-upi-app"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                    </svg>
-                    <span>Pay ₹{amountToPay} via UPI App</span>
-                  </a>
-                  <span className="upi-app-hint">Tap to open GPay, PhonePe, or Paytm installed on this phone</span>
+                  <div className="upi-app-action-box">
+                    <button
+                      type="button"
+                      disabled={isPreSavingUpi}
+                      onClick={() => {
+                        if (upiDeepLink && onPayViaUpiApp) {
+                          onPayViaUpiApp(upiDeepLink);
+                        } else if (upiDeepLink) {
+                          window.location.href = upiDeepLink;
+                        }
+                      }}
+                      className="btn-pay-upi"
+                      id="btn-pay-upi-app"
+                    >
+                      {isPreSavingUpi ? (
+                        <>
+                          <span className="spinner-sm" />
+                          <span>Opening UPI App...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                          </svg>
+                          <span>Pay ₹{amountToPay} via UPI App</span>
+                        </>
+                      )}
+                    </button>
+                    <div className="upi-app-flow-hint">
+                      <span className="hint-pill">1. Pay in UPI</span>
+                      <span className="hint-arrow">➔</span>
+                      <span className="hint-pill hint-pill-highlight">2. Return &amp; Upload Proof</span>
+                    </div>
+                    <span className="upi-app-hint">Tap to open GPay, PhonePe, or Paytm installed on this phone</span>
+                  </div>
                 </div>
 
                 <div className="upi-id-box">
@@ -408,7 +436,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       <div className="payment-note-box">
         <div className="note-icon">💡</div>
         <div className="note-text">
-          <strong>No transaction reference / UTR required.</strong> Your payment screenshot is securely uploaded and verified directly on the portal.
+          <strong>Tip:</strong> Your payment screenshot is securely uploaded and linked to your registration. You will receive your official pass as soon as you submit!
         </div>
       </div>
     </div>

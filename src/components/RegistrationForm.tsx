@@ -13,6 +13,7 @@ import {
   COUNTRY_OPTIONS,
 } from '../types';
 import { PaymentSection } from './PaymentSection';
+import { UpiPaymentFlowModal } from './UpiPaymentFlowModal';
 import { supabase } from '../lib/supabase';
 import { calculateContribution } from '../lib/pricing';
 import {
@@ -80,6 +81,38 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [errorFieldId, setErrorFieldId] = useState<string | null>(null);
   const formTopRef = useRef<HTMLDivElement | null>(null);
+
+  // UPI Flow & Return Prompt State
+  const [showWelcomeBackModal, setShowWelcomeBackModal] = useState(false);
+  const [isPreSavingUpi, setIsPreSavingUpi] = useState(false);
+
+  // Clear any residual drafts on mount to prevent stale form data
+  useEffect(() => {
+    try {
+      localStorage.removeItem(`eck_reg_draft_${event.event_slug}`);
+    } catch {
+      // Ignore
+    }
+  }, [event.event_slug]);
+
+  // Page visibility & focus listener: Detect when user returns from UPI app
+  useEffect(() => {
+    const handleReturnToTab = () => {
+      if (document.visibilityState === 'visible') {
+        const initiated = sessionStorage.getItem('eck_upi_initiated');
+        if (initiated === 'true' && !screenshotFile && !activeExistingReg?.payment_screenshot_path) {
+          setShowWelcomeBackModal(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleReturnToTab);
+    window.addEventListener('focus', handleReturnToTab);
+    return () => {
+      document.removeEventListener('visibilitychange', handleReturnToTab);
+      window.removeEventListener('focus', handleReturnToTab);
+    };
+  }, [screenshotFile, activeExistingReg?.payment_screenshot_path]);
 
   const scrollToError = (errorMessage: string, fieldId?: string) => {
     setFormError(errorMessage);
@@ -194,13 +227,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     try {
       const result = await lookupRegistrationByMobile(event.event_slug, clean);
       if (result.found) {
-        // Auto-preload details immediately
+        // Preload alumni details so user doesn't have to re-type
         const loadedForm = convertLookupToFormData(result);
         setFormData(loadedForm);
-        setActiveExistingReg(result);
-        setIsUpdateMode(true);
         setScreenshotError(null);
         setFormError(null);
+
+        // Only switch to locked update mode if registration was actually completed with payment proof
+        if (result.payment_screenshot_path) {
+          setActiveExistingReg(result);
+          setIsUpdateMode(true);
+        } else {
+          // Incomplete / pending payment: keep form clean in fresh registration mode
+          setActiveExistingReg(result);
+          setIsUpdateMode(false);
+        }
       }
     } catch (err) {
       console.warn('Mobile lookup error:', err);
@@ -306,6 +347,117 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     });
   };
 
+  const handleInitiateUpiPayment = async (deepLink: string) => {
+    if (formError) setFormError(null);
+    if (errorFieldId) setErrorFieldId(null);
+
+    // Validate minimum required fields before launching UPI
+    if (!formData.name.trim()) {
+      scrollToError('Please enter your full name first so we can link your payment to you.', 'field-name');
+      return;
+    }
+    const cleanMobile = cleanMobileNumber(formData.mobile);
+    if (cleanMobile.length < 10) {
+      scrollToError('Please enter a valid 10-digit mobile number before making payment.', 'field-mobile');
+      return;
+    }
+    if (!formData.year_of_passing) {
+      scrollToError('Please select your Year of Passing (Batch).', 'field-year');
+      return;
+    }
+    if (!formData.engineering_discipline) {
+      scrollToError('Please select your Engineering Discipline / Branch.', 'field-discipline');
+      return;
+    }
+
+    setIsPreSavingUpi(true);
+    try {
+      const isIndia = formData.country === 'India';
+      const resolvedCountry = isIndia ? 'India' : (formData.country_other?.trim() || 'Other');
+      const resolvedDiscipline =
+        formData.engineering_discipline === 'Other'
+          ? (formData.engineering_discipline_other?.trim() || 'Other')
+          : formData.engineering_discipline;
+      const resolvedState = isIndia
+        ? (formData.state === 'Other' ? (formData.state_other?.trim() || 'Other') : formData.state)
+        : (formData.state_other?.trim() || resolvedCountry);
+      const resolvedEmploymentType =
+        formData.employment_type === 'Other'
+          ? (formData.employment_type_other?.trim() || 'Other')
+          : formData.employment_type;
+      const resolvedIndustryDomain =
+        formData.industry_domain === 'Other'
+          ? (formData.industry_domain_other?.trim() || 'Other')
+          : formData.industry_domain;
+      const combinedCategory = `${resolvedEmploymentType} • ${resolvedIndustryDomain}`;
+
+      // Pre-save to Supabase RPC (with existing or null screenshot)
+      const { data, error } = await supabase.rpc('register_for_event', {
+        p_event_slug: event.event_slug,
+        p_name: formData.name.trim(),
+        p_mobile: cleanMobile,
+        p_address: formData.address.trim() || 'Kota, Rajasthan',
+        p_country: resolvedCountry,
+        p_city: formData.city.trim() || 'Kota',
+        p_state: resolvedState || 'Rajasthan',
+        p_year_of_passing: Number(formData.year_of_passing) || 2000,
+        p_engineering_discipline: resolvedDiscipline || 'General',
+        p_employment_type: resolvedEmploymentType || null,
+        p_industry_domain: resolvedIndustryDomain || null,
+        p_professional_category: combinedCategory,
+        p_attendance_status: formData.attendance_status,
+        p_number_of_attendees:
+          formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
+        p_adults_count:
+          formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
+        p_children_above_7_count:
+          formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
+        p_children_under_7_count:
+          formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
+        p_email: formData.email.trim() || null,
+        p_organization: formData.organization.trim() || null,
+        p_work_location: formData.work_location.trim() || null,
+        p_payment_screenshot_path: activeExistingReg?.payment_screenshot_path || null,
+      });
+
+      if (!error && data?.registration_number) {
+        console.log('[UPI Pre-Save Success]: Registration secured in database:', data.registration_number);
+        // Only update activeExistingReg if already in verified update mode; keep fresh registrations clean
+        if (isUpdateMode && activeExistingReg?.payment_screenshot_path) {
+          const resolvedAttendance = (formData.attendance_status || 'yes') as 'yes' | 'maybe' | 'no';
+          setActiveExistingReg((prev) => ({
+            ...prev,
+            found: true,
+            registration_id: data.registration_id,
+            registration_number: data.registration_number,
+            amount: totalAmount,
+            attendance_status: resolvedAttendance,
+            number_of_attendees: pricing.totalAttendees,
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('[UPI Pre-Save Exception]:', err);
+    } finally {
+      setIsPreSavingUpi(false);
+      sessionStorage.setItem('eck_upi_initiated', 'true');
+      window.location.href = deepLink;
+    }
+  };
+
+  const handleUploadScreenshotFromPrompt = () => {
+    setShowWelcomeBackModal(false);
+    sessionStorage.removeItem('eck_upi_initiated');
+    const fileInput = document.getElementById('payment-screenshot-input') as HTMLInputElement | null;
+    if (fileInput) {
+      fileInput.click();
+    }
+    const dropzone = document.getElementById('screenshot-upload-dropzone');
+    if (dropzone) {
+      dropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -391,20 +543,20 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
     const hasExistingScreenshot = Boolean(activeExistingReg?.payment_screenshot_path);
     if (formData.attendance_status === 'yes') {
+      if (!screenshotFile && !hasExistingScreenshot) {
+        setScreenshotError('Please upload your payment screenshot before submitting.');
+        scrollToError(
+          'Payment screenshot is required for attending participants. Please attach your payment screenshot.',
+          'screenshot-upload-dropzone'
+        );
+        return;
+      }
       if (isUpdateMode && additionalAmountDue > 0 && !screenshotFile) {
         setScreenshotError(
           `Please upload the payment screenshot for the additional ₹${additionalAmountDue}.`
         );
         scrollToError(
           `Payment screenshot is required for the additional amount (₹${additionalAmountDue}).`,
-          'screenshot-upload-dropzone'
-        );
-        return;
-      }
-      if (!isUpdateMode && !screenshotFile && !hasExistingScreenshot) {
-        setScreenshotError('Please upload your payment screenshot before submitting.');
-        scrollToError(
-          'Payment screenshot is required for attending participants. Please attach your payment screenshot.',
           'screenshot-upload-dropzone'
         );
         return;
@@ -701,6 +853,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         is_update: isUpdateMode || Boolean(registrationResult?.is_update),
       };
 
+      try {
+        localStorage.removeItem(`eck_reg_draft_${event.event_slug}`);
+        sessionStorage.removeItem('eck_upi_initiated');
+      } catch {
+        // Ignore
+      }
+
       recordCompletedRegistrationLocally(
         event.event_slug,
         resolvedFormData,
@@ -762,8 +921,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         </div>
       )}
 
-      {/* Feature 2: Update Mode Notice Banner */}
-      {isUpdateMode && (
+      {/* Feature 2: Update Mode Notice Banner (Only for completed registrations) */}
+      {isUpdateMode && activeExistingReg?.payment_screenshot_path && (
         <div className="update-mode-badge-card animate-slide-down">
           <div className="update-badge-left">
             <span className="update-pill">🔒 Existing Registration Preloaded &amp; Locked</span>
@@ -832,7 +991,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             </div>
 
             {/* Confirmation indicator when mobile is matched and preloaded */}
-            {isUpdateMode && activeExistingReg && (
+            {isUpdateMode && activeExistingReg?.payment_screenshot_path && (
               <div className="existing-reg-locked-badge animate-slide-down">
                 <span className="badge-icon">✓</span>
                 <span>
@@ -1425,6 +1584,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           onScreenshotChange={(file) => {
             setScreenshotFile(file);
             setScreenshotError(null);
+            if (file) {
+              setFormError((prev) => (prev && prev.toLowerCase().includes('screenshot') ? null : prev));
+              setErrorFieldId((prev) => (prev === 'screenshot-upload-dropzone' ? null : prev));
+            }
           }}
           error={screenshotError}
           isUpdateMode={isUpdateMode}
@@ -1432,8 +1595,24 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           existingScreenshotPath={activeExistingReg?.payment_screenshot_path}
           previousPaidAmount={previousPaidAmount}
           additionalAmountDue={additionalAmountDue}
+          onPayViaUpiApp={handleInitiateUpiPayment}
+          isPreSavingUpi={isPreSavingUpi}
         />
       )}
+
+      {/* Return from UPI App Detection: Welcome Back Modal */}
+      <UpiPaymentFlowModal
+        isOpen={showWelcomeBackModal}
+        mode="welcome_back"
+        amount={isUpdateMode && additionalAmountDue > 0 ? additionalAmountDue : totalAmount}
+        alumniName={formData.name || 'Alumnus'}
+        alumniMobile={formData.mobile}
+        onUploadScreenshot={handleUploadScreenshotFromPrompt}
+        onClose={() => {
+          setShowWelcomeBackModal(false);
+          sessionStorage.removeItem('eck_upi_initiated');
+        }}
+      />
 
       {/* SUBMIT BUTTON */}
       <div className="form-submit-bar">
