@@ -504,201 +504,196 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
       let registrationResult: RegistrationResult;
 
-      try {
-        // Attempt call with updated parameters
-        const { data, error } = await supabase.rpc('register_for_event', {
+      // Attempt call with updated parameters
+      const { data, error } = await supabase.rpc('register_for_event', {
+        p_event_slug: event.event_slug,
+        p_name: formData.name.trim(),
+        p_mobile: cleanMobile,
+        p_address: formData.address.trim(),
+        p_country: resolvedCountry,
+        p_city: formData.city.trim(),
+        p_state: resolvedState,
+        p_year_of_passing: Number(formData.year_of_passing),
+        p_engineering_discipline: resolvedDiscipline,
+        p_employment_type: resolvedEmploymentType,
+        p_industry_domain: resolvedIndustryDomain,
+        p_professional_category: combinedCategory,
+        p_attendance_status: formData.attendance_status,
+        p_number_of_attendees:
+          formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
+        p_adults_count:
+          formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
+        p_children_above_7_count:
+          formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
+        p_children_under_7_count:
+          formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
+        p_email: formData.email.trim() || null,
+        p_organization: formData.organization.trim() || null,
+        p_work_location: formData.work_location.trim() || null,
+        p_payment_screenshot_path: uploadedScreenshotPath,
+      });
+
+      if (error) {
+        // Fallback to legacy RPC schema if database hasn't applied the migration yet
+        const { data: fbData, error: fbErr } = await supabase.rpc('register_for_event', {
           p_event_slug: event.event_slug,
           p_name: formData.name.trim(),
           p_mobile: cleanMobile,
           p_address: formData.address.trim(),
-          p_country: resolvedCountry,
           p_city: formData.city.trim(),
           p_state: resolvedState,
           p_year_of_passing: Number(formData.year_of_passing),
           p_engineering_discipline: resolvedDiscipline,
-          p_employment_type: resolvedEmploymentType,
-          p_industry_domain: resolvedIndustryDomain,
           p_professional_category: combinedCategory,
           p_attendance_status: formData.attendance_status,
           p_number_of_attendees:
             formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
-          p_adults_count:
-            formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
-          p_children_above_7_count:
-            formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
-          p_children_under_7_count:
-            formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
           p_email: formData.email.trim() || null,
           p_organization: formData.organization.trim() || null,
           p_work_location: formData.work_location.trim() || null,
           p_payment_screenshot_path: uploadedScreenshotPath,
         });
-
-        if (error) {
-          // Fallback to legacy RPC schema if database hasn't applied the migration yet
-          const { data: fbData, error: fbErr } = await supabase.rpc('register_for_event', {
-            p_event_slug: event.event_slug,
-            p_name: formData.name.trim(),
-            p_mobile: cleanMobile,
-            p_address: formData.address.trim(),
-            p_city: formData.city.trim(),
-            p_state: resolvedState,
-            p_year_of_passing: Number(formData.year_of_passing),
-            p_engineering_discipline: resolvedDiscipline,
-            p_professional_category: combinedCategory,
-            p_attendance_status: formData.attendance_status,
-            p_number_of_attendees:
-              formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
-            p_email: formData.email.trim() || null,
-            p_organization: formData.organization.trim() || null,
-            p_work_location: formData.work_location.trim() || null,
-            p_payment_screenshot_path: uploadedScreenshotPath,
-          });
-          if (fbErr) throw fbErr;
-          registrationResult = fbData as RegistrationResult;
-        } else {
-          registrationResult = data as RegistrationResult;
+        if (fbErr) {
+          console.error('[Registration RPC Error]:', error, fbErr);
+          throw new Error(
+            fbErr.message ||
+            error.message ||
+            'We could not complete your registration due to a temporary server or network issue. Please try again later.'
+          );
         }
+        registrationResult = fbData as RegistrationResult;
+      } else {
+        registrationResult = data as RegistrationResult;
+      }
 
-        // For NEW registrations with a screenshot: upload using the newly generated registration number!
-        if (
-          registrationResult &&
-          formData.attendance_status === 'yes' &&
-          screenshotFile &&
-          !isUpdateMode &&
-          registrationResult.registration_number
-        ) {
-          const regNumber = registrationResult.registration_number;
-          const timestamp = Date.now();
-          const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
-          const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const fileName = `${event.event_slug}/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
+      if (!registrationResult || !registrationResult.registration_number) {
+        throw new Error(
+          'We could not complete your registration due to a temporary server or network issue. Please try again later.'
+        );
+      }
 
-          console.log('[Storage Upload] Uploading screenshot for new registration:', {
-            regNumber,
-            fileName,
-            fileSize: screenshotFile.size,
-            mimeType: screenshotFile.type,
-            bucket: 'payment-screenshots',
-          });
+      // For NEW registrations with a screenshot: upload using the newly generated registration number!
+      if (
+        registrationResult &&
+        formData.attendance_status === 'yes' &&
+        screenshotFile &&
+        !isUpdateMode &&
+        registrationResult.registration_number
+      ) {
+        const regNumber = registrationResult.registration_number;
+        const timestamp = Date.now();
+        const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
+        const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const fileName = `${event.event_slug}/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
 
-          try {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('payment-screenshots')
-              .upload(fileName, screenshotFile, {
-                cacheControl: '3600',
-                upsert: true,
+        console.log('[Storage Upload] Uploading screenshot for new registration:', {
+          regNumber,
+          fileName,
+          fileSize: screenshotFile.size,
+          mimeType: screenshotFile.type,
+          bucket: 'payment-screenshots',
+        });
+
+        try {
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('payment-screenshots')
+            .upload(fileName, screenshotFile, {
+              cacheControl: '3600',
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error('[Storage Upload Error]:', uploadError);
+            alert(
+              `Warning: Screenshot upload failed (${uploadError.message}). Your registration number is ${regNumber}. Please send your receipt to the organizer.`
+            );
+          } else if (uploadData) {
+            console.log('[Storage Upload Success]:', uploadData);
+            uploadedScreenshotPath = uploadData.path;
+            finalCombinedScreenshotPath = uploadData.path;
+
+            // Save the screenshot path to the registration record via the SECURITY DEFINER RPC
+            // to ensure Row Level Security (RLS) does not block saving the path for new registrations
+            try {
+              const { error: rpcUpdateErr } = await supabase.rpc('register_for_event', {
+                p_event_slug: event.event_slug,
+                p_name: formData.name.trim(),
+                p_mobile: cleanMobile,
+                p_address: formData.address.trim(),
+                p_country: resolvedCountry,
+                p_city: formData.city.trim(),
+                p_state: resolvedState,
+                p_year_of_passing: Number(formData.year_of_passing),
+                p_engineering_discipline: resolvedDiscipline,
+                p_employment_type: resolvedEmploymentType,
+                p_industry_domain: resolvedIndustryDomain,
+                p_professional_category: combinedCategory,
+                p_attendance_status: formData.attendance_status,
+                p_number_of_attendees: pricing.totalAttendees,
+                p_adults_count: formData.adults_count ?? 1,
+                p_children_above_7_count: formData.children_above_7_count ?? 0,
+                p_children_under_7_count: formData.children_under_7_count ?? 0,
+                p_email: formData.email.trim() || null,
+                p_organization: formData.organization.trim() || null,
+                p_work_location: formData.work_location.trim() || null,
+                p_payment_screenshot_path: uploadedScreenshotPath,
               });
-
-            if (uploadError) {
-              console.error('[Storage Upload Error]:', uploadError);
-              alert(
-                `Warning: Screenshot upload failed (${uploadError.message}). Your registration number is ${regNumber}. Please send your receipt to the organizer.`
-              );
-            } else if (uploadData) {
-              console.log('[Storage Upload Success]:', uploadData);
-              uploadedScreenshotPath = uploadData.path;
-              finalCombinedScreenshotPath = uploadData.path;
-
-              // Save the screenshot path to the registration record via the SECURITY DEFINER RPC
-              // to ensure Row Level Security (RLS) does not block saving the path for new registrations
-              try {
-                const { error: rpcUpdateErr } = await supabase.rpc('register_for_event', {
+              if (rpcUpdateErr) {
+                // Fallback to legacy RPC schema if database hasn't applied the migration yet
+                await supabase.rpc('register_for_event', {
                   p_event_slug: event.event_slug,
                   p_name: formData.name.trim(),
                   p_mobile: cleanMobile,
                   p_address: formData.address.trim(),
-                  p_country: resolvedCountry,
                   p_city: formData.city.trim(),
                   p_state: resolvedState,
                   p_year_of_passing: Number(formData.year_of_passing),
                   p_engineering_discipline: resolvedDiscipline,
-                  p_employment_type: resolvedEmploymentType,
-                  p_industry_domain: resolvedIndustryDomain,
                   p_professional_category: combinedCategory,
                   p_attendance_status: formData.attendance_status,
                   p_number_of_attendees: pricing.totalAttendees,
-                  p_adults_count: formData.adults_count ?? 1,
-                  p_children_above_7_count: formData.children_above_7_count ?? 0,
-                  p_children_under_7_count: formData.children_under_7_count ?? 0,
                   p_email: formData.email.trim() || null,
                   p_organization: formData.organization.trim() || null,
                   p_work_location: formData.work_location.trim() || null,
                   p_payment_screenshot_path: uploadedScreenshotPath,
                 });
-                if (rpcUpdateErr) {
-                  // Fallback to legacy RPC schema if database hasn't applied the migration yet
-                  await supabase.rpc('register_for_event', {
-                    p_event_slug: event.event_slug,
-                    p_name: formData.name.trim(),
-                    p_mobile: cleanMobile,
-                    p_address: formData.address.trim(),
-                    p_city: formData.city.trim(),
-                    p_state: resolvedState,
-                    p_year_of_passing: Number(formData.year_of_passing),
-                    p_engineering_discipline: resolvedDiscipline,
-                    p_professional_category: combinedCategory,
-                    p_attendance_status: formData.attendance_status,
-                    p_number_of_attendees: pricing.totalAttendees,
-                    p_email: formData.email.trim() || null,
-                    p_organization: formData.organization.trim() || null,
-                    p_work_location: formData.work_location.trim() || null,
-                    p_payment_screenshot_path: uploadedScreenshotPath,
-                  });
-                }
-                console.log('[Registration Record Updated with Screenshot Path]:', uploadData.path);
-              } catch (updateErr) {
-                console.warn('[Registration Screenshot Sync Note]:', updateErr);
               }
+              console.log('[Registration Record Updated with Screenshot Path]:', uploadData.path);
+            } catch (updateErr) {
+              console.warn('[Registration Screenshot Sync Note]:', updateErr);
             }
-          } catch (storageErr) {
-            console.error('[Storage Upload Exception]:', storageErr);
           }
+        } catch (storageErr) {
+          console.error('[Storage Upload Exception]:', storageErr);
         }
+      }
 
-        // Keep DB amount and combined screenshots synced
-        if (registrationResult) {
-          registrationResult.amount = totalAmount;
-          if (registrationResult.registration_id && formData.attendance_status === 'yes') {
-            try {
-              const syncPayload: Record<string, any> = {
-                amount: totalAmount,
-                number_of_attendees: pricing.totalAttendees,
-                adults_count:
-                  formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
-                children_above_7_count:
-                  formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
-                children_under_7_count:
-                  formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
-              };
-              if (finalCombinedScreenshotPath) {
-                syncPayload.payment_screenshot_path = finalCombinedScreenshotPath;
-              }
-              await supabase
-                .from('event_registrations')
-                .update(syncPayload)
-                .eq('id', registrationResult.registration_id);
-            } catch (syncErr) {
-              console.warn('Sync registration amount note:', syncErr);
+      // Keep DB amount and combined screenshots synced
+      if (registrationResult) {
+        registrationResult.amount = totalAmount;
+        if (registrationResult.registration_id && formData.attendance_status === 'yes') {
+          try {
+            const syncPayload: Record<string, any> = {
+              amount: totalAmount,
+              number_of_attendees: pricing.totalAttendees,
+              adults_count:
+                formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
+              children_above_7_count:
+                formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
+              children_under_7_count:
+                formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
+            };
+            if (finalCombinedScreenshotPath) {
+              syncPayload.payment_screenshot_path = finalCombinedScreenshotPath;
             }
+            await supabase
+              .from('event_registrations')
+              .update(syncPayload)
+              .eq('id', registrationResult.registration_id);
+          } catch (syncErr) {
+            console.warn('Sync registration amount note:', syncErr);
           }
         }
-      } catch (rpcErr: any) {
-        console.warn('RPC fallback demo mode:', rpcErr);
-        const pseudoRegNum =
-          activeExistingReg?.registration_number ||
-          `REG-${Math.floor(10000 + Math.random() * 90000)}`;
-        registrationResult = {
-          success: true,
-          registration_id:
-            activeExistingReg?.registration_id ||
-            (crypto.randomUUID ? crypto.randomUUID() : 'mock-reg-id'),
-          registration_number: pseudoRegNum,
-          alumni_id: activeExistingReg?.alumni?.id || 'mock-alumni-id',
-          amount: totalAmount,
-          attendance_status: formData.attendance_status,
-          is_update: isUpdateMode,
-        };
       }
 
       const finalResult: RegistrationResult = {
@@ -715,7 +710,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       onSuccess(resolvedFormData, finalResult);
     } catch (err: any) {
       console.error('Registration failed:', err);
-      scrollToError(err?.message || 'Something went wrong while submitting. Please try again.');
+      const friendlyMessage =
+        err?.message && !err.message.toLowerCase().includes('failed to fetch')
+          ? err.message
+          : 'We could not complete your registration due to a temporary server or network issue. Please try again later.';
+      scrollToError(friendlyMessage);
     } finally {
       setSubmitting(false);
     }
@@ -738,8 +737,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               </svg>
             </div>
             <div className="alert-error-details">
-              <strong className="alert-error-heading">Please complete the required information</strong>
-              <p className="alert-error-text">{formError}</p>
+              {errorFieldId ? (
+                <>
+                  <strong className="alert-error-heading">Please complete the required information</strong>
+                  <p className="alert-error-text">{formError}</p>
+                </>
+              ) : (
+                <strong className="alert-error-heading">{formError}</strong>
+              )}
             </div>
           </div>
           <button
@@ -1256,8 +1261,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     {(formData.adults_count ?? 1) === 1
                       ? '₹800 for 1 adult'
                       : (formData.adults_count ?? 1) === 2
-                      ? '₹1,500 for couple'
-                      : `₹1,500 couple + ₹800/extra adult`}
+                        ? '₹1,500 for couple'
+                        : `₹1,500 couple + ₹800/extra adult`}
                   </span>
                 </div>
                 <div className="stepper-controls">
@@ -1478,7 +1483,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 )}
               </span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 18 15 12 9 6"/>
+                <polyline points="9 18 15 12 9 6" />
               </svg>
             </>
           )}
