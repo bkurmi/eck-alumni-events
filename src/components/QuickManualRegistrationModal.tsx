@@ -29,6 +29,44 @@ interface CreatedRegistrationSummary {
   is_update?: boolean;
 }
 
+/**
+ * Smart discipline matcher to reconcile DB discipline strings
+ * e.g. "Electronics & Communication Engineering" -> "Electronics & Communication"
+ */
+function matchDiscipline(rawDisc?: string | null): string {
+  if (!rawDisc || !rawDisc.trim()) return '';
+  const trimmed = rawDisc.trim();
+
+  // 1. Exact match
+  const exact = ENGINEERING_DISCIPLINES.find(
+    (d) => d.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (exact) return exact;
+
+  // 2. Normalized match (remove 'engineering', '&', non-alpha)
+  const clean = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/engineering/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  const cleanRaw = clean(trimmed);
+
+  const matched = ENGINEERING_DISCIPLINES.find((d) => {
+    const cleanD = clean(d);
+    return (
+      cleanD &&
+      (cleanRaw === cleanD ||
+        cleanRaw.startsWith(cleanD) ||
+        cleanD.startsWith(cleanRaw))
+    );
+  });
+
+  if (matched) return matched;
+
+  // 3. Fallback: return raw string
+  return trimmed;
+}
+
 export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModalProps> = ({
   isOpen,
   onClose,
@@ -103,7 +141,22 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     return Array.from({ length: currentYear - 1980 + 1 }, (_, i) => currentYear - i);
   }, [currentYear]);
 
-  // Known receiving UPI options
+  // Discipline options including any existing custom discipline
+  const disciplineOptions = useMemo(() => {
+    const standard = ENGINEERING_DISCIPLINES.filter((d) => d !== 'Other') as string[];
+    const options = [...standard];
+    if (
+      engineeringDiscipline &&
+      engineeringDiscipline !== 'Other' &&
+      !options.includes(engineeringDiscipline)
+    ) {
+      options.push(engineeringDiscipline);
+    }
+    options.push('Other');
+    return options;
+  }, [engineeringDiscipline]);
+
+  // Known receiving UPI options (including current selected UPI if custom)
   const upiOptions = useMemo(() => {
     const list = [
       ...DEFAULT_UPI_CONFIGS.map((c) => ({
@@ -124,13 +177,27 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
       },
     ];
 
+    if (
+      selectedUpiId &&
+      selectedUpiId !== 'other' &&
+      selectedUpiId !== 'cash_handover'
+    ) {
+      const norm = selectedUpiId.toLowerCase().trim();
+      if (!list.some((item) => item.upi_id === norm)) {
+        list.splice(list.length - 2, 0, {
+          upi_id: norm,
+          label: `${UPI_ACCOUNT_NAMES[norm] || 'Recorded Account'} (${norm})`,
+        });
+      }
+    }
+
     const seen = new Set<string>();
     return list.filter((item) => {
       if (seen.has(item.upi_id)) return false;
       seen.add(item.upi_id);
       return true;
     });
-  }, []);
+  }, [selectedUpiId]);
 
   // Calculate pricing (mapped to pricing rule: kidsAbove7 in schema = 10+ years in display)
   const pricing = useMemo(() => {
@@ -207,7 +274,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     }
   }, [isOpen, createdSummary]);
 
-  // Debounced mobile lookup to check existing registration
+  // Debounced mobile lookup to check existing registration and FULLY map all fields
   useEffect(() => {
     const clean = cleanMobileNumber(mobile);
     if (clean.length !== 10) {
@@ -224,6 +291,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         if (!isMounted) return;
 
         if (lookup.found && lookup.registration_number) {
+          const prevAdults = lookup.adults_count ?? (lookup.number_of_attendees || 1);
+          const prevKids10 = lookup.children_above_7_count ?? 0;
+          const prevKidsUnder10 = lookup.children_under_7_count ?? 0;
+
           setExistingRegInfo({
             found: true,
             regNumber: lookup.registration_number,
@@ -235,18 +306,90 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
             existingAmount: lookup.amount,
           });
 
-          // Prepopulate name or batch if currently blank
-          if (!name.trim() && lookup.alumni?.name) {
+          // 1. Populate Name and CLEAR any name error
+          if (lookup.alumni?.name) {
             setName(lookup.alumni.name);
+            setNameError(null);
           }
-          if (!yearOfPassing && lookup.alumni?.year_of_passing && lookup.alumni.year_of_passing > 1900) {
+
+          // 2. Populate Attendance Status & Guest counts
+          if (lookup.attendance_status) {
+            setAttendanceStatus(lookup.attendance_status as 'yes' | 'maybe' | 'no');
+          }
+          setAdultsCount(Math.max(1, prevAdults));
+          setKidsAbove10(prevKids10);
+          setKidsUnder10(prevKidsUnder10);
+
+          // 3. Populate Amount
+          if (typeof lookup.amount === 'number' && lookup.amount > 0) {
+            setAmountOverride(String(lookup.amount));
+            setIsCustomAmount(true);
+          } else {
+            const calc = calculateContribution(prevAdults, prevKids10, prevKidsUnder10);
+            setAmountOverride(String(calc.totalAmount));
+          }
+
+          // 4. Fetch existing UPI payment verification from payment_verifications ledger
+          if (lookup.registration_id) {
+            try {
+              const { data: verifData } = await supabase
+                .from('payment_verifications')
+                .select('upi_id, notes, amount')
+                .eq('registration_id', lookup.registration_id)
+                .maybeSingle();
+
+              if (verifData?.upi_id) {
+                setSelectedUpiId(verifData.upi_id.toLowerCase().trim());
+                setMarkAsVerified(true);
+              }
+              if (verifData?.notes) {
+                setPaymentNotes(verifData.notes);
+              }
+            } catch (vErr) {
+              console.warn('Verif ledger lookup notice:', vErr);
+            }
+          }
+
+          // 5. Populate Batch / Passing Year
+          if (lookup.alumni?.year_of_passing && lookup.alumni.year_of_passing > 1900) {
             setYearOfPassing(String(lookup.alumni.year_of_passing));
           }
-          if (!engineeringDiscipline && lookup.alumni?.engineering_discipline) {
-            setEngineeringDiscipline(lookup.alumni.engineering_discipline);
+
+          // 6. Populate Discipline with smart matching
+          if (lookup.alumni?.engineering_discipline) {
+            const matched = matchDiscipline(lookup.alumni.engineering_discipline);
+            setEngineeringDiscipline(matched);
           }
-          if (!city && lookup.alumni?.city && lookup.alumni.city !== 'Not Specified') {
+
+          // 7. Populate City & State
+          if (lookup.alumni?.city && lookup.alumni.city !== 'Not Specified') {
             setCity(lookup.alumni.city);
+          }
+          if (lookup.alumni?.state && lookup.alumni.state !== 'Not Specified') {
+            setState(lookup.alumni.state);
+          }
+
+          // 8. Populate Email, Org, Work Location
+          if (lookup.alumni?.email) {
+            setEmail(lookup.alumni.email);
+            setEmailError(null);
+          }
+          if (lookup.alumni?.organization) {
+            setOrganization(lookup.alumni.organization);
+          }
+          if (lookup.alumni?.work_location) {
+            setWorkLocation(lookup.alumni.work_location);
+          }
+
+          // Automatically expand optional details accordion so admin sees existing profile
+          if (
+            lookup.alumni?.year_of_passing ||
+            lookup.alumni?.engineering_discipline ||
+            lookup.alumni?.city ||
+            lookup.alumni?.email ||
+            lookup.alumni?.organization
+          ) {
+            setShowOptionalDetails(true);
           }
         } else {
           setExistingRegInfo(null);
@@ -256,7 +399,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
       } finally {
         if (isMounted) setLookupLoading(false);
       }
-    }, 450);
+    }, 400);
 
     return () => {
       isMounted = false;
@@ -611,8 +754,8 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     }
   };
 
-  // Helper for mobile clean length
   const currentDigits = mobile.replace(/\D/g, '');
+  const isNameInvalid = Boolean(nameError && !name.trim());
 
   return (
     <div className="modal-overlay" onClick={handleClose} role="dialog" aria-modal="true">
@@ -806,20 +949,28 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       value={name}
                       onChange={(e) => {
                         setName(e.target.value);
-                        if (nameError) validateName(e.target.value);
+                        if (e.target.value.trim()) {
+                          setNameError(null);
+                        }
                       }}
-                      onBlur={(e) => validateName(e.target.value)}
+                      onBlur={(e) => {
+                        if (!e.target.value.trim()) {
+                          setNameError('Please enter alumnus full name.');
+                        } else {
+                          setNameError(null);
+                        }
+                      }}
                       className="search-input"
                       style={{
                         width: '100%',
                         padding: '10px 12px',
                         background: 'rgba(0, 0, 0, 0.3)',
-                        border: nameError ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
+                        border: isNameInvalid ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
                         borderRadius: '6px',
                         color: '#fff',
                       }}
                     />
-                    {nameError && (
+                    {isNameInvalid && (
                       <span style={{ color: '#ef4444', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
                         ⚠️ {nameError}
                       </span>
@@ -915,11 +1066,12 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                   >
                     <span style={{ fontSize: '1rem' }}>ℹ️</span>
                     <div>
-                      <strong>Existing Record Found:</strong> {existingRegInfo.regNumber} ({existingRegInfo.existingName || 'Alumnus'})
+                      <strong>Existing Record Loaded:</strong> {existingRegInfo.regNumber} ({existingRegInfo.existingName || 'Alumnus'})
                       {existingRegInfo.existingBatch ? ` • Batch ${existingRegInfo.existingBatch}` : ''}
-                      {existingRegInfo.existingCity ? ` • ${existingRegInfo.existingCity}` : ''}.
+                      {existingRegInfo.existingCity ? ` • ${existingRegInfo.existingCity}` : ''}
+                      {existingRegInfo.existingAttendees ? ` • ${existingRegInfo.existingAttendees} Person(s)` : ''}.
                       <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.65)', marginTop: '2px' }}>
-                        Submitting will update this alumnus's registration and payment details.
+                        All details &amp; existing contribution (₹{existingRegInfo.existingAmount || 0}) have been auto-populated below. Submitting will update this record.
                       </div>
                     </div>
                   </div>
@@ -941,7 +1093,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                     2. Attendance &amp; Accompanying Guests
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Defaults to Attending (1 Adult)
+                    Auto-loaded from profile / Defaults to 1 Adult
                   </span>
                 </div>
 
@@ -987,7 +1139,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button
                           type="button"
-                          onClick={() => setAdultsCount((prev) => Math.max(1, prev - 1))}
+                          onClick={() => {
+                            setIsCustomAmount(false);
+                            setAdultsCount((prev) => Math.max(1, prev - 1));
+                          }}
                           className="btn btn-secondary btn-sm"
                           style={{ padding: '6px 12px' }}
                         >
@@ -998,7 +1153,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         </span>
                         <button
                           type="button"
-                          onClick={() => setAdultsCount((prev) => prev + 1)}
+                          onClick={() => {
+                            setIsCustomAmount(false);
+                            setAdultsCount((prev) => prev + 1);
+                          }}
                           className="btn btn-secondary btn-sm"
                           style={{ padding: '6px 12px' }}
                         >
@@ -1015,7 +1173,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button
                           type="button"
-                          onClick={() => setKidsAbove10((prev) => Math.max(0, prev - 1))}
+                          onClick={() => {
+                            setIsCustomAmount(false);
+                            setKidsAbove10((prev) => Math.max(0, prev - 1));
+                          }}
                           className="btn btn-secondary btn-sm"
                           style={{ padding: '6px 12px' }}
                         >
@@ -1026,7 +1187,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         </span>
                         <button
                           type="button"
-                          onClick={() => setKidsAbove10((prev) => prev + 1)}
+                          onClick={() => {
+                            setIsCustomAmount(false);
+                            setKidsAbove10((prev) => prev + 1);
+                          }}
                           className="btn btn-secondary btn-sm"
                           style={{ padding: '6px 12px' }}
                         >
@@ -1043,7 +1207,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button
                           type="button"
-                          onClick={() => setKidsUnder10((prev) => Math.max(0, prev - 1))}
+                          onClick={() => {
+                            setIsCustomAmount(false);
+                            setKidsUnder10((prev) => Math.max(0, prev - 1));
+                          }}
                           className="btn btn-secondary btn-sm"
                           style={{ padding: '6px 12px' }}
                         >
@@ -1054,7 +1221,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         </span>
                         <button
                           type="button"
-                          onClick={() => setKidsUnder10((prev) => prev + 1)}
+                          onClick={() => {
+                            setIsCustomAmount(false);
+                            setKidsUnder10((prev) => prev + 1);
+                          }}
                           className="btn btn-secondary btn-sm"
                           style={{ padding: '6px 12px' }}
                         >
@@ -1206,7 +1376,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Paid to Chetan QR on WhatsApp / UTR 12345"
+                        placeholder="e.g. Paid to QR on WhatsApp / UTR 12345"
                         value={paymentNotes}
                         onChange={(e) => setPaymentNotes(e.target.value)}
                         className="search-input"
@@ -1318,12 +1488,11 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                           style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff' }}
                         >
                           <option value="" style={{ background: '#1e1e24' }}>-- Not Specified --</option>
-                          {ENGINEERING_DISCIPLINES.map((d) => (
+                          {disciplineOptions.map((d) => (
                             <option key={d} value={d} style={{ background: '#1e1e24' }}>
                               {d}
                             </option>
                           ))}
-                          <option value="Other" style={{ background: '#1e1e24' }}>Other</option>
                         </select>
                       </div>
 
