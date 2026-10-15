@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS event_registrations (
   event_id                    UUID NOT NULL REFERENCES events(id),
   alumni_id                   UUID NOT NULL REFERENCES alumni(id),
   attendance_status           TEXT NOT NULL
-                                CHECK (attendance_status IN ('yes', 'maybe', 'no')),
+                                CHECK (attendance_status IN ('yes', 'maybe', 'no', 'payment_pending')),
   number_of_attendees         INTEGER NOT NULL DEFAULT 1,
   adults_count                INTEGER NOT NULL DEFAULT 1,
   children_above_7_count      INTEGER NOT NULL DEFAULT 0,
@@ -255,8 +255,8 @@ BEGIN
     RAISE EXCEPTION 'Event not found or registration is closed';
   END IF;
 
-  -- 2. Calculate total (if not attending, fee is 0)
-  IF p_attendance_status = 'yes' THEN
+  -- 2. Calculate total (for 'yes' or 'payment_pending'; if not attending, fee is 0)
+  IF p_attendance_status IN ('yes', 'payment_pending') THEN
     IF p_adults_count IS NOT NULL THEN
       IF p_adults_count <= 0 THEN
         v_total_amount := 0;

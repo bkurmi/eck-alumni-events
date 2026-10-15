@@ -133,7 +133,11 @@ export function recordCompletedRegistrationLocally(
     found: true,
     registration_id: result.registration_id,
     registration_number: result.registration_number,
-    attendance_status: (formData.attendance_status || 'yes') as 'yes' | 'maybe' | 'no',
+    attendance_status: (formData.attendance_status || 'yes') as
+      | 'yes'
+      | 'maybe'
+      | 'no'
+      | 'payment_pending',
     number_of_attendees: formData.number_of_attendees || 1,
     adults_count: formData.adults_count ?? 1,
     children_above_7_count: formData.children_above_7_count ?? 0,
@@ -170,7 +174,7 @@ export function recordCompletedRegistrationLocally(
  */
 export function convertLookupToFormData(lookup: ExistingRegistrationLookup): RegistrationFormData {
   const alumni = lookup.alumni;
-  const isAttending = lookup.attendance_status === 'yes';
+  const isAttending = lookup.attendance_status === 'yes' || lookup.attendance_status === 'payment_pending';
   const adults = isAttending
     ? (lookup.adults_count !== undefined ? lookup.adults_count : Math.max(1, lookup.number_of_attendees || 1))
     : 1;
@@ -200,7 +204,7 @@ export function convertLookupToFormData(lookup: ExistingRegistrationLookup): Reg
     industry_domain_other: '',
     professional_category: alumni?.professional_category || '',
     work_location: alumni?.work_location || '',
-    attendance_status: (lookup.attendance_status || 'yes') as 'yes' | 'maybe' | 'no',
+    attendance_status: (lookup.attendance_status === 'payment_pending' ? 'yes' : lookup.attendance_status || 'yes') as 'yes' | 'maybe' | 'no',
     number_of_attendees: attendeesCount,
     adults_count: adults,
     children_above_7_count: kidsAbove7,

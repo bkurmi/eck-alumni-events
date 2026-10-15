@@ -406,7 +406,14 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
     const rows = filteredList.map((item) => {
       const alumni = item.registration.alumni;
-      const attStatus = item.registration.attendance_status === 'yes' ? 'Attending' : item.registration.attendance_status === 'maybe' ? 'Maybe' : 'No';
+      const attStatus =
+        item.registration.attendance_status === 'yes'
+          ? 'Attending'
+          : item.registration.attendance_status === 'payment_pending'
+          ? 'Payment Pending'
+          : item.registration.attendance_status === 'maybe'
+          ? 'Maybe'
+          : 'No';
       return [
         `"${alumni?.name || ''}"`,
         `"${attStatus}"`,
@@ -562,9 +569,11 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             <span className={`status-pill pill-${item.registration.attendance_status}`}>
               {item.registration.attendance_status === 'yes'
                 ? `Attending${hasMultipleGuests ? ` (${item.registration.number_of_attendees})` : ''}`
+                : item.registration.attendance_status === 'payment_pending'
+                ? '⚠️ Payment Pending'
                 : item.registration.attendance_status === 'maybe'
-                  ? 'Maybe'
-                  : 'No'}
+                ? 'Maybe'
+                : 'No'}
             </span>
           </div>
           <div className="upi-m-alumni-meta">
@@ -1149,7 +1158,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
                     <strong>{editingReg.registration.alumni?.name}</strong>
                     <span className={`status-pill pill-${editingReg.registration.attendance_status}`}>
-                      {editingReg.registration.attendance_status === 'yes' ? 'Attending' : editingReg.registration.attendance_status === 'maybe' ? 'Maybe' : 'No'}
+                      {editingReg.registration.attendance_status === 'yes'
+                        ? 'Attending'
+                        : editingReg.registration.attendance_status === 'payment_pending'
+                        ? '⚠️ Payment Pending'
+                        : editingReg.registration.attendance_status === 'maybe'
+                        ? 'Maybe'
+                        : 'No'}
                     </span>
                   </div>
                   <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
