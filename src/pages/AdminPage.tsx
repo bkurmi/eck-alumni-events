@@ -38,7 +38,7 @@ export const AdminPage: React.FC = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
-    'all' | 'yes' | 'payment_pending' | 'maybe' | 'no' | 'awaiting_screenshot'
+    'all' | 'yes' | 'payment_pending' | 'maybe' | 'no'
   >('all');
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -324,13 +324,7 @@ export const AdminPage: React.FC = () => {
   const filteredRegistrations = useMemo(() => {
     return registrations.filter((reg) => {
       const matchesStatus =
-        statusFilter === 'all'
-          ? true
-          : statusFilter === 'awaiting_screenshot'
-          ? (reg.attendance_status === 'yes' || reg.attendance_status === 'payment_pending') &&
-            !reg.payment_screenshot_path &&
-            Number(reg.amount || 0) > 0
-          : reg.attendance_status === statusFilter;
+        statusFilter === 'all' ? true : reg.attendance_status === statusFilter;
 
       const q = searchQuery.toLowerCase().trim();
       if (!q) return matchesStatus;
@@ -615,14 +609,6 @@ export const AdminPage: React.FC = () => {
                         title="Draft registrations pending payment screenshot"
                       >
                         ⏳ Payment Pending ({registrations.filter((r) => r.attendance_status === 'payment_pending').length})
-                      </button>
-                      <button
-                        type="button"
-                        className={`filter-chip filter-chip-awaiting ${statusFilter === 'awaiting_screenshot' ? 'active' : ''}`}
-                        onClick={() => setStatusFilter('awaiting_screenshot')}
-                        title="Entries without an uploaded payment screenshot"
-                      >
-                        ⚠️ Awaiting Proof ({registrations.filter((r) => (r.attendance_status === 'yes' || r.attendance_status === 'payment_pending') && !r.payment_screenshot_path && Number(r.amount || 0) > 0).length})
                       </button>
                       <button
                         type="button"
