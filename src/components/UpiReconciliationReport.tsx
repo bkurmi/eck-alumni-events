@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { EventRegistration, PaymentVerification } from '../types';
 import { DEFAULT_UPI_CONFIGS, UPI_ACCOUNT_NAMES } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
+import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 
 interface UpiReconciliationReportProps {
   registrations: EventRegistration[];
@@ -274,7 +275,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         const alumni = item.registration.alumni;
         const matchesName = alumni?.name?.toLowerCase().includes(q);
         const matchesRegNum = item.registration.registration_number?.toLowerCase().includes(q);
-        const matchesMobile = alumni?.mobile?.includes(q);
+        const matchesMobile = isRealMobileNumber(alumni?.mobile) && alumni!.mobile.includes(q);
         const matchesUpi = item.assignedUpi?.includes(q);
         if (!matchesName && !matchesRegNum && !matchesMobile && !matchesUpi) {
           return false;
@@ -422,7 +423,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         `"${item.registration.registration_number}"`,
         `"${formatDDMMYYYY(item.paymentDate)}"`,
         `"${item.verifiedBy || 'Not Verified'}"`,
-        `"${alumni?.mobile || ''}"`,
+        `"${formatDisplayMobile(alumni?.mobile, '')}"`,
         `"${alumni?.year_of_passing || ''}"`,
         `"${alumni?.engineering_discipline || ''}"`,
         `"${alumni?.city || ''}"`,
@@ -1168,7 +1169,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                     </span>
                   </div>
                   <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    📞 {editingReg.registration.alumni?.mobile} • Batch of{' '}
+                    📞 {formatDisplayMobile(editingReg.registration.alumni?.mobile)} • Batch of{' '}
                     {editingReg.registration.alumni?.year_of_passing} • 📅 {formatDDMMYYYY(editingReg.registration.created_at.slice(0, 10))}
                     {editingReg.registration.attendance_status === 'yes' && editingReg.registration.number_of_attendees > 1 && ` • ${editingReg.registration.number_of_attendees} persons`}
                   </span>

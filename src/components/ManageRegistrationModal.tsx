@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ECKEvent, ExistingRegistrationLookup } from '../types';
-import { lookupRegistrationByMobile, cleanMobileNumber } from '../lib/registrations';
+import { lookupRegistrationByMobile, cleanMobileNumber, formatDisplayMobile } from '../lib/registrations';
 
 interface ManageRegistrationModalProps {
   isOpen: boolean;
@@ -190,7 +190,7 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
 
                 <div className="found-reg-item">
                   <span className="found-label">Mobile</span>
-                  <span className="found-value">{foundReg.alumni?.mobile}</span>
+                  <span className="found-value">{formatDisplayMobile(foundReg.alumni?.mobile)}</span>
                 </div>
 
                 <div className="found-reg-item">

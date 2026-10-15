@@ -227,12 +227,12 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
   const validateMobile = (val: string): boolean => {
     const digits = (val || '').replace(/\D/g, '');
     if (!digits) {
-      setMobileError('Mobile / WhatsApp number is mandatory.');
-      return false;
+      setMobileError(null);
+      return true;
     }
     if (digits.length !== 10) {
       setMobileError(
-        `Mobile number must be exactly 10 digits (currently ${digits.length} ${
+        `Mobile number must be exactly 10 digits if provided (currently ${digits.length} ${
           digits.length === 1 ? 'digit' : 'digits'
         }).`
       );
@@ -486,7 +486,12 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     }
 
     const trimmedName = name.trim();
-    const cleanMobile = cleanMobileNumber(mobile);
+    const rawCleanMobile = cleanMobileNumber(mobile);
+    // If mobile is omitted, generate a unique offline identifier so PostgreSQL NOT NULL UNIQUE doesn't fail or overwrite
+    const dbMobile =
+      rawCleanMobile.length === 10
+        ? rawCleanMobile
+        : `NOMOBILE-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
     const effectiveAmount = Math.max(
       0,
@@ -507,7 +512,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
         const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanName = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
-        const fileName = `${event.event_slug}/manual_${cleanMobile}_${cleanName}_${Date.now()}.${cleanExt}`;
+        const fileName = `${event.event_slug}/manual_${rawCleanMobile || 'nomobile'}_${cleanName}_${Date.now()}.${cleanExt}`;
 
         try {
           const { data: uploadData, error: uploadErr } = await supabase.storage
@@ -546,7 +551,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
       const rpcPayload: any = {
         p_event_slug: event.event_slug,
         p_name: trimmedName,
-        p_mobile: cleanMobile,
+        p_mobile: dbMobile,
         p_address: resolvedAddress,
         p_country: resolvedCountry,
         p_city: resolvedCity,
@@ -573,7 +578,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         const { data: fbData, error: fbErr } = await supabase.rpc('register_for_event', {
           p_event_slug: event.event_slug,
           p_name: trimmedName,
-          p_mobile: cleanMobile,
+          p_mobile: dbMobile,
           p_address: resolvedAddress,
           p_city: resolvedCity,
           p_state: resolvedState,
@@ -646,7 +651,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         registration_id: assignedRegId,
         registration_number: assignedRegNum,
         name: trimmedName,
-        mobile: cleanMobile,
+        mobile: rawCleanMobile.length === 10 ? rawCleanMobile : '',
         attendance_status: attendanceStatus,
         number_of_attendees: totalAttendees,
         adults_count: adultsCount,
@@ -698,7 +703,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
       '',
       `🎫 *Registration ID:* ${summary.registration_number}`,
       `👤 *Alumnus Name:* ${summary.name}`,
-      `📞 *Mobile / WhatsApp:* ${summary.mobile}`,
+      summary.mobile ? `📞 *Mobile / WhatsApp:* ${summary.mobile}` : '',
       `👥 *Attendees:* ${summary.number_of_attendees} ${summary.number_of_attendees === 1 ? 'Person' : 'People'}${breakdownText}`,
       `✨ *Attendance Status:* ${summary.attendance_status.toUpperCase()}`,
       summary.attendance_status === 'yes'
@@ -720,7 +725,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     const text = buildWhatsAppConfirmationMessage(summary);
     const encoded = encodeURIComponent(text);
     const cleanNum = summary.mobile.replace(/\D/g, '');
-    const phoneParam = cleanNum ? `phone=91${cleanNum}&` : '';
+    const phoneParam = cleanNum && cleanNum.length === 10 ? `phone=91${cleanNum}&` : '';
 
     const isMobileDevice =
       typeof navigator !== 'undefined' &&
@@ -784,7 +789,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
             <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
               {createdSummary
                 ? 'The alumnus has been successfully registered and recorded in the database.'
-                : 'For alumni who paid via QR/UPI directly. Only Name & Phone are required!'}
+                : 'For alumni who paid via QR/UPI directly. Only Name is mandatory (Mobile is optional)!'}
             </p>
           </div>
           <button
@@ -845,7 +850,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                   {createdSummary.name}
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  📞 {createdSummary.mobile} • {createdSummary.number_of_attendees} {createdSummary.number_of_attendees === 1 ? 'Attendee' : 'Attendees'}
+                  📞 {createdSummary.mobile || 'Not Provided'} • {createdSummary.number_of_attendees} {createdSummary.number_of_attendees === 1 ? 'Attendee' : 'Attendees'}
                   {createdSummary.kids_above_10 > 0 ? ` (${createdSummary.kids_above_10} Child 10+)` : ''}
                   {createdSummary.kids_under_10 > 0 ? ` (${createdSummary.kids_under_10} Child <10)` : ''}
                 </div>
@@ -864,7 +869,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                   className="btn btn-whatsapp-primary"
                   style={{ width: '100%', padding: '12px 18px', fontSize: '0.95rem' }}
                 >
-                  💬 Send Confirmation on WhatsApp
+                  {createdSummary.mobile ? '💬 Send Confirmation on WhatsApp' : '💬 Share Confirmation on WhatsApp (Choose Contact)'}
                 </button>
 
                 <button
@@ -931,10 +936,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    1. Mandatory Alumnus Details
+                    1. Alumnus Primary Details
                   </span>
                   <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>
-                    * Only Name &amp; Phone are mandatory
+                    * Only Name is mandatory (Phone is optional)
                   </span>
                 </div>
 
@@ -980,11 +985,14 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                     )}
                   </div>
 
-                  {/* Phone / Mobile Field */}
+                  {/* Phone / Mobile Field (Optional) */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
-                        Mobile / WhatsApp Number <span style={{ color: '#ef4444' }}>*</span>
+                        Mobile / WhatsApp Number{' '}
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>
+                          (Optional)
+                        </span>
                       </label>
                       <span
                         style={{
@@ -998,7 +1006,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                               : 'var(--text-muted)',
                         }}
                       >
-                        {currentDigits.length}/10 digits
+                        {currentDigits.length > 0 ? `${currentDigits.length}/10 digits` : 'Optional'}
                       </span>
                     </div>
 
@@ -1006,9 +1014,8 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       <input
                         ref={mobileInputRef}
                         type="tel"
-                        required
                         maxLength={10}
-                        placeholder="10-digit mobile (e.g. 9829012345)"
+                        placeholder="Optional (e.g. 9829012345)"
                         value={mobile}
                         onChange={(e) => {
                           const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
