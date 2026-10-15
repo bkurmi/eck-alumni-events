@@ -2737,6 +2737,12 @@ h6 {
   color: var(--warning);
 }
 
+.pill-payment_pending {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
 .pill-no {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
@@ -2780,6 +2786,10 @@ h6 {
 
 .tag-has-ss {
   color: var(--primary-light);
+}
+
+.tag-payment-pending {
+  color: #fbbf24;
 }
 
 .tag-no-ss {
@@ -3231,6 +3241,27 @@ h6 {
   flex-shrink: 0;
 }
 
+.existing-reg-pending-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #fbbf24;
+  line-height: 1.4;
+}
+
+.existing-reg-pending-badge .badge-icon {
+  color: #fbbf24;
+  font-weight: bold;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
 /* Modal Dialog Styles */
 .modal-backdrop {
   position: fixed;
@@ -3460,6 +3491,12 @@ h6 {
   background: rgba(34, 197, 94, 0.15);
   color: #4ade80;
   border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.badge-payment-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
 .badge-not-attending {
@@ -5965,6 +6002,12 @@ h6 {
 }
 
 /* Admin Portal enhancements */
+.filter-chip-pending.active {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: #f59e0b !important;
+  color: #fbbf24 !important;
+}
+
 .filter-chip-awaiting.active {
   background: rgba(245, 158, 11, 0.25) !important;
   border-color: #f59e0b !important;

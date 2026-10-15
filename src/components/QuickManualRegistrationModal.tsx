@@ -314,7 +314,11 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
 
           // 2. Populate Attendance Status & Guest counts
           if (lookup.attendance_status) {
-            setAttendanceStatus(lookup.attendance_status as 'yes' | 'maybe' | 'no');
+            setAttendanceStatus(
+              lookup.attendance_status === 'payment_pending'
+                ? 'yes'
+                : (lookup.attendance_status as 'yes' | 'maybe' | 'no')
+            );
           }
           setAdultsCount(Math.max(1, prevAdults));
           setKidsAbove10(prevKids10);

@@ -159,10 +159,16 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
                   className={`attendance-badge ${
                     foundReg.attendance_status === 'yes'
                       ? 'badge-attending'
+                      : foundReg.attendance_status === 'payment_pending'
+                      ? 'badge-payment-pending'
                       : 'badge-not-attending'
                   }`}
                 >
-                  {foundReg.attendance_status === 'yes' ? '✅ Attending' : foundReg.attendance_status}
+                  {foundReg.attendance_status === 'yes'
+                    ? '✅ Attending'
+                    : foundReg.attendance_status === 'payment_pending'
+                    ? '⏳ Payment Pending'
+                    : foundReg.attendance_status}
                 </span>
               </div>
 
@@ -194,10 +200,12 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
                   </span>
                 </div>
 
-                {foundReg.attendance_status === 'yes' && (
+                {(foundReg.attendance_status === 'yes' || foundReg.attendance_status === 'payment_pending') && (
                   <>
                     <div className="found-reg-item">
-                      <span className="found-label">Confirmed Attendees</span>
+                      <span className="found-label">
+                        {foundReg.attendance_status === 'payment_pending' ? 'Registered Guests (Draft)' : 'Confirmed Attendees'}
+                      </span>
                       <span className="found-value font-semibold">
                         👥 {foundReg.number_of_attendees}{' '}
                         {foundReg.number_of_attendees === 1 ? 'person' : 'persons'}
@@ -230,7 +238,9 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
                     </div>
 
                     <div className="found-reg-item">
-                      <span className="found-label">Total Contribution</span>
+                      <span className="found-label">
+                        {foundReg.attendance_status === 'payment_pending' ? 'Pending Contribution' : 'Total Contribution'}
+                      </span>
                       <span className="found-value font-accent font-bold">
                         ₹{foundReg.amount}
                       </span>

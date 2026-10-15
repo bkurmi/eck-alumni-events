@@ -391,8 +391,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           : formData.industry_domain;
       const combinedCategory = `${resolvedEmploymentType} • ${resolvedIndustryDomain}`;
 
-      // Pre-save to Supabase RPC (with existing or null screenshot)
-      const { data, error } = await supabase.rpc('register_for_event', {
+      // Pre-save to Supabase RPC with status 'payment_pending' (unless already confirmed with screenshot)
+      const preSaveStatus = activeExistingReg?.payment_screenshot_path ? formData.attendance_status : 'payment_pending';
+
+      let rpcResult = await supabase.rpc('register_for_event', {
         p_event_slug: event.event_slug,
         p_name: formData.name.trim(),
         p_mobile: cleanMobile,
@@ -405,7 +407,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         p_employment_type: resolvedEmploymentType || null,
         p_industry_domain: resolvedIndustryDomain || null,
         p_professional_category: combinedCategory,
-        p_attendance_status: formData.attendance_status,
+        p_attendance_status: preSaveStatus,
         p_number_of_attendees:
           formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
         p_adults_count:
@@ -420,11 +422,45 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         p_payment_screenshot_path: activeExistingReg?.payment_screenshot_path || null,
       });
 
+      // Graceful fallback to 'yes' if database constraint hasn't been upgraded to allow 'payment_pending' yet
+      if (rpcResult.error && (rpcResult.error.message?.includes('violates check constraint') || rpcResult.error.code === '23514')) {
+        console.warn('[UPI Pre-Save Notice]: Database constraint requires migration v3; falling back to yes for pre-save.');
+        rpcResult = await supabase.rpc('register_for_event', {
+          p_event_slug: event.event_slug,
+          p_name: formData.name.trim(),
+          p_mobile: cleanMobile,
+          p_address: formData.address.trim() || 'Kota, Rajasthan',
+          p_country: resolvedCountry,
+          p_city: formData.city.trim() || 'Kota',
+          p_state: resolvedState || 'Rajasthan',
+          p_year_of_passing: Number(formData.year_of_passing) || 2000,
+          p_engineering_discipline: resolvedDiscipline || 'General',
+          p_employment_type: resolvedEmploymentType || null,
+          p_industry_domain: resolvedIndustryDomain || null,
+          p_professional_category: combinedCategory,
+          p_attendance_status: formData.attendance_status,
+          p_number_of_attendees:
+            formData.attendance_status === 'yes' ? pricing.totalAttendees : 1,
+          p_adults_count:
+            formData.attendance_status === 'yes' ? (formData.adults_count ?? 1) : 1,
+          p_children_above_7_count:
+            formData.attendance_status === 'yes' ? (formData.children_above_7_count ?? 0) : 0,
+          p_children_under_7_count:
+            formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
+          p_email: formData.email.trim() || null,
+          p_organization: formData.organization.trim() || null,
+          p_work_location: formData.work_location.trim() || null,
+          p_payment_screenshot_path: activeExistingReg?.payment_screenshot_path || null,
+        });
+      }
+
+      const { data, error } = rpcResult;
+
       if (!error && data?.registration_number) {
         console.log('[UPI Pre-Save Success]: Registration secured in database:', data.registration_number);
         // Only update activeExistingReg if already in verified update mode; keep fresh registrations clean
         if (isUpdateMode && activeExistingReg?.payment_screenshot_path) {
-          const resolvedAttendance = (formData.attendance_status || 'yes') as 'yes' | 'maybe' | 'no';
+          const resolvedAttendance = (formData.attendance_status || 'yes') as 'yes' | 'maybe' | 'no' | 'payment_pending';
           setActiveExistingReg((prev) => ({
             ...prev,
             found: true,
@@ -996,6 +1032,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 <span className="badge-icon">✓</span>
                 <span>
                   Existing registration <strong>{activeExistingReg.registration_number}</strong> ({activeExistingReg.alumni?.name}) preloaded. Updates will save directly to this registration.
+                </span>
+              </div>
+            )}
+
+            {!isUpdateMode && activeExistingReg && activeExistingReg.attendance_status === 'payment_pending' && !activeExistingReg.payment_screenshot_path && (
+              <div className="existing-reg-pending-badge animate-slide-down">
+                <span className="badge-icon">⏳</span>
+                <span>
+                  Found your saved draft registration (<strong>{activeExistingReg.registration_number}</strong>). Your details have been restored! Please upload your payment screenshot below to confirm your attendance pass.
                 </span>
               </div>
             )}

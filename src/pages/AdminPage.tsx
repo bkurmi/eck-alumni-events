@@ -36,7 +36,9 @@ export const AdminPage: React.FC = () => {
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'yes' | 'maybe' | 'no' | 'awaiting_screenshot'>('all');
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'yes' | 'payment_pending' | 'maybe' | 'no' | 'awaiting_screenshot'
+  >('all');
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
@@ -223,7 +225,12 @@ export const AdminPage: React.FC = () => {
     const disc = reg.alumni?.engineering_discipline || '';
     const city = reg.alumni?.city ? `${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
     const count = reg.number_of_attendees || 1;
-    const status = reg.attendance_status === 'yes' ? 'Confirmed Attending' : reg.attendance_status;
+    const status =
+      reg.attendance_status === 'yes'
+        ? 'Confirmed Attending'
+        : reg.attendance_status === 'payment_pending'
+        ? 'Payment Pending (Awaiting Proof)'
+        : reg.attendance_status;
     const rawDate = activeEvent?.event_date || '2026-11-01';
     let eventDate = rawDate;
     const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -315,7 +322,9 @@ export const AdminPage: React.FC = () => {
         statusFilter === 'all'
           ? true
           : statusFilter === 'awaiting_screenshot'
-          ? reg.attendance_status === 'yes' && !reg.payment_screenshot_path && Number(reg.amount || 0) > 0
+          ? (reg.attendance_status === 'yes' || reg.attendance_status === 'payment_pending') &&
+            !reg.payment_screenshot_path &&
+            Number(reg.amount || 0) > 0
           : reg.attendance_status === statusFilter;
 
       const q = searchQuery.toLowerCase().trim();
@@ -362,14 +371,23 @@ export const AdminPage: React.FC = () => {
   const stats = useMemo(() => {
     const totalRegs = registrations.length;
     const attendingRegs = registrations.filter((r) => r.attendance_status === 'yes');
+    const paymentPendingRegs = registrations.filter((r) => r.attendance_status === 'payment_pending');
     const totalAttendees = attendingRegs.reduce(
       (sum, r) => sum + (r.number_of_attendees || 1),
       0
     );
     const totalAmount = attendingRegs.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const pendingAmount = paymentPendingRegs.reduce((sum, r) => sum + Number(r.amount || 0), 0);
     const maybeCount = registrations.filter((r) => r.attendance_status === 'maybe').length;
 
-    return { totalRegs, totalAttendees, totalAmount, maybeCount };
+    return {
+      totalRegs,
+      totalAttendees,
+      totalAmount,
+      pendingAmount,
+      maybeCount,
+      paymentPendingCount: paymentPendingRegs.length,
+    };
   }, [registrations]);
 
   const getPublicScreenshotUrl = (path: string | null) => {
@@ -522,7 +540,10 @@ export const AdminPage: React.FC = () => {
                     <div className="stat-card">
                       <span className="stat-label">Total Submissions</span>
                       <span className="stat-value">{stats.totalRegs}</span>
-                      <span className="stat-hint">{stats.maybeCount} Maybe</span>
+                      <span className="stat-hint">
+                        {stats.paymentPendingCount > 0 ? `${stats.paymentPendingCount} Pending • ` : ''}
+                        {stats.maybeCount} Maybe
+                      </span>
                     </div>
 
                     <div className="stat-card">
@@ -534,7 +555,11 @@ export const AdminPage: React.FC = () => {
                     <div className="stat-card">
                       <span className="stat-label">Estimated Collection</span>
                       <span className="stat-value font-accent">₹{stats.totalAmount.toLocaleString('en-IN')}</span>
-                      <span className="stat-hint">Via UPI screenshot</span>
+                      <span className="stat-hint">
+                        {stats.pendingAmount > 0
+                          ? `+ ₹${stats.pendingAmount.toLocaleString('en-IN')} pending`
+                          : 'Via verified screenshot'}
+                      </span>
                     </div>
                   </div>
 
@@ -580,11 +605,19 @@ export const AdminPage: React.FC = () => {
                       </button>
                       <button
                         type="button"
+                        className={`filter-chip filter-chip-pending ${statusFilter === 'payment_pending' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('payment_pending')}
+                        title="Draft registrations pending payment screenshot"
+                      >
+                        ⏳ Payment Pending ({registrations.filter((r) => r.attendance_status === 'payment_pending').length})
+                      </button>
+                      <button
+                        type="button"
                         className={`filter-chip filter-chip-awaiting ${statusFilter === 'awaiting_screenshot' ? 'active' : ''}`}
                         onClick={() => setStatusFilter('awaiting_screenshot')}
-                        title="Attending entries without an uploaded payment screenshot"
+                        title="Entries without an uploaded payment screenshot"
                       >
-                        ⚠️ Awaiting Proof ({registrations.filter((r) => r.attendance_status === 'yes' && !r.payment_screenshot_path && Number(r.amount || 0) > 0).length})
+                        ⚠️ Awaiting Proof ({registrations.filter((r) => (r.attendance_status === 'yes' || r.attendance_status === 'payment_pending') && !r.payment_screenshot_path && Number(r.amount || 0) > 0).length})
                       </button>
                       <button
                         type="button"
@@ -621,11 +654,19 @@ export const AdminPage: React.FC = () => {
                             <div className="reg-code-wrap">
                               <span className="reg-code">{reg.registration_number}</span>
                               <span className={`status-pill pill-${reg.attendance_status}`}>
-                                {reg.attendance_status === 'yes' ? 'Attending' : reg.attendance_status}
+                                {reg.attendance_status === 'yes'
+                                  ? 'Attending'
+                                  : reg.attendance_status === 'payment_pending'
+                                  ? '⚠️ Payment Pending'
+                                  : reg.attendance_status === 'maybe'
+                                  ? 'Maybe'
+                                  : 'Not Attending'}
                               </span>
                             </div>
                             <span className="reg-amount">
-                              {reg.attendance_status === 'yes' ? `₹${reg.amount}` : '—'}
+                              {reg.attendance_status === 'yes' || reg.attendance_status === 'payment_pending'
+                                ? `₹${reg.amount}`
+                                : '—'}
                             </span>
                           </div>
 
@@ -655,12 +696,21 @@ export const AdminPage: React.FC = () => {
                                   : 'Screenshot Attached'}
                               </span>
                             ) : (
-                              <span className="screenshot-tag tag-no-ss">
-                                {reg.attendance_status === 'yes' ? '⚠️ Awaiting Proof' : 'No Screenshot'}
+                              <span
+                                className={`screenshot-tag ${
+                                  reg.attendance_status === 'payment_pending' ? 'tag-payment-pending' : 'tag-no-ss'
+                                }`}
+                              >
+                                {reg.attendance_status === 'payment_pending'
+                                  ? '⏳ Payment Pending'
+                                  : reg.attendance_status === 'yes'
+                                  ? '⚠️ Awaiting Proof'
+                                  : 'No Screenshot'}
                               </span>
                             )}
 
-                            {reg.attendance_status === 'yes' && !reg.payment_screenshot_path && (
+                            {(reg.attendance_status === 'payment_pending' ||
+                              (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) && (
                               <button
                                 type="button"
                                 onClick={(e) => handlePingMissingScreenshot(e, reg)}

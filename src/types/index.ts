@@ -65,7 +65,7 @@ export interface EventRegistration {
   registration_number: string;
   event_id: string;
   alumni_id: string;
-  attendance_status: 'yes' | 'maybe' | 'no';
+  attendance_status: 'yes' | 'maybe' | 'no' | 'payment_pending';
   number_of_attendees: number;
   adults_count?: number;
   children_above_7_count?: number;
@@ -105,7 +105,7 @@ export interface RegistrationFormData {
   // Legacy / combined
   professional_category?: string;
   // Attendance & Guest breakdown
-  attendance_status: 'yes' | 'maybe' | 'no' | '';
+  attendance_status: 'yes' | 'maybe' | 'no' | 'payment_pending' | '';
   number_of_attendees: number;
   adults_count?: number;
   children_above_7_count?: number;
@@ -126,7 +126,7 @@ export interface ExistingRegistrationLookup {
   found: boolean;
   registration_id?: string;
   registration_number?: string;
-  attendance_status?: 'yes' | 'maybe' | 'no';
+  attendance_status?: 'yes' | 'maybe' | 'no' | 'payment_pending';
   number_of_attendees?: number;
   adults_count?: number;
   children_above_7_count?: number;

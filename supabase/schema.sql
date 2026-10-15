@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS event_registrations (
   event_id                    UUID NOT NULL REFERENCES events(id),
   alumni_id                   UUID NOT NULL REFERENCES alumni(id),
   attendance_status           TEXT NOT NULL
-                                CHECK (attendance_status IN ('yes', 'maybe', 'no')),
+                                CHECK (attendance_status IN ('yes', 'maybe', 'no', 'payment_pending')),
   number_of_attendees         INTEGER NOT NULL DEFAULT 1,
   adults_count                INTEGER NOT NULL DEFAULT 1,
   children_above_7_count      INTEGER NOT NULL DEFAULT 0,
@@ -255,8 +255,8 @@ BEGIN
     RAISE EXCEPTION 'Event not found or registration is closed';
   END IF;
 
-  -- 2. Calculate total (if not attending, fee is 0)
-  IF p_attendance_status = 'yes' THEN
+  -- 2. Calculate total (for 'yes' or 'payment_pending'; if not attending, fee is 0)
+  IF p_attendance_status IN ('yes', 'payment_pending') THEN
     IF p_adults_count IS NOT NULL THEN
       IF p_adults_count <= 0 THEN
         v_total_amount := 0;
@@ -596,7 +596,6 @@ CREATE TABLE IF NOT EXISTS payment_verifications (
   registration_id     UUID NOT NULL REFERENCES event_registrations(id) ON DELETE CASCADE,
   upi_id              TEXT NOT NULL,
   amount              NUMERIC NOT NULL DEFAULT 0,
-  payment_date        DATE NOT NULL DEFAULT CURRENT_DATE,
   verified_status     TEXT NOT NULL DEFAULT 'VERIFIED'
                         CHECK (verified_status IN ('VERIFIED', 'MISMATCH', 'PENDING', 'REJECTED')),
   notes               TEXT,
@@ -607,6 +606,9 @@ CREATE TABLE IF NOT EXISTS payment_verifications (
   CONSTRAINT unique_registration_verification UNIQUE (registration_id)
 );
 
+-- Ensure payment_date is dropped if table was previously created with it
+ALTER TABLE payment_verifications DROP COLUMN IF EXISTS payment_date;
+
 DROP TRIGGER IF EXISTS payment_verifications_updated_at ON payment_verifications;
 CREATE TRIGGER payment_verifications_updated_at
   BEFORE UPDATE ON payment_verifications
@@ -614,16 +616,33 @@ CREATE TRIGGER payment_verifications_updated_at
 
 CREATE INDEX IF NOT EXISTS idx_payment_verifications_reg_id ON payment_verifications(registration_id);
 CREATE INDEX IF NOT EXISTS idx_payment_verifications_upi_id ON payment_verifications(upi_id);
-CREATE INDEX IF NOT EXISTS idx_payment_verifications_date ON payment_verifications(payment_date);
+DROP INDEX IF EXISTS idx_payment_verifications_date;
+CREATE INDEX IF NOT EXISTS idx_payment_verifications_status ON payment_verifications(verified_status);
 
 ALTER TABLE payment_verifications ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "admin_manage_payment_verifications" ON payment_verifications;
-CREATE POLICY "admin_manage_payment_verifications"
-  ON payment_verifications FOR ALL TO authenticated
+DROP POLICY IF EXISTS "admin_select_payment_verifications" ON payment_verifications;
+CREATE POLICY "admin_select_payment_verifications"
+  ON payment_verifications FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "admin_insert_payment_verifications" ON payment_verifications;
+CREATE POLICY "admin_insert_payment_verifications"
+  ON payment_verifications FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "admin_update_payment_verifications" ON payment_verifications;
+CREATE POLICY "admin_update_payment_verifications"
+  ON payment_verifications FOR UPDATE TO authenticated
   USING (true)
   WITH CHECK (true);
 
-GRANT ALL ON payment_verifications TO authenticated;
+DROP POLICY IF EXISTS "admin_delete_payment_verifications" ON payment_verifications;
+CREATE POLICY "admin_delete_payment_verifications"
+  ON payment_verifications FOR DELETE TO authenticated
+  USING (true);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON payment_verifications TO authenticated;
+
 
 
