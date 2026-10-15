@@ -34,7 +34,7 @@ ALTER TABLE event_registrations
 CREATE OR REPLACE FUNCTION register_for_event(
   p_event_slug              TEXT,
   p_name                    TEXT,
-  p_mobile                  TEXT,
+  p_mobile                  TEXT DEFAULT NULL,
   p_address                 TEXT,
   p_city                    TEXT,
   p_state                   TEXT,
@@ -68,7 +68,10 @@ DECLARE
   v_total_amount          NUMERIC;
   v_prof_category         TEXT;
   v_is_update             BOOLEAN := false;
+  v_mobile                TEXT;
 BEGIN
+  -- Normalize or generate unique offline identifier if mobile is omitted
+  v_mobile := COALESCE(NULLIF(TRIM(p_mobile), ''), 'NOMOBILE-' || gen_random_uuid()::TEXT);
   -- Compute category if needed
   v_prof_category := COALESCE(
     p_professional_category,
@@ -115,7 +118,7 @@ BEGIN
     year_of_passing, engineering_discipline,
     organization, employment_type, industry_domain, professional_category, work_location
   ) VALUES (
-    p_name, p_email, p_mobile, p_address, COALESCE(p_country, 'India'), p_city, p_state,
+    p_name, p_email, v_mobile, p_address, COALESCE(p_country, 'India'), p_city, p_state,
     p_year_of_passing, p_engineering_discipline,
     p_organization, p_employment_type, p_industry_domain, v_prof_category, p_work_location
   )

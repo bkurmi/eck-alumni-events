@@ -14,6 +14,26 @@ export function cleanMobileNumber(mobile: string): string {
   return digits.length > 10 ? digits.slice(-10) : digits;
 }
 
+/**
+ * Checks if a mobile number is a valid registered 10-digit number (not a dummy/offline placeholder).
+ */
+export function isRealMobileNumber(mobile?: string | null): boolean {
+  if (!mobile) return false;
+  if (mobile.startsWith('NOMOBILE-') || mobile.toLowerCase().startsWith('nomobile')) return false;
+  const clean = cleanMobileNumber(mobile);
+  return clean.length === 10;
+}
+
+/**
+ * Formats a mobile number for UI display, cleanly masking placeholder values.
+ */
+export function formatDisplayMobile(mobile?: string | null, fallback = 'Not Provided'): string {
+  if (!mobile || !isRealMobileNumber(mobile)) {
+    return fallback;
+  }
+  return mobile;
+}
+
 const LOCAL_STORAGE_PREFIX = 'eck_reg_cache_';
 
 // Purge any legacy registration caches from browser so database is strictly the single source of truth

@@ -5,6 +5,7 @@ import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
 import { QuickManualRegistrationModal } from '../components/QuickManualRegistrationModal';
 import { supabase } from '../lib/supabase';
+import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import type { EventRegistration, ECKEvent, PaymentVerification } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
@@ -305,8 +306,12 @@ export const AdminPage: React.FC = () => {
 
   const handlePingMissingScreenshot = (e: React.MouseEvent, reg: EventRegistration) => {
     e.stopPropagation();
-    const mobile = (reg.alumni?.mobile || '').replace(/[^0-9]/g, '');
-    if (!mobile) return;
+    const rawMobile = reg.alumni?.mobile || '';
+    if (!isRealMobileNumber(rawMobile)) {
+      alert('Mobile number was not provided for this registration.');
+      return;
+    }
+    const mobile = rawMobile.replace(/[^0-9]/g, '');
     const target = mobile.length === 10 ? `91${mobile}` : mobile;
     const name = reg.alumni?.name || 'Alumnus';
     const batch = reg.alumni?.year_of_passing ? `Batch of ${reg.alumni.year_of_passing}` : '';
@@ -331,7 +336,7 @@ export const AdminPage: React.FC = () => {
       if (!q) return matchesStatus;
 
       const name = reg.alumni?.name?.toLowerCase() || '';
-      const mobile = reg.alumni?.mobile?.toLowerCase() || '';
+      const mobile = isRealMobileNumber(reg.alumni?.mobile) ? reg.alumni!.mobile.toLowerCase() : '';
       const regNum = reg.registration_number?.toLowerCase() || '';
       const discipline = reg.alumni?.engineering_discipline?.toLowerCase() || '';
       const city = reg.alumni?.city?.toLowerCase() || '';
@@ -676,7 +681,7 @@ export const AdminPage: React.FC = () => {
                               Batch of {reg.alumni?.year_of_passing || '—'} • {reg.alumni?.engineering_discipline || '—'}
                             </p>
                             <p className="alumni-contact">
-                              📞 {reg.alumni?.mobile} • 📍 {reg.alumni?.city}, {reg.alumni?.state}
+                              📞 {formatDisplayMobile(reg.alumni?.mobile)} • 📍 {reg.alumni?.city}, {reg.alumni?.state}
                               {reg.alumni?.country && reg.alumni.country !== 'India' ? ` (${reg.alumni.country})` : ''}
                             </p>
                             {reg.alumni?.organization && (
@@ -776,9 +781,13 @@ export const AdminPage: React.FC = () => {
               <div className="modal-details-grid">
                 <div className="modal-detail-item">
                   <span className="modal-label">Mobile</span>
-                  <a href={`tel:${selectedReg.alumni?.mobile}`} className="modal-val link-val">
-                    {selectedReg.alumni?.mobile}
-                  </a>
+                  {isRealMobileNumber(selectedReg.alumni?.mobile) ? (
+                    <a href={`tel:${selectedReg.alumni?.mobile}`} className="modal-val link-val">
+                      {selectedReg.alumni?.mobile}
+                    </a>
+                  ) : (
+                    <span className="modal-val">Not provided</span>
+                  )}
                 </div>
 
                 <div className="modal-detail-item">
