@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { isAlumniIdCardsEnabled } from '../lib/gate';
 
 interface HeaderProps {
   title?: string;
@@ -12,6 +13,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const showIdCardNav = isAlumniIdCardsEnabled();
 
   return (
     <header className="site-header">
@@ -49,10 +51,12 @@ export const Header: React.FC<HeaderProps> = ({
             </Link>
           ) : (
             <>
-              <Link to="/id-card" className="nav-btn id-card-nav-btn" title="Download Event Pass & ID Card">
-                <span>🎟️</span>
-                <span>Event ID Card</span>
-              </Link>
+              {showIdCardNav && (
+                <Link to="/id-card" className="nav-btn id-card-nav-btn" title="Download Event Pass & ID Card">
+                  <span>🎟️</span>
+                  <span>Event ID Card</span>
+                </Link>
+              )}
               <Link to="/admin" className="nav-btn admin-link" title="Organizer Admin">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>

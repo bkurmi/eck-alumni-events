@@ -507,7 +507,7 @@ export const AdminPage: React.FC = () => {
                     <span className="tab-count-short">{verifications.length}</span>
                   </span>
                 </button>
-                {isAdminGatePortalEnabled() ? (
+                {isAdminGatePortalEnabled() && (
                   <button
                     type="button"
                     className={`admin-view-tab-btn ${activeTab === 'gate_portal' ? 'active' : ''}`}
@@ -521,20 +521,6 @@ export const AdminPage: React.FC = () => {
                     <span className="admin-tab-count" style={{ background: '#f59e0b', color: '#0f172a', fontWeight: 'bold' }}>
                       <span className="tab-count-full">1st Nov Gate</span>
                       <span className="tab-count-short">Gate</span>
-                    </span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="admin-view-tab-btn"
-                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                    title="Gate verification is currently disabled via VITE_ENABLE_ADMIN_GATE_PORTAL"
-                    disabled
-                  >
-                    <span className="tab-title">
-                      <span className="tab-icon">🔒</span>
-                      <span className="tab-text-full">Gate Desk (Inactive)</span>
-                      <span className="tab-text-short">Gate</span>
                     </span>
                   </button>
                 )}
