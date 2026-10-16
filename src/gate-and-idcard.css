@@ -42,6 +42,12 @@
   width: 100%;
 }
 
+@media (max-width: 480px) {
+  .id-card-content-container {
+    padding: 1rem 8px 3rem 8px;
+  }
+}
+
 .id-page-banner {
   text-align: center;
   margin-bottom: 2.5rem;
@@ -415,15 +421,14 @@
 .ticket-vertical-card {
   width: 100%;
   max-width: 430px;
-  min-height: 840px;
   display: flex;
   flex-direction: column;
   border: 3px solid #d4af37;
-  border-radius: 24px;
+  border-radius: 20px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 0 0 1px #ffd700, 0 25px 65px rgba(0, 0, 0, 0.95);
-  background: #060f2d url('/card-bg-vertical-clean.jpg') center top / 100% 100% no-repeat;
+  background: #060e28;
 }
 
 /* Background starry sparklers */
@@ -438,108 +443,172 @@
     radial-gradient(1px 1px at 85% 15%, #ffd700 100%, transparent),
     radial-gradient(1.5px 1.5px at 25% 65%, #ffffff 100%, transparent),
     radial-gradient(1px 1px at 55% 70%, #ffd700 100%, transparent);
-  opacity: 0.45;
+  opacity: 0.35;
   z-index: 1;
 }
 
 /* ------------------------------------------------------------
-   TOP SECTION: MAIN PASS & ATTENDEE DETAILS
+   1. TOP HEADER SECTION (Un-stretched Banner Artwork)
    ------------------------------------------------------------ */
-.ticket-v-top-section {
+.ticket-v-header-section {
   position: relative;
-  z-index: 2;
-  padding: 8px 16px 10px 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   width: 100%;
-  box-sizing: border-box;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 2;
 }
 
-/* Space allowing the background's DeepAura 2K26 artwork to shine cleanly */
-.ticket-v-banner-spacer {
-  height: 175px;
+.ticket-v-banner-img {
   width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 1376 / 630;
+  object-fit: cover;
+}
+
+.ticket-v-header-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  margin-bottom: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  z-index: 3;
+  line-height: normal;
+}
+
+.ticket-v-logo-header {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1.5px solid #d4af37;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8);
+  flex-shrink: 0;
+}
+
+.ticket-v-titles {
+  text-align: center;
+  flex: 1;
+}
+
+.ticket-v-college-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(0.72rem, 2.7vw, 0.94rem);
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+  line-height: 1.15;
+}
+
+.ticket-v-meet-title {
+  font-size: clamp(0.55rem, 2vw, 0.65rem);
+  font-weight: 700;
+  color: #fde047;
+  margin: 2px 0 0 0;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 .ticket-v-hindi-tagline {
-  font-size: 0.94rem;
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(0.76rem, 2.6vw, 0.92rem);
   color: #fef08a;
   font-style: italic;
   margin: 0;
   letter-spacing: 0.04em;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+  z-index: 3;
+  line-height: normal;
 }
 
-/* Attendee Details Card */
+/* ------------------------------------------------------------
+   2. ATTENDEE DETAILS SECTION
+   ------------------------------------------------------------ */
+.ticket-v-attendee-section {
+  position: relative;
+  z-index: 2;
+  padding: 2px 10px 10px 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .ticket-v-attendee-card {
   position: relative;
   width: 100%;
-  background: rgba(5, 14, 44, 0.92);
+  background: rgba(5, 14, 44, 0.94);
   backdrop-filter: blur(12px);
-  border: 2px solid #d4af37;
-  border-radius: 14px;
-  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35), inset 0 0 25px rgba(0, 0, 0, 0.75), 0 8px 25px rgba(0, 0, 0, 0.6);
-  padding: 13px 14px;
+  border: 1.8px solid #d4af37;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35), inset 0 0 20px rgba(0, 0, 0, 0.75), 0 6px 20px rgba(0, 0, 0, 0.6);
+  padding: 10px 12px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   box-sizing: border-box;
 }
 
 /* 4 Ornate Gold Corner Filigree Flourishes */
 .ticket-v-corner-flourish {
   position: absolute;
-  width: 38px;
-  height: 38px;
+  width: 18px;
+  height: 18px;
   pointer-events: none;
-  z-index: 5;
+  z-index: 4;
+  opacity: 0.85;
 }
 
 .ticket-v-corner-flourish.corner-tl {
-  top: -1px;
-  left: -1px;
+  top: 2px;
+  left: 2px;
 }
 
 .ticket-v-corner-flourish.corner-tr {
-  top: -1px;
-  right: -1px;
+  top: 2px;
+  right: 2px;
   transform: scaleX(-1);
 }
 
 .ticket-v-corner-flourish.corner-bl {
-  bottom: -1px;
-  left: -1px;
+  bottom: 2px;
+  left: 2px;
   transform: scaleY(-1);
 }
 
 .ticket-v-corner-flourish.corner-br {
-  bottom: -1px;
-  right: -1px;
+  bottom: 2px;
+  right: 2px;
   transform: scale(-1, -1);
 }
 
 .ticket-v-photo-col {
-  width: 84px;
+  width: 68px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-top: 2px;
   z-index: 2;
 }
 
 .ticket-v-photo-box {
-  width: 82px;
-  height: 94px;
-  border: 2px solid #eab308;
+  width: 66px;
+  height: 78px;
+  border: 1.8px solid #eab308;
   border-radius: 8px;
   overflow: hidden;
   background: #03081b;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -557,26 +626,24 @@
   align-items: center;
   justify-content: center;
   color: #ca8a04;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
-  gap: 3px;
+  gap: 2px;
 }
 
 .ticket-v-badge-pill {
-  margin-top: 5px;
+  margin-top: 4px;
   background: linear-gradient(135deg, #d4af37 0%, #b45309 100%);
   color: #1a0b02;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 800;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 9999px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  max-width: 82px;
+  max-width: 66px;
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .ticket-v-info-col {
@@ -585,7 +652,7 @@
   flex-direction: column;
   justify-content: space-between;
   min-width: 0;
-  gap: 4px;
+  gap: 3px;
   z-index: 2;
 }
 
@@ -594,58 +661,58 @@
   justify-content: space-between;
   align-items: baseline;
   border-bottom: 1px solid rgba(212, 175, 55, 0.3);
-  padding-bottom: 3px;
+  padding-bottom: 2px;
 }
 
 .ticket-v-name-box {
   flex: 1;
   min-width: 0;
-  padding-right: 8px;
+  padding-right: 6px;
 }
 
 .ticket-v-reg-box {
   text-align: right;
   border-left: 1px solid rgba(212, 175, 55, 0.35);
-  padding-left: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
   flex-shrink: 0;
 }
 
 .ticket-v-label {
-  font-size: 0.62rem;
-  color: #cbd5e1;
+  font-size: 0.58rem;
+  color: #94a3b8;
   letter-spacing: 0.02em;
   display: block;
   margin-bottom: 1px;
 }
 
 .ticket-v-val-name {
-  font-size: 1.05rem;
+  font-size: clamp(0.92rem, 3.2vw, 1.05rem);
   font-weight: 800;
   color: #ffffff;
   margin: 0;
   letter-spacing: 0.02em;
   line-height: 1.15;
   text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .ticket-v-val-reg {
   font-family: monospace;
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 2.8vw, 0.95rem);
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .ticket-v-info-field {
-  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
   padding-bottom: 2px;
 }
 
 .ticket-v-val-text {
-  font-size: 0.82rem;
+  font-size: clamp(0.74rem, 2.4vw, 0.82rem);
   color: #f1f5f9;
   margin: 0;
   line-height: 1.25;
@@ -658,15 +725,16 @@
 
 .ticket-v-meta-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ticket-v-meta-item {
   flex: 1;
+  min-width: 0;
 }
 
 .ticket-v-meta-val {
-  font-size: 0.72rem;
+  font-size: clamp(0.68rem, 2.2vw, 0.74rem);
   color: #f1f5f9;
   font-weight: 600;
   display: block;
@@ -674,22 +742,22 @@
 }
 
 /* ------------------------------------------------------------
-   MIDDLE: PERFORATION TEAR LINE (LEFT & RIGHT NOTCHES)
+   3. MIDDLE: PERFORATION TEAR LINE (LEFT & RIGHT NOTCHES)
    ------------------------------------------------------------ */
 .ticket-v-perforation {
   width: 100%;
-  height: 30px;
+  height: 28px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 5;
-  margin: 4px 0 2px 0;
+  margin: 2px 0;
 }
 
 .ticket-v-notch {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   background: #0b0f19;
   border-radius: 50%;
   position: absolute;
@@ -698,15 +766,15 @@
 }
 
 .ticket-v-notch.notch-left {
-  left: -14px;
+  left: -13px;
 }
 
 .ticket-v-notch.notch-right {
-  right: -14px;
+  right: -13px;
 }
 
 .ticket-v-tear-line {
-  width: calc(100% - 40px);
+  width: calc(100% - 38px);
   height: 1px;
   border-top: 2px dashed rgba(212, 175, 55, 0.75);
   display: flex;
@@ -718,11 +786,11 @@
 .ticket-v-tear-label {
   background: #09133a;
   border: 1px solid rgba(212, 175, 55, 0.5);
-  padding: 2px 14px;
+  padding: 2px 12px;
   border-radius: 9999px;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 800;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   color: #fef08a;
   text-transform: uppercase;
   white-space: nowrap;
@@ -730,26 +798,27 @@
 }
 
 /* ------------------------------------------------------------
-   BOTTOM SECTION: ENTRY GATE PASS & QR CODE
+   4. BOTTOM SECTION: ENTRY GATE PASS & QR CODE
    ------------------------------------------------------------ */
 .ticket-v-bottom-section {
   position: relative;
   z-index: 2;
-  padding: 6px 24px 18px 24px;
+  padding: 6px 18px 20px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
   box-sizing: border-box;
+  background: url('/deepaura-bottom-diyas.jpg?v=2') center bottom / 100% auto no-repeat;
 }
 
 .ticket-v-side-ribbon {
   position: absolute;
-  width: 22px;
-  top: 10px;
-  bottom: 38px;
+  width: 20px;
+  top: 8px;
+  bottom: 36px;
   background: linear-gradient(180deg, #d4af37 0%, #fef08a 50%, #b45309 100%);
-  border-radius: 4px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -758,17 +827,17 @@
 }
 
 .ticket-v-side-ribbon.ribbon-left {
-  left: 8px;
+  left: 6px;
 }
 
 .ticket-v-side-ribbon.ribbon-right {
-  right: 8px;
+  right: 6px;
 }
 
 .ticket-v-side-ribbon span {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-size: 0.52rem;
+  font-size: 0.5rem;
   font-weight: 800;
   letter-spacing: 0.14em;
   color: #3b1803;
@@ -786,7 +855,7 @@
 
 .ticket-v-stub-title-sub {
   font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #fef08a;
   letter-spacing: 0.12em;
@@ -796,16 +865,16 @@
 
 .ticket-v-stub-title-main {
   font-family: 'Cinzel', Georgia, serif;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #ffd700;
   letter-spacing: 0.04em;
-  margin: 2px 0 0 0;
+  margin: 1px 0 0 0;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
 .ticket-v-stub-title-desc {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: #fde047;
   letter-spacing: 0.18em;
@@ -815,7 +884,7 @@
 }
 
 .ticket-v-scan-hint {
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: 0.14em;
@@ -826,14 +895,45 @@
 
 .ticket-v-qr-box {
   background: #ffffff;
-  padding: 8px;
+  padding: 7px;
   border-radius: 12px;
-  border: 2.5px solid #d4af37;
+  border: 2.2px solid #d4af37;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 3px 0;
+  margin: 2px 0;
+}
+
+.ticket-v-qr-loading {
+  width: 114px;
+  height: 114px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.ticket-v-admit-pill {
+  background: linear-gradient(90deg, #d4af37 0%, #fef08a 50%, #ca8a04 100%);
+  color: #3b1803;
+  padding: 4px 16px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  margin-top: 5px;
+}
+
+.ticket-v-footer-meta {
+  font-size: 0.64rem;
+  color: #fde047;
+  letter-spacing: 0.08em;
+  margin: 6px 0 0 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  font-weight: 600;
 }
 
 .ticket-v-qr-loading {

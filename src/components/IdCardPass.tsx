@@ -59,17 +59,23 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
         <div className="ticket-bg-stars" />
 
         {/* ============================================================
-            TOP SECTION: MAIN PASS & ATTENDEE DETAILS
+            1. TOP HEADER SECTION (Un-stretched Banner Artwork)
             ============================================================ */}
-        <div className="ticket-v-top-section">
-          {/* Header spacer to reveal the DeepAura 2K26 banner artwork & Hindi tagline */}
-          <div className="ticket-v-banner-spacer">
-            <p className="ticket-v-hindi-tagline">“दीप जले, यादें मुस्कुराएँ।”</p>
-          </div>
+        <div className="ticket-v-header-section">
+          {/* Natural Aspect-Ratio Banner Artwork with Logos & DeepAura 2K26 */}
+          <img
+            src="/card-header-banner.jpg?v=2"
+            alt="DeepAura 2K26 - ECK RTU Alumni Kota Chapter"
+            className="ticket-v-banner-img"
+          />
+        </div>
 
-          {/* Attendee Details Card with 4 Ornate Gold Corner Filigrees */}
+        {/* ============================================================
+            2. ATTENDEE DETAILS SECTION
+            ============================================================ */}
+        <div className="ticket-v-attendee-section">
           <div className="ticket-v-attendee-card">
-            {/* 4 Corner Ornaments */}
+            {/* 4 Ornate Gold Corner Filigree Flourishes */}
             <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-tl" />
             <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-tr" />
             <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-bl" />
@@ -82,7 +88,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                   <img src={photoSrc} alt={attendeeName} className="ticket-v-photo-img" />
                 ) : (
                   <div className="ticket-v-photo-placeholder">
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
@@ -125,11 +131,11 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-meta-row">
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Date &amp; Time</span>
-                  <span className="ticket-v-meta-val">01 November 2026, 5:00 PM</span>
+                  <span className="ticket-v-meta-val">01 Nov 2026, 5:00 PM</span>
                 </div>
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Venue</span>
-                  <span className="ticket-v-meta-val">Agora Ground, ECK-RTU Campus, Kota</span>
+                  <span className="ticket-v-meta-val">Agora Ground, ECK Campus</span>
                 </div>
               </div>
             </div>
@@ -137,7 +143,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
         </div>
 
         {/* ============================================================
-            PERFORATION TEAR LINE (LEFT & RIGHT NOTCHES)
+            3. PERFORATION TEAR LINE (LEFT & RIGHT NOTCHES)
             ============================================================ */}
         <div className="ticket-v-perforation">
           <div className="ticket-v-notch notch-left" />
@@ -148,7 +154,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
         </div>
 
         {/* ============================================================
-            BOTTOM SECTION: BOARDING PASS & GATE SCAN STUB
+            4. BOTTOM SECTION: BOARDING PASS & GATE SCAN STUB
             ============================================================ */}
         <div className="ticket-v-bottom-section">
           {/* Vertical Golden Ribbons on Left & Right */}
@@ -171,7 +177,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               {cleanMobile ? (
                 <QRCodeSVG
                   value={cleanMobile}
-                  size={118}
+                  size={114}
                   level="M"
                   includeMargin={false}
                   bgColor="#ffffff"
@@ -182,7 +188,6 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               )}
             </div>
 
-            <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
 
             {/* Admit Pill Button */}
             <div className="ticket-v-admit-pill">
