@@ -47,6 +47,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [logSearch, setLogSearch] = useState('');
 
   const scannerInstanceRef = useRef<Html5QrcodeScanner | null>(null);
+  const isVerifyingRef = useRef(false);
 
   // Load gate entries on mount and whenever refreshed
   const loadGateEntries = async () => {
@@ -95,8 +96,21 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
   // Handle QR scanning logic
   const handleVerifyPhone = async (phone: string, mode: 'qr_scan' | 'manual_phone' = 'qr_scan') => {
-    if (isVerifying) return;
+    if (isVerifyingRef.current) return;
+    isVerifyingRef.current = true;
     setIsVerifying(true);
+
+    // If scanning with camera, immediately stop and close camera to prevent duplicate scans
+    if (mode === 'qr_scan') {
+      if (scannerInstanceRef.current) {
+        try {
+          await scannerInstanceRef.current.clear();
+        } catch (_) {}
+        scannerInstanceRef.current = null;
+      }
+      setScannerActive(false);
+    }
+
     setScanResult(null);
 
     try {
@@ -115,6 +129,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       });
     } finally {
       setIsVerifying(false);
+      setTimeout(() => {
+        isVerifyingRef.current = false;
+      }, 600);
     }
   };
 
@@ -380,6 +397,33 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         👥 {scanResult.number_of_attendees || 1} Attendees Allowed
                       </span>
                     </div>
+                    <div style={{ marginTop: '16px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScanResult(null);
+                          setScannerActive(true);
+                        }}
+                        className="btn-primary-action"
+                        style={{
+                          background: 'linear-gradient(135deg, #10b981, #059669)',
+                          padding: '10px 22px',
+                          fontSize: '15px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          borderRadius: '8px',
+                          fontWeight: 600,
+                          border: 'none',
+                          color: '#fff',
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)',
+                        }}
+                      >
+                        <span>📷</span>
+                        <span>Scan Next Attendee →</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -393,6 +437,31 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     <p className="result-sub">
                       Attendee: <strong>{scanResult.attendee_name}</strong> ({scanResult.registration_number})
                     </p>
+                    <div style={{ marginTop: '14px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScanResult(null);
+                          setScannerActive(true);
+                        }}
+                        className="btn-primary-action"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.12)',
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
+                          color: '#fff',
+                          padding: '8px 18px',
+                          fontSize: '14px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          borderRadius: '8px',
+                        }}
+                      >
+                        <span>📷</span>
+                        <span>Scan Next Attendee →</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -406,6 +475,31 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     <p className="result-sub">
                       Attendee: <strong>{scanResult.attendee_name}</strong> • Amount Due: ₹{scanResult.amount}
                     </p>
+                    <div style={{ marginTop: '14px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScanResult(null);
+                          setScannerActive(true);
+                        }}
+                        className="btn-primary-action"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.12)',
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
+                          color: '#fff',
+                          padding: '8px 18px',
+                          fontSize: '14px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          borderRadius: '8px',
+                        }}
+                      >
+                        <span>📷</span>
+                        <span>Scan Next Attendee →</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
