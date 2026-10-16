@@ -46,7 +46,7 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
       setPin((prev) => prev.slice(0, -1));
     } else if (val === 'CLR') {
       setPin('');
-    } else if (pin.length < 8) {
+    } else if (pin.length < 4) {
       setPin((prev) => prev + val);
     }
   };
@@ -82,7 +82,7 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
         <form onSubmit={handleSubmit} className="gate-login-form">
           <div className="gate-pin-field-wrapper">
             <label htmlFor="gate-pin-input" className="gate-pin-label">
-              Enter Assigned Gate PIN
+              Enter 4-Digit Gate PIN
             </label>
             <div className="gate-pin-input-group">
               <input
@@ -90,11 +90,11 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
                 type={showPin ? 'text' : 'password'}
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={8}
+                maxLength={4}
                 value={pin}
                 onChange={(e) => {
                   setErrorMsg(null);
-                  setPin(e.target.value.replace(/\D/g, ''));
+                  setPin(e.target.value.replace(/\D/g, '').slice(0, 4));
                 }}
                 placeholder="••••"
                 className="gate-pin-input"
@@ -131,7 +131,7 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
 
           <button
             type="submit"
-            disabled={loading || pin.length < 3}
+            disabled={loading || pin.length !== 4}
             className="btn btn-primary btn-large btn-block gate-submit-btn"
           >
             {loading ? 'Authenticating & Binding Device...' : 'Unlock Gate Desk →'}

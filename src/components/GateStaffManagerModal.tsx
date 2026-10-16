@@ -53,6 +53,10 @@ export const GateStaffManagerModal: React.FC<GateStaffManagerModalProps> = ({
       setFeedbackMsg({ type: 'error', text: 'Please fill in Staff Name and PIN.' });
       return;
     }
+    if (pinNumber.trim().length !== 4) {
+      setFeedbackMsg({ type: 'error', text: 'PIN must be exactly 4 digits.' });
+      return;
+    }
 
     setActionLoading(true);
     setFeedbackMsg(null);
@@ -186,10 +190,10 @@ export const GateStaffManagerModal: React.FC<GateStaffManagerModalProps> = ({
                   <input
                     type="text"
                     required
-                    maxLength={8}
+                    maxLength={4}
                     placeholder="e.g. 7004"
                     value={pinNumber}
-                    onChange={(e) => setPinNumber(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => setPinNumber(e.target.value.replace(/\D/g, '').slice(0, 4))}
                     className="gate-input font-mono"
                   />
                 </div>
