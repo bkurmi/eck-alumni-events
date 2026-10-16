@@ -8,6 +8,7 @@ import {
 } from '../lib/gate';
 import { cleanMobileNumber } from '../lib/registrations';
 import { calculateContribution } from '../lib/pricing';
+import { DEFAULT_UPI_CONFIGS, getUpiAccountName } from '../lib/paymentRotation';
 import { ENGINEERING_DISCIPLINES } from '../types';
 import type { EventRegistration, GateEntry, GateVerificationResult } from '../types';
 
@@ -51,10 +52,27 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [spotKidsAbove10, setSpotKidsAbove10] = useState(0);
   const [spotKidsUnder10, setSpotKidsUnder10] = useState(0);
   const [showKidsBreakdown, setShowKidsBreakdown] = useState(false);
-  const [spotPaymentMode, setSpotPaymentMode] = useState<'CASH' | 'UPI_SPOT' | 'COMPLIMENTARY'>('CASH');
+  const [spotPaymentMode, setSpotPaymentMode] = useState<string>('CASH');
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(false);
   const [spotAmount, setSpotAmount] = useState(800);
   const [spotSubmitting, setSpotSubmitting] = useState(false);
   const [spotSuccessData, setSpotSuccessData] = useState<any | null>(null);
+
+  // Currently selected UPI configuration (if paying via QR)
+  const selectedUpiConfig = React.useMemo(() => {
+    return DEFAULT_UPI_CONFIGS.find((c) => c.upi_id === spotPaymentMode) || null;
+  }, [spotPaymentMode]);
+
+  const handleCopyUpi = (upiId: string) => {
+    try {
+      navigator.clipboard.writeText(upiId);
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2000);
+    } catch {
+      // fallback
+    }
+  };
 
   // Passing years matching RegistrationForm (Class of 2026 down to 1980)
   const currentYear = new Date().getFullYear();
@@ -295,10 +313,21 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       return;
     }
 
+    const isUpi = Boolean(selectedUpiConfig);
+    if (isUpi && !paymentConfirmed) {
+      const ok = window.confirm(
+        `Please confirm: Has the ₹${spotAmount} payment been received on ${selectedUpiConfig?.account_name}'s UPI (${selectedUpiConfig?.upi_id})?\n\nClick OK if payment is confirmed to complete gate entry.`
+      );
+      if (!ok) return;
+    }
+
     setSpotSubmitting(true);
     setSpotSuccessData(null);
 
     const effectiveAmount = spotPaymentMode === 'COMPLIMENTARY' ? 0 : spotAmount;
+    const verifiedByNote = isUpi
+      ? `${verifiedBy} (UPI Verified: ${selectedUpiConfig?.account_name})`
+      : verifiedBy;
 
     const res = await spotRegisterAtGate({
       name: spotName.trim(),
@@ -308,7 +337,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       numberOfAttendees: spotAttendees,
       paymentMode: spotPaymentMode,
       amount: effectiveAmount,
-      verifiedBy,
+      verifiedBy: verifiedByNote,
     });
 
     setSpotSubmitting(false);
@@ -326,6 +355,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       setSpotAttendees(1);
       setSpotAmount(800);
       setShowKidsBreakdown(false);
+      setSpotPaymentMode('CASH');
+      setPaymentConfirmed(false);
       // Refresh entries
       await loadGateEntries();
       onRefreshRegistrations();
@@ -886,11 +917,20 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   <select
                     id="spot-payment-mode"
                     value={spotPaymentMode}
-                    onChange={(e) => setSpotPaymentMode(e.target.value as any)}
+                    onChange={(e) => {
+                      setSpotPaymentMode(e.target.value);
+                      setPaymentConfirmed(false);
+                    }}
                   >
                     <option value="CASH">💵 Cash Collected (₹{spotAmount})</option>
-                    <option value="UPI_SPOT">📱 UPI QR Scanned at Desk (₹{spotAmount})</option>
-                    <option value="COMPLIMENTARY">⭐ Complimentary / VIP</option>
+                    <optgroup label="📱 UPI QR Code (Select Receiver Account)">
+                      {DEFAULT_UPI_CONFIGS.map((config) => (
+                        <option key={config.upi_id} value={config.upi_id}>
+                          📱 UPI QR: {config.account_name} ({config.upi_id})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <option value="COMPLIMENTARY">⭐ Complimentary / VIP (₹0)</option>
                   </select>
                 </div>
               </div>
@@ -993,6 +1033,112 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 )}
               </div>
 
+              {/* INSTANT UPI QR CODE PAYMENT DESK CARD */}
+              {selectedUpiConfig && (
+                <div className="spot-qr-display-card">
+                  <div className="spot-qr-card-header">
+                    <div className="spot-qr-header-title">
+                      <span className="spot-qr-icon">📱</span>
+                      <div>
+                        <h4>Instant Desk UPI QR Payment</h4>
+                        <p>Alumnus can scan the QR code below using Google Pay, PhonePe, Paytm, or BHIM.</p>
+                      </div>
+                    </div>
+                    <div className="spot-qr-amount-pill">
+                      <span className="lbl">Amount</span>
+                      <span className="val">₹{spotAmount}</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Recipient Switcher Pills */}
+                  <div className="spot-qr-account-switcher">
+                    <span className="switcher-label">Switch Receiver:</span>
+                    <div className="switcher-pills">
+                      {DEFAULT_UPI_CONFIGS.map((config) => (
+                        <button
+                          key={config.upi_id}
+                          type="button"
+                          className={`account-pill ${spotPaymentMode === config.upi_id ? 'active' : ''}`}
+                          onClick={() => {
+                            setSpotPaymentMode(config.upi_id);
+                            setPaymentConfirmed(false);
+                          }}
+                        >
+                          {config.account_name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="spot-qr-body-grid">
+                    {/* High contrast QR Frame */}
+                    <div className="spot-qr-frame-box">
+                      <div className="spot-qr-image-wrapper">
+                        <img
+                          src={selectedUpiConfig.qr_image_url}
+                          alt={`UPI QR Code for ${selectedUpiConfig.account_name}`}
+                          className="spot-qr-img"
+                        />
+                      </div>
+                      <div className="spot-qr-badge">
+                        <span>⚡ Scan to Pay ₹{spotAmount}</span>
+                      </div>
+                    </div>
+
+                    {/* Recipient Details & Confirmation */}
+                    <div className="spot-qr-details-box">
+                      <div className="spot-qr-detail-row">
+                        <span className="detail-label">Receiver Account</span>
+                        <strong className="detail-value text-gold">{selectedUpiConfig.account_name}</strong>
+                      </div>
+
+                      <div className="spot-qr-detail-row">
+                        <span className="detail-label">UPI ID</span>
+                        <div className="upi-id-copy-row">
+                          <code className="upi-code">{selectedUpiConfig.upi_id}</code>
+                          <button
+                            type="button"
+                            className="btn-copy-upi"
+                            onClick={() => handleCopyUpi(selectedUpiConfig.upi_id)}
+                          >
+                            {copiedUpi ? '✓ Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="spot-qr-detail-row">
+                        <span className="detail-label">Attendees Covered</span>
+                        <span className="detail-value">
+                          {spotAttendees} {spotAttendees === 1 ? 'Person' : 'People'}
+                        </span>
+                      </div>
+
+                      {/* Confirmation Toggle Box */}
+                      <div
+                        className={`spot-payment-confirm-card ${paymentConfirmed ? 'confirmed' : ''}`}
+                        onClick={() => setPaymentConfirmed(!paymentConfirmed)}
+                      >
+                        <input
+                          type="checkbox"
+                          id="spot-confirm-checkbox"
+                          checked={paymentConfirmed}
+                          onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <label htmlFor="spot-confirm-checkbox" className="confirm-label">
+                          <strong>Payment Received &amp; Verified on Screen</strong>
+                          <span>
+                            {paymentConfirmed
+                              ? `✅ Confirmed: ₹${spotAmount} paid to ${selectedUpiConfig.account_name}`
+                              : `Check this once alumnus shows the ₹${spotAmount} successful payment screen.`}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="spot-form-actions">
                 <button
                   type="submit"
@@ -1003,7 +1149,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     ? 'Registering...'
                     : spotPaymentMode === 'COMPLIMENTARY'
                       ? 'Complete Spot Entry (Complimentary / VIP) →'
-                      : `Complete Spot Entry (₹${spotAmount}) →`}
+                      : selectedUpiConfig
+                        ? `Complete Spot Entry (₹${spotAmount} via ${selectedUpiConfig.account_name} QR) →`
+                        : `Complete Spot Entry (₹${spotAmount} Cash) →`}
                 </button>
               </div>
             </form>

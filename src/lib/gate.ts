@@ -368,7 +368,7 @@ export async function spotRegisterAtGate(params: {
   discipline: string;
   year_of_passing: number;
   numberOfAttendees: number;
-  paymentMode: 'CASH' | 'UPI_SPOT' | 'COMPLIMENTARY';
+  paymentMode: 'CASH' | 'UPI_SPOT' | 'COMPLIMENTARY' | string;
   amount: number;
   verifiedBy: string;
   eventSlug?: string;
