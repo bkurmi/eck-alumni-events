@@ -46,7 +46,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
   const photoSrc = photoUrl || registration.payment_screenshot_path ? (photoUrl || undefined) : undefined;
 
-  // Format short name like "V. Khatri" or "B. Kurmi" matching sample
+  // Format short name like "B. Kurmi" matching reference
   const nameParts = (alumni?.name || 'Alumnus').trim().split(/\s+/);
   const formattedShortName = nameParts.length > 1
     ? `${nameParts[0][0]}. ${nameParts[nameParts.length - 1]}`
@@ -55,31 +55,30 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
   return (
     <div className="ticket-pass-wrapper vertical-pass-wrapper">
       <div className="ticket-card ticket-vertical-card" ref={cardRef}>
-        {/* Starry sparklers overlay */}
+        {/* Subtle starry sparklers overlay */}
         <div className="ticket-bg-stars" />
 
         {/* ============================================================
-            1. TOP HEADER SECTION (Un-stretched Banner Artwork)
+            1. TOP HEADER BANNER (Official Target Design)
             ============================================================ */}
         <div className="ticket-v-header-section">
-          {/* Natural Aspect-Ratio Banner Artwork with Logos & DeepAura 2K26 */}
           <img
-            src="/card-header-banner.jpg?v=2"
-            alt="DeepAura 2K26 - ECK RTU Alumni Kota Chapter"
-            className="ticket-v-banner-img"
+            src="/card-header-official.jpg"
+            alt="ECK-RTU Alumni DeepAura 2K26"
+            className="ticket-v-header-official-img"
           />
         </div>
 
         {/* ============================================================
-            2. ATTENDEE DETAILS SECTION
+            2. ATTENDEE DETAILS SECTION (Midnight Navy Card + Gold Filigree)
             ============================================================ */}
         <div className="ticket-v-attendee-section">
           <div className="ticket-v-attendee-card">
-            {/* 4 Ornate Gold Corner Filigree Flourishes (Classic Victorian matching sample) */}
-            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-tl" />
-            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-tr" />
-            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-bl" />
-            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-br" />
+            {/* 4 Ornate Gold Corner Filigree Flourishes matching reference */}
+            <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tl" />
+            <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tr" />
+            <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-bl" />
+            <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-br" />
 
             {/* Left Column: Photo & Badge */}
             <div className="ticket-v-photo-col">
@@ -88,7 +87,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                   <img src={photoSrc} alt={attendeeName} className="ticket-v-photo-img" />
                 ) : (
                   <div className="ticket-v-photo-placeholder">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
@@ -131,11 +130,14 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-meta-row">
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Date &amp; Time</span>
-                  <span className="ticket-v-meta-val">01 Nov 2026, 5:00 PM</span>
+                  <span className="ticket-v-meta-val">01 November 2026, 5:00 PM</span>
                 </div>
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Venue</span>
-                  <span className="ticket-v-meta-val">Agora Ground, RTU Campus</span>
+                  <span className="ticket-v-meta-val venue-multiline">
+                    <span>Agora Ground, ECK-RTU</span>
+                    <span>Campus, Kota</span>
+                  </span>
                 </div>
               </div>
             </div>
@@ -154,7 +156,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
         </div>
 
         {/* ============================================================
-            4. BOTTOM SECTION: BOARDING PASS & GATE SCAN STUB
+            4. BOTTOM SECTION: BOARDING PASS & ENTRY GATE SCAN STUB
             ============================================================ */}
         <div className="ticket-v-bottom-section">
           {/* Vertical Golden Ribbons on Left & Right */}
@@ -164,6 +166,10 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
           <div className="ticket-v-side-ribbon ribbon-right">
             <span>BOARDING PASS / ALUMNI ACCESS</span>
           </div>
+
+          {/* Glowing diyas at stub top */}
+          <img src="/diya-golden-flame.png" alt="" className="ticket-v-stub-diya diya-stub-left" />
+          <img src="/diya-golden-flame.png" alt="" className="ticket-v-stub-diya diya-stub-right" />
 
           <div className="ticket-v-bottom-content">
             <h4 className="ticket-v-stub-title-sub">ECK-RTU</h4>
@@ -177,7 +183,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               {cleanMobile ? (
                 <QRCodeSVG
                   value={cleanMobile}
-                  size={114}
+                  size={118}
                   level="M"
                   includeMargin={false}
                   bgColor="#ffffff"
@@ -188,10 +194,15 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               )}
             </div>
 
+            {/* Scan hint repeated below QR code matching reference */}
+            <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
 
-            {/* Admit Pill Button */}
+            {/* Admit Pill Button with Star Sparkle */}
             <div className="ticket-v-admit-pill">
               <span>VERIFIED / ADMIT {totalCount}</span>
+              <svg className="ticket-v-star-sparkle" viewBox="0 0 24 24" width="13" height="13" fill="#ffffff">
+                <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+              </svg>
             </div>
 
             {/* Footer Metadata */}
