@@ -326,34 +326,12 @@ export const EventPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleStartRegistration}
-                    className="btn btn-primary btn-large btn-block"
+                    className="btn btn-festive-primary btn-large btn-block"
                   >
                     <span>Register for DeepAura 2K26</span>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
-                  </button>
-
-                  {showIdCards && (
-                    <Link
-                      to="/id-card"
-                      className="btn btn-idcard-action btn-block"
-                      style={{ marginTop: '0.75rem', textDecoration: 'none', justifyContent: 'center' }}
-                    >
-                      <span>🎟️ Download Alumni ID Card &amp; Gate Pass</span>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </Link>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleOpenManageModal}
-                    className="btn btn-secondary-festive btn-block"
-                    style={{ marginTop: '0.75rem' }}
-                  >
-                    <span>🔍 Already Registered? View / Update Details</span>
                   </button>
                 </div>
               </div>
