@@ -5,6 +5,7 @@ import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
 import { QuickManualRegistrationModal } from '../components/QuickManualRegistrationModal';
 import { GateVerificationPortal } from '../components/GateVerificationPortal';
+import { GateStaffManagerModal } from '../components/GateStaffManagerModal';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { isAdminGatePortalEnabled } from '../lib/gate';
@@ -45,6 +46,7 @@ export const AdminPage: React.FC = () => {
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
+  const [isGatePinModalOpen, setIsGatePinModalOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [singleCopied, setSingleCopied] = useState(false);
 
@@ -527,10 +529,45 @@ export const AdminPage: React.FC = () => {
               </div>
 
               {activeTab === 'gate_portal' ? (
-                <GateVerificationPortal
-                  registrations={registrations}
-                  onRefreshRegistrations={fetchRegistrations}
-                />
+                <>
+                  <div className="admin-gate-top-action-bar">
+                    <div className="admin-gate-top-info">
+                      <span className="admin-gate-top-icon">⚡</span>
+                      <div className="admin-gate-top-text">
+                        <div className="admin-gate-top-title-row">
+                          <h3 className="admin-gate-top-title">Gate Desk Access</h3>
+                          <span className="admin-gate-pill">PIN Protected</span>
+                        </div>
+                        <p className="admin-gate-top-subtitle">
+                          Staff can scan &amp; verify attendee entry at <code>/gate</code> without accessing admin data.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="admin-gate-top-btns">
+                      <button
+                        type="button"
+                        onClick={() => setIsGatePinModalOpen(true)}
+                        className="btn-gate-bar-action"
+                      >
+                        🔑 Manage PINs
+                      </button>
+                      <a
+                        href="/gate"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-gate-bar-secondary"
+                      >
+                        ↗ Open Desk
+                      </a>
+                    </div>
+                  </div>
+                  <GateVerificationPortal
+                    registrations={registrations}
+                    onRefreshRegistrations={fetchRegistrations}
+                    staffName={session?.user?.email ? `Admin (${session.user.email.split('@')[0]})` : 'Admin Desk'}
+                    stationName="Central Admin"
+                  />
+                </>
               ) : activeTab === 'upi_report' ? (
                 <UpiReconciliationReport
                   registrations={registrations}
@@ -968,6 +1005,12 @@ export const AdminPage: React.FC = () => {
         event={activeEvent}
         onSuccess={fetchRegistrations}
         currentUserEmail={session?.user?.email}
+      />
+
+      {/* Gate Staff PIN Management Modal */}
+      <GateStaffManagerModal
+        isOpen={isGatePinModalOpen}
+        onClose={() => setIsGatePinModalOpen(false)}
       />
     </div>
   );

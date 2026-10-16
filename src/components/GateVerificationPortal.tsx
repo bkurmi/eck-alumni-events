@@ -8,18 +8,24 @@ import {
 } from '../lib/gate';
 import { cleanMobileNumber } from '../lib/registrations';
 import { calculateContribution } from '../lib/pricing';
-import { DEFAULT_UPI_CONFIGS, getUpiAccountName } from '../lib/paymentRotation';
+import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
 import { ENGINEERING_DISCIPLINES } from '../types';
 import type { EventRegistration, GateEntry, GateVerificationResult } from '../types';
 
 interface GateVerificationPortalProps {
   registrations: EventRegistration[];
   onRefreshRegistrations: () => void;
+  staffName?: string;
+  stationName?: string;
+  onLogout?: () => void;
 }
 
 export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   registrations,
   onRefreshRegistrations,
+  staffName,
+  stationName,
+  onLogout,
 }) => {
   const isGateEnabled = isAdminGatePortalEnabled();
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'manual' | 'spot' | 'log'>('scanner');
@@ -30,7 +36,18 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [scannerActive, setScannerActive] = useState(false);
   const [scanResult, setScanResult] = useState<GateVerificationResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verifiedBy, setVerifiedBy] = useState('Gate 1 Staff');
+  const initialStaff = staffName
+    ? stationName
+      ? `${staffName} (${stationName})`
+      : staffName
+    : 'Gate 1 Staff';
+  const [verifiedBy, setVerifiedBy] = useState(initialStaff);
+
+  useEffect(() => {
+    if (staffName) {
+      setVerifiedBy(stationName ? `${staffName} (${stationName})` : staffName);
+    }
+  }, [staffName, stationName]);
 
   // Camera devices & Torch state
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
@@ -432,23 +449,41 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       <div className="gate-operator-bar">
         <div className="gate-operator-info">
           <span className="gate-active-dot" />
-          <span>Active Gate Desk:</span>
-          <input
-            type="text"
-            value={verifiedBy}
-            onChange={(e) => setVerifiedBy(e.target.value)}
-            className="gate-staff-input"
-            title="Gate Name or Volunteer Name"
-          />
+          <span className="gate-operator-label">Verified By:</span>
+          {staffName ? (
+            <span className="gate-staff-locked-badge">
+              <strong>{verifiedBy}</strong>
+            </span>
+          ) : (
+            <input
+              type="text"
+              value={verifiedBy}
+              onChange={(e) => setVerifiedBy(e.target.value)}
+              className="gate-staff-input"
+              title="Gate Name or Volunteer Name"
+            />
+          )}
         </div>
-        <button
-          type="button"
-          onClick={loadGateEntries}
-          className="btn-refresh-gate"
-          title="Refresh attendance records"
-        >
-          {loadingEntries ? '↻ Refreshing...' : '↻ Refresh Log'}
-        </button>
+        <div className="gate-operator-actions">
+          <button
+            type="button"
+            onClick={loadGateEntries}
+            className="btn-refresh-gate"
+            title="Refresh attendance records"
+          >
+            {loadingEntries ? '↻ Refreshing...' : '↻ Refresh Log'}
+          </button>
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="btn-gate-exit-mini"
+              title="Exit / Switch PIN"
+            >
+              Exit Desk
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 2. Sub-Tabs Navigation */}
