@@ -27,10 +27,10 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
   const badgeLabel = category.toLowerCase().includes('faculty')
     ? 'FACULTY'
     : category.toLowerCase().includes('guest')
-    ? 'GUEST'
-    : category.toLowerCase().includes('student')
-    ? 'STUDENT'
-    : 'ALUMNUS';
+      ? 'GUEST'
+      : category.toLowerCase().includes('student')
+        ? 'STUDENT'
+        : 'ALUMNUS';
   const totalCount = registration.number_of_attendees || 1;
   const adultsCount = registration.adults_count ?? 1;
   const kidsCount = (registration.children_above_7_count || 0) + (registration.children_under_7_count || 0);
@@ -45,10 +45,10 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
   }
 
   const photoSrc = photoUrl || registration.payment_screenshot_path ? (photoUrl || undefined) : undefined;
-  
+
   // Format short name like "V. Khatri" or "B. Kurmi" matching sample
   const nameParts = (alumni?.name || 'Alumnus').trim().split(/\s+/);
-  const formattedShortName = nameParts.length > 1 
+  const formattedShortName = nameParts.length > 1
     ? `${nameParts[0][0]}. ${nameParts[nameParts.length - 1]}`
     : nameParts[0];
 
@@ -75,11 +75,11 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
             ============================================================ */}
         <div className="ticket-v-attendee-section">
           <div className="ticket-v-attendee-card">
-            {/* 4 Ornate Gold Corner Filigree Flourishes */}
-            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-tl" />
-            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-tr" />
-            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-bl" />
-            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-br" />
+            {/* 4 Ornate Gold Corner Filigree Flourishes (Classic Victorian matching sample) */}
+            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-tl" />
+            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-tr" />
+            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-bl" />
+            <img src="/gold-corner-filigree.png?v=3" alt="" className="ticket-v-corner-flourish corner-br" />
 
             {/* Left Column: Photo & Badge */}
             <div className="ticket-v-photo-col">
@@ -135,7 +135,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                 </div>
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Venue</span>
-                  <span className="ticket-v-meta-val">Agora Ground, ECK Campus</span>
+                  <span className="ticket-v-meta-val">Agora Ground, RTU Campus</span>
                 </div>
               </div>
             </div>
