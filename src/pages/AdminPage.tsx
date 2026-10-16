@@ -518,9 +518,9 @@ export const AdminPage: React.FC = () => {
                       <span className="tab-text-full">Gate Verification & Scanner</span>
                       <span className="tab-text-short">Gate Desk</span>
                     </span>
-                    <span className="admin-tab-count" style={{ background: '#f59e0b', color: '#0f172a', fontWeight: 'bold' }}>
-                      <span className="tab-count-full">1st Nov Gate</span>
-                      <span className="tab-count-short">Gate</span>
+                    <span className="admin-tab-count gate-pill-badge">
+                      <span className="tab-count-full">Live Desk</span>
+                      <span className="tab-count-short">Live</span>
                     </span>
                   </button>
                 )}

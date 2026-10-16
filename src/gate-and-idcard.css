@@ -565,12 +565,15 @@
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
-.ticket-hindi-tagline {
-  font-size: 0.92rem;
+.ticket-college-subtitle {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
   color: #fde047;
-  font-style: italic;
   margin: 0 0 4px 0;
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 .ticket-header-divider {
@@ -611,14 +614,13 @@
   text-shadow: 0 3px 12px rgba(234, 179, 8, 0.3);
 }
 
-.ticket-event-subheading {
-  font-family: system-ui, sans-serif;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
+.ticket-hindi-tagline {
+  font-size: 0.95rem;
   color: #fef08a;
-  margin: 1px 0 0 0;
-  text-transform: uppercase;
+  font-style: italic;
+  margin: 2px 0 0 0;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
 /* Attendee Details Frame */
@@ -1146,33 +1148,72 @@
 /* Sub-Tabs */
 .gate-subtabs {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
   overflow-x: auto;
-  border-bottom: 2px solid #1e293b;
-  padding-bottom: 0.5rem;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+  width: 100%;
+}
+
+.gate-subtabs::-webkit-scrollbar {
+  display: none;
 }
 
 .gate-subtab-btn {
-  background: transparent;
-  border: none;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #94a3b8;
-  padding: 0.6rem 1rem;
-  font-size: 0.9rem;
+  padding: 8px 14px;
+  font-size: 0.88rem;
   font-weight: 600;
-  border-radius: 0.5rem;
+  border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.gate-subtab-btn .gate-tab-icon {
+  font-size: 1rem;
+}
+
+.gate-subtab-btn .gate-tab-full {
+  display: inline;
+}
+
+.gate-subtab-btn .gate-tab-short {
+  display: none;
 }
 
 .gate-subtab-btn.active {
-  background: #6366f1;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
   color: #ffffff;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
 }
 
 .gate-subtab-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .gate-subtab-btn .gate-tab-full {
+    display: none;
+  }
+  .gate-subtab-btn .gate-tab-short {
+    display: inline;
+  }
+  .gate-subtab-btn {
+    padding: 7px 11px;
+    font-size: 0.82rem;
+  }
 }
 
 /* Scanner View */
@@ -1181,23 +1222,56 @@
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
-}
-
-.scanner-start-box {
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1rem;
-  padding: 3rem 2rem;
-  text-align: center;
-  max-width: 440px;
   width: 100%;
 }
 
+.scanner-start-box {
+  background: linear-gradient(180deg, #1e293b 0%, #141f32 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 1.25rem;
+  padding: 2.5rem 1.75rem;
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.scanner-start-icon-ring {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.12);
+  border: 2px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+}
+
+.scanner-start-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.scanner-hint {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin: 0;
+  max-width: 360px;
+  line-height: 1.45;
+}
+
 .btn-large-camera {
-  padding: 1.25rem 2rem;
-  font-size: 1.15rem;
+  padding: 1rem 1.75rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  border-radius: 1rem;
+  border-radius: 0.85rem;
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
@@ -1205,17 +1279,18 @@
   color: #0f172a;
   border: none;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
 }
 
-.scanner-hint {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin-top: 1.25rem;
+.btn-large-camera:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(245, 158, 11, 0.55);
 }
 
 .scanner-active-box {
-  max-width: 440px;
+  max-width: 460px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1223,22 +1298,234 @@
   gap: 1rem;
 }
 
-.gate-qr-viewport {
+/* Custom Camera Top Bar */
+.scanner-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
-  background: #000000;
-  border-radius: 1rem;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scanner-camera-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 4px 8px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.camera-picker-label {
+  font-size: 0.9rem;
+}
+
+.scanner-camera-select {
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 0.82rem;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+}
+
+.scanner-camera-select option {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.scanner-torch-btn {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.scanner-torch-btn.active {
+  background: #f59e0b;
+  color: #0f172a;
+  border-color: #f59e0b;
+  font-weight: 700;
+}
+
+/* Viewport with Animated Futuristic Reticle */
+.scanner-viewport-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  border-radius: 1.25rem;
   overflow: hidden;
-  border: 2px solid #6366f1;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(99, 102, 241, 0.4);
+  background: #000000;
+}
+
+.gate-qr-viewport {
+  width: 100% !important;
+  min-height: 300px;
+  background: #000000;
+  border: none !important;
+}
+
+.gate-qr-viewport video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1.25rem;
+}
+
+.scanner-reticle-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.scanner-reticle-box {
+  width: 220px;
+  height: 220px;
+  position: relative;
+  border-radius: 14px;
+}
+
+.scanner-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #f59e0b;
+  border-style: solid;
+}
+
+.scanner-corner-tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-top-left-radius: 8px; }
+.scanner-corner-tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 8px; }
+.scanner-corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: 8px; }
+.scanner-corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 8px; }
+
+.scanner-laser-line {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #f59e0b, #ef4444, #f59e0b, transparent);
+  box-shadow: 0 0 12px #f59e0b;
+  animation: scanLaser 2s ease-in-out infinite alternate;
+}
+
+@keyframes scanLaser {
+  0% { top: 10px; }
+  100% { top: calc(100% - 14px); }
+}
+
+.scanner-overlay-hint {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(15, 23, 42, 0.7);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.03em;
+}
+
+.scanner-controls-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .btn-stop-camera {
   background: #ef4444;
   color: #ffffff;
   border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
+  padding: 0.7rem 1.6rem;
+  border-radius: 0.65rem;
+  font-weight: 700;
+  font-size: 0.92rem;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-stop-camera:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Fallback & Resets for html5-qrcode internals if ever rendered */
+#gate-reader-view img {
+  display: none !important;
+}
+#gate-reader-view select,
+#gate-reader-view button,
+#gate-reader-view a {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  padding: 8px 14px !important;
+  font-family: inherit !important;
+  font-size: 0.85rem !important;
+}
+#gate-reader-view button:hover {
+  background: #334155 !important;
+}
+#gate-reader-view span {
+  color: #cbd5e1 !important;
+}
+
+/* Camera Error Card */
+.scanner-error-card {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid #ef4444;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.scanner-error-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.scanner-error-text h4 {
+  margin: 0 0 6px 0;
+  color: #f87171;
+  font-size: 1.05rem;
+}
+
+.scanner-error-text p {
+  margin: 0 0 12px 0;
+  font-size: 0.88rem;
+  color: #f1f5f9;
+  line-height: 1.4;
+}
+
+.scanner-error-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Scan Result Cards */
@@ -1579,4 +1866,50 @@
   text-align: center;
   padding: 3rem 1rem !important;
   color: #64748b;
+}
+
+/* Mobile & Tablet Responsiveness for Gate Portal */
+@media (max-width: 640px) {
+  .gate-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+  .gate-metric-card:last-child {
+    grid-column: 1 / -1;
+  }
+  .gate-metric-card {
+    padding: 1rem 0.85rem !important;
+  }
+  .metric-val {
+    font-size: 1.55rem !important;
+  }
+  .gate-operator-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 0.75rem 1rem !important;
+  }
+  .gate-operator-info {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .gate-staff-input {
+    flex: 1;
+    max-width: 180px;
+  }
+  .btn-refresh-gate {
+    width: 100%;
+    text-align: center;
+  }
+  .gate-card-box {
+    padding: 1.25rem !important;
+  }
+  .scanner-start-box {
+    padding: 2rem 1.25rem !important;
+  }
+  .btn-large-camera {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem 1.25rem !important;
+    font-size: 0.95rem !important;
+  }
 }

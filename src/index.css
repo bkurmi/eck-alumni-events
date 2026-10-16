@@ -316,9 +316,26 @@ h6 {
   }
 }
 
-@media (max-width: 380px) {
-  .nav-btn span {
-    display: none;
+@media (max-width: 480px) {
+  .header-nav {
+    gap: 6px;
+  }
+  .nav-btn {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .nav-btn-text {
+    display: none !important;
+  }
+
+  .nav-btn {
+    padding: 6px 8px;
+    min-width: 32px;
+    height: 32px;
+    justify-content: center;
   }
 
   .brand-title {
@@ -2542,10 +2559,10 @@ h6 {
 .admin-header-row {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-@media (min-width: 480px) {
+@media (min-width: 768px) {
   .admin-header-row {
     flex-direction: row;
     align-items: center;
@@ -2556,16 +2573,41 @@ h6 {
 .admin-title {
   font-size: 1.4rem;
   color: #ffffff;
+  margin: 0;
 }
 
 .admin-subtitle {
   font-size: 0.85rem;
   color: var(--text-muted);
+  margin-top: 4px;
 }
 
 .admin-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .admin-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .admin-actions .admin-quick-entry-btn {
+    flex: 1 1 100%;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+  .admin-actions .btn-secondary,
+  .admin-actions .btn-ghost {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    padding: 8px 12px;
+  }
 }
 
 .stats-grid {
@@ -3992,7 +4034,7 @@ h6 {
 /* ── Top View Navigation Tabs ── */
 .admin-view-tabs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 24px;
   background: var(--bg-surface);
   padding: 6px;
@@ -4000,17 +4042,24 @@ h6 {
   border: 1px solid var(--border-gold);
   width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.admin-view-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .admin-view-tab-btn {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 12px 14px;
   background: transparent;
   border: none;
   border-radius: var(--radius-md);
@@ -4028,6 +4077,8 @@ h6 {
   align-items: center;
   gap: 6px;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -4037,6 +4088,8 @@ h6 {
 
 .tab-text-full {
   display: inline;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tab-text-short {
@@ -4066,22 +4119,29 @@ h6 {
   font-size: 0.78rem;
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.28);
   color: inherit;
   flex-shrink: 0;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
 }
 
-@media (max-width: 640px) {
-  .admin-view-tabs {
-    padding: 4px;
-    gap: 4px;
-    margin-bottom: 16px;
-  }
+.gate-pill-badge {
+  background: #f59e0b !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+}
 
+/* Tablet & Moderate Laptop screens: switch to clean short titles to avoid awkward overflow */
+@media (max-width: 1024px) {
   .admin-view-tab-btn {
-    padding: 10px 6px;
-    font-size: 0.82rem;
-    gap: 5px;
+    padding: 10px 10px;
+    font-size: 0.88rem;
+    gap: 6px;
   }
 
   .tab-text-full {
@@ -4099,10 +4159,29 @@ h6 {
   .tab-count-short {
     display: inline !important;
   }
+}
+
+/* Mobile responsive tabs */
+@media (max-width: 640px) {
+  .admin-view-tabs {
+    padding: 4px;
+    gap: 6px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+
+  .admin-view-tab-btn {
+    flex: 1 0 auto;
+    min-width: max-content;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+    gap: 6px;
+  }
 
   .admin-tab-count {
     font-size: 0.72rem;
-    padding: 2px 6px;
+    padding: 2px 7px;
+    min-width: 20px;
   }
 }
 

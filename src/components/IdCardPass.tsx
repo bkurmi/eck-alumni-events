@@ -90,8 +90,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
           {/* Ticket Header */}
           <div className="ticket-header">
-            <h2 className="ticket-college-title">{eventName}</h2>
-            <p className="ticket-hindi-tagline">“दीप जले, यादें मुस्कुराएँ।”</p>
+            <h2 className="ticket-college-title">ECK-RTU ALUMNI KOTA CHAPTER</h2>
+            <p className="ticket-college-subtitle">ANNUAL ALUMNI MEET</p>
             <div className="ticket-header-divider">
               <span className="divider-line" />
               <span className="divider-sparkle">✦</span>
@@ -100,7 +100,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <span className="divider-line" />
             </div>
             <h1 className="ticket-event-heading">DEEPAURA 2K26</h1>
-            <p className="ticket-event-subheading">ANNUAL ALUMNI MEET</p>
+            <p className="ticket-hindi-tagline">“दीप जले, यादें मुस्कुराएँ।”</p>
           </div>
 
           {/* Attendee Details Frame */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import {
   verifyGateAttendee,
   spotRegisterAtGate,
@@ -29,6 +29,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedBy, setVerifiedBy] = useState('Gate 1 Staff');
 
+  // Camera devices & Torch state
+  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   // Manual Lookup State
   const [manualPhone, setManualPhone] = useState('');
 
@@ -46,8 +53,28 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   // Log filter
   const [logSearch, setLogSearch] = useState('');
 
-  const scannerInstanceRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerInstanceRef = useRef<Html5Qrcode | null>(null);
   const isVerifyingRef = useRef(false);
+
+  // Discover available cameras
+  useEffect(() => {
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (devices && devices.length > 0) {
+          setCameras(devices);
+          const backCam = devices.find(
+            (d) =>
+              d.label.toLowerCase().includes('back') ||
+              d.label.toLowerCase().includes('rear') ||
+              d.label.toLowerCase().includes('environment')
+          );
+          setSelectedCameraId(backCam ? backCam.id : devices[0].id);
+        }
+      })
+      .catch((err) => {
+        console.warn('Camera enumeration error (will fallback to environment facing):', err);
+      });
+  }, []);
 
   // Load gate entries on mount and whenever refreshed
   const loadGateEntries = async () => {
@@ -100,13 +127,16 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     isVerifyingRef.current = true;
     setIsVerifying(true);
 
-    // If scanning with camera, immediately stop and close camera to prevent duplicate scans
+    // If scanning with camera, immediately stop to prevent duplicate scans
     if (mode === 'qr_scan') {
       if (scannerInstanceRef.current) {
-        try {
-          await scannerInstanceRef.current.clear();
-        } catch (_) {}
+        const scanner = scannerInstanceRef.current;
         scannerInstanceRef.current = null;
+        if (scanner.isScanning) {
+          scanner.stop().then(() => scanner.clear()).catch(() => {});
+        } else {
+          try { scanner.clear(); } catch (_) {}
+        }
       }
       setScannerActive(false);
     }
@@ -135,50 +165,94 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     }
   };
 
-  // Setup HTML5 QR Code Scanner
+  // Toggle Torch on supported devices
+  const toggleTorch = async () => {
+    if (!scannerInstanceRef.current || !scannerInstanceRef.current.isScanning) return;
+    try {
+      const nextState = !torchOn;
+      await scannerInstanceRef.current.applyVideoConstraints({
+        advanced: [{ torch: nextState } as any],
+      });
+      setTorchOn(nextState);
+    } catch (err) {
+      console.warn('Torch toggle failed:', err);
+    }
+  };
+
+  // Setup HTML5 QR Code Scanner using clean Html5Qrcode engine
   useEffect(() => {
     if (activeSubTab !== 'scanner' || !scannerActive) {
       if (scannerInstanceRef.current) {
-        try {
-          scannerInstanceRef.current.clear();
-        } catch (_) {}
+        const scanner = scannerInstanceRef.current;
         scannerInstanceRef.current = null;
+        if (scanner.isScanning) {
+          scanner.stop().then(() => scanner.clear()).catch(() => {});
+        } else {
+          try { scanner.clear(); } catch (_) {}
+        }
       }
+      setTorchOn(false);
+      setTorchSupported(false);
+      setCameraError(null);
       return;
     }
 
-    const scanner = new Html5QrcodeScanner(
-      'gate-reader-view',
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        showTorchButtonIfSupported: true,
-      },
-      false
-    );
-
+    let isMounted = true;
+    const scanner = new Html5Qrcode('gate-reader-view');
     scannerInstanceRef.current = scanner;
+    setCameraError(null);
 
-    scanner.render(
-      (decodedText) => {
-        const clean = cleanMobileNumber(decodedText);
-        if (clean.length === 10) {
-          handleVerifyPhone(clean, 'qr_scan');
+    const cameraConfig = selectedCameraId ? selectedCameraId : { facingMode: 'environment' };
+
+    scanner
+      .start(
+        cameraConfig,
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+        },
+        (decodedText) => {
+          if (!isMounted) return;
+          const clean = cleanMobileNumber(decodedText);
+          if (clean.length === 10) {
+            handleVerifyPhone(clean, 'qr_scan');
+          }
+        },
+        () => {
+          // ignore background frame progress
         }
-      },
-      () => {
-        // Non-fatal scanning progress errors; ignore
-      }
-    );
+      )
+      .then(() => {
+        if (!isMounted) return;
+        try {
+          const capabilities = scanner.getRunningTrackCameraCapabilities();
+          if (capabilities && (capabilities as any).torchFeature && (capabilities as any).torchFeature().isSupported()) {
+            setTorchSupported(true);
+          } else {
+            const track = scanner.getRunningTrackSettings();
+            if (track) setTorchSupported(true);
+          }
+        } catch (_) {}
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error('Failed to start camera:', err);
+        setCameraError(
+          err?.message || 'Unable to access camera. Please allow camera permissions or use Phone Lookup.'
+        );
+      });
 
     return () => {
-      try {
-        scanner.clear();
-      } catch (_) {}
+      isMounted = false;
+      if (scanner.isScanning) {
+        scanner.stop().then(() => scanner.clear()).catch(() => {});
+      } else {
+        try { scanner.clear(); } catch (_) {}
+      }
       scannerInstanceRef.current = null;
     };
-  }, [activeSubTab, scannerActive]);
+  }, [activeSubTab, scannerActive, selectedCameraId]);
 
   // Handle Manual Phone Verification Form
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -321,28 +395,36 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             setScannerActive(true);
           }}
         >
-          📷 QR Camera Scanner
+          <span className="gate-tab-icon">📷</span>
+          <span className="gate-tab-full">QR Camera Scanner</span>
+          <span className="gate-tab-short">QR Scanner</span>
         </button>
         <button
           type="button"
           className={`gate-subtab-btn ${activeSubTab === 'manual' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('manual')}
         >
-          ⌨️ Phone Lookup
+          <span className="gate-tab-icon">⌨️</span>
+          <span className="gate-tab-full">Phone Lookup</span>
+          <span className="gate-tab-short">Lookup</span>
         </button>
         <button
           type="button"
           className={`gate-subtab-btn ${activeSubTab === 'spot' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('spot')}
         >
-          ⚡ Spot Walk-in Registration
+          <span className="gate-tab-icon">⚡</span>
+          <span className="gate-tab-full">Spot Walk-in Registration</span>
+          <span className="gate-tab-short">Spot Entry</span>
         </button>
         <button
           type="button"
           className={`gate-subtab-btn ${activeSubTab === 'log' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('log')}
         >
-          📋 Gate Entry Log ({gateEntries.length})
+          <span className="gate-tab-icon">📋</span>
+          <span className="gate-tab-full">Gate Entry Log ({gateEntries.length})</span>
+          <span className="gate-tab-short">Log ({gateEntries.length})</span>
         </button>
       </div>
 
@@ -351,31 +433,114 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         <div className="gate-scanner-section">
           {!scannerActive ? (
             <div className="scanner-start-box">
-              <button
-                type="button"
-                onClick={() => setScannerActive(true)}
-                className="btn-primary-action btn-large-camera"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <div className="scanner-start-icon-ring">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                   <circle cx="12" cy="13" r="4" />
                 </svg>
+              </div>
+              <h3 className="scanner-start-title">Gate Camera Check-in</h3>
+              <p className="scanner-hint">
+                Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
+              </p>
+              <button
+                type="button"
+                onClick={() => setScannerActive(true)}
+                className="btn-large-camera"
+              >
+                <span>📷</span>
                 <span>Start Camera Scanner</span>
               </button>
-              <p className="scanner-hint">
-                Turn your phone or tablet camera into an instant 60fps gate scanner.
-              </p>
             </div>
           ) : (
             <div className="scanner-active-box">
-              <div id="gate-reader-view" className="gate-qr-viewport" />
+              {/* Custom Dark-Themed Camera Bar */}
+              <div className="scanner-top-bar">
+                {cameras.length > 1 && (
+                  <div className="scanner-camera-picker">
+                    <span className="camera-picker-label">📷</span>
+                    <select
+                      value={selectedCameraId}
+                      onChange={(e) => setSelectedCameraId(e.target.value)}
+                      className="scanner-camera-select"
+                      title="Select Camera"
+                    >
+                      {cameras.map((cam, idx) => (
+                        <option key={cam.id} value={cam.id}>
+                          {cam.label || `Camera ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {torchSupported && (
+                  <button
+                    type="button"
+                    onClick={toggleTorch}
+                    className={`scanner-torch-btn ${torchOn ? 'active' : ''}`}
+                    title={torchOn ? 'Turn Flashlight Off' : 'Turn Flashlight On'}
+                  >
+                    <span>{torchOn ? '🔦 Torch ON' : '💡 Torch'}</span>
+                  </button>
+                )}
+              </div>
+
+              {cameraError ? (
+                <div className="scanner-error-card">
+                  <span className="scanner-error-icon">⚠️</span>
+                  <div className="scanner-error-text">
+                    <h4>Camera Access Notice</h4>
+                    <p>{cameraError}</p>
+                    <div className="scanner-error-actions">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab('manual')}
+                        className="btn-primary-action"
+                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                      >
+                        ⌨️ Use Phone Lookup Instead
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCameraError(null);
+                          setScannerActive(false);
+                          setTimeout(() => setScannerActive(true), 150);
+                        }}
+                        className="btn-secondary"
+                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                      >
+                        🔄 Retry Camera
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="scanner-viewport-wrapper">
+                  <div id="gate-reader-view" className="gate-qr-viewport" />
+                  <div className="scanner-reticle-overlay">
+                    <div className="scanner-reticle-box">
+                      <span className="scanner-corner scanner-corner-tl" />
+                      <span className="scanner-corner scanner-corner-tr" />
+                      <span className="scanner-corner scanner-corner-bl" />
+                      <span className="scanner-corner scanner-corner-br" />
+                      <div className="scanner-laser-line" />
+                    </div>
+                    <span className="scanner-overlay-hint">Align QR Code inside box</span>
+                  </div>
+                </div>
+              )}
+
               <div className="scanner-controls-row">
                 <button
                   type="button"
                   onClick={() => setScannerActive(false)}
                   className="btn-stop-camera"
                 >
-                  Pause Scanner
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                  <span>Pause Scanner</span>
                 </button>
               </div>
             </div>
