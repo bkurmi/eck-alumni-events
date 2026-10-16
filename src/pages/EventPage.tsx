@@ -252,30 +252,26 @@ export const EventPage: React.FC = () => {
                   <div className="idpass-feature-glow" />
                   <div className="idpass-feature-inner">
                     <div className="idpass-feature-top">
-                      <div className="idpass-badge-cluster">
-                        <span className="idpass-live-pill">
-                          <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
-                        </span>
-                      </div>
+                      <span className="idpass-live-pill">
+                        <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
+                      </span>
                       <span className="idpass-corner-stamp">GATE ENTRY</span>
                     </div>
 
                     <div className="idpass-feature-body">
-                      <div className="idpass-icon-badge">
+                      <h3 className="idpass-title">
                         <span className="idpass-emoji-glyph">🎟️</span>
-                      </div>
-                      <div className="idpass-text-col">
-                        <h3 className="idpass-title">Alumni Event Pass &amp; Digital ID Card</h3>
-                        <p className="idpass-desc">
-                          Already registered for DeepAura 2K26? Access your verified digital pass with instant QR code to present at the college gate for smooth entry.
-                        </p>
-                      </div>
+                        <span>Alumni Event Pass &amp; Digital ID Card</span>
+                      </h3>
+                      <p className="idpass-desc">
+                        Already registered? Access your verified digital QR pass for smooth college gate entry.
+                      </p>
                     </div>
 
-                    <div className="idpass-feature-cta-row">
-                      <Link to="/id-card" className="btn btn-idpass-feature-primary btn-block">
-                        <span>🎟️ Download / View Your ID Pass</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <div className="idpass-feature-cta-wrap">
+                      <Link to="/id-card" className="btn btn-idpass-feature-primary">
+                        <span>Download / View Pass</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <polyline points="9 18 15 12 9 6" />
                         </svg>
                       </Link>

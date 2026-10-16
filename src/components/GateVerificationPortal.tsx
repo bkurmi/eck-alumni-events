@@ -550,140 +550,123 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           {scanResult && (
             <div className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}>
               {scanResult.status === 'ENTERED' && (
-                <div className="result-content success">
-                  <div className="result-icon">✅</div>
-                  <div className="result-text">
-                    <h3 className="result-title">VERIFIED SUCCESSFULLY</h3>
-                    <p className="result-name">{scanResult.attendee_name}</p>
-                    <div className="result-badges">
-                      <span className="result-pill">{scanResult.registration_number}</span>
-                      <span className="result-pill">{scanResult.branch} ({scanResult.year_of_passing})</span>
-                      <span className="result-pill count-pill">
-                        👥 {scanResult.number_of_attendees || 1} Attendees Allowed
-                      </span>
-                    </div>
-                    <div style={{ marginTop: '16px' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setScanResult(null);
-                          setScannerActive(true);
-                        }}
-                        className="btn-primary-action"
-                        style={{
-                          background: 'linear-gradient(135deg, #10b981, #059669)',
-                          padding: '10px 22px',
-                          fontSize: '15px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          borderRadius: '8px',
-                          fontWeight: 600,
-                          border: 'none',
-                          color: '#fff',
-                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)',
-                        }}
-                      >
-                        <span>📷</span>
-                        <span>Scan Next Attendee →</span>
-                      </button>
+                <>
+                  <div className="result-content success">
+                    <div className="result-icon">✅</div>
+                    <div className="result-text">
+                      <h3 className="result-title">VERIFIED SUCCESSFULLY</h3>
+                      <p className="result-name">{scanResult.attendee_name}</p>
+                      <div className="result-badges">
+                        <span className="result-pill">{scanResult.registration_number}</span>
+                        <span className="result-pill">{scanResult.branch} ({scanResult.year_of_passing})</span>
+                        <span className="result-pill count-pill">
+                          👥 {scanResult.number_of_attendees || 1} Attendees Allowed
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                  <div className="result-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScanResult(null);
+                        setScannerActive(true);
+                      }}
+                      className="btn-scan-next btn-success"
+                    >
+                      <span>📷</span>
+                      <span>Scan Next Attendee →</span>
+                    </button>
+                  </div>
+                </>
               )}
 
               {scanResult.status === 'ALREADY_ENTERED' && (
-                <div className="result-content warning">
-                  <div className="result-icon">⚠️</div>
-                  <div className="result-text">
-                    <h3 className="result-title">ALREADY ENTERED (DUPLICATE PASS)</h3>
-                    <p className="result-detail">{scanResult.message}</p>
-                    <p className="result-sub">
-                      Attendee: <strong>{scanResult.attendee_name}</strong> ({scanResult.registration_number})
-                    </p>
-                    <div style={{ marginTop: '14px' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setScanResult(null);
-                          setScannerActive(true);
-                        }}
-                        className="btn-primary-action"
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.12)',
-                          border: '1px solid rgba(255, 255, 255, 0.25)',
-                          color: '#fff',
-                          padding: '8px 18px',
-                          fontSize: '14px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          borderRadius: '8px',
-                        }}
-                      >
-                        <span>📷</span>
-                        <span>Scan Next Attendee →</span>
-                      </button>
+                <>
+                  <div className="result-content warning">
+                    <div className="result-icon">⚠️</div>
+                    <div className="result-text">
+                      <h3 className="result-title">ALREADY ENTERED (DUPLICATE PASS)</h3>
+                      <p className="result-detail">{scanResult.message}</p>
+                      <p className="result-sub">
+                        Attendee: <strong>{scanResult.attendee_name}</strong> ({scanResult.registration_number})
+                      </p>
                     </div>
                   </div>
-                </div>
+                  <div className="result-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScanResult(null);
+                        setScannerActive(true);
+                      }}
+                      className="btn-scan-next btn-warning"
+                    >
+                      <span>📷</span>
+                      <span>Scan Next Attendee →</span>
+                    </button>
+                  </div>
+                </>
               )}
 
               {scanResult.status === 'PAYMENT_PENDING' && (
-                <div className="result-content error">
-                  <div className="result-icon">❌</div>
-                  <div className="result-text">
-                    <h3 className="result-title">PAYMENT NOT APPROVED</h3>
-                    <p className="result-detail">{scanResult.message}</p>
-                    <p className="result-sub">
-                      Attendee: <strong>{scanResult.attendee_name}</strong> • Amount Due: ₹{scanResult.amount}
-                    </p>
-                    <div style={{ marginTop: '14px' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setScanResult(null);
-                          setScannerActive(true);
-                        }}
-                        className="btn-primary-action"
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.12)',
-                          border: '1px solid rgba(255, 255, 255, 0.25)',
-                          color: '#fff',
-                          padding: '8px 18px',
-                          fontSize: '14px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          borderRadius: '8px',
-                        }}
-                      >
-                        <span>📷</span>
-                        <span>Scan Next Attendee →</span>
-                      </button>
+                <>
+                  <div className="result-content error">
+                    <div className="result-icon">❌</div>
+                    <div className="result-text">
+                      <h3 className="result-title">PAYMENT NOT APPROVED</h3>
+                      <p className="result-detail">{scanResult.message}</p>
+                      <p className="result-sub">
+                        Attendee: <strong>{scanResult.attendee_name}</strong> • Amount Due: ₹{scanResult.amount}
+                      </p>
                     </div>
                   </div>
-                </div>
+                  <div className="result-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScanResult(null);
+                        setScannerActive(true);
+                      }}
+                      className="btn-scan-next btn-error"
+                    >
+                      <span>📷</span>
+                      <span>Scan Next Attendee →</span>
+                    </button>
+                  </div>
+                </>
               )}
 
               {scanResult.status === 'NOT_FOUND' && (
-                <div className="result-content error">
-                  <div className="result-icon">❓</div>
-                  <div className="result-text">
-                    <h3 className="result-title">NOT REGISTERED</h3>
-                    <p className="result-detail">{scanResult.message}</p>
+                <>
+                  <div className="result-content error">
+                    <div className="result-icon">❓</div>
+                    <div className="result-text">
+                      <h3 className="result-title">NOT REGISTERED</h3>
+                      <p className="result-detail">{scanResult.message}</p>
+                    </div>
+                  </div>
+                  <div className="result-actions">
+                    <button
+                      type="button"
+                      className="btn-scan-next btn-secondary-outline"
+                      onClick={() => {
+                        setScanResult(null);
+                        setScannerActive(true);
+                      }}
+                    >
+                      <span>📷</span>
+                      <span>Scan Next Attendee →</span>
+                    </button>
                     <button
                       type="button"
                       className="btn-quick-spot-link"
                       onClick={() => setActiveSubTab('spot')}
                     >
-                      Click here to Spot Register this attendee →
+                      <span>⚡ Spot Register this Attendee →</span>
                     </button>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
