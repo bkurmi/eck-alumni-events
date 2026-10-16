@@ -46,6 +46,20 @@
   .id-card-content-container {
     padding: 1rem 8px 3rem 8px;
   }
+  .ticket-v-attendee-section {
+    padding: 2px 10px 6px 10px;
+  }
+  .ticket-v-attendee-card {
+    padding: 8px 8px 8px 6px;
+    gap: 8px;
+  }
+  .ticket-v-meta-row {
+    gap: 6px;
+  }
+  .ticket-v-meta-val {
+    font-size: 0.62rem;
+    letter-spacing: -0.2px;
+  }
 }
 
 .id-page-banner {
@@ -421,6 +435,9 @@
 .ticket-vertical-card {
   width: 100%;
   max-width: 430px;
+  min-width: 290px;
+  container-type: inline-size;
+  container-name: ticketcard;
   display: flex;
   flex-direction: column;
   border: 2.8px solid #d4af37;
@@ -612,14 +629,16 @@
 }
 
 .ticket-v-name-box {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .ticket-v-reg-box {
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   padding-left: 8px;
   flex-shrink: 0;
+  text-align: right;
 }
 
 .ticket-v-label {
@@ -630,25 +649,27 @@
   letter-spacing: 0.01em;
   line-height: 1.15;
   margin-bottom: 1px;
+  white-space: nowrap;
 }
 
 .ticket-v-val-name {
-  font-size: clamp(0.92rem, 2.8vw, 1.05rem);
+  font-size: clamp(0.78rem, 4.2cqw, 1.05rem);
   font-weight: 800;
   color: #ffffff;
   margin: 0;
   white-space: nowrap;
-  overflow: visible;
-  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
 }
 
 .ticket-v-val-reg {
-  font-size: clamp(0.85rem, 2.5vw, 0.98rem);
+  font-size: clamp(0.72rem, 3.8cqw, 0.98rem);
   font-weight: 800;
   color: #ffffff;
   display: block;
   margin: 0;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
@@ -660,7 +681,7 @@
 }
 
 .ticket-v-val-text {
-  font-size: 0.76rem;
+  font-size: clamp(0.66rem, 3.2cqw, 0.76rem);
   color: #ffffff;
   margin: 0;
   line-height: 1.25;
@@ -673,29 +694,86 @@
 
 .ticket-v-meta-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: flex-start;
   padding-top: 1px;
 }
 
 .ticket-v-meta-item {
-  flex: 1;
   min-width: 0;
+  overflow: hidden;
+}
+
+.ticket-v-meta-item:first-child {
+  flex: 1.15 1 0;
+}
+
+.ticket-v-meta-item:last-child {
+  flex: 0.95 1 0;
 }
 
 .ticket-v-meta-val {
-  font-size: 0.68rem;
+  font-size: clamp(0.50rem, 2.7cqw, 0.65rem);
   font-weight: 600;
   color: #ffffff;
   display: block;
   line-height: 1.25;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.15px;
 }
 
-.ticket-v-meta-val.venue-multiline {
-  display: flex;
-  flex-direction: column;
-  white-space: normal;
+/* Container Queries for compact card widths (e.g. narrow mobile or resized windows) */
+@container ticketcard (max-width: 395px) {
+  .ticket-v-attendee-section {
+    padding: 2px 8px 6px 8px;
+  }
+  .ticket-v-attendee-card {
+    padding: 6px 8px 6px 6px;
+    gap: 7px;
+  }
+  .ticket-v-photo-col {
+    width: 62px;
+  }
+  .ticket-v-photo-box {
+    width: 62px;
+    height: 76px;
+  }
+  .ticket-v-badge-pill {
+    font-size: 0.58rem;
+    padding: 1px 4px;
+  }
+  .ticket-v-meta-row {
+    gap: 4px;
+  }
+}
+
+@container ticketcard (max-width: 330px) {
+  .ticket-v-attendee-section {
+    padding: 2px 5px 4px 5px;
+  }
+  .ticket-v-attendee-card {
+    padding: 5px 6px 5px 5px;
+    gap: 5px;
+  }
+  .ticket-v-photo-col {
+    width: 54px;
+  }
+  .ticket-v-photo-box {
+    width: 54px;
+    height: 66px;
+  }
+  .ticket-v-badge-pill {
+    font-size: 0.50rem;
+    padding: 1px 2px;
+  }
+  .ticket-v-reg-box {
+    padding-left: 5px;
+  }
+  .ticket-v-label {
+    font-size: 0.52rem;
+  }
 }
 
 /* ------------------------------------------------------------
