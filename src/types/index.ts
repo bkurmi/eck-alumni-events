@@ -72,12 +72,56 @@ export interface EventRegistration {
   children_under_7_count?: number;
   amount: number;
   payment_screenshot_path: string | null;
+  photo_url?: string | null;
+  id_card_generated?: boolean;
+  id_card_generated_at?: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields
   alumni?: Alumni;
   events?: ECKEvent;
   payment_verifications?: PaymentVerification[];
+}
+
+export interface GateEntry {
+  id: string;
+  registration_id: string;
+  event_id?: string | null;
+  phone_number: string;
+  attendee_name: string;
+  badge_category?: string | null;
+  branch?: string | null;
+  year_of_passing?: number | null;
+  accompanying_count: number;
+  payment_status: string;
+  entry_mode: 'qr_scan' | 'manual_phone' | 'spot_registration';
+  verified_by?: string | null;
+  entered_at: string;
+  // Joined or augmented fields
+  registration?: EventRegistration;
+}
+
+export interface GateVerificationResult {
+  success: boolean;
+  status: 'ENTERED' | 'ALREADY_ENTERED' | 'PAYMENT_PENDING' | 'NOT_FOUND' | 'INVALID_PHONE' | 'ERROR';
+  message: string;
+  gate_entry_id?: string;
+  registration_id?: string;
+  registration_number?: string;
+  attendee_name?: string;
+  phone_number?: string;
+  badge_category?: string;
+  branch?: string;
+  year_of_passing?: number;
+  number_of_attendees?: number;
+  adults_count?: number;
+  children_above_7_count?: number;
+  children_under_7_count?: number;
+  photo_url?: string | null;
+  amount?: number;
+  entered_at?: string;
+  verified_by?: string;
+  existing_entry?: any;
 }
 
 

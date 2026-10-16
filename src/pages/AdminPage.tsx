@@ -4,8 +4,10 @@ import { AdminLogin } from '../components/AdminLogin';
 import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
 import { QuickManualRegistrationModal } from '../components/QuickManualRegistrationModal';
+import { GateVerificationPortal } from '../components/GateVerificationPortal';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
+import { isAdminGatePortalEnabled } from '../lib/gate';
 import type { EventRegistration, ECKEvent, PaymentVerification } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
@@ -32,7 +34,7 @@ const DEFAULT_EVENT: ECKEvent = {
 export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [activeTab, setActiveTab] = useState<'registrations' | 'upi_report'>('registrations');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'upi_report' | 'gate_portal'>('registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -423,10 +425,16 @@ export const AdminPage: React.FC = () => {
               <div className="admin-header-row">
                 <div>
                   <h1 className="admin-title">
-                    {activeTab === 'upi_report' ? 'UPI Reconciliation Ledger' : 'Registrations Overview'}
+                    {activeTab === 'gate_portal'
+                      ? 'Gate Verification & Live Turnout'
+                      : activeTab === 'upi_report'
+                      ? 'UPI Reconciliation Ledger'
+                      : 'Registrations Overview'}
                   </h1>
                   <p className="admin-subtitle">
-                    {activeTab === 'upi_report'
+                    {activeTab === 'gate_portal'
+                      ? 'Live QR scanner, gate attendance records, walk-in spot entries & headcounts.'
+                      : activeTab === 'upi_report'
                       ? 'Track collections & verify payments across receiving UPI accounts.'
                       : 'Verify screenshots and alumni submissions.'}
                   </p>
@@ -499,9 +507,45 @@ export const AdminPage: React.FC = () => {
                     <span className="tab-count-short">{verifications.length}</span>
                   </span>
                 </button>
+                {isAdminGatePortalEnabled() ? (
+                  <button
+                    type="button"
+                    className={`admin-view-tab-btn ${activeTab === 'gate_portal' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('gate_portal')}
+                  >
+                    <span className="tab-title">
+                      <span className="tab-icon">⚡</span>
+                      <span className="tab-text-full">Gate Verification & Scanner</span>
+                      <span className="tab-text-short">Gate Desk</span>
+                    </span>
+                    <span className="admin-tab-count" style={{ background: '#f59e0b', color: '#0f172a', fontWeight: 'bold' }}>
+                      <span className="tab-count-full">1st Nov Gate</span>
+                      <span className="tab-count-short">Gate</span>
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="admin-view-tab-btn"
+                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                    title="Gate verification is currently disabled via VITE_ENABLE_ADMIN_GATE_PORTAL"
+                    disabled
+                  >
+                    <span className="tab-title">
+                      <span className="tab-icon">🔒</span>
+                      <span className="tab-text-full">Gate Desk (Inactive)</span>
+                      <span className="tab-text-short">Gate</span>
+                    </span>
+                  </button>
+                )}
               </div>
 
-              {activeTab === 'upi_report' ? (
+              {activeTab === 'gate_portal' ? (
+                <GateVerificationPortal
+                  registrations={registrations}
+                  onRefreshRegistrations={fetchRegistrations}
+                />
+              ) : activeTab === 'upi_report' ? (
                 <UpiReconciliationReport
                   registrations={registrations}
                   verifications={verifications}
