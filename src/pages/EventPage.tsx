@@ -190,7 +190,7 @@ export const EventPage: React.FC = () => {
           qr_image_url: rotation.activeConfig.qr_image_url,
         }));
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   return (
@@ -256,7 +256,6 @@ export const EventPage: React.FC = () => {
                         <span className="idpass-live-pill">
                           <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
                         </span>
-                        <span className="idpass-meta-tag">Nov 1 • ECK Campus</span>
                       </div>
                       <span className="idpass-corner-stamp">GATE ENTRY</span>
                     </div>
