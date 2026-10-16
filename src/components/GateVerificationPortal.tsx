@@ -7,6 +7,8 @@ import {
   isAdminGatePortalEnabled,
 } from '../lib/gate';
 import { cleanMobileNumber } from '../lib/registrations';
+import { calculateContribution } from '../lib/pricing';
+import { ENGINEERING_DISCIPLINES } from '../types';
 import type { EventRegistration, GateEntry, GateVerificationResult } from '../types';
 
 interface GateVerificationPortalProps {
@@ -45,10 +47,34 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [spotBranch, setSpotBranch] = useState('Computer Science');
   const [spotBatch, setSpotBatch] = useState<number | ''>(2020);
   const [spotAttendees, setSpotAttendees] = useState(1);
+  const [spotAdults, setSpotAdults] = useState(1);
+  const [spotKidsAbove10, setSpotKidsAbove10] = useState(0);
+  const [spotKidsUnder10, setSpotKidsUnder10] = useState(0);
+  const [showKidsBreakdown, setShowKidsBreakdown] = useState(false);
   const [spotPaymentMode, setSpotPaymentMode] = useState<'CASH' | 'UPI_SPOT' | 'COMPLIMENTARY'>('CASH');
   const [spotAmount, setSpotAmount] = useState(800);
   const [spotSubmitting, setSpotSubmitting] = useState(false);
   const [spotSuccessData, setSpotSuccessData] = useState<any | null>(null);
+
+  // Passing years matching RegistrationForm (Class of 2026 down to 1980)
+  const currentYear = new Date().getFullYear();
+  const passingYears = React.useMemo(() => {
+    return Array.from({ length: currentYear - 1980 + 1 }, (_, i) => currentYear - i);
+  }, [currentYear]);
+
+  // Attendee dropdown options matching RegistrationForm pricing rules
+  const attendeeOptions = React.useMemo(() => {
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+      const calc = calculateContribution(num, 0, 0);
+      const label =
+        num === 1
+          ? `1 Person (Single — ₹${calc.totalAmount})`
+          : num === 2
+          ? `2 Persons (Couple — ₹${calc.totalAmount})`
+          : `${num} Persons (₹${calc.totalAmount})`;
+      return { count: num, label, amount: calc.totalAmount };
+    });
+  }, []);
 
   // Log filter
   const [logSearch, setLogSearch] = useState('');
@@ -264,13 +290,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   // Handle Spot Registration Submit
   const handleSpotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!spotName.trim() || !spotMobile.trim() || !spotBatch) {
-      alert('Please fill out Name, Mobile, Branch, and Batch.');
+    if (!spotName.trim() || !spotMobile.trim() || !spotBranch || !spotBatch) {
+      alert('Please fill out Name, Mobile, Branch, and Passing Batch.');
       return;
     }
 
     setSpotSubmitting(true);
     setSpotSuccessData(null);
+
+    const effectiveAmount = spotPaymentMode === 'COMPLIMENTARY' ? 0 : spotAmount;
 
     const res = await spotRegisterAtGate({
       name: spotName.trim(),
@@ -279,7 +307,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       year_of_passing: Number(spotBatch),
       numberOfAttendees: spotAttendees,
       paymentMode: spotPaymentMode,
-      amount: spotAmount,
+      amount: effectiveAmount,
       verifiedBy,
     });
 
@@ -290,7 +318,14 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       // Reset form
       setSpotName('');
       setSpotMobile('');
+      setSpotBranch('Computer Science');
+      setSpotBatch(2020);
+      setSpotAdults(1);
+      setSpotKidsAbove10(0);
+      setSpotKidsUnder10(0);
       setSpotAttendees(1);
+      setSpotAmount(800);
+      setShowKidsBreakdown(false);
       // Refresh entries
       await loadGateEntries();
       onRefreshRegistrations();
@@ -751,9 +786,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
             <form onSubmit={handleSpotSubmit} className="gate-spot-form">
               <div className="form-fields-grid">
+                {/* Row 1: Full Name & Mobile */}
                 <div className="form-field">
-                  <label>Full Name *</label>
+                  <label htmlFor="spot-name">
+                    Full Name <span className="req-star">*</span>
+                  </label>
                   <input
+                    id="spot-name"
                     type="text"
                     required
                     placeholder="Alumnus Name"
@@ -763,8 +802,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 </div>
 
                 <div className="form-field">
-                  <label>Mobile Number *</label>
+                  <label htmlFor="spot-mobile">
+                    Mobile Number <span className="req-star">*</span>
+                  </label>
                   <input
+                    id="spot-mobile"
                     type="tel"
                     required
                     placeholder="10-digit mobile"
@@ -774,54 +816,75 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   />
                 </div>
 
+                {/* Row 2: Branch / Discipline & Passing Batch (Year) */}
                 <div className="form-field">
-                  <label>Branch / Discipline *</label>
+                  <label htmlFor="spot-branch">
+                    Branch / Discipline <span className="req-star">*</span>
+                  </label>
                   <select
+                    id="spot-branch"
+                    required
                     value={spotBranch}
                     onChange={(e) => setSpotBranch(e.target.value)}
                   >
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Mechanical">Mechanical</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Civil">Civil</option>
-                    <option value="Electronics & Communication">Electronics & Communication</option>
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Production & Industrial">Production & Industrial</option>
-                    <option value="Other">Other</option>
+                    <option value="">Select Branch</option>
+                    {ENGINEERING_DISCIPLINES.map((discipline) => (
+                      <option key={discipline} value={discipline}>
+                        {discipline}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="form-field">
-                  <label>Passing Batch (Year) *</label>
-                  <input
-                    type="number"
+                  <label htmlFor="spot-batch">
+                    Year of Passing (Batch) <span className="req-star">*</span>
+                  </label>
+                  <select
+                    id="spot-batch"
                     required
-                    min={1980}
-                    max={2026}
-                    placeholder="e.g. 2008"
                     value={spotBatch}
                     onChange={(e) => setSpotBatch(e.target.value ? Number(e.target.value) : '')}
-                  />
+                  >
+                    <option value="">Select Passing Year</option>
+                    {passingYears.map((year) => (
+                      <option key={year} value={year}>
+                        Class of {year}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
+                {/* Row 3: Number of People Attending & Payment Collected */}
                 <div className="form-field">
-                  <label>Number of People Attending</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={spotAttendees}
+                  <label htmlFor="spot-attendees">
+                    Number of People Attending <span className="req-star">*</span>
+                  </label>
+                  <select
+                    id="spot-attendees"
+                    value={spotAdults}
                     onChange={(e) => {
                       const count = Number(e.target.value);
-                      setSpotAttendees(count);
-                      setSpotAmount(count === 1 ? 800 : count === 2 ? 1500 : 1500 + (count - 2) * 800);
+                      setSpotAdults(count);
+                      const calc = calculateContribution(count, spotKidsAbove10, spotKidsUnder10);
+                      setSpotAmount(calc.totalAmount);
+                      setSpotAttendees(count + spotKidsAbove10 + spotKidsUnder10);
                     }}
-                  />
+                  >
+                    {attendeeOptions.map((opt) => (
+                      <option key={opt.count} value={opt.count}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-field">
-                  <label>Payment Collected At Gate</label>
+                  <label htmlFor="spot-payment-mode">
+                    Payment Collected At Gate <span className="req-star">*</span>
+                  </label>
                   <select
+                    id="spot-payment-mode"
                     value={spotPaymentMode}
                     onChange={(e) => setSpotPaymentMode(e.target.value as any)}
                   >
@@ -832,13 +895,115 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 </div>
               </div>
 
+              {/* Optional Accompanying Kids Drawer aligned with RegistrationForm rules */}
+              <div className="spot-kids-toggle-wrap">
+                <button
+                  type="button"
+                  className="spot-kids-toggle-btn"
+                  onClick={() => setShowKidsBreakdown(!showKidsBreakdown)}
+                >
+                  <span>👨‍👩‍👧 Accompanying Children?</span>
+                  <span className="spot-kids-toggle-hint">
+                    {showKidsBreakdown
+                      ? '− Hide Children Breakdown'
+                      : spotKidsAbove10 > 0 || spotKidsUnder10 > 0
+                        ? `✓ Added: ${spotKidsAbove10} (10+) • ${spotKidsUnder10} (<10)`
+                        : '+ Add Kids (₹300 for 10+ • Free for <10)'}
+                  </span>
+                </button>
+
+                {showKidsBreakdown && (
+                  <div className="spot-kids-breakdown-box">
+                    <div className="spot-kid-tier-row">
+                      <div className="spot-kid-tier-info">
+                        <strong>Children (10+ Years)</strong>
+                        <span>₹300 per child</span>
+                      </div>
+                      <div className="spot-stepper">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = Math.max(0, spotKidsAbove10 - 1);
+                            setSpotKidsAbove10(newKids);
+                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
+                          }}
+                          disabled={spotKidsAbove10 <= 0}
+                          aria-label="Decrease children 10 and above"
+                        >
+                          −
+                        </button>
+                        <span>{spotKidsAbove10}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = spotKidsAbove10 + 1;
+                            setSpotKidsAbove10(newKids);
+                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
+                          }}
+                          disabled={spotKidsAbove10 >= 10}
+                          aria-label="Increase children 10 and above"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="spot-kid-tier-row">
+                      <div className="spot-kid-tier-info">
+                        <strong>Children (Under 10 Years)</strong>
+                        <span className="badge-free">FREE</span>
+                      </div>
+                      <div className="spot-stepper">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = Math.max(0, spotKidsUnder10 - 1);
+                            setSpotKidsUnder10(newKids);
+                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
+                          }}
+                          disabled={spotKidsUnder10 <= 0}
+                          aria-label="Decrease children under 10"
+                        >
+                          −
+                        </button>
+                        <span>{spotKidsUnder10}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = spotKidsUnder10 + 1;
+                            setSpotKidsUnder10(newKids);
+                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
+                          }}
+                          disabled={spotKidsUnder10 >= 10}
+                          aria-label="Increase children under 10"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="spot-form-actions">
                 <button
                   type="submit"
                   disabled={spotSubmitting}
                   className="btn-primary-action btn-spot-submit"
                 >
-                  {spotSubmitting ? 'Registering...' : `Complete Spot Entry (₹${spotAmount}) →`}
+                  {spotSubmitting
+                    ? 'Registering...'
+                    : spotPaymentMode === 'COMPLIMENTARY'
+                      ? 'Complete Spot Entry (Complimentary / VIP) →'
+                      : `Complete Spot Entry (₹${spotAmount}) →`}
                 </button>
               </div>
             </form>
