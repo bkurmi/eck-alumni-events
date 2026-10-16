@@ -374,309 +374,195 @@
 
 /* ------------------------------------------------------------
    THE OFFICIAL BOARDING PASS TICKET / EVENT PASS (DeepAura 2K26)
+   - Vertical mobile format covering full phone screen
+   - Authentic DeepAura 2K26 banner typography and gold flourishes
+   - Realistic glowing traditional deepaks and illuminated rangoli
    ------------------------------------------------------------ */
-.ticket-mobile-hint {
-  display: none;
+.ticket-mobile-indicator {
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #fbbf24;
-  margin-bottom: 0.65rem;
-  font-weight: 600;
-}
-
-@media (max-width: 860px) {
-  .ticket-mobile-hint {
-    display: block;
-  }
+  margin-bottom: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .id-preview-container {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin: 0 auto 1.5rem auto;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0.5rem 0.25rem 1.25rem 0.25rem;
-}
-
-@media (max-width: 860px) {
-  .id-preview-container {
-    justify-content: flex-start;
-  }
+  width: 100%;
+  padding: 0.5rem 0.25rem 1rem 0.25rem;
 }
 
 .ticket-pass-wrapper {
-  display: inline-block;
-  min-width: 840px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.vertical-pass-wrapper {
+  max-width: 440px;
 }
 
 .ticket-card {
-  width: 840px;
-  height: 440px;
-  background: radial-gradient(circle at 45% 35%, #0d1e56 0%, #071238 55%, #03081a 100%);
-  border: 3.5px solid #d4af37;
-  border-radius: 20px;
-  display: flex;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 0 0 1px #ffd700, 0 25px 65px rgba(0, 0, 0, 0.85);
+  user-select: none;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #ffffff;
-  user-select: none;
 }
 
-/* Background starry sparklers & subtle mandala */
+.ticket-vertical-card {
+  width: 100%;
+  max-width: 430px;
+  min-height: 840px;
+  display: flex;
+  flex-direction: column;
+  border: 3px solid #d4af37;
+  border-radius: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #ffd700, 0 25px 65px rgba(0, 0, 0, 0.95);
+  background: #060f2d url('/card-bg-vertical-clean.jpg') center top / 100% 100% no-repeat;
+}
+
+/* Background starry sparklers */
 .ticket-bg-stars {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background-image: 
-    radial-gradient(1.5px 1.5px at 10% 20%, #ffd700 100%, transparent),
-    radial-gradient(1px 1px at 30% 15%, #ffffff 100%, transparent),
-    radial-gradient(2px 2px at 60% 25%, #fef08a 100%, transparent),
-    radial-gradient(1px 1px at 80% 10%, #ffd700 100%, transparent),
-    radial-gradient(1.5px 1.5px at 20% 80%, #ffffff 100%, transparent),
-    radial-gradient(1px 1px at 50% 90%, #ffd700 100%, transparent),
-    radial-gradient(1.5px 1.5px at 75% 75%, #fef08a 100%, transparent);
-  opacity: 0.65;
-}
-
-.ticket-bg-mandala-left {
-  position: absolute;
-  width: 260px;
-  height: 260px;
-  top: -80px;
-  left: -80px;
-  border-radius: 50%;
-  border: 1px dashed rgba(212, 175, 55, 0.18);
-  box-shadow: 0 0 0 40px rgba(212, 175, 55, 0.05), 0 0 0 80px rgba(212, 175, 55, 0.03);
-  pointer-events: none;
-}
-
-.ticket-bg-mandala-right {
-  position: absolute;
-  width: 260px;
-  height: 260px;
-  bottom: -90px;
-  right: 180px;
-  border-radius: 50%;
-  border: 1px dashed rgba(212, 175, 55, 0.15);
-  box-shadow: 0 0 0 40px rgba(212, 175, 55, 0.04);
-  pointer-events: none;
+    radial-gradient(1.5px 1.5px at 15% 25%, #ffd700 100%, transparent),
+    radial-gradient(1px 1px at 35% 18%, #ffffff 100%, transparent),
+    radial-gradient(2px 2px at 65% 28%, #fef08a 100%, transparent),
+    radial-gradient(1px 1px at 85% 15%, #ffd700 100%, transparent),
+    radial-gradient(1.5px 1.5px at 25% 65%, #ffffff 100%, transparent),
+    radial-gradient(1px 1px at 55% 70%, #ffd700 100%, transparent);
+  opacity: 0.45;
+  z-index: 1;
 }
 
 /* ------------------------------------------------------------
-   MAIN SECTION (LEFT)
+   TOP SECTION: MAIN PASS & ATTENDEE DETAILS
    ------------------------------------------------------------ */
-.ticket-main {
-  flex: 1;
+.ticket-v-top-section {
   position: relative;
-  padding: 18px 24px 18px 42px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-/* Left Vertical Gold Tab Ribbon */
-.ticket-vertical-edge-badge {
-  position: absolute;
-  left: 0;
-  top: 15%;
-  bottom: 15%;
-  width: 26px;
-  background: linear-gradient(180deg, #d4af37 0%, #fef08a 50%, #b45309 100%);
-  border-radius: 0 6px 6px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.4);
-}
-
-.ticket-vertical-edge-badge span {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #3b1803;
-  white-space: nowrap;
-}
-
-/* Floating Glowing Diwali Diyas */
-.ticket-diya {
-  position: absolute;
-  width: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  pointer-events: none;
   z-index: 2;
-}
-
-.diya-top-left { top: 20px; left: 45px; }
-.diya-top-right { top: 20px; right: 25px; }
-.diya-bottom-left { bottom: 26px; left: 45px; }
-.diya-bottom-right { bottom: 26px; right: 25px; }
-
-.diya-flame {
-  width: 9px;
-  height: 18px;
-  background: radial-gradient(ellipse at bottom, #ffffff 0%, #fef08a 40%, #f59e0b 70%, #dc2626 100%);
-  border-radius: 50% 50% 35% 35%;
-  margin-bottom: -5px;
-  box-shadow: 0 0 10px 3px rgba(245, 158, 11, 0.9), 0 0 20px 6px rgba(234, 179, 8, 0.5);
-  animation: diya-flicker 2.5s infinite ease-in-out alternate;
-}
-
-.diya-top-right .diya-flame,
-.diya-bottom-left .diya-flame {
-  animation-delay: 0.7s;
-}
-
-@keyframes diya-flicker {
-  0% { transform: scale(0.96) rotate(-1deg); opacity: 0.9; }
-  50% { transform: scale(1.08) rotate(1deg); opacity: 1; }
-  100% { transform: scale(0.94) rotate(0deg); opacity: 0.92; }
-}
-
-.diya-bowl {
-  width: 38px;
-  height: 13px;
-  background: linear-gradient(180deg, #f59e0b 0%, #b45309 60%, #78350f 100%);
-  border-radius: 2px 2px 20px 20px;
-  box-shadow: inset 0 2px 3px rgba(254, 240, 138, 0.6), 0 3px 6px rgba(0, 0, 0, 0.6);
-  border-bottom: 1px solid #d97706;
-}
-
-/* Ticket Header */
-.ticket-header {
-  text-align: center;
-  position: relative;
-  z-index: 1;
-}
-
-.ticket-college-title {
-  font-family: 'Cinzel', 'Times New Roman', Georgia, serif;
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #fef08a;
-  margin: 0 0 1px 0;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-}
-
-.ticket-college-subtitle {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  color: #fde047;
-  margin: 0 0 4px 0;
-  text-transform: uppercase;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
-}
-
-.ticket-header-divider {
+  padding: 8px 16px 10px 16px;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Space allowing the background's DeepAura 2K26 artwork to shine cleanly */
+.ticket-v-banner-spacer {
+  height: 175px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
   justify-content: center;
-  gap: 8px;
-  margin: 0 auto 3px auto;
-  max-width: 240px;
+  margin-bottom: 6px;
 }
 
-.divider-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #eab308, transparent);
-}
-
-.divider-sparkle {
-  color: #fef08a;
-  font-size: 0.65rem;
-}
-
-.divider-diamond {
-  color: #d4af37;
-  font-size: 0.75rem;
-}
-
-.ticket-event-heading {
-  font-family: 'Cinzel', 'Times New Roman', Georgia, serif;
-  font-size: 2.15rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  margin: 0;
-  line-height: 1.05;
-  background: linear-gradient(180deg, #ffffff 0%, #fef08a 45%, #eab308 80%, #ca8a04 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 3px 12px rgba(234, 179, 8, 0.3);
-}
-
-.ticket-hindi-tagline {
-  font-size: 0.95rem;
+.ticket-v-hindi-tagline {
+  font-size: 0.94rem;
   color: #fef08a;
   font-style: italic;
-  margin: 2px 0 0 0;
-  letter-spacing: 0.02em;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  margin: 0;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
 }
 
-/* Attendee Details Frame */
-.ticket-attendee-frame {
-  background: rgba(7, 16, 48, 0.75);
-  border: 1.5px solid #d4af37;
-  border-radius: 12px;
-  padding: 10px 14px;
-  display: flex;
-  gap: 14px;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 4px 15px rgba(0, 0, 0, 0.4);
+/* Attendee Details Card */
+.ticket-v-attendee-card {
   position: relative;
-  z-index: 1;
+  width: 100%;
+  background: rgba(5, 14, 44, 0.92);
+  backdrop-filter: blur(12px);
+  border: 2px solid #d4af37;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35), inset 0 0 25px rgba(0, 0, 0, 0.75), 0 8px 25px rgba(0, 0, 0, 0.6);
+  padding: 13px 14px;
+  display: flex;
+  gap: 12px;
+  box-sizing: border-box;
 }
 
-/* Attendee Photo Column */
-.ticket-photo-col {
-  width: 90px;
+/* 4 Ornate Gold Corner Filigree Flourishes */
+.ticket-v-corner-flourish {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ticket-v-corner-flourish.corner-tl {
+  top: -1px;
+  left: -1px;
+}
+
+.ticket-v-corner-flourish.corner-tr {
+  top: -1px;
+  right: -1px;
+  transform: scaleX(-1);
+}
+
+.ticket-v-corner-flourish.corner-bl {
+  bottom: -1px;
+  left: -1px;
+  transform: scaleY(-1);
+}
+
+.ticket-v-corner-flourish.corner-br {
+  bottom: -1px;
+  right: -1px;
+  transform: scale(-1, -1);
+}
+
+.ticket-v-photo-col {
+  width: 84px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  z-index: 2;
 }
 
-.ticket-photo-container {
-  width: 86px;
-  height: 100px;
+.ticket-v-photo-box {
+  width: 82px;
+  height: 94px;
   border: 2px solid #eab308;
   border-radius: 8px;
   overflow: hidden;
-  background: #060e2c;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  background: #03081b;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.ticket-photo-img {
+.ticket-v-photo-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.ticket-photo-placeholder {
+.ticket-v-photo-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #ca8a04;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   gap: 3px;
 }
 
-.ticket-category-tag {
+.ticket-v-badge-pill {
   margin-top: 5px;
   background: linear-gradient(135deg, #d4af37 0%, #b45309 100%);
   color: #1a0b02;
@@ -686,237 +572,273 @@
   border-radius: 9999px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  max-width: 86px;
+  max-width: 82px;
   text-align: center;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-/* Attendee Details Column */
-.ticket-details-col {
+.ticket-v-info-col {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  min-width: 0;
+  gap: 4px;
+  z-index: 2;
 }
 
-.ticket-row {
-  display: flex;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.28);
-  padding-bottom: 3px;
-  margin-bottom: 3px;
-}
-
-.ticket-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-  margin-bottom: 0;
-}
-
-.ticket-row-top {
+.ticket-v-info-top-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 3px;
 }
 
-.ticket-cell-name {
+.ticket-v-name-box {
   flex: 1;
+  min-width: 0;
+  padding-right: 8px;
 }
 
-.ticket-cell-reg {
+.ticket-v-reg-box {
   text-align: right;
   border-left: 1px solid rgba(212, 175, 55, 0.35);
-  padding-left: 12px;
+  padding-left: 8px;
+  flex-shrink: 0;
 }
 
-.ticket-cell-full {
-  width: 100%;
-}
-
-.ticket-label {
-  font-size: 0.65rem;
+.ticket-v-label {
+  font-size: 0.62rem;
   color: #cbd5e1;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   display: block;
   margin-bottom: 1px;
 }
 
-.ticket-val-name {
-  font-size: 1.25rem;
+.ticket-v-val-name {
+  font-size: 1.05rem;
   font-weight: 800;
   color: #ffffff;
   margin: 0;
-  letter-spacing: 0.03em;
-  line-height: 1.1;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
   text-transform: uppercase;
-  font-family: system-ui, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ticket-val-reg {
+.ticket-v-val-reg {
   font-family: monospace;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: 0.05em;
 }
 
-.ticket-val-text {
-  font-size: 0.86rem;
+.ticket-v-info-field {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  padding-bottom: 2px;
+}
+
+.ticket-v-val-text {
+  font-size: 0.82rem;
   color: #f1f5f9;
   margin: 0;
   line-height: 1.25;
 }
 
-.ticket-val-highlight {
+.ticket-v-highlight {
   color: #fef08a !important;
   font-weight: 700;
 }
 
-.ticket-row-meta {
+.ticket-v-meta-row {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
-.ticket-cell-half {
+.ticket-v-meta-item {
   flex: 1;
 }
 
-.ticket-val-meta {
-  font-size: 0.78rem;
+.ticket-v-meta-val {
+  font-size: 0.72rem;
   color: #f1f5f9;
   font-weight: 600;
   display: block;
-}
-
-/* Bottom Tab */
-.ticket-bottom-tab {
-  background: linear-gradient(90deg, #ca8a04 0%, #fef08a 50%, #ca8a04 100%);
-  color: #3b1803;
-  padding: 3px 20px;
-  border-radius: 12px 12px 0 0;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  align-self: center;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
-  margin-bottom: -18px;
+  line-height: 1.2;
 }
 
 /* ------------------------------------------------------------
-   PERFORATION TEAR LINE WITH NOTCHES
+   MIDDLE: PERFORATION TEAR LINE (LEFT & RIGHT NOTCHES)
    ------------------------------------------------------------ */
-.ticket-perforation {
-  width: 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.ticket-v-perforation {
+  width: 100%;
+  height: 30px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 5;
+  margin: 4px 0 2px 0;
 }
 
-.ticket-notch {
+.ticket-v-notch {
   width: 28px;
   height: 28px;
-  background: #0b0f19; /* Blends seamlessly into page background */
+  background: #0b0f19;
   border-radius: 50%;
   position: absolute;
   box-shadow: inset 0 0 0 2.5px #d4af37;
+  z-index: 6;
 }
 
-.notch-top {
-  top: -14px;
+.ticket-v-notch.notch-left {
+  left: -14px;
 }
 
-.notch-bottom {
-  bottom: -14px;
+.ticket-v-notch.notch-right {
+  right: -14px;
 }
 
-.ticket-dashed-line {
-  flex: 1;
-  width: 1px;
-  border-left: 2px dashed rgba(212, 175, 55, 0.65);
-  margin: 16px 0;
+.ticket-v-tear-line {
+  width: calc(100% - 40px);
+  height: 1px;
+  border-top: 2px dashed rgba(212, 175, 55, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.ticket-v-tear-label {
+  background: #09133a;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  padding: 2px 14px;
+  border-radius: 9999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: #fef08a;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
 /* ------------------------------------------------------------
-   STUB / BOARDING PASS (RIGHT)
+   BOTTOM SECTION: ENTRY GATE PASS & QR CODE
    ------------------------------------------------------------ */
-.ticket-stub {
-  width: 275px;
+.ticket-v-bottom-section {
   position: relative;
-  padding: 16px 28px 16px 28px;
+  z-index: 2;
+  padding: 6px 24px 18px 24px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Vertical Rotated "BOARDING PASS" along tear line - neatly positioned with clear margin */
-.ticket-stub-vertical-label {
+.ticket-v-side-ribbon {
   position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%) rotate(180deg);
-  writing-mode: vertical-rl;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  color: #fef08a;
-  white-space: nowrap;
+  width: 22px;
+  top: 10px;
+  bottom: 38px;
+  background: linear-gradient(180deg, #d4af37 0%, #fef08a 50%, #b45309 100%);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 
-.ticket-stub-content {
+.ticket-v-side-ribbon.ribbon-left {
+  left: 8px;
+}
+
+.ticket-v-side-ribbon.ribbon-right {
+  right: 8px;
+}
+
+.ticket-v-side-ribbon span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #3b1803;
+  white-space: nowrap;
+}
+
+.ticket-v-bottom-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  height: 100%;
-  justify-content: space-between;
+  width: 100%;
+  max-width: 320px;
 }
 
-.stub-title {
-  font-family: 'Cinzel', 'Times New Roman', Georgia, serif;
+.ticket-v-stub-title-sub {
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 0.85rem;
   font-weight: 700;
   color: #fef08a;
+  letter-spacing: 0.12em;
   margin: 0;
-  letter-spacing: 0.08em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
-.stub-event {
-  font-family: 'Cinzel', 'Times New Roman', Georgia, serif;
-  font-size: 1.15rem;
+.ticket-v-stub-title-main {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.35rem;
   font-weight: 800;
   color: #ffd700;
-  margin: 0 0 2px 0;
   letter-spacing: 0.04em;
+  margin: 2px 0 0 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
-.stub-scan-hint {
-  font-size: 0.65rem;
+.ticket-v-stub-title-desc {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fde047;
+  letter-spacing: 0.18em;
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.ticket-v-scan-hint {
+  font-size: 0.64rem;
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  margin: 2px 0;
 }
 
-/* QR Code Container - sized to 108px with ample clearance from both vertical text labels */
-.stub-qr-box {
+.ticket-v-qr-box {
   background: #ffffff;
-  padding: 6px;
-  border-radius: 10px;
-  border: 2px solid #d4af37;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  border-radius: 12px;
+  border: 2.5px solid #d4af37;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 1px 0;
+  margin: 3px 0;
 }
 
-.stub-qr-loading {
-  width: 96px;
-  height: 96px;
+.ticket-v-qr-loading {
+  width: 118px;
+  height: 118px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -924,40 +846,25 @@
   font-weight: 700;
 }
 
-/* Admit Pill */
-.stub-admit-pill {
+.ticket-v-admit-pill {
   background: linear-gradient(90deg, #d4af37 0%, #fef08a 50%, #ca8a04 100%);
   color: #3b1803;
-  padding: 4px 14px;
-  border-radius: 6px;
-  font-size: 0.72rem;
+  padding: 4px 18px;
+  border-radius: 8px;
+  font-size: 0.76rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-}
-
-/* Building Watermark at bottom */
-.stub-building-watermark {
-  width: 100%;
-  height: 26px;
-  color: #d4af37;
-  display: flex;
-  justify-content: center;
-  margin-top: 1px;
-}
-
-/* Rightmost vertical rotated micro text - neatly positioned inside border */
-.ticket-stub-right-meta {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  writing-mode: vertical-rl;
-  font-size: 0.52rem;
-  color: #94a3b8;
   letter-spacing: 0.08em;
-  white-space: nowrap;
-  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  margin-top: 6px;
+}
+
+.ticket-v-footer-meta {
+  font-size: 0.66rem;
+  color: #fde047;
+  letter-spacing: 0.08em;
+  margin: 8px 0 0 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  font-weight: 600;
 }
 
 /* Download CTA */

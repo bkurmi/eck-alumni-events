@@ -11,7 +11,7 @@ interface IdCardPassProps {
 
 export const IdCardPass: React.FC<IdCardPassProps> = ({
   registration,
-  event,
+  event: _event,
   photoUrl,
   cardRef,
 }) => {
@@ -19,11 +19,10 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
   const rawMobile = alumni?.mobile || '';
   const cleanMobile = rawMobile.replace(/\D/g, '').slice(-10);
 
-  const eventName = event?.event_name ? event.event_name.toUpperCase() : 'ECK-RTU ALUMNI KOTA CHAPTER';
   const attendeeName = (alumni?.name || 'Alumnus').toUpperCase();
-  const regNumber = registration.registration_number || 'REG-00001';
-  const branch = alumni?.engineering_discipline || 'Engineering';
-  const batchYear = alumni?.year_of_passing ? `Class of ${alumni.year_of_passing}` : 'Alumnus';
+  const regNumber = registration.registration_number || 'REG-00039';
+  const branch = alumni?.engineering_discipline || 'Information Technology';
+  const batchYear = alumni?.year_of_passing ? `Class of ${alumni.year_of_passing}` : 'Class of 2008';
   const category = alumni?.professional_category || 'Alumnus';
   const badgeLabel = category.toLowerCase().includes('faculty')
     ? 'FACULTY'
@@ -54,64 +53,35 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     : nameParts[0];
 
   return (
-    <div className="ticket-pass-wrapper">
-      <div className="ticket-card" ref={cardRef}>
-        {/* Background Mandala & Stars Overlay */}
+    <div className="ticket-pass-wrapper vertical-pass-wrapper">
+      <div className="ticket-card ticket-vertical-card" ref={cardRef}>
+        {/* Starry sparklers overlay */}
         <div className="ticket-bg-stars" />
-        <div className="ticket-bg-mandala-left" />
-        <div className="ticket-bg-mandala-right" />
 
         {/* ============================================================
-            MAIN PASS (LEFT SECTION)
+            TOP SECTION: MAIN PASS & ATTENDEE DETAILS
             ============================================================ */}
-        <div className="ticket-main">
-          {/* Left vertical rotated gold ribbon badge */}
-          <div className="ticket-vertical-edge-badge">
-            <span>BOARDING PASS / ALUMNI ACCESS</span>
+        <div className="ticket-v-top-section">
+          {/* Header spacer to reveal the DeepAura 2K26 banner artwork & Hindi tagline */}
+          <div className="ticket-v-banner-spacer">
+            <p className="ticket-v-hindi-tagline">“दीप जले, यादें मुस्कुराएँ।”</p>
           </div>
 
-          {/* Floating Diwali Diyas (Lamps) */}
-          <div className="ticket-diya diya-top-left">
-            <div className="diya-flame" />
-            <div className="diya-bowl" />
-          </div>
-          <div className="ticket-diya diya-top-right">
-            <div className="diya-flame" />
-            <div className="diya-bowl" />
-          </div>
-          <div className="ticket-diya diya-bottom-left">
-            <div className="diya-flame" />
-            <div className="diya-bowl" />
-          </div>
-          <div className="ticket-diya diya-bottom-right">
-            <div className="diya-flame" />
-            <div className="diya-bowl" />
-          </div>
+          {/* Attendee Details Card with 4 Ornate Gold Corner Filigrees */}
+          <div className="ticket-v-attendee-card">
+            {/* 4 Corner Ornaments */}
+            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-tl" />
+            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-tr" />
+            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-bl" />
+            <img src="/gold-corner-filigree.svg" alt="" className="ticket-v-corner-flourish corner-br" />
 
-          {/* Ticket Header */}
-          <div className="ticket-header">
-            <h2 className="ticket-college-title">ECK-RTU ALUMNI KOTA CHAPTER</h2>
-            <p className="ticket-college-subtitle">ANNUAL ALUMNI MEET</p>
-            <div className="ticket-header-divider">
-              <span className="divider-line" />
-              <span className="divider-sparkle">✦</span>
-              <span className="divider-diamond">◆</span>
-              <span className="divider-sparkle">✦</span>
-              <span className="divider-line" />
-            </div>
-            <h1 className="ticket-event-heading">DEEPAURA 2K26</h1>
-            <p className="ticket-hindi-tagline">“दीप जले, यादें मुस्कुराएँ।”</p>
-          </div>
-
-          {/* Attendee Details Frame */}
-          <div className="ticket-attendee-frame">
-            {/* Attendee Photo Box (Left Column of Frame) */}
-            <div className="ticket-photo-col">
-              <div className="ticket-photo-container">
+            {/* Left Column: Photo & Badge */}
+            <div className="ticket-v-photo-col">
+              <div className="ticket-v-photo-box">
                 {photoSrc ? (
-                  <img src={photoSrc} alt={attendeeName} className="ticket-photo-img" />
+                  <img src={photoSrc} alt={attendeeName} className="ticket-v-photo-img" />
                 ) : (
-                  <div className="ticket-photo-placeholder">
+                  <div className="ticket-v-photo-placeholder">
                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
@@ -120,125 +90,109 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                   </div>
                 )}
               </div>
-              <span className="ticket-category-tag">{badgeLabel}</span>
+              <span className="ticket-v-badge-pill">{badgeLabel}</span>
             </div>
 
-            {/* Attendee Details (Right Column of Frame) */}
-            <div className="ticket-details-col">
-              {/* Row 1: Name & Reg No */}
-              <div className="ticket-row ticket-row-top">
-                <div className="ticket-cell-name">
-                  <span className="ticket-label">Attendee Name</span>
-                  <h3 className="ticket-val-name">{attendeeName}</h3>
+            {/* Right Column: Key Details */}
+            <div className="ticket-v-info-col">
+              {/* Row 1: Attendee Name & Reg No */}
+              <div className="ticket-v-info-top-row">
+                <div className="ticket-v-name-box">
+                  <span className="ticket-v-label">Attendee Name</span>
+                  <h3 className="ticket-v-val-name">{attendeeName}</h3>
                 </div>
-                <div className="ticket-cell-reg">
-                  <span className="ticket-label">Registration No</span>
-                  <span className="ticket-val-reg">{regNumber}</span>
+                <div className="ticket-v-reg-box">
+                  <span className="ticket-v-label">Registration No</span>
+                  <span className="ticket-v-val-reg">{regNumber}</span>
                 </div>
               </div>
 
               {/* Row 2: Batch & Branch */}
-              <div className="ticket-row">
-                <div className="ticket-cell-full">
-                  <span className="ticket-label">Batch</span>
-                  <p className="ticket-val-text">
-                    <strong>{batchYear}</strong> ({branch})
-                  </p>
-                </div>
+              <div className="ticket-v-info-field">
+                <span className="ticket-v-label">Batch</span>
+                <p className="ticket-v-val-text">
+                  <strong>{batchYear}</strong> ({branch})
+                </p>
               </div>
 
               {/* Row 3: Attendees Count */}
-              <div className="ticket-row">
-                <div className="ticket-cell-full">
-                  <span className="ticket-label">No. of Attendees</span>
-                  <p className="ticket-val-text ticket-val-highlight">
-                    {attendeesDesc}
-                  </p>
-                </div>
+              <div className="ticket-v-info-field">
+                <span className="ticket-v-label">No. of Attendees</span>
+                <p className="ticket-v-val-text ticket-v-highlight">{attendeesDesc}</p>
               </div>
 
-              {/* Row 4: Date, Time & Venue */}
-              <div className="ticket-row ticket-row-meta">
-                <div className="ticket-cell-half">
-                  <span className="ticket-label">Date & Time</span>
-                  <span className="ticket-val-meta">01 November 2026, 5:00 PM</span>
+              {/* Row 4: Date & Venue */}
+              <div className="ticket-v-meta-row">
+                <div className="ticket-v-meta-item">
+                  <span className="ticket-v-label">Date &amp; Time</span>
+                  <span className="ticket-v-meta-val">01 November 2026, 5:00 PM</span>
                 </div>
-                <div className="ticket-cell-half">
-                  <span className="ticket-label">Venue</span>
-                  <span className="ticket-val-meta">Agora Ground, ECK-RTU Campus, Kota</span>
+                <div className="ticket-v-meta-item">
+                  <span className="ticket-v-label">Venue</span>
+                  <span className="ticket-v-meta-val">Agora Ground, ECK-RTU Campus, Kota</span>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Bottom Curved Gold Banner Tab */}
-          <div className="ticket-bottom-tab">
+        {/* ============================================================
+            PERFORATION TEAR LINE (LEFT & RIGHT NOTCHES)
+            ============================================================ */}
+        <div className="ticket-v-perforation">
+          <div className="ticket-v-notch notch-left" />
+          <div className="ticket-v-tear-line">
+            <span className="ticket-v-tear-label">BOARDING PASS</span>
+          </div>
+          <div className="ticket-v-notch notch-right" />
+        </div>
+
+        {/* ============================================================
+            BOTTOM SECTION: BOARDING PASS & GATE SCAN STUB
+            ============================================================ */}
+        <div className="ticket-v-bottom-section">
+          {/* Vertical Golden Ribbons on Left & Right */}
+          <div className="ticket-v-side-ribbon ribbon-left">
             <span>BOARDING PASS / ALUMNI ACCESS</span>
           </div>
-        </div>
-
-        {/* ============================================================
-            PERFORATION TEAR LINE (WITH TOP & BOTTOM CUTOUT NOTCHES)
-            ============================================================ */}
-        <div className="ticket-perforation">
-          <div className="ticket-notch notch-top" />
-          <div className="ticket-dashed-line" />
-          <div className="ticket-notch notch-bottom" />
-        </div>
-
-        {/* ============================================================
-            STUB / BOARDING PASS (RIGHT SECTION)
-            ============================================================ */}
-        <div className="ticket-stub">
-          {/* Vertical rotated text along perforation */}
-          <div className="ticket-stub-vertical-label">
-            <span>BOARDING PASS</span>
+          <div className="ticket-v-side-ribbon ribbon-right">
+            <span>BOARDING PASS / ALUMNI ACCESS</span>
           </div>
 
-          {/* Stub Content */}
-          <div className="ticket-stub-content">
-            <h3 className="stub-title">ECK-RTU</h3>
-            <h2 className="stub-event">DEEPAURA 2K26</h2>
+          <div className="ticket-v-bottom-content">
+            <h4 className="ticket-v-stub-title-sub">ECK-RTU</h4>
+            <h3 className="ticket-v-stub-title-main">DEEPAURA 2K26</h3>
+            <p className="ticket-v-stub-title-desc">A ROYAL DIWALI REUNION</p>
 
-            <span className="stub-scan-hint">SCAN FOR ENTRY</span>
+            <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
 
             {/* QR Code Container */}
-            <div className="stub-qr-box">
+            <div className="ticket-v-qr-box">
               {cleanMobile ? (
                 <QRCodeSVG
                   value={cleanMobile}
-                  size={96}
+                  size={118}
                   level="M"
                   includeMargin={false}
                   bgColor="#ffffff"
                   fgColor="#0a122c"
                 />
               ) : (
-                <div className="stub-qr-loading">QR</div>
+                <div className="ticket-v-qr-loading">QR</div>
               )}
             </div>
 
-            <span className="stub-scan-hint">SCAN FOR ENTRY</span>
+            <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
 
             {/* Admit Pill Button */}
-            <div className="stub-admit-pill">
+            <div className="ticket-v-admit-pill">
               <span>VERIFIED / ADMIT {totalCount}</span>
             </div>
 
-            {/* Building Watermark Illustration */}
-            <div className="stub-building-watermark">
-              <svg viewBox="0 0 200 45" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.35">
-                <path d="M5 45 L5 20 L25 20 L25 10 L50 10 L50 5 L100 5 L100 10 L125 10 L125 20 L145 20 L145 45 Z" />
-                <path d="M30 45 L30 25 L45 25 L45 45 M60 45 L60 18 L90 18 L90 45 M105 45 L105 25 L120 25 L120 45" />
-                <circle cx="75" cy="12" r="3" />
-                <line x1="0" y1="45" x2="200" y2="45" strokeWidth="2" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Rightmost vertical rotated micro text */}
-          <div className="ticket-stub-right-meta">
-            <span>01 Nov 2026 • {regNumber} • {formattedShortName}</span>
+            {/* Footer Metadata */}
+            <p className="ticket-v-footer-meta">
+              01 Nov 2026 • {regNumber} • {formattedShortName}
+            </p>
           </div>
         </div>
       </div>
