@@ -130,13 +130,12 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-meta-row">
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Date &amp; Time</span>
-                  <span className="ticket-v-meta-val">01 November 2026, 5:00 PM</span>
+                  <span className="ticket-v-meta-val">01 Nov 2026, 5:00 PM</span>
                 </div>
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Venue</span>
                   <span className="ticket-v-meta-val venue-multiline">
-                    <span>Agora Ground, ECK-RTU</span>
-                    <span>Campus, Kota</span>
+                    <span>Agora Ground, RTU</span>
                   </span>
                 </div>
               </div>
