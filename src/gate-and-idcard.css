@@ -25,6 +25,206 @@
 }
 
 /* ------------------------------------------------------------
+   Home Page Feature Highlight: ID Pass & Entry Card
+   ------------------------------------------------------------ */
+.btn-idcard-action {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.35) 100%) !important;
+  color: #fbbf24 !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.45) !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  padding: 12px 18px !important;
+  border-radius: var(--radius-lg, 12px) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-idcard-action:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35) 0%, rgba(217, 119, 6, 0.5) 100%) !important;
+  color: #ffffff !important;
+  border-color: #f59e0b !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3) !important;
+}
+
+.idpass-home-feature-card {
+  position: relative;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(26, 32, 53, 0.95) 0%, rgba(15, 20, 35, 0.98) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.38);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 25px rgba(245, 158, 11, 0.12);
+  overflow: hidden;
+}
+
+.idpass-feature-glow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.idpass-feature-inner {
+  position: relative;
+  z-index: 1;
+  padding: 1.25rem 1.4rem;
+}
+
+.idpass-feature-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.idpass-badge-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.idpass-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.idpass-meta-tag {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 500;
+}
+
+.idpass-corner-stamp {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.idpass-feature-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 1.15rem;
+}
+
+.idpass-icon-badge {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(225, 29, 72, 0.15));
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
+}
+
+.idpass-text-col {
+  flex: 1;
+}
+
+.idpass-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.idpass-desc {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: rgba(226, 232, 240, 0.88);
+  margin: 0;
+}
+
+.idpass-feature-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-idpass-feature-primary {
+  width: 100% !important;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #0b0f19 !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  padding: 12px 18px !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35) !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-idpass-feature-primary:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45) !important;
+}
+
+@media (max-width: 520px) {
+  .idpass-feature-inner {
+    padding: 1.1rem 1rem;
+  }
+  .idpass-icon-badge {
+    width: 42px;
+    height: 42px;
+    font-size: 1.3rem;
+  }
+  .idpass-title {
+    font-size: 1rem;
+  }
+  .idpass-desc {
+    font-size: 0.82rem;
+  }
+  .btn-idpass-feature-primary {
+    width: 100%;
+    min-width: 100%;
+  }
+  .btn-idpass-feature-secondary {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+/* ------------------------------------------------------------
    Page Layout & Containers
    ------------------------------------------------------------ */
 .id-card-page-wrapper {

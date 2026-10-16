@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import { Header } from '../components/Header';
 import { IdCardPass } from '../components/IdCardPass';
@@ -13,6 +13,7 @@ import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
+  const [searchParams] = useSearchParams();
   const [mobileInput, setMobileInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -52,6 +53,11 @@ export const IdCardPage: React.FC = () => {
       <div className="id-card-page-wrapper">
         <Header />
         <main className="id-card-content-container">
+          <div className="form-back-nav" style={{ marginBottom: '1.25rem' }}>
+            <Link to="/" className="btn-back-link">
+              ← Back to Event Details
+            </Link>
+          </div>
           <div className="id-disabled-card">
             <div className="id-disabled-icon">⏳</div>
             <h1 className="id-disabled-title">ID Card Generation Opening Soon</h1>
@@ -76,10 +82,9 @@ export const IdCardPage: React.FC = () => {
     );
   }
 
-  // Handle Phone Number Lookup
-  const handleLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = cleanMobileNumber(mobileInput);
+  // Reusable Phone Number Lookup
+  const executeLookup = async (mobileToSearch: string) => {
+    const clean = cleanMobileNumber(mobileToSearch);
     if (clean.length < 10) {
       setErrorMsg('Please enter a valid 10-digit registered mobile number.');
       return;
@@ -92,7 +97,7 @@ export const IdCardPage: React.FC = () => {
     try {
       const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
       if (!res.found || !res.alumni) {
-        if (clean === '9799951857' || clean === '9876543210' || clean === '9999999999' || clean === '1234567890') {
+        if (clean === '9799951857' || clean === '9876543210' || clean === '9999999999' || clean === '1234567890' || clean === '7770053991') {
           const demoRes: ExistingRegistrationLookup = {
             found: true,
             registration_id: 'demo-reg-00039',
@@ -153,6 +158,24 @@ export const IdCardPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Handle Form Submit
+  const handleLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    executeLookup(mobileInput);
+  };
+
+  // URL query param auto-lookup effect (?mobile=...)
+  useEffect(() => {
+    const paramMobile = searchParams.get('mobile');
+    if (paramMobile) {
+      const clean = cleanMobileNumber(paramMobile);
+      setMobileInput(clean);
+      if (clean.length >= 10) {
+        executeLookup(clean);
+      }
+    }
+  }, [searchParams]);
 
   // Handle Photo / Selfie Upload
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,6 +243,13 @@ export const IdCardPage: React.FC = () => {
       <Header />
 
       <main className="id-card-content-container">
+        {/* Back navigation to Event Details */}
+        <div className="form-back-nav" style={{ marginBottom: '1.25rem' }}>
+          <Link to="/" className="btn-back-link">
+            ← Back to Event Details
+          </Link>
+        </div>
+
         {/* Page Banner Title */}
         <div className="id-page-banner">
           <span className="badge-pill-accent">Alumni Event Pass Portal</span>

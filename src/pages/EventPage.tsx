@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { EventCard } from '../components/EventCard';
 import { RegistrationForm } from '../components/RegistrationForm';
@@ -8,6 +8,7 @@ import { ManageRegistrationModal } from '../components/ManageRegistrationModal';
 import { supabase } from '../lib/supabase';
 import { convertLookupToFormData, getEventRegistrationCount } from '../lib/registrations';
 import { resolveActivePaymentConfig } from '../lib/paymentRotation';
+import { isAlumniIdCardsEnabled } from '../lib/gate';
 import type {
   ECKEvent,
   RegistrationFormData,
@@ -39,6 +40,7 @@ const DEFAULT_EVENT: ECKEvent = {
 export const EventPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
   const activeSlug = slug || 'deepaura-2k26';
+  const showIdCards = isAlumniIdCardsEnabled();
 
   const [event, setEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [loading, setLoading] = useState(true);
@@ -244,6 +246,45 @@ export const EventPage: React.FC = () => {
                 onManageRegistrationClick={handleOpenManageModal}
               />
 
+              {/* Dedicated Highlight Card: Alumni Gate Pass & ID Card */}
+              {showIdCards && (
+                <section className="idpass-home-feature-card" aria-label="Alumni ID Card and Entry Pass">
+                  <div className="idpass-feature-glow" />
+                  <div className="idpass-feature-inner">
+                    <div className="idpass-feature-top">
+                      <div className="idpass-badge-cluster">
+                        <span className="idpass-live-pill">
+                          <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
+                        </span>
+                        <span className="idpass-meta-tag">Nov 1 • ECK Campus</span>
+                      </div>
+                      <span className="idpass-corner-stamp">GATE ENTRY</span>
+                    </div>
+
+                    <div className="idpass-feature-body">
+                      <div className="idpass-icon-badge">
+                        <span className="idpass-emoji-glyph">🎟️</span>
+                      </div>
+                      <div className="idpass-text-col">
+                        <h3 className="idpass-title">Alumni Event Pass &amp; Digital ID Card</h3>
+                        <p className="idpass-desc">
+                          Already registered for DeepAura 2K26? Access your verified digital pass with instant QR code to present at the college gate for smooth entry.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="idpass-feature-cta-row">
+                      <Link to="/id-card" className="btn btn-idpass-feature-primary btn-block">
+                        <span>🎟️ Download / View Your ID Pass</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* Event Highlights & Features for Alumni */}
               <div className="event-perks-section">
                 <h3 className="section-title">What to Expect</h3>
@@ -292,6 +333,19 @@ export const EventPage: React.FC = () => {
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
                   </button>
+
+                  {showIdCards && (
+                    <Link
+                      to="/id-card"
+                      className="btn btn-idcard-action btn-block"
+                      style={{ marginTop: '0.75rem', textDecoration: 'none', justifyContent: 'center' }}
+                    >
+                      <span>🎟️ Download Alumni ID Card &amp; Gate Pass</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </Link>
+                  )}
 
                   <button
                     type="button"
