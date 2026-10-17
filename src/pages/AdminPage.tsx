@@ -744,40 +744,26 @@ export const AdminPage: React.FC = () => {
 
                           <div className="reg-card-footer">
                             <span className="reg-attendees">
-                              👥 {reg.number_of_attendees} {reg.number_of_attendees === 1 ? 'Person' : 'People'}
+                              👥 {reg.number_of_attendees}
                             </span>
 
                             {reg.payment_screenshot_path ? (
                               <span className="screenshot-tag tag-has-ss">
                                 📷 {reg.payment_screenshot_path.includes(',')
-                                  ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Receipts Attached`
+                                  ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Screenshots Attached`
                                   : 'Screenshot Attached'}
                               </span>
-                            ) : (
-                              <span
-                                className={`screenshot-tag ${
-                                  reg.attendance_status === 'payment_pending' ? 'tag-payment-pending' : 'tag-no-ss'
-                                }`}
-                              >
-                                {reg.attendance_status === 'payment_pending'
-                                  ? '⏳ Payment Pending'
-                                  : reg.attendance_status === 'yes'
-                                  ? '⚠️ Awaiting Proof'
-                                  : 'No Screenshot'}
-                              </span>
-                            )}
-
-                            {(reg.attendance_status === 'payment_pending' ||
-                              (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) && (
+                            ) : (reg.attendance_status === 'payment_pending' ||
+                                 (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) ? (
                               <button
                                 type="button"
                                 onClick={(e) => handlePingMissingScreenshot(e, reg)}
                                 className="btn-card-reminder"
                                 title="Send WhatsApp reminder to submit payment screenshot"
                               >
-                                🔔 Remind Proof
+                                🔔 Remind
                               </button>
-                            )}
+                            ) : null}
 
                             <button
                               type="button"
