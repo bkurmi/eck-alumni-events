@@ -35,8 +35,6 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   existingScreenshotPath,
   previousPaidAmount = 0,
   additionalAmountDue,
-  onPayViaUpiApp,
-  isPreSavingUpi = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -54,10 +52,6 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       : Math.max(0, amount - (previousPaidAmount || 0));
   const isFullyPaid = isPaidUpdate && extraDue === 0;
   const amountToPay = isPaidUpdate ? extraDue : amount;
-
-  const upiDeepLink = upiId
-    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent('ECK-RTU Alumni Kota Chapter')}&am=${amountToPay}&cu=INR&tn=${encodeURIComponent('ECK-RTU DeepAura 2K26 Registration')}`
-    : null;
 
   const recordedReceiptsCount =
     (existingScreenshotPath || '')
@@ -112,7 +106,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             ? 'Your previous contribution covers your current attendee count in full.'
             : isPaidUpdate
             ? `Scan & pay the remaining difference of ₹${extraDue} for additional attendees.`
-            : 'Scan & pay via any UPI app (GPay / PhonePe / Paytm / BHIM) and upload screenshot.'}
+            : 'Scan QR or copy UPI ID via any app (PhonePe / GPay / Paytm) & upload screenshot.'}
         </p>
       </div>
 
@@ -264,8 +258,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 
             {!qrError && qrImageUrl ? (
               <p className="qr-instruction">
-                Open <strong>PhonePe, Google Pay, Paytm, or BHIM</strong> to scan &amp; pay{' '}
-                <strong>₹{amountToPay}</strong>
+                Contribution Amount: <strong>₹{amountToPay}</strong>
               </p>
             ) : upiId ? (
               <p className="qr-instruction">
@@ -279,48 +272,6 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 
             {upiId && (
               <div className="upi-direct-action">
-                <div className="mobile-only-upi">
-                  <div className="upi-or-divider">
-                    <span>OR PAY ON THIS DEVICE</span>
-                  </div>
-
-                  <div className="upi-app-action-box">
-                    <button
-                      type="button"
-                      disabled={isPreSavingUpi}
-                      onClick={() => {
-                        if (upiDeepLink && onPayViaUpiApp) {
-                          onPayViaUpiApp(upiDeepLink);
-                        } else if (upiDeepLink) {
-                          window.location.href = upiDeepLink;
-                        }
-                      }}
-                      className="btn-pay-upi"
-                      id="btn-pay-upi-app"
-                    >
-                      {isPreSavingUpi ? (
-                        <>
-                          <span className="spinner-sm" />
-                          <span>Opening UPI App...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                          </svg>
-                          <span>Pay ₹{amountToPay} via UPI App</span>
-                        </>
-                      )}
-                    </button>
-                    <div className="upi-app-flow-hint">
-                      <span className="hint-pill">1. Pay in UPI</span>
-                      <span className="hint-arrow">➔</span>
-                      <span className="hint-pill hint-pill-highlight">2. Return &amp; Upload Proof</span>
-                    </div>
-                    <span className="upi-app-hint">Tap to open GPay, PhonePe, or Paytm installed on this phone</span>
-                  </div>
-                </div>
-
                 <div className="upi-id-box">
                   <span className="upi-label">UPI ID:</span>
                   <code className="upi-code">{upiId}</code>
@@ -333,6 +284,24 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                   >
                     {copied ? '✓ Copied' : '📋 Copy'}
                   </button>
+                </div>
+
+                <div className="payment-instructions-card">
+                  <div className="payment-option-row">
+                    <span className="payment-option-tag">Option 1</span>
+                    <div className="payment-option-content">
+                      <strong>Pay using another phone:</strong> Open your UPI app (PhonePe / GPay / Paytm), scan the QR code above, and upload the payment confirmation below.
+                    </div>
+                  </div>
+
+                  <div className="payment-option-divider" />
+
+                  <div className="payment-option-row">
+                    <span className="payment-option-tag">Option 2</span>
+                    <div className="payment-option-content">
+                      <strong>Pay using this phone:</strong> Tap <em>Copy</em> on the UPI ID above, complete payment in your UPI app, and upload the screenshot below.
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
