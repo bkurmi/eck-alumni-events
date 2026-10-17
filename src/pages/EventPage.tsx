@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { EventCard } from '../components/EventCard';
 import { RegistrationForm } from '../components/RegistrationForm';
@@ -8,6 +8,7 @@ import { ManageRegistrationModal } from '../components/ManageRegistrationModal';
 import { supabase } from '../lib/supabase';
 import { convertLookupToFormData, getEventRegistrationCount } from '../lib/registrations';
 import { resolveActivePaymentConfig } from '../lib/paymentRotation';
+import { isAlumniIdCardsEnabled } from '../lib/gate';
 import type {
   ECKEvent,
   RegistrationFormData,
@@ -39,6 +40,7 @@ const DEFAULT_EVENT: ECKEvent = {
 export const EventPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
   const activeSlug = slug || 'deepaura-2k26';
+  const showIdCards = isAlumniIdCardsEnabled();
 
   const [event, setEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [loading, setLoading] = useState(true);
@@ -188,7 +190,7 @@ export const EventPage: React.FC = () => {
           qr_image_url: rotation.activeConfig.qr_image_url,
         }));
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   return (
@@ -244,6 +246,40 @@ export const EventPage: React.FC = () => {
                 onManageRegistrationClick={handleOpenManageModal}
               />
 
+              {/* Dedicated Highlight Card: Alumni Gate Pass & ID Card */}
+              {showIdCards && (
+                <section className="idpass-home-feature-card" aria-label="Alumni ID Card and Entry Pass">
+                  <div className="idpass-feature-glow" />
+                  <div className="idpass-feature-inner">
+                    <div className="idpass-feature-top">
+                      <span className="idpass-live-pill">
+                        <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
+                      </span>
+                      <span className="idpass-corner-stamp">GATE ENTRY</span>
+                    </div>
+
+                    <div className="idpass-feature-body">
+                      <h3 className="idpass-title">
+                        <span className="idpass-emoji-glyph">🎟️</span>
+                        <span>Alumni Event Pass &amp; Digital ID Card</span>
+                      </h3>
+                      <p className="idpass-desc">
+                        Already registered? Access your verified digital QR pass for smooth college gate entry.
+                      </p>
+                    </div>
+
+                    <div className="idpass-feature-cta-wrap">
+                      <Link to="/id-card" className="btn btn-idpass-feature-primary">
+                        <span>Download / View Pass</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* Event Highlights & Features for Alumni */}
               <div className="event-perks-section">
                 <h3 className="section-title">What to Expect</h3>
@@ -285,21 +321,12 @@ export const EventPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleStartRegistration}
-                    className="btn btn-primary btn-large btn-block"
+                    className="btn btn-festive-primary btn-large btn-block"
                   >
                     <span>Register for DeepAura 2K26</span>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenManageModal}
-                    className="btn btn-secondary-festive btn-block"
-                    style={{ marginTop: '0.75rem' }}
-                  >
-                    <span>🔍 Already Registered? View / Update Details</span>
                   </button>
                 </div>
               </div>

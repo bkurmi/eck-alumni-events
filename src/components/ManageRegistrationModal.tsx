@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { ECKEvent, ExistingRegistrationLookup } from '../types';
 import { lookupRegistrationByMobile, cleanMobileNumber, formatDisplayMobile } from '../lib/registrations';
+import { isAlumniIdCardsEnabled } from '../lib/gate';
 
 interface ManageRegistrationModalProps {
   isOpen: boolean;
@@ -271,10 +273,25 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
 
               {/* Action Buttons */}
               <div className="found-reg-actions">
+                {isAlumniIdCardsEnabled() && (
+                  <Link
+                    to={`/id-card?mobile=${cleanMobileNumber(foundReg.alumni?.mobile || mobile)}`}
+                    onClick={onClose}
+                    className="btn btn-idcard-action btn-block"
+                    id="btn-download-idpass-modal"
+                    style={{ textDecoration: 'none', justifyContent: 'center', marginBottom: '0.6rem' }}
+                  >
+                    <span>🎟️ Download / View Event ID Card</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                )}
+
                 <button
                   type="button"
                   onClick={handleEditClick}
-                  className="btn btn-festive-primary btn-block"
+                  className="btn btn-secondary-festive btn-block"
                   id="btn-edit-found-registration"
                 >
                   <span>✏️ Update Registration Details</span>

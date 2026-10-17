@@ -4,8 +4,11 @@ import { AdminLogin } from '../components/AdminLogin';
 import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
 import { QuickManualRegistrationModal } from '../components/QuickManualRegistrationModal';
+import { GateVerificationPortal } from '../components/GateVerificationPortal';
+import { GateStaffManagerModal } from '../components/GateStaffManagerModal';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
+import { isAdminGatePortalEnabled } from '../lib/gate';
 import type { EventRegistration, ECKEvent, PaymentVerification } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
@@ -32,7 +35,7 @@ const DEFAULT_EVENT: ECKEvent = {
 export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [activeTab, setActiveTab] = useState<'registrations' | 'upi_report'>('registrations');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'upi_report' | 'gate_portal'>('registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -43,6 +46,7 @@ export const AdminPage: React.FC = () => {
   const [selectedReg, setSelectedReg] = useState<EventRegistration | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
+  const [isGatePinModalOpen, setIsGatePinModalOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [singleCopied, setSingleCopied] = useState(false);
 
@@ -423,10 +427,16 @@ export const AdminPage: React.FC = () => {
               <div className="admin-header-row">
                 <div>
                   <h1 className="admin-title">
-                    {activeTab === 'upi_report' ? 'UPI Reconciliation Ledger' : 'Registrations Overview'}
+                    {activeTab === 'gate_portal'
+                      ? 'Gate Verification & Live Turnout'
+                      : activeTab === 'upi_report'
+                      ? 'UPI Reconciliation Ledger'
+                      : 'Registrations Overview'}
                   </h1>
                   <p className="admin-subtitle">
-                    {activeTab === 'upi_report'
+                    {activeTab === 'gate_portal'
+                      ? 'Live QR scanner, gate attendance records, walk-in spot entries & headcounts.'
+                      : activeTab === 'upi_report'
                       ? 'Track collections & verify payments across receiving UPI accounts.'
                       : 'Verify screenshots and alumni submissions.'}
                   </p>
@@ -499,9 +509,66 @@ export const AdminPage: React.FC = () => {
                     <span className="tab-count-short">{verifications.length}</span>
                   </span>
                 </button>
+                {isAdminGatePortalEnabled() && (
+                  <button
+                    type="button"
+                    className={`admin-view-tab-btn ${activeTab === 'gate_portal' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('gate_portal')}
+                  >
+                    <span className="tab-title">
+                      <span className="tab-icon">⚡</span>
+                      <span className="tab-text-full">Gate Verification & Scanner</span>
+                      <span className="tab-text-short">Gate Desk</span>
+                    </span>
+                    <span className="admin-tab-count gate-pill-badge">
+                      <span className="tab-count-full">Live Desk</span>
+                      <span className="tab-count-short">Live</span>
+                    </span>
+                  </button>
+                )}
               </div>
 
-              {activeTab === 'upi_report' ? (
+              {activeTab === 'gate_portal' ? (
+                <>
+                  <div className="admin-gate-top-action-bar">
+                    <div className="admin-gate-top-info">
+                      <span className="admin-gate-top-icon">⚡</span>
+                      <div className="admin-gate-top-text">
+                        <div className="admin-gate-top-title-row">
+                          <h3 className="admin-gate-top-title">Gate Desk Access</h3>
+                          <span className="admin-gate-pill">PIN Protected</span>
+                        </div>
+                        <p className="admin-gate-top-subtitle">
+                          Staff can scan &amp; verify attendee entry at <code>/gate</code> without accessing admin data.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="admin-gate-top-btns">
+                      <button
+                        type="button"
+                        onClick={() => setIsGatePinModalOpen(true)}
+                        className="btn-gate-bar-action"
+                      >
+                        🔑 Manage PINs
+                      </button>
+                      <a
+                        href="/gate"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-gate-bar-secondary"
+                      >
+                        ↗ Open Desk
+                      </a>
+                    </div>
+                  </div>
+                  <GateVerificationPortal
+                    registrations={registrations}
+                    onRefreshRegistrations={fetchRegistrations}
+                    staffName={session?.user?.email ? `Admin (${session.user.email.split('@')[0]})` : 'Admin Desk'}
+                    stationName="Central Admin"
+                  />
+                </>
+              ) : activeTab === 'upi_report' ? (
                 <UpiReconciliationReport
                   registrations={registrations}
                   verifications={verifications}
@@ -677,40 +744,26 @@ export const AdminPage: React.FC = () => {
 
                           <div className="reg-card-footer">
                             <span className="reg-attendees">
-                              👥 {reg.number_of_attendees} {reg.number_of_attendees === 1 ? 'Person' : 'People'}
+                              👥 {reg.number_of_attendees}
                             </span>
 
                             {reg.payment_screenshot_path ? (
                               <span className="screenshot-tag tag-has-ss">
                                 📷 {reg.payment_screenshot_path.includes(',')
-                                  ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Receipts Attached`
+                                  ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Screenshots Attached`
                                   : 'Screenshot Attached'}
                               </span>
-                            ) : (
-                              <span
-                                className={`screenshot-tag ${
-                                  reg.attendance_status === 'payment_pending' ? 'tag-payment-pending' : 'tag-no-ss'
-                                }`}
-                              >
-                                {reg.attendance_status === 'payment_pending'
-                                  ? '⏳ Payment Pending'
-                                  : reg.attendance_status === 'yes'
-                                  ? '⚠️ Awaiting Proof'
-                                  : 'No Screenshot'}
-                              </span>
-                            )}
-
-                            {(reg.attendance_status === 'payment_pending' ||
-                              (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) && (
+                            ) : (reg.attendance_status === 'payment_pending' ||
+                                 (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) ? (
                               <button
                                 type="button"
                                 onClick={(e) => handlePingMissingScreenshot(e, reg)}
                                 className="btn-card-reminder"
                                 title="Send WhatsApp reminder to submit payment screenshot"
                               >
-                                🔔 Remind Proof
+                                🔔 Remind
                               </button>
-                            )}
+                            ) : null}
 
                             <button
                               type="button"
@@ -938,6 +991,12 @@ export const AdminPage: React.FC = () => {
         event={activeEvent}
         onSuccess={fetchRegistrations}
         currentUserEmail={session?.user?.email}
+      />
+
+      {/* Gate Staff PIN Management Modal */}
+      <GateStaffManagerModal
+        isOpen={isGatePinModalOpen}
+        onClose={() => setIsGatePinModalOpen(false)}
       />
     </div>
   );
