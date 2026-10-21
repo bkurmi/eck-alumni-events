@@ -30,9 +30,9 @@ function formatSmartAttendeeName(rawName: string): { displayName: string; fontSi
 
   let displayName = fullName;
 
-  // With Registration No on Line 1, the name cell has ~150px.
-  // If longer than 18 characters and has 3 or more words, abbreviate middle name(s)
-  if (displayName.length > 18 && words.length >= 3) {
+  // When Line 1 is fully dedicated to name, it has plenty of space (~250px).
+  // Show full name for almost everyone; only abbreviate middle name(s) if > 29 characters:
+  if (displayName.length > 29 && words.length >= 3) {
     const hasTitle = /^(Dr\.|Prof\.|Er\.|Mr\.|Mrs\.|Ms\.)/i.test(words[0]);
     if (hasTitle && words.length >= 4) {
       const title = words[0];
@@ -48,11 +48,11 @@ function formatSmartAttendeeName(rawName: string): { displayName: string; fontSi
     }
   }
 
-  // Dynamic font scaling class for shared line 1
+  // Dynamic font scaling class for dedicated line 1
   let fontSizeClass = 'name-size-normal';
-  if (displayName.length > 20) {
+  if (displayName.length > 24) {
     fontSizeClass = 'name-size-compact';
-  } else if (displayName.length > 16) {
+  } else if (displayName.length > 18) {
     fontSizeClass = 'name-size-medium';
   }
 
@@ -151,26 +151,26 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
             {/* Right Column: Key Details */}
             <div className="ticket-v-info-col">
-              {/* Row 1: Attendee Name (Cell 1) & Registration (Cell 2) */}
+              {/* Row 1: Attendee Name (Dedicated Full Line) */}
+              <div className="ticket-v-info-field ticket-v-name-row">
+                <span className="ticket-v-label">Attendee Name</span>
+                <h3 className={`ticket-v-val-name ${nameSizeClass}`} title={originalFullName}>
+                  {attendeeName}
+                </h3>
+              </div>
+
+              {/* Row 2: Batch (Cell 1) & Registration (Cell 2) */}
               <div className="ticket-v-info-split-row">
-                <div className="ticket-v-name-box">
-                  <span className="ticket-v-label">Attendee Name</span>
-                  <h3 className={`ticket-v-val-name ${nameSizeClass}`} title={originalFullName}>
-                    {attendeeName}
-                  </h3>
+                <div className="ticket-v-batch-box">
+                  <span className="ticket-v-label">Batch</span>
+                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
+                    <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
+                  </p>
                 </div>
                 <div className="ticket-v-reg-box">
                   <span className="ticket-v-label">Registration No</span>
                   <span className="ticket-v-val-reg">{regNumber}</span>
                 </div>
-              </div>
-
-              {/* Row 2: Batch */}
-              <div className="ticket-v-info-field">
-                <span className="ticket-v-label">Batch</span>
-                <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
-                  <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
-                </p>
               </div>
 
               {/* Row 3: Attendees Count */}
