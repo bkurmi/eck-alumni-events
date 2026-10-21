@@ -806,6 +806,7 @@
 .ticket-v-reg-box {
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   padding-left: 8px;
+  padding-right: 18px;
   flex-shrink: 0;
   text-align: left;
 }
@@ -832,19 +833,19 @@
 }
 
 .ticket-v-val-name.name-size-normal {
-  font-size: clamp(0.84rem, 4.3cqw, 1.05rem);
+  font-size: clamp(0.85rem, 4.3cqw, 1.05rem);
 }
 
 .ticket-v-val-name.name-size-medium {
-  font-size: clamp(0.76rem, 3.8cqw, 0.94rem);
+  font-size: clamp(0.78rem, 3.9cqw, 0.96rem);
 }
 
 .ticket-v-val-name.name-size-compact {
-  font-size: clamp(0.68rem, 3.3cqw, 0.84rem);
+  font-size: clamp(0.73rem, 3.6cqw, 0.88rem);
 }
 
 .ticket-v-val-reg {
-  font-size: clamp(0.72rem, 3.8cqw, 0.98rem);
+  font-size: clamp(0.68rem, 3.4cqw, 0.84rem);
   font-weight: 800;
   color: #ffffff;
   display: block;
