@@ -775,7 +775,8 @@
   z-index: 2;
 }
 
-.ticket-v-info-top-row {
+.ticket-v-info-top-row,
+.ticket-v-info-split-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -783,17 +784,30 @@
   padding-bottom: 3px;
 }
 
-.ticket-v-name-box {
+.ticket-v-name-box,
+.ticket-v-name-row {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
+}
+
+.ticket-v-batch-box {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ticket-v-val-batch {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ticket-v-reg-box {
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   padding-left: 8px;
   flex-shrink: 0;
-  text-align: right;
+  text-align: left;
 }
 
 .ticket-v-label {
@@ -808,14 +822,25 @@
 }
 
 .ticket-v-val-name {
-  font-size: clamp(0.78rem, 4.2cqw, 1.05rem);
   font-weight: 800;
   color: #ffffff;
   margin: 0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   letter-spacing: 0.01em;
+  line-height: 1.2;
+  font-size: clamp(0.84rem, 4.3cqw, 1.05rem);
+}
+
+.ticket-v-val-name.name-size-normal {
+  font-size: clamp(0.84rem, 4.3cqw, 1.05rem);
+}
+
+.ticket-v-val-name.name-size-medium {
+  font-size: clamp(0.76rem, 3.8cqw, 0.94rem);
+}
+
+.ticket-v-val-name.name-size-compact {
+  font-size: clamp(0.68rem, 3.3cqw, 0.84rem);
 }
 
 .ticket-v-val-reg {

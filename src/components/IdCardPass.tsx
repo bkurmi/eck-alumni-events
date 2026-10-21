@@ -9,6 +9,55 @@ interface IdCardPassProps {
   cardRef?: React.RefObject<HTMLDivElement | null>;
 }
 
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return '';
+      if (/^(dr|dr\.|prof|prof\.|er|er\.|mr|mr\.|mrs|mrs\.|ms|ms\.)$/i.test(word)) {
+        const clean = word.replace(/\./g, '');
+        return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase() + '.';
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+function formatSmartAttendeeName(rawName: string): { displayName: string; fontSizeClass: string; fullName: string } {
+  const fullName = toTitleCase(rawName || 'Alumnus');
+  const words = fullName.split(/\s+/).filter(Boolean);
+
+  let displayName = fullName;
+
+  // If longer than 24 characters and has 3 or more words, abbreviate middle name(s)
+  if (displayName.length > 24 && words.length >= 3) {
+    const hasTitle = /^(Dr\.|Prof\.|Er\.|Mr\.|Mrs\.|Ms\.)/i.test(words[0]);
+    if (hasTitle && words.length >= 4) {
+      const title = words[0];
+      const firstName = words[1];
+      const middleInitials = words.slice(2, -1).map((w) => `${w.charAt(0).toUpperCase()}.`).join(' ');
+      const lastName = words[words.length - 1];
+      displayName = `${title} ${firstName} ${middleInitials} ${lastName}`;
+    } else if (!hasTitle && words.length >= 3) {
+      const firstName = words[0];
+      const middleInitials = words.slice(1, -1).map((w) => `${w.charAt(0).toUpperCase()}.`).join(' ');
+      const lastName = words[words.length - 1];
+      displayName = `${firstName} ${middleInitials} ${lastName}`;
+    }
+  }
+
+  // Dynamic font scaling class
+  let fontSizeClass = 'name-size-normal';
+  if (displayName.length > 25) {
+    fontSizeClass = 'name-size-compact';
+  } else if (displayName.length > 19) {
+    fontSizeClass = 'name-size-medium';
+  }
+
+  return { displayName, fontSizeClass, fullName };
+}
+
 export const IdCardPass: React.FC<IdCardPassProps> = ({
   registration,
   event: _event,
@@ -19,10 +68,11 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
   const rawMobile = alumni?.mobile || '';
   const cleanMobile = rawMobile.replace(/\D/g, '').slice(-10);
 
-  const attendeeName = (alumni?.name || 'Alumnus').toUpperCase();
+  const { displayName: attendeeName, fontSizeClass: nameSizeClass, fullName: originalFullName } =
+    formatSmartAttendeeName(alumni?.name || 'Alumnus');
   const regNumber = registration.registration_number || 'REG-00039';
   const branch = alumni?.engineering_discipline || 'Information Technology';
-  const batchYear = alumni?.year_of_passing ? `Class of ${alumni.year_of_passing}` : 'Class of 2008';
+  const batchYear = alumni?.year_of_passing ? String(alumni.year_of_passing) : '2008';
   const category = alumni?.professional_category || 'Alumnus';
   const badgeLabel = category.toLowerCase().includes('faculty')
     ? 'FACULTY'
@@ -100,24 +150,26 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
             {/* Right Column: Key Details */}
             <div className="ticket-v-info-col">
-              {/* Row 1: Attendee Name & Reg No */}
-              <div className="ticket-v-info-top-row">
-                <div className="ticket-v-name-box">
-                  <span className="ticket-v-label">Attendee Name</span>
-                  <h3 className="ticket-v-val-name">{attendeeName}</h3>
+              {/* Row 1: Attendee Name (Dedicated Full Line) */}
+              <div className="ticket-v-info-field ticket-v-name-row">
+                <span className="ticket-v-label">Attendee Name</span>
+                <h3 className={`ticket-v-val-name ${nameSizeClass}`} title={originalFullName}>
+                  {attendeeName}
+                </h3>
+              </div>
+
+              {/* Row 2: Batch (Cell 1) & Registration (Cell 2) */}
+              <div className="ticket-v-info-split-row">
+                <div className="ticket-v-batch-box">
+                  <span className="ticket-v-label">Batch</span>
+                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
+                    <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
+                  </p>
                 </div>
                 <div className="ticket-v-reg-box">
                   <span className="ticket-v-label">Registration No</span>
                   <span className="ticket-v-val-reg">{regNumber}</span>
                 </div>
-              </div>
-
-              {/* Row 2: Batch & Branch */}
-              <div className="ticket-v-info-field">
-                <span className="ticket-v-label">Batch</span>
-                <p className="ticket-v-val-text">
-                  <strong>{batchYear}</strong> ({branch})
-                </p>
               </div>
 
               {/* Row 3: Attendees Count */}
