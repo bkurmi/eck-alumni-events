@@ -2754,13 +2754,15 @@
   color: #f1f5f9 !important;
   font-weight: 700;
   font-style: normal;
-  padding: 8px 12px;
+  font-size: 0.82rem;
+  padding: 6px 10px;
 }
 
 .form-field select option {
   background: #0f172a !important;
   color: #ffffff !important;
-  padding: 8px 12px;
+  font-size: 0.84rem;
+  padding: 6px 10px;
 }
 
 /* Accompanying kids drawer aligned with RegistrationForm rules */
@@ -3649,6 +3651,12 @@
   .form-field select {
     height: 46px !important;
     font-size: 16px !important; /* Prevents auto zoom in iOS */
+  }
+
+  .form-field select option,
+  .form-field select optgroup {
+    font-size: 0.8rem !important;
+    padding: 6px 8px !important;
   }
 
   .spot-kids-toggle-btn {

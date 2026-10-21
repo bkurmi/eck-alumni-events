@@ -1677,12 +1677,17 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   >
                     <option value="">-- Select Payment Method --</option>
                     <option value="CASH">💵 Cash Collected (₹{spotAmount})</option>
-                    <optgroup label="📱 UPI QR Code (Select Receiver Account)">
-                      {DEFAULT_UPI_CONFIGS.map((config) => (
-                        <option key={config.upi_id} value={config.upi_id}>
-                          📱 UPI QR: {config.account_name} ({config.upi_id})
-                        </option>
-                      ))}
+                    <optgroup label="📱 UPI QR (Choose Account)">
+                      {DEFAULT_UPI_CONFIGS.map((config) => {
+                        const bankHandle = config.upi_id.includes('@')
+                          ? `@${config.upi_id.split('@')[1]}`
+                          : config.upi_id;
+                        return (
+                          <option key={config.upi_id} value={config.upi_id}>
+                            📱 {config.account_name} ({bankHandle})
+                          </option>
+                        );
+                      })}
                     </optgroup>
                     <option value="COMPLIMENTARY">⭐ Complimentary / VIP (₹0)</option>
                   </select>
