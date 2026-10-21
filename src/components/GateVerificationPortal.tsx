@@ -59,8 +59,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [torchSupported, setTorchSupported] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
-  // Manual Lookup State
+  // Manual Lookup State (Phone & Predictive Name Search)
+  const [manualLookupMode, setManualLookupMode] = useState<'phone' | 'name'>('phone');
   const [manualPhone, setManualPhone] = useState('');
+  const [nameSearchQuery, setNameSearchQuery] = useState('');
+  const [selectedAttendee, setSelectedAttendee] = useState<EventRegistration | null>(null);
 
   // Spot Registration State
   const [spotName, setSpotName] = useState('');
@@ -78,6 +81,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [spotAmount, setSpotAmount] = useState(800);
   const [spotSubmitting, setSpotSubmitting] = useState(false);
   const [spotSuccessData, setSpotSuccessData] = useState<any | null>(null);
+  const [preloadNotice, setPreloadNotice] = useState<string | null>(null);
 
   // Currently selected UPI configuration (if paying via QR)
   const selectedUpiConfig = React.useMemo(() => {
@@ -108,8 +112,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         num === 1
           ? `1 Person (Single — ₹${calc.totalAmount})`
           : num === 2
-          ? `2 Persons (Couple — ₹${calc.totalAmount})`
-          : `${num} Persons (₹${calc.totalAmount})`;
+            ? `2 Persons (Couple — ₹${calc.totalAmount})`
+            : `${num} Persons (₹${calc.totalAmount})`;
       return { count: num, label, amount: calc.totalAmount };
     });
   }, []);
@@ -130,7 +134,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             behavior: 'smooth',
             block: 'start',
           });
-        } catch (_) {}
+        } catch (_) { }
 
         // Fallback for mobile and emulation viewports
         try {
@@ -138,7 +142,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           const headerOffset = 85;
           const targetY = window.pageYOffset + rect.top - headerOffset;
           window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
-        } catch (_) {}
+        } catch (_) { }
       }
     };
     requestAnimationFrame(performScroll);
@@ -262,9 +266,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         const scanner = scannerInstanceRef.current;
         scannerInstanceRef.current = null;
         if (scanner.isScanning) {
-          scanner.stop().then(() => scanner.clear()).catch(() => {});
+          scanner.stop().then(() => scanner.clear()).catch(() => { });
         } else {
-          try { scanner.clear(); } catch (_) {}
+          try { scanner.clear(); } catch (_) { }
         }
       }
       setScannerActive(false);
@@ -314,9 +318,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         const scanner = scannerInstanceRef.current;
         scannerInstanceRef.current = null;
         if (scanner.isScanning) {
-          scanner.stop().then(() => scanner.clear()).catch(() => {});
+          scanner.stop().then(() => scanner.clear()).catch(() => { });
         } else {
-          try { scanner.clear(); } catch (_) {}
+          try { scanner.clear(); } catch (_) { }
         }
       }
       setTorchOn(false);
@@ -361,7 +365,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             const track = scanner.getRunningTrackSettings();
             if (track) setTorchSupported(true);
           }
-        } catch (_) {}
+        } catch (_) { }
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -374,19 +378,203 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     return () => {
       isMounted = false;
       if (scanner.isScanning) {
-        scanner.stop().then(() => scanner.clear()).catch(() => {});
+        scanner.stop().then(() => scanner.clear()).catch(() => { });
       } else {
-        try { scanner.clear(); } catch (_) {}
+        try { scanner.clear(); } catch (_) { }
       }
       scannerInstanceRef.current = null;
     };
   }, [activeSubTab, scannerActive, selectedCameraId]);
+
+  // Instant Predictive Name Search filter across registered alumni
+  const filteredNameRegistrations = React.useMemo(() => {
+    const query = nameSearchQuery.trim().toLowerCase();
+    if (!query || query.length < 2) return [];
+
+    const tokens = query.split(/\s+/).filter(Boolean);
+
+    return registrations
+      .filter((reg) => {
+        const alumni = reg.alumni;
+        if (!alumni) return false;
+
+        const name = (alumni.name || '').toLowerCase();
+        const branch = (alumni.engineering_discipline || '').toLowerCase();
+        const year = String(alumni.year_of_passing || '');
+        const mobile = cleanMobileNumber(alumni.mobile || '');
+        const regNo = (reg.registration_number || '').toLowerCase();
+        const city = (alumni.city || '').toLowerCase();
+        const org = (alumni.organization || '').toLowerCase();
+
+        // Every token must match at least one attendee attribute
+        return tokens.every(
+          (token) =>
+            name.includes(token) ||
+            branch.includes(token) ||
+            year.includes(token) ||
+            mobile.includes(token) ||
+            regNo.includes(token) ||
+            city.includes(token) ||
+            org.includes(token)
+        );
+      })
+      .slice(0, 20); // Top 20 for instant rendering
+  }, [registrations, nameSearchQuery]);
+
+  // Check live gate admission & payment status for an attendee
+  const getAttendeeGateStatus = (reg: EventRegistration) => {
+    const cleanMobile = cleanMobileNumber(reg.alumni?.mobile || '');
+    const entry = gateEntries.find(
+      (e) => (cleanMobile && cleanMobileNumber(e.phone_number) === cleanMobile) || e.registration_id === reg.id
+    );
+
+    if (entry) {
+      const entryTime = new Date(entry.entered_at).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      return {
+        status: 'ALREADY_ENTERED' as const,
+        badgeText: `Entered at ${entryTime}`,
+        entry,
+      };
+    }
+
+    const isPaid =
+      reg.attendance_status === 'yes' ||
+      reg.payment_verifications?.some((v) => v.verified_status === 'VERIFIED');
+
+    if (!isPaid) {
+      if (reg.attendance_status === 'maybe') {
+        return {
+          status: 'MAYBE' as const,
+          badgeText: 'Marked Maybe (Unpaid)',
+          entry: null,
+        };
+      }
+      return {
+        status: 'PAYMENT_PENDING' as const,
+        badgeText: 'Payment Pending',
+        entry: null,
+      };
+    }
+
+    return {
+      status: 'READY' as const,
+      badgeText: 'Ready for Entry',
+      entry: null,
+    };
+  };
 
   // Handle Manual Phone Verification Form
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualPhone.trim()) return;
     handleVerifyPhone(manualPhone, 'manual_phone');
+  };
+
+  // Handle Verification of an attendee selected via Name Search
+  const handleVerifySelectedAttendee = (reg: EventRegistration) => {
+    if (!reg.alumni?.mobile) {
+      alert('No mobile number recorded for this attendee.');
+      return;
+    }
+    handleVerifyPhone(reg.alumni.mobile, 'manual_phone');
+  };
+
+  // Reset lookup form and clear search selection
+  const handleResetLookup = () => {
+    setScanResult(null);
+    setManualPhone('');
+    setSelectedAttendee(null);
+    setNameSearchQuery('');
+  };
+
+  // Redirect to Spot Walk-in Desk with pre-filled attendee data
+  const handleRedirectToSpot = (data?: {
+    name?: string;
+    mobile?: string;
+    branch?: string | null;
+    batch?: number | string | null;
+    adults?: number;
+    kidsAbove10?: number;
+    kidsUnder10?: number;
+    amount?: number;
+  }) => {
+    if (data) {
+      if (data.name) setSpotName(data.name);
+      if (data.mobile) setSpotMobile(cleanMobileNumber(data.mobile));
+      if (data.branch) setSpotBranch(data.branch);
+      if (data.batch) setSpotBatch(Number(data.batch));
+      const adults = data.adults || 1;
+      const kAbove = data.kidsAbove10 || 0;
+      const kUnder = data.kidsUnder10 || 0;
+      setSpotAdults(adults);
+      setSpotKidsAbove10(kAbove);
+      setSpotKidsUnder10(kUnder);
+      setSpotAttendees(adults + kAbove + kUnder);
+      if (kAbove > 0 || kUnder > 0) setShowKidsBreakdown(true);
+      if (data.amount && data.amount > 0) {
+        setSpotAmount(data.amount);
+      } else {
+        const calc = calculateContribution(adults, kAbove, kUnder);
+        setSpotAmount(calc.totalAmount);
+      }
+      if (data.name) {
+        setPreloadNotice(
+          `Pre-loaded attendee: ${data.name}. Confirm payment mode below to admit and issue pass.`
+        );
+      }
+    }
+    setScanResult(null);
+    setActiveSubTab('spot');
+  };
+
+  // Smart Mobile lookup on typing in Spot Walk-in form
+  const handleSpotMobileChange = (val: string) => {
+    const clean = val.replace(/\D/g, '');
+    setSpotMobile(clean);
+    if (clean.length === 10) {
+      const matched = registrations.find(
+        (r) => cleanMobileNumber(r.alumni?.mobile || '') === clean
+      );
+      if (matched && matched.alumni) {
+        setSpotName(matched.alumni.name || '');
+        if (matched.alumni.engineering_discipline) {
+          setSpotBranch(matched.alumni.engineering_discipline);
+        }
+        if (matched.alumni.year_of_passing) {
+          setSpotBatch(Number(matched.alumni.year_of_passing));
+        }
+        const adults = matched.adults_count || matched.number_of_attendees || 1;
+        const kAbove = matched.children_above_7_count || 0;
+        const kUnder = matched.children_under_7_count || 0;
+        setSpotAdults(adults);
+        setSpotKidsAbove10(kAbove);
+        setSpotKidsUnder10(kUnder);
+        setSpotAttendees(adults + kAbove + kUnder);
+        if (kAbove > 0 || kUnder > 0) setShowKidsBreakdown(true);
+        if (matched.amount && matched.amount > 0) {
+          setSpotAmount(matched.amount);
+        } else {
+          const calc = calculateContribution(adults, kAbove, kUnder);
+          setSpotAmount(calc.totalAmount);
+        }
+        const statusLabel =
+          matched.attendance_status === 'payment_pending'
+            ? 'Payment Pending'
+            : matched.attendance_status === 'maybe'
+              ? 'Marked Maybe'
+              : 'Existing Record';
+        setPreloadNotice(
+          `✨ Existing record found for ${matched.alumni.name} (${statusLabel}). Details auto-loaded!`
+        );
+      } else {
+        setPreloadNotice(null);
+      }
+    } else {
+      setPreloadNotice(null);
+    }
   };
 
   // Handle Spot Registration Submit
@@ -572,8 +760,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           className={`gate-subtab-btn ${activeSubTab === 'manual' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('manual')}
         >
-          <span className="gate-tab-icon">⌨️</span>
-          <span className="gate-tab-full">Phone Lookup</span>
+          <span className="gate-tab-icon">🔍</span>
+          <span className="gate-tab-full">Manual Lookup</span>
           <span className="gate-tab-short">Lookup</span>
         </button>
         <button
@@ -883,35 +1071,340 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         </div>
       )}
 
-      {/* 4. SUBTAB: Manual Phone Lookup */}
+      {/* 4. SUBTAB: Manual Lookup (Phone & Predictive Name Search) */}
       {activeSubTab === 'manual' && (
         <div className="gate-manual-section">
           <div className="gate-card-box">
-            <h3>Manual Gate Phone Verification</h3>
+            <h3>Manual Gate Verification</h3>
             <p className="card-sub-desc">
-              If an attendee's phone screen is cracked or the camera cannot read the QR code, type their 10-digit number here:
+              Look up and verify an attendee by mobile number or name if their QR code is unavailable:
             </p>
 
-            <form onSubmit={handleManualSubmit} className="gate-manual-form">
-              <div className="manual-input-row">
-                <input
-                  type="tel"
-                  placeholder="10-digit registered phone number"
-                  maxLength={10}
-                  value={manualPhone}
-                  onChange={(e) => setManualPhone(e.target.value.replace(/\D/g, ''))}
-                  className="manual-phone-field"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={isVerifying || manualPhone.length < 10}
-                  className="btn-primary-action btn-verify-manual"
-                >
-                  {isVerifying ? 'Checking...' : 'Verify & Allow Entry →'}
-                </button>
+            {/* Segmented Mode Switcher */}
+            <div className="manual-mode-segmented-bar">
+              <button
+                type="button"
+                className={`manual-mode-btn ${manualLookupMode === 'phone' ? 'active' : ''}`}
+                onClick={() => {
+                  setManualLookupMode('phone');
+                  setScanResult(null);
+                }}
+              >
+                <span>📱 Search by Phone</span>
+              </button>
+              <button
+                type="button"
+                className={`manual-mode-btn ${manualLookupMode === 'name' ? 'active' : ''}`}
+                onClick={() => {
+                  setManualLookupMode('name');
+                  setScanResult(null);
+                }}
+              >
+                <span>👤 Search by Name / Batch</span>
+              </button>
+            </div>
+
+            {/* MODE 1: Phone Search */}
+            {manualLookupMode === 'phone' && (
+              <form onSubmit={handleManualSubmit} className="gate-manual-form">
+                <div className="manual-input-row">
+                  <input
+                    type="tel"
+                    placeholder="10-digit registered phone number"
+                    maxLength={10}
+                    value={manualPhone}
+                    onChange={(e) => setManualPhone(e.target.value.replace(/\D/g, ''))}
+                    className="manual-phone-field"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={isVerifying || manualPhone.length < 10}
+                    className="btn-primary-action btn-verify-manual"
+                  >
+                    {isVerifying ? 'Checking...' : 'Verify & Allow Entry →'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* MODE 2: Smart Predictive Name Search */}
+            {manualLookupMode === 'name' && (
+              <div className="name-search-container">
+                {/* Search Input Bar */}
+                <div className="name-search-input-wrapper">
+                  <span className="name-search-icon">🔍</span>
+                  <input
+                    type="text"
+                    placeholder="Type name (e.g. Rahul), batch (2012), or branch (CSE)..."
+                    value={nameSearchQuery}
+                    onChange={(e) => {
+                      setNameSearchQuery(e.target.value);
+                      if (selectedAttendee) setSelectedAttendee(null);
+                    }}
+                    className="name-search-input"
+                    autoFocus
+                  />
+                  {nameSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNameSearchQuery('');
+                        setSelectedAttendee(null);
+                      }}
+                      className="name-search-clear-btn"
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* If an attendee is selected, show detailed confirmation card */}
+                {selectedAttendee && selectedAttendee.alumni && (() => {
+                  const alumni = selectedAttendee.alumni;
+                  const gateStatus = getAttendeeGateStatus(selectedAttendee);
+                  const initials = (alumni.name || 'A')
+                    .split(' ')
+                    .map((p) => p[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase();
+
+                  return (
+                    <div className="attendee-selected-card">
+                      <div className="attendee-selected-top">
+                        <div className="attendee-selected-profile">
+                          <div className="attendee-selected-avatar">
+                            {selectedAttendee.photo_url ? (
+                              <img
+                                src={selectedAttendee.photo_url}
+                                alt={alumni.name}
+                                className="name-result-photo"
+                              />
+                            ) : (
+                              <span>{initials}</span>
+                            )}
+                          </div>
+                          <div className="attendee-selected-details">
+                            <h4 className="attendee-selected-name">{alumni.name}</h4>
+                            <span className="attendee-selected-reg">
+                              {selectedAttendee.registration_number} • Class of {alumni.year_of_passing || '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAttendee(null)}
+                          className="btn-back-to-search"
+                        >
+                          ← Change
+                        </button>
+                      </div>
+
+                      {/* Detail Grid */}
+                      <div className="attendee-selected-grid">
+                        <div className="attendee-grid-item">
+                          <span className="grid-label">Branch</span>
+                          <span className="grid-value">{alumni.engineering_discipline || 'Alumni'}</span>
+                        </div>
+                        <div className="attendee-grid-item">
+                          <span className="grid-label">Phone</span>
+                          <span className="grid-value">📞 {alumni.mobile}</span>
+                        </div>
+                        <div className="attendee-grid-item">
+                          <span className="grid-label">Party Size</span>
+                          <span className="grid-value text-gold">
+                            👥 {selectedAttendee.number_of_attendees || 1} Total
+                          </span>
+                        </div>
+                        <div className="attendee-grid-item">
+                          <span className="grid-label">City</span>
+                          <span className="grid-value">{alumni.city || '—'}</span>
+                        </div>
+                      </div>
+
+                      {/* Status Warnings or Badges */}
+                      {gateStatus.status === 'ALREADY_ENTERED' && (
+                        <>
+                          <div className="attendee-selected-alert entered">
+                            ⚠️ {gateStatus.badgeText} (by {gateStatus.entry?.verified_by || 'Gate Staff'})
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveSubTab('log')}
+                            className="btn-scan-next btn-secondary-outline"
+                            style={{ width: '100%' }}
+                          >
+                            <span>📋</span>
+                            <span>View in Gate Entry Log →</span>
+                          </button>
+                        </>
+                      )}
+
+                      {(gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
+                        <>
+                          <div className="attendee-selected-alert pending">
+                            💳 {gateStatus.status === 'MAYBE' ? 'Registered as MAYBE (Unpaid)' : `Payment Pending (₹${selectedAttendee.amount || 0})`}. Please collect fee in Spot Entry.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRedirectToSpot({
+                                name: alumni.name,
+                                mobile: alumni.mobile,
+                                branch: alumni.engineering_discipline,
+                                batch: alumni.year_of_passing,
+                                adults: selectedAttendee.adults_count || selectedAttendee.number_of_attendees || 1,
+                                kidsAbove10: selectedAttendee.children_above_7_count || 0,
+                                kidsUnder10: selectedAttendee.children_under_7_count || 0,
+                                amount: selectedAttendee.amount,
+                              })
+                            }
+                            className="btn-redirect-spot"
+                          >
+                            <span>⚡</span>
+                            <span>Collect Fee &amp; Admit in Spot Entry ({alumni.name}) →</span>
+                          </button>
+                        </>
+                      )}
+
+                      {gateStatus.status === 'READY' && (
+                        <button
+                          type="button"
+                          disabled={isVerifying}
+                          onClick={() => handleVerifySelectedAttendee(selectedAttendee)}
+                          className="btn-verify-selected"
+                        >
+                          <span>✅</span>
+                          <span>
+                            {isVerifying
+                              ? 'Checking...'
+                              : `Verify & Allow Entry (${alumni.name}) →`}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* If no attendee is selected yet */}
+                {!selectedAttendee && (
+                  <>
+                    {nameSearchQuery.trim().length < 2 ? (
+                      <div className="name-search-hint-box">
+                        <p>
+                          ⚡ <strong>Predictive Attendee Search:</strong> Type at least 2 letters of an
+                          attendee's name, passing year (e.g. <em>2015</em>), or branch.
+                        </p>
+                        <div className="name-search-chips">
+                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                          <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                          <span className="name-search-chip" onClick={() => setNameSearchQuery('2018')}>🎓 2018</span>
+                        </div>
+                      </div>
+                    ) : filteredNameRegistrations.length === 0 ? (
+                      <div className="name-search-hint-box">
+                        <p>
+                          🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
+                        </p>
+                        <p style={{ fontSize: '0.82rem', margin: 0 }}>
+                          Check the spelling, or register this attendee directly at Spot Walk-in Desk:
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleRedirectToSpot({ name: nameSearchQuery })}
+                          className="btn-spot-create-new"
+                        >
+                          ⚡ Register "{nameSearchQuery}" at Spot Walk-in Desk →
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="name-search-header-meta">
+                          <span>Found {filteredNameRegistrations.length} matching alumni</span>
+                          <span>Click to select &amp; admit</span>
+                        </div>
+
+                        <div className="name-search-results-list">
+                          {filteredNameRegistrations.map((reg) => {
+                            const alumni = reg.alumni;
+                            if (!alumni) return null;
+                            const gateStatus = getAttendeeGateStatus(reg);
+                            const initials = (alumni.name || 'A')
+                              .split(' ')
+                              .map((p) => p[0])
+                              .slice(0, 2)
+                              .join('')
+                              .toUpperCase();
+
+                            return (
+                              <div
+                                key={reg.id}
+                                className="name-search-result-card"
+                                onClick={() => setSelectedAttendee(reg)}
+                                role="button"
+                                tabIndex={0}
+                              >
+                                <div className="name-result-avatar">
+                                  {reg.photo_url ? (
+                                    <img
+                                      src={reg.photo_url}
+                                      alt={alumni.name}
+                                      className="name-result-photo"
+                                    />
+                                  ) : (
+                                    <span>{initials}</span>
+                                  )}
+                                </div>
+
+                                <div className="name-result-info">
+                                  <div className="name-result-header">
+                                    <span className="name-result-name">{alumni.name}</span>
+                                    <span
+                                      className="result-pill"
+                                      style={{ fontSize: '0.72rem', padding: '2px 6px' }}
+                                    >
+                                      {reg.registration_number}
+                                    </span>
+                                  </div>
+                                  <div className="name-result-meta">
+                                    <span>
+                                      🎓 {alumni.engineering_discipline || 'Alumni'} ({alumni.year_of_passing || '—'})
+                                    </span>
+                                    <span>•</span>
+                                    <span>📞 {alumni.mobile}</span>
+                                    <span>•</span>
+                                    <span>👥 {reg.number_of_attendees || 1} Total</span>
+                                  </div>
+                                </div>
+
+                                <div className="name-result-status-col">
+                                  {gateStatus.status === 'READY' && (
+                                    <span className="gate-status-pill ready">🟢 Ready</span>
+                                  )}
+                                  {gateStatus.status === 'ALREADY_ENTERED' && (
+                                    <span className="gate-status-pill entered">⚠️ Entered</span>
+                                  )}
+                                  {gateStatus.status === 'PAYMENT_PENDING' && (
+                                    <span className="gate-status-pill pending">💳 Unpaid</span>
+                                  )}
+                                  <span className="name-result-select-indicator">Select →</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
-            </form>
+            )}
 
             {/* Same result feedback card */}
             {scanResult && (
@@ -932,11 +1425,41 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     )}
                   </div>
                 </div>
+
+                {(scanResult.status === 'PAYMENT_PENDING' || scanResult.status === 'NOT_FOUND') && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleRedirectToSpot({
+                        name: scanResult.attendee_name || (selectedAttendee?.alumni?.name) || '',
+                        mobile: scanResult.phone_number || manualPhone || (selectedAttendee?.alumni?.mobile) || '',
+                        branch: scanResult.branch || (selectedAttendee?.alumni?.engineering_discipline) || '',
+                        batch: scanResult.year_of_passing || (selectedAttendee?.alumni?.year_of_passing) || '',
+                        adults: scanResult.number_of_attendees || (selectedAttendee?.number_of_attendees) || 1,
+                        amount: scanResult.amount || (selectedAttendee?.amount) || 0,
+                      })
+                    }
+                    className="btn-redirect-spot"
+                    style={{ marginTop: '0.85rem' }}
+                  >
+                    <span>⚡</span>
+                    <span>Collect Fee &amp; Admit at Spot Desk →</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleResetLookup}
+                  className="btn-reset-lookup"
+                >
+                  🔍 Verify Another Attendee
+                </button>
               </div>
             )}
           </div>
         </div>
       )}
+
 
       {/* 5. SUBTAB: Spot Walk-in Registration (Requirement #7) */}
       {activeSubTab === 'spot' && (
@@ -963,9 +1486,40 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </div>
             )}
 
+            {preloadNotice && (
+              <div className="spot-prefill-banner">
+                <span className="banner-icon">⚡</span>
+                <div className="banner-text">{preloadNotice}</div>
+                <button
+                  type="button"
+                  className="btn-dismiss-prefill"
+                  onClick={() => setPreloadNotice(null)}
+                  title="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleSpotSubmit} className="gate-spot-form">
               <div className="form-fields-grid">
-                {/* Row 1: Full Name & Mobile */}
+                {/* Row 1: Mobile (First for Instant Pre-load) & Full Name */}
+                <div className="form-field">
+                  <label htmlFor="spot-mobile">
+                    Mobile Number <span className="req-star">*</span>
+                  </label>
+                  <input
+                    id="spot-mobile"
+                    type="tel"
+                    required
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                    value={spotMobile}
+                    onChange={(e) => handleSpotMobileChange(e.target.value)}
+                    autoFocus={activeSubTab === 'spot' && !spotMobile}
+                  />
+                </div>
+
                 <div className="form-field">
                   <label htmlFor="spot-name">
                     Full Name <span className="req-star">*</span>
@@ -977,21 +1531,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     placeholder="Alumnus Name"
                     value={spotName}
                     onChange={(e) => setSpotName(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="spot-mobile">
-                    Mobile Number <span className="req-star">*</span>
-                  </label>
-                  <input
-                    id="spot-mobile"
-                    type="tel"
-                    required
-                    placeholder="10-digit mobile"
-                    maxLength={10}
-                    value={spotMobile}
-                    onChange={(e) => setSpotMobile(e.target.value.replace(/\D/g, ''))}
                   />
                 </div>
 
@@ -1411,8 +1950,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       {entry.entry_mode === 'qr_scan'
                         ? '📷 QR'
                         : entry.entry_mode === 'manual_phone'
-                        ? '⌨️ Phone'
-                        : '⚡ Spot'}
+                          ? '⌨️ Phone'
+                          : '⚡ Spot'}
                     </span>
                     <span className="pay-verified-pill">✓ {entry.payment_status}</span>
                     {entry.verified_by && (
