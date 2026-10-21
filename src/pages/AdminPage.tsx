@@ -395,10 +395,12 @@ export const AdminPage: React.FC = () => {
 
   const getPublicScreenshotUrl = (path: string | null) => {
     if (!path) return null;
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(path);
+    const cleanPath = path.trim();
+    if (!cleanPath || cleanPath === 'manual-admin-entry') return null;
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
+    const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
     const resolvedUrl = data?.publicUrl || null;
-    console.log('[Admin Portal Screenshot URL]', { path, resolvedUrl });
+    console.log('[Admin Portal Screenshot URL]', { path: cleanPath, resolvedUrl });
     return resolvedUrl;
   };
 
@@ -940,29 +942,37 @@ export const AdminPage: React.FC = () => {
                               ? '📄 Receipt 1 (Initial Payment)'
                               : `📄 Receipt ${idx + 1} (Additional Payment / Extra Attendees)`}
                           </span>
-                          <img
-                            src={getPublicScreenshotUrl(singlePath) || ''}
-                            alt={`Payment screenshot ${idx + 1}`}
-                            className="modal-screenshot-img"
-                            onLoad={() => {
-                              console.log(`[Admin Portal Screenshot Loaded OK]:`, singlePath);
-                            }}
-                            onError={(e) => {
-                              console.error(`[Admin Portal Screenshot Load Failed]:`, {
-                                path: singlePath,
-                                resolvedUrl: getPublicScreenshotUrl(singlePath),
-                                event: e,
-                              });
-                            }}
-                          />
-                          <a
-                            href={getPublicScreenshotUrl(singlePath) || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-secondary btn-sm mt-3"
-                          >
-                            🔗 Open Original Screenshot #{idx + 1}
-                          </a>
+                          {singlePath === 'manual-admin-entry' ? (
+                            <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', border: '1px dashed #6366f1', borderRadius: '8px', color: '#a5b4fc', fontSize: '0.85rem', textAlign: 'center' }}>
+                              ⚡ Manual Admin Entry (Direct verification, no screenshot uploaded)
+                            </div>
+                          ) : (
+                            <>
+                              <img
+                                src={getPublicScreenshotUrl(singlePath) || ''}
+                                alt={`Payment screenshot ${idx + 1}`}
+                                className="modal-screenshot-img"
+                                onLoad={() => {
+                                  console.log(`[Admin Portal Screenshot Loaded OK]:`, singlePath);
+                                }}
+                                onError={(e) => {
+                                  console.error(`[Admin Portal Screenshot Load Failed]:`, {
+                                    path: singlePath,
+                                    resolvedUrl: getPublicScreenshotUrl(singlePath),
+                                    event: e,
+                                  });
+                                }}
+                              />
+                              <a
+                                href={getPublicScreenshotUrl(singlePath) || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary btn-sm mt-3"
+                              >
+                                🔗 Open Original Screenshot #{idx + 1}
+                              </a>
+                            </>
+                          )}
                         </div>
                       ))}
                   </div>

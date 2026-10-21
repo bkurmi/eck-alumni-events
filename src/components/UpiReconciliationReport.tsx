@@ -28,10 +28,10 @@ interface KnownAccount {
 
 const getPublicScreenshotUrl = (path: string | null | undefined) => {
   if (!path) return null;
-  const firstPath = path.split(',')[0]?.trim();
-  if (!firstPath) return null;
-  if (firstPath.startsWith('http://') || firstPath.startsWith('https://')) return firstPath;
-  const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(firstPath);
+  const cleanPath = path.trim();
+  if (!cleanPath || cleanPath === 'manual-admin-entry') return null;
+  if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
+  const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
   return data?.publicUrl || null;
 };
 
@@ -173,7 +173,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         paymentDate,
         amount,
         verifiedBy: verif?.verified_by || null,
-        screenshotUrl: getPublicScreenshotUrl(reg.payment_screenshot_path),
+        screenshotUrl: getPublicScreenshotUrl(
+          reg.payment_screenshot_path ? reg.payment_screenshot_path.split(',')[0] : null
+        ),
         isVerified: !!verif && verif.verified_status === 'VERIFIED',
       };
     }).sort((a, b) => {
@@ -1179,31 +1181,72 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 </span>
               </div>
 
-              {/* Receipt Image Preview in Edit Modal */}
-              {editingReg.registration.payment_screenshot_path ? (
-                <div className="modal-edit-receipt-box">
-                  <div className="modal-edit-receipt-header">
-                    <span className="modal-edit-receipt-label">📄 Attached Payment Receipt:</span>
-                    <a
-                      href={getPublicScreenshotUrl(editingReg.registration.payment_screenshot_path) || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-link-action"
-                    >
-                      🔍 Open Full Image
-                    </a>
+              {/* Payment Screenshot Display */}
+              <div className="modal-screenshot-section" style={{ marginBottom: '20px' }}>
+                <h4 className="modal-section-title">
+                  Payment Receipts ({
+                    (editingReg.registration.payment_screenshot_path || '')
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean).length || 0
+                  })
+                </h4>
+                {editingReg.registration.payment_screenshot_path ? (
+                  <div className="multi-screenshots-container">
+                    {(editingReg.registration.payment_screenshot_path || '')
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                      .map((singlePath, idx) => (
+                        <div key={idx} className="screenshot-display-box" style={{ marginBottom: '16px' }}>
+                          <span
+                            className="screenshot-item-label"
+                            style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: 'var(--primary-light)' }}
+                          >
+                            {idx === 0
+                              ? '📄 Receipt 1 (Initial Payment)'
+                              : `📄 Receipt ${idx + 1} (Additional Payment / Extra Attendees)`}
+                          </span>
+                          {singlePath === 'manual-admin-entry' ? (
+                            <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', border: '1px dashed #6366f1', borderRadius: '8px', color: '#a5b4fc', fontSize: '0.85rem', textAlign: 'center' }}>
+                              ⚡ Manual Admin Entry (Direct verification, no screenshot uploaded)
+                            </div>
+                          ) : (
+                            <>
+                              <img
+                                src={getPublicScreenshotUrl(singlePath) || ''}
+                                alt={`Payment screenshot ${idx + 1}`}
+                                className="modal-screenshot-img"
+                                onLoad={() => {
+                                  console.log(`[UPI Ledger Screenshot Loaded OK]:`, singlePath);
+                                }}
+                                onError={(e) => {
+                                  console.error(`[UPI Ledger Screenshot Load Failed]:`, {
+                                    path: singlePath,
+                                    resolvedUrl: getPublicScreenshotUrl(singlePath),
+                                    event: e,
+                                  });
+                                }}
+                              />
+                              <a
+                                href={getPublicScreenshotUrl(singlePath) || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary btn-sm mt-3"
+                              >
+                                🔗 Open Original Screenshot #{idx + 1}
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      ))}
                   </div>
-                  <div className="modal-edit-receipt-img-wrap">
-                    <img
-                      src={getPublicScreenshotUrl(editingReg.registration.payment_screenshot_path) || ''}
-                      alt="Payment receipt preview"
-                      className="modal-edit-receipt-img"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="modal-no-receipt-note">ℹ️ No payment screenshot attached.</div>
-              )}
+                ) : (
+                  <p className="text-muted" style={{ padding: '8px 0', fontSize: '0.85rem' }}>
+                    No screenshot attached (attendance status: {editingReg.registration.attendance_status}).
+                  </p>
+                )}
+              </div>
 
               <div className="upi-modal-form">
                 <div className="upi-form-group">
