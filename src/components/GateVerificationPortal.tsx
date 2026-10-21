@@ -119,6 +119,39 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
   const scannerInstanceRef = useRef<Html5Qrcode | null>(null);
   const isVerifyingRef = useRef(false);
+  const statusResultRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll screen so the verification status is immediately visible
+  const scrollToStatus = () => {
+    const performScroll = () => {
+      if (statusResultRef.current) {
+        try {
+          statusResultRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        } catch (_) {}
+
+        // Fallback for mobile and emulation viewports
+        try {
+          const rect = statusResultRef.current.getBoundingClientRect();
+          const headerOffset = 85;
+          const targetY = window.pageYOffset + rect.top - headerOffset;
+          window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+        } catch (_) {}
+      }
+    };
+    requestAnimationFrame(performScroll);
+    setTimeout(performScroll, 50);
+    setTimeout(performScroll, 150);
+  };
+
+  // Scroll to status card whenever verifying starts or verification result arrives
+  useEffect(() => {
+    if (isVerifying || scanResult) {
+      scrollToStatus();
+    }
+  }, [isVerifying, scanResult]);
 
   // Discover available cameras
   useEffect(() => {
@@ -220,6 +253,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     if (isVerifyingRef.current) return;
     isVerifyingRef.current = true;
     setIsVerifying(true);
+    setScanResult(null);
+    scrollToStatus();
 
     // If scanning with camera, immediately stop to prevent duplicate scans
     if (mode === 'qr_scan') {
@@ -234,8 +269,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       }
       setScannerActive(false);
     }
-
-    setScanResult(null);
 
     try {
       const result = await verifyGateAttendee(phone, verifiedBy, mode);
@@ -256,6 +289,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       setTimeout(() => {
         isVerifyingRef.current = false;
       }, 600);
+      scrollToStatus();
     }
   };
 
@@ -565,28 +599,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       {/* 3. SUBTAB: QR Camera Scanner */}
       {activeSubTab === 'scanner' && (
         <div className="gate-scanner-section">
-          {!scannerActive ? (
-            <div className="scanner-start-box">
-              <div className="scanner-start-icon-ring">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </div>
-              <h3 className="scanner-start-title">Gate Camera Check-in</h3>
-              <p className="scanner-hint">
-                Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
-              </p>
-              <button
-                type="button"
-                onClick={() => setScannerActive(true)}
-                className="btn-large-camera"
-              >
-                <span>📷</span>
-                <span>Start Camera Scanner</span>
-              </button>
-            </div>
-          ) : (
+          {/* Active Camera Viewport */}
+          {scannerActive && (
             <div className="scanner-active-box">
               {/* Custom Dark-Themed Camera Bar */}
               <div className="scanner-top-bar">
@@ -680,9 +694,22 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             </div>
           )}
 
+          {/* In-Flight Verification Spinner Card */}
+          {isVerifying && (
+            <div ref={statusResultRef} className="gate-scan-result-card verifying">
+              <div className="result-content">
+                <div className="result-icon gate-scan-spinner-icon">🔄</div>
+                <div className="result-text">
+                  <h3 className="result-title">VERIFYING ATTENDEE...</h3>
+                  <p className="result-name">Checking registration &amp; payment status in real-time</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Verification Status Banner Alert */}
-          {scanResult && (
-            <div className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}>
+          {!isVerifying && scanResult && (
+            <div ref={statusResultRef} className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}>
               {scanResult.status === 'ENTERED' && (
                 <>
                   <div className="result-content success">
@@ -802,6 +829,55 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </div>
                 </>
               )}
+
+              {scanResult.status === 'ERROR' && (
+                <>
+                  <div className="result-content error">
+                    <div className="result-icon">⚠️</div>
+                    <div className="result-text">
+                      <h3 className="result-title">VERIFICATION ERROR</h3>
+                      <p className="result-detail">{scanResult.message || 'Verification failed. Please retry.'}</p>
+                    </div>
+                  </div>
+                  <div className="result-actions">
+                    <button
+                      type="button"
+                      className="btn-scan-next btn-error"
+                      onClick={() => {
+                        setScanResult(null);
+                        setScannerActive(true);
+                      }}
+                    >
+                      <span>📷</span>
+                      <span>Retry / Scan Next →</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* If scanner is inactive and no scan in-flight or result is present, show Camera Start button */}
+          {!scannerActive && !isVerifying && !scanResult && (
+            <div className="scanner-start-box">
+              <div className="scanner-start-icon-ring">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </div>
+              <h3 className="scanner-start-title">Gate Camera Check-in</h3>
+              <p className="scanner-hint">
+                Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
+              </p>
+              <button
+                type="button"
+                onClick={() => setScannerActive(true)}
+                className="btn-large-camera"
+              >
+                <span>📷</span>
+                <span>Start Camera Scanner</span>
+              </button>
             </div>
           )}
         </div>
@@ -839,7 +915,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
             {/* Same result feedback card */}
             {scanResult && (
-              <div className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`} style={{ marginTop: '1.25rem' }}>
+              <div
+                ref={statusResultRef}
+                className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}
+                style={{ marginTop: '1.25rem' }}
+              >
                 <div className="result-content">
                   <div className="result-icon">
                     {scanResult.status === 'ENTERED' ? '✅' : scanResult.status === 'ALREADY_ENTERED' ? '⚠️' : '❌'}

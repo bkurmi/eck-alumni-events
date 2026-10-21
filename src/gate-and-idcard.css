@@ -1842,6 +1842,7 @@
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
   box-sizing: border-box;
   animation: fadeInResult 0.25s ease-out;
+  scroll-margin-top: 85px;
 }
 
 @keyframes fadeInResult {
@@ -1852,6 +1853,29 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+.gate-scan-result-card.verifying {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.18) 0%, rgba(30, 58, 138, 0.3) 100%);
+  border: 2px solid #3b82f6;
+}
+
+.gate-scan-result-card.verifying .result-title {
+  color: #60a5fa;
+}
+
+.gate-scan-spinner-icon {
+  display: inline-block;
+  animation: spinGate 1s linear infinite;
+}
+
+@keyframes spinGate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -2950,6 +2974,7 @@
     padding: 1.15rem 1rem !important;
     border-radius: 1rem !important;
     width: 100% !important;
+    scroll-margin-top: 80px !important;
   }
 
   .result-content {
