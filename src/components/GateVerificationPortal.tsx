@@ -4,7 +4,9 @@ import {
   verifyGateAttendee,
   spotRegisterAtGate,
   fetchGateEntries,
+  fetchGateStats,
   isAdminGatePortalEnabled,
+  type GatePortalStats,
 } from '../lib/gate';
 import { cleanMobileNumber } from '../lib/registrations';
 import { calculateContribution } from '../lib/pricing';
@@ -31,6 +33,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'manual' | 'spot' | 'log'>('scanner');
   const [gateEntries, setGateEntries] = useState<GateEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
+  const [rpcStats, setRpcStats] = useState<GatePortalStats | null>(null);
 
   // Scanner & Verification State
   const [scannerActive, setScannerActive] = useState(false);
@@ -137,14 +140,20 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       });
   }, []);
 
-  // Load gate entries on mount and whenever refreshed
+  // Load gate entries & aggregated live stats on mount and whenever refreshed
   const loadGateEntries = async () => {
     setLoadingEntries(true);
     try {
-      const data = await fetchGateEntries();
-      setGateEntries(data);
+      const [entriesData, statsData] = await Promise.all([
+        fetchGateEntries(),
+        fetchGateStats(),
+      ]);
+      setGateEntries(entriesData);
+      if (statsData) {
+        setRpcStats(statsData);
+      }
     } catch (err) {
-      console.warn('Failed to fetch gate entries:', err);
+      console.warn('Failed to fetch gate entries or live stats:', err);
     } finally {
       setLoadingEntries(false);
     }
@@ -156,6 +165,30 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
   // Compute live gate statistics (Requirement #9)
   const stats = React.useMemo(() => {
+    // If live aggregated stats were loaded from the database RPC, use them!
+    if (rpcStats && (registrations.length === 0 || rpcStats.totalRegistered > 0)) {
+      const totalVerifiedAtGate = Math.max(rpcStats.totalVerifiedAtGate, gateEntries.length);
+      const totalHeadsInside = Math.max(
+        rpcStats.totalHeadsInside,
+        gateEntries.reduce((sum, entry) => sum + (entry.accompanying_count || 1), 0)
+      );
+      const turnoutPercent =
+        rpcStats.totalPaid > 0
+          ? Math.round((totalVerifiedAtGate / rpcStats.totalPaid) * 100)
+          : 0;
+
+      return {
+        totalRegistered: rpcStats.totalRegistered,
+        totalPaid: rpcStats.totalPaid,
+        totalNotPaid: rpcStats.totalNotPaid,
+        totalIdCardsGenerated: rpcStats.totalIdCardsGenerated,
+        totalVerifiedAtGate,
+        totalHeadsInside,
+        turnoutPercent,
+      };
+    }
+
+    // Fallback: Compute from registrations prop (e.g. in Admin Portal when logged in)
     const totalRegistered = registrations.length;
     const paidRegistrations = registrations.filter(
       (r) =>
@@ -180,7 +213,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       totalHeadsInside,
       turnoutPercent,
     };
-  }, [registrations, gateEntries]);
+  }, [registrations, gateEntries, rpcStats]);
 
   // Handle QR scanning logic
   const handleVerifyPhone = async (phone: string, mode: 'qr_scan' | 'manual_phone' = 'qr_scan') => {

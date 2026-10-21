@@ -41,16 +41,26 @@ export const GatePage: React.FC = () => {
   // Fetch registrations once authorized
   const fetchRegistrations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('event_registrations')
-        .select(`
-          *,
-          alumni:alumni_id (*)
-        `)
-        .order('created_at', { ascending: false });
+      const [regRes, verifRes] = await Promise.all([
+        supabase
+          .from('event_registrations')
+          .select(`
+            *,
+            alumni:alumni_id (*)
+          `)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('payment_verifications')
+          .select('registration_id, verified_status'),
+      ]);
 
-      if (!error && data) {
-        setRegistrations(data as any);
+      if (!regRes.error && regRes.data) {
+        const list = regRes.data as any[];
+        const verifList = (verifRes.data as any[]) || [];
+        list.forEach((reg) => {
+          reg.payment_verifications = verifList.filter((v) => v.registration_id === reg.id);
+        });
+        setRegistrations(list);
       }
     } catch (err) {
       console.warn('Failed to fetch event registrations for gate counter:', err);

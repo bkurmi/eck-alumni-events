@@ -429,3 +429,32 @@ export async function fetchGateEntries(): Promise<GateEntry[]> {
     return [];
   }
 }
+
+export interface GatePortalStats {
+  totalRegistered: number;
+  totalPaid: number;
+  totalNotPaid: number;
+  totalIdCardsGenerated: number;
+  totalVerifiedAtGate: number;
+  totalHeadsInside: number;
+  turnoutPercent: number;
+}
+
+/**
+ * Fetch aggregated gate dashboard statistics directly via high-speed RPC
+ * Works seamlessly for both PIN-authenticated gate staff (anon) and Admin.
+ */
+export async function fetchGateStats(): Promise<GatePortalStats | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_gate_dashboard_stats');
+    if (!error && data) {
+      return data as GatePortalStats;
+    }
+    if (error) {
+      console.warn('RPC get_gate_dashboard_stats notice:', error.message);
+    }
+  } catch (err) {
+    console.warn('fetchGateStats exception:', err);
+  }
+  return null;
+}
