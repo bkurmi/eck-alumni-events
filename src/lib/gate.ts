@@ -358,6 +358,54 @@ export async function verifyGateAttendee(
 }
 
 /**
+ * Upload compressed spot payment proof screenshot to 'payment-screenshots' bucket
+ */
+export async function uploadSpotPaymentScreenshot(
+  file: File,
+  mobile: string
+): Promise<string | null> {
+  try {
+    const compressedBlob = await compressAttendeePhoto(file);
+    const cleanMobile = mobile.replace(/\D/g, '') || 'nomobile';
+    const filePath = `deepaura-2k26/spot_${cleanMobile}_${Date.now()}.jpg`;
+
+    const { data, error } = await supabase.storage
+      .from('payment-screenshots')
+      .upload(filePath, compressedBlob, {
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('[Gate Spot Screenshot Upload Warning]:', error);
+      return null;
+    }
+    return data?.path || filePath;
+  } catch (err) {
+    console.warn('[Gate Spot Storage Exception]:', err);
+    return null;
+  }
+}
+
+/**
+ * Attach uploaded screenshot path to existing event_registrations record
+ */
+export async function attachSpotPaymentScreenshot(
+  registrationId: string,
+  screenshotPath: string
+): Promise<void> {
+  try {
+    await supabase
+      .from('event_registrations')
+      .update({ payment_screenshot_path: screenshotPath })
+      .eq('id', registrationId);
+  } catch (err) {
+    console.warn('[attachSpotPaymentScreenshot warning]:', err);
+  }
+}
+
+/**
  * Quick spot registration at gate
  */
 export async function spotRegisterAtGate(params: {

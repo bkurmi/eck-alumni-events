@@ -3,6 +3,8 @@ import { Html5Qrcode } from 'html5-qrcode';
 import {
   verifyGateAttendee,
   spotRegisterAtGate,
+  uploadSpotPaymentScreenshot,
+  attachSpotPaymentScreenshot,
   fetchGateEntries,
   fetchGateStats,
   isAdminGatePortalEnabled,
@@ -80,10 +82,16 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [spotAmount, setSpotAmount] = useState(800);
   const [spotSubmitting, setSpotSubmitting] = useState(false);
-  const [spotSuccessData, setSpotSuccessData] = useState<any | null>(null);
+  const [spotScanResult, setSpotScanResult] = useState<GateVerificationResult | null>(null);
+  const [spotPhotoFile, setSpotPhotoFile] = useState<File | null>(null);
+  const [spotPhotoPreview, setSpotPhotoPreview] = useState<string | null>(null);
   const [preloadNotice, setPreloadNotice] = useState<string | null>(null);
   const [spotErrors, setSpotErrors] = useState<Record<string, boolean>>({});
   const [spotFormErrorMsg, setSpotFormErrorMsg] = useState<string | null>(null);
+
+  // Input refs for Spot photo capture
+  const spotCameraInputRef = useRef<HTMLInputElement | null>(null);
+  const spotFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Currently selected UPI configuration (if paying via QR)
   const selectedUpiConfig = React.useMemo(() => {
@@ -154,10 +162,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
   // Scroll to status card whenever verifying starts or verification result arrives
   useEffect(() => {
-    if (isVerifying || scanResult) {
+    if (isVerifying || scanResult || spotScanResult) {
       scrollToStatus();
     }
-  }, [isVerifying, scanResult]);
+  }, [isVerifying, scanResult, spotScanResult]);
 
   // Discover available cameras
   useEffect(() => {
@@ -629,21 +637,35 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     setSpotFormErrorMsg(null);
 
     const isUpi = Boolean(selectedUpiConfig);
-    if (isUpi && !paymentConfirmed) {
-      const ok = window.confirm(
-        `Please confirm: Has the ₹${spotAmount} payment been received on ${selectedUpiConfig?.account_name}'s UPI (${selectedUpiConfig?.upi_id})?\n\nClick OK if payment is confirmed to complete gate entry.`
-      );
-      if (!ok) return;
+    if (isUpi && !spotPhotoFile && !paymentConfirmed) {
+      setSpotFormErrorMsg("Please snap the attendee's payment screen or confirm payment before submitting.");
+      return;
+    }
+
+    if (spotPaymentMode === 'CASH' && !paymentConfirmed) {
+      setSpotFormErrorMsg('Please verify that cash has been collected in hand before submitting.');
+      return;
     }
 
     setSpotSubmitting(true);
-    setSpotSuccessData(null);
+    setSpotScanResult(null);
+
+    // 1. Upload payment screenshot to storage if captured
+    let uploadedScreenshotPath: string | null = null;
+    if (spotPhotoFile) {
+      try {
+        uploadedScreenshotPath = await uploadSpotPaymentScreenshot(spotPhotoFile, spotMobile);
+      } catch (uploadErr) {
+        console.warn('Screenshot upload issue, proceeding with registration:', uploadErr);
+      }
+    }
 
     const effectiveAmount = spotPaymentMode === 'COMPLIMENTARY' ? 0 : spotAmount;
     const verifiedByNote = isUpi
-      ? `${verifiedBy} (UPI Verified: ${selectedUpiConfig?.account_name})`
+      ? `${verifiedBy} (UPI: ${selectedUpiConfig?.account_name}${uploadedScreenshotPath ? ' [Proof Attached]' : ''})`
       : verifiedBy;
 
+    // 2. Perform spot registration at gate
     const res = await spotRegisterAtGate({
       name: spotName.trim(),
       mobile: spotMobile.trim(),
@@ -655,10 +677,30 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       verifiedBy: verifiedByNote,
     });
 
+    // 3. Attach uploaded screenshot path to existing registration record
+    if (res.success && res.data?.registration_id && uploadedScreenshotPath) {
+      await attachSpotPaymentScreenshot(res.data.registration_id, uploadedScreenshotPath);
+    }
+
     setSpotSubmitting(false);
 
-    if (res.success) {
-      setSpotSuccessData(res.data);
+    if (res.success && res.data) {
+      setSpotScanResult({
+        success: true,
+        status: 'ENTERED',
+        message: 'Spot Registration & Gate Entry Complete!',
+        registration_id: res.data.registration_id,
+        registration_number: res.data.registration_number,
+        attendee_name: res.data.attendee_name,
+        phone_number: res.data.phone_number,
+        branch: res.data.branch,
+        year_of_passing: res.data.year_of_passing,
+        number_of_attendees: res.data.number_of_attendees,
+        amount: res.data.amount,
+        badge_category: 'Alumnus',
+        verified_by: verifiedByNote,
+      });
+
       // Reset form
       setSpotName('');
       setSpotMobile('');
@@ -672,13 +714,23 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       setShowKidsBreakdown(false);
       setSpotPaymentMode('');
       setPaymentConfirmed(false);
+      setSpotPhotoFile(null);
+      if (spotPhotoPreview) {
+        URL.revokeObjectURL(spotPhotoPreview);
+      }
+      setSpotPhotoPreview(null);
       setSpotErrors({});
       setSpotFormErrorMsg(null);
-      // Refresh entries
+      // Refresh entries & stats
       await loadGateEntries();
       onRefreshRegistrations();
     } else {
-      alert(res.error || 'Failed to complete spot registration.');
+      setSpotScanResult({
+        success: false,
+        status: 'ERROR',
+        message: res.error || 'Failed to complete spot registration.',
+        attendee_name: spotName.trim(),
+      });
     }
   };
 
@@ -1519,17 +1571,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </div>
             </div>
 
-            {spotSuccessData && (
-              <div className="spot-success-banner">
-                <span className="success-icon">🎉</span>
-                <div>
-                  <h4>Spot Registration & Gate Entry Complete!</h4>
-                  <p>
-                    <strong>{spotSuccessData.attendee_name}</strong> ({spotSuccessData.registration_number}) is registered and marked entered!
-                  </p>
-                </div>
-              </div>
-            )}
 
             {preloadNotice && (
               <div className="spot-prefill-banner">
@@ -1872,28 +1913,160 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         </span>
                       </div>
 
-                      {/* Confirmation Toggle Box */}
-                      <div
-                        className={`spot-payment-confirm-card ${paymentConfirmed ? 'confirmed' : ''}`}
-                        onClick={() => setPaymentConfirmed(!paymentConfirmed)}
-                      >
+                      {/* Live Camera Photo Snap for UPI Payment Confirmation */}
+                      <div className="spot-upi-proof-section">
                         <input
-                          type="checkbox"
-                          id="spot-confirm-checkbox"
-                          checked={paymentConfirmed}
-                          onChange={(e) => setPaymentConfirmed(e.target.checked)}
-                          onClick={(e) => e.stopPropagation()}
+                          ref={spotCameraInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          style={{ display: 'none' }}
+                          id="spot-camera-capture-input"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setSpotPhotoFile(file);
+                              setSpotPhotoPreview(URL.createObjectURL(file));
+                              setPaymentConfirmed(true);
+                              clearSpotError('paymentMode');
+                            }
+                          }}
                         />
-                        <label htmlFor="spot-confirm-checkbox" className="confirm-label">
-                          <strong>Payment Received &amp; Verified on Screen</strong>
-                          <span>
-                            {paymentConfirmed
-                              ? `✅ Confirmed: ₹${spotAmount} paid to ${selectedUpiConfig.account_name}`
-                              : `Check this once alumnus shows the ₹${spotAmount} successful payment screen.`}
-                          </span>
-                        </label>
+                        <input
+                          ref={spotFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          id="spot-file-upload-input"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setSpotPhotoFile(file);
+                              setSpotPhotoPreview(URL.createObjectURL(file));
+                              setPaymentConfirmed(true);
+                              clearSpotError('paymentMode');
+                            }
+                          }}
+                        />
+
+                        {!spotPhotoPreview ? (
+                          <div className="spot-photo-capture-box">
+                            <button
+                              type="button"
+                              className="btn-snap-payment"
+                              onClick={() => spotCameraInputRef.current?.click()}
+                            >
+                              <span className="snap-camera-icon">📸</span>
+                              <div className="snap-btn-text">
+                                <strong>Snap Attendee's Payment Screen</strong>
+                                <span>Point mobile camera at alumnus's phone to capture payment confirmation</span>
+                              </div>
+                            </button>
+
+                            <div className="snap-alt-actions">
+                              <button
+                                type="button"
+                                className="btn-snap-alt-link"
+                                onClick={() => spotFileInputRef.current?.click()}
+                              >
+                                📁 Choose from files
+                              </button>
+                              <span className="snap-divider">•</span>
+                              <button
+                                type="button"
+                                className="btn-snap-alt-link"
+                                onClick={() => setPaymentConfirmed(!paymentConfirmed)}
+                              >
+                                {paymentConfirmed ? '✓ Confirmed on Screen' : 'Verify manually without photo'}
+                              </button>
+                            </div>
+
+                            {paymentConfirmed && (
+                              <div className="manual-verified-badge">
+                                <span>✓ Payment verified on alumnus screen (no photo attached)</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="spot-photo-preview-card">
+                            <div className="preview-thumb-col">
+                              <img
+                                src={spotPhotoPreview}
+                                alt="Payment Confirmation Screen"
+                                className="spot-proof-img"
+                              />
+                              <span className="proof-status-chip">✓ Photo Attached</span>
+                            </div>
+                            <div className="preview-meta-col">
+                              <strong className="preview-title">Payment Screen Captured</strong>
+                              <span className="preview-filename">{spotPhotoFile?.name || 'Live Photo Capture'}</span>
+                              <span className="preview-filesize">
+                                {spotPhotoFile ? `${(spotPhotoFile.size / 1024).toFixed(0)} KB • Ready to save` : ''}
+                              </span>
+                              <div className="preview-btn-row">
+                                <button
+                                  type="button"
+                                  className="btn-retake-snap"
+                                  onClick={() => spotCameraInputRef.current?.click()}
+                                >
+                                  📸 Retake Photo
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-delete-snap"
+                                  onClick={() => {
+                                    if (spotPhotoPreview) URL.revokeObjectURL(spotPhotoPreview);
+                                    setSpotPhotoFile(null);
+                                    setSpotPhotoPreview(null);
+                                    setPaymentConfirmed(false);
+                                  }}
+                                >
+                                  ✕ Remove
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* CASH PAYMENT CONFIRMATION CARD */}
+              {spotPaymentMode === 'CASH' && (
+                <div className="spot-cash-payment-card">
+                  <div className="cash-card-header">
+                    <span className="cash-card-icon">💵</span>
+                    <div className="cash-card-info">
+                      <h4>Cash Collection at Gate Desk</h4>
+                      <p>Collect ₹{spotAmount} cash in hand from alumnus before admitting entry.</p>
+                    </div>
+                    <div className="cash-amount-badge">
+                      <span className="lbl">Amount</span>
+                      <span className="val">₹{spotAmount}</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`spot-payment-confirm-card ${paymentConfirmed ? 'confirmed' : ''}`}
+                    onClick={() => setPaymentConfirmed(!paymentConfirmed)}
+                  >
+                    <input
+                      type="checkbox"
+                      id="spot-cash-checkbox"
+                      checked={paymentConfirmed}
+                      onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <label htmlFor="spot-cash-checkbox" className="confirm-label">
+                      <strong>Cash Received in Hand</strong>
+                      <span>
+                        {paymentConfirmed
+                          ? `✅ Confirmed: ₹${spotAmount} cash collected at gate desk`
+                          : `Check this once alumnus hands over ₹${spotAmount} in cash.`}
+                      </span>
+                    </label>
                   </div>
                 </div>
               )}
@@ -1916,6 +2089,80 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 </button>
               </div>
             </form>
+
+            {/* Consistent QR Code Scan Result Card Experience at Bottom */}
+            {spotScanResult && (
+              <div
+                ref={statusResultRef}
+                className={`gate-scan-result-card ${spotScanResult.status.toLowerCase()}`}
+                style={{ marginTop: '1.25rem', width: '100%', maxWidth: '100%' }}
+              >
+                {spotScanResult.status === 'ENTERED' && (
+                  <>
+                    <div className="result-content success">
+                      <div className="result-icon">✅</div>
+                      <div className="result-text">
+                        <h3 className="result-title">VERIFIED SUCCESSFULLY</h3>
+                        <p className="result-name">{spotScanResult.attendee_name}</p>
+                        <div className="result-badges">
+                          <span className="result-pill">{spotScanResult.registration_number}</span>
+                          <span className="result-pill">
+                            {spotScanResult.branch} ({spotScanResult.year_of_passing})
+                          </span>
+                          <span className="result-pill count-pill">
+                            👥 {spotScanResult.number_of_attendees || 1} Attendees Allowed
+                          </span>
+                          <span className="result-pill spot-verified-pill">
+                            ⚡ Spot Entry Admitted
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSpotScanResult(null);
+                          const mobileInput = document.getElementById('spot-mobile');
+                          if (mobileInput) mobileInput.focus();
+                        }}
+                        className="btn-scan-next btn-success"
+                      >
+                        <span>⚡</span>
+                        <span>Register Next Walk-in Attendee →</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {spotScanResult.status === 'ERROR' && (
+                  <>
+                    <div className="result-content error">
+                      <div className="result-icon">❌</div>
+                      <div className="result-text">
+                        <h3 className="result-title">REGISTRATION FAILED</h3>
+                        <p className="result-detail">{spotScanResult.message}</p>
+                        {spotScanResult.attendee_name && (
+                          <p className="result-sub">
+                            Attendee: <strong>{spotScanResult.attendee_name}</strong>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        type="button"
+                        onClick={() => setSpotScanResult(null)}
+                        className="btn-scan-next btn-error"
+                      >
+                        <span>✕</span>
+                        <span>Dismiss &amp; Try Again</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
