@@ -550,6 +550,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       <div
         key={item.registration.id}
         className={`upi-m-card ${isUnassigned ? 'upi-m-card-unassigned' : 'upi-m-card-tagged'}`}
+        onClick={() => handleOpenEdit(item)}
+        style={{ cursor: 'pointer' }}
+        title="Tap to view & edit details"
       >
         {/* Card Header: Index, Reg ID, Date, Amount */}
         <div className="upi-m-card-header">
@@ -610,7 +613,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           </div>
           <button
             type="button"
-            onClick={() => handleOpenEdit(item)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenEdit(item);
+            }}
             className="upi-m-edit-btn"
             title="Edit Receiving UPI Account"
             aria-label="Edit UPI Account"
@@ -1045,7 +1051,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               </thead>
               <tbody>
                 {filteredList.map((item, idx) => (
-                  <tr key={item.registration.id}>
+                  <tr
+                    key={item.registration.id}
+                    onClick={() => handleOpenEdit(item)}
+                    style={{ cursor: 'pointer' }}
+                    title="Click to view & edit details"
+                  >
                     <td className="cell-muted font-mono" style={{ textAlign: 'center', padding: '6px 2px' }}>
                       {idx + 1}
                     </td>
@@ -1075,7 +1086,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                     <td style={{ textAlign: 'center', padding: '6px 2px' }}>
                       <button
                         type="button"
-                        onClick={() => handleOpenEdit(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEdit(item);
+                        }}
                         className="btn-edit-compact"
                         title="Edit UPI account and payment details"
                         aria-label="Edit UPI account"
@@ -1180,6 +1194,30 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   ₹{editingReg.registration.amount}
                 </span>
               </div>
+
+              {/* Additional Notes Display in Text Format */}
+              {editingReg.verification?.notes && (
+                <div
+                  className="upi-modal-notes-display"
+                  style={{
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    marginTop: '12px',
+                    marginBottom: '16px',
+                    fontSize: '0.88rem',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <strong style={{ color: 'var(--accent, #f59e0b)', display: 'block', marginBottom: '4px' }}>
+                    📝 Additional Notes:
+                  </strong>
+                  <div style={{ color: 'var(--text-main, #fff)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {editingReg.verification.notes}
+                  </div>
+                </div>
+              )}
 
               {/* Payment Screenshot Display */}
               <div className="modal-screenshot-section" style={{ marginBottom: '20px' }}>

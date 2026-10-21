@@ -258,6 +258,11 @@ export const AdminPage: React.FC = () => {
       `👥 *Attendees:* ${count} ${count === 1 ? 'Person' : 'People'}${count > 1 ? ` (Self + ${count - 1} accompanying)` : ''}`,
       `✨ *Attendance Status:* ${status.toUpperCase()}`,
       reg.attendance_status === 'yes' ? `💰 *Contribution:* ₹${reg.amount}` : '',
+      (() => {
+        const verif = verifications.find((v) => v.registration_id === reg.id) || reg.payment_verifications?.[0];
+        const n = verif?.notes || (reg as any).notes;
+        return n ? `📝 *Notes:* ${n}` : '';
+      })(),
       '',
       '━━━━━━━━━━━━━━━━━━━━━',
       `📅 *Date:* ${eventDate}`,
@@ -898,17 +903,56 @@ export const AdminPage: React.FC = () => {
                     ₹{selectedReg.amount}
                   </span>
                 </div>
+
+                {(() => {
+                  const regVerif =
+                    verifications.find((v) => v.registration_id === selectedReg.id) ||
+                    selectedReg.payment_verifications?.[0];
+                  if (!regVerif?.upi_id) return null;
+                  return (
+                    <div className="modal-detail-item">
+                      <span className="modal-label">Credited UPI Account</span>
+                      <span className="modal-val font-mono" style={{ color: 'var(--primary-light)' }}>
+                        {regVerif.upi_id}
+                        {regVerif.verified_by ? ` (by ${regVerif.verified_by})` : ''}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {(() => {
+                  const regVerif =
+                    verifications.find((v) => v.registration_id === selectedReg.id) ||
+                    selectedReg.payment_verifications?.[0];
+                  const addlNotes = regVerif?.notes || (selectedReg as any).notes;
+                  if (!addlNotes) return null;
+                  return (
+                    <div className="modal-detail-item" style={{ gridColumn: '1 / -1' }}>
+                      <span className="modal-label">📝 Additional Notes</span>
+                      <div
+                        className="modal-val font-normal"
+                        style={{
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          borderRadius: '8px',
+                          padding: '10px 14px',
+                          color: 'var(--text-main, #fff)',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          fontSize: '0.88rem',
+                          lineHeight: 1.5,
+                          marginTop: '4px',
+                        }}
+                      >
+                        {addlNotes}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Single Share Action Bar */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleShareSingleAlumnus(selectedReg)}
-                  className="btn btn-whatsapp-primary btn-sm"
-                >
-                  💬 Share Details on WhatsApp
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                 <button
                   type="button"
                   onClick={() => handleCopySingleAlumnus(selectedReg)}
