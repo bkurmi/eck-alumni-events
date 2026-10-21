@@ -258,6 +258,11 @@ export const AdminPage: React.FC = () => {
       `👥 *Attendees:* ${count} ${count === 1 ? 'Person' : 'People'}${count > 1 ? ` (Self + ${count - 1} accompanying)` : ''}`,
       `✨ *Attendance Status:* ${status.toUpperCase()}`,
       reg.attendance_status === 'yes' ? `💰 *Contribution:* ₹${reg.amount}` : '',
+      (() => {
+        const verif = verifications.find((v) => v.registration_id === reg.id) || reg.payment_verifications?.[0];
+        const n = verif?.notes || (reg as any).notes;
+        return n ? `📝 *Notes:* ${n}` : '';
+      })(),
       '',
       '━━━━━━━━━━━━━━━━━━━━━',
       `📅 *Date:* ${eventDate}`,
@@ -395,10 +400,12 @@ export const AdminPage: React.FC = () => {
 
   const getPublicScreenshotUrl = (path: string | null) => {
     if (!path) return null;
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(path);
+    const cleanPath = path.trim();
+    if (!cleanPath || cleanPath === 'manual-admin-entry') return null;
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
+    const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
     const resolvedUrl = data?.publicUrl || null;
-    console.log('[Admin Portal Screenshot URL]', { path, resolvedUrl });
+    console.log('[Admin Portal Screenshot URL]', { path: cleanPath, resolvedUrl });
     return resolvedUrl;
   };
 
@@ -896,17 +903,56 @@ export const AdminPage: React.FC = () => {
                     ₹{selectedReg.amount}
                   </span>
                 </div>
+
+                {(() => {
+                  const regVerif =
+                    verifications.find((v) => v.registration_id === selectedReg.id) ||
+                    selectedReg.payment_verifications?.[0];
+                  if (!regVerif?.upi_id) return null;
+                  return (
+                    <div className="modal-detail-item">
+                      <span className="modal-label">Credited UPI Account</span>
+                      <span className="modal-val font-mono" style={{ color: 'var(--primary-light)' }}>
+                        {regVerif.upi_id}
+                        {regVerif.verified_by ? ` (by ${regVerif.verified_by})` : ''}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {(() => {
+                  const regVerif =
+                    verifications.find((v) => v.registration_id === selectedReg.id) ||
+                    selectedReg.payment_verifications?.[0];
+                  const addlNotes = regVerif?.notes || (selectedReg as any).notes;
+                  if (!addlNotes) return null;
+                  return (
+                    <div className="modal-detail-item" style={{ gridColumn: '1 / -1' }}>
+                      <span className="modal-label">📝 Additional Notes</span>
+                      <div
+                        className="modal-val font-normal"
+                        style={{
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          borderRadius: '8px',
+                          padding: '10px 14px',
+                          color: 'var(--text-main, #fff)',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          fontSize: '0.88rem',
+                          lineHeight: 1.5,
+                          marginTop: '4px',
+                        }}
+                      >
+                        {addlNotes}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Single Share Action Bar */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleShareSingleAlumnus(selectedReg)}
-                  className="btn btn-whatsapp-primary btn-sm"
-                >
-                  💬 Share Details on WhatsApp
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                 <button
                   type="button"
                   onClick={() => handleCopySingleAlumnus(selectedReg)}
@@ -940,29 +986,37 @@ export const AdminPage: React.FC = () => {
                               ? '📄 Receipt 1 (Initial Payment)'
                               : `📄 Receipt ${idx + 1} (Additional Payment / Extra Attendees)`}
                           </span>
-                          <img
-                            src={getPublicScreenshotUrl(singlePath) || ''}
-                            alt={`Payment screenshot ${idx + 1}`}
-                            className="modal-screenshot-img"
-                            onLoad={() => {
-                              console.log(`[Admin Portal Screenshot Loaded OK]:`, singlePath);
-                            }}
-                            onError={(e) => {
-                              console.error(`[Admin Portal Screenshot Load Failed]:`, {
-                                path: singlePath,
-                                resolvedUrl: getPublicScreenshotUrl(singlePath),
-                                event: e,
-                              });
-                            }}
-                          />
-                          <a
-                            href={getPublicScreenshotUrl(singlePath) || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-secondary btn-sm mt-3"
-                          >
-                            🔗 Open Original Screenshot #{idx + 1}
-                          </a>
+                          {singlePath === 'manual-admin-entry' ? (
+                            <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', border: '1px dashed #6366f1', borderRadius: '8px', color: '#a5b4fc', fontSize: '0.85rem', textAlign: 'center' }}>
+                              ⚡ Manual Admin Entry (Direct verification, no screenshot uploaded)
+                            </div>
+                          ) : (
+                            <>
+                              <img
+                                src={getPublicScreenshotUrl(singlePath) || ''}
+                                alt={`Payment screenshot ${idx + 1}`}
+                                className="modal-screenshot-img"
+                                onLoad={() => {
+                                  console.log(`[Admin Portal Screenshot Loaded OK]:`, singlePath);
+                                }}
+                                onError={(e) => {
+                                  console.error(`[Admin Portal Screenshot Load Failed]:`, {
+                                    path: singlePath,
+                                    resolvedUrl: getPublicScreenshotUrl(singlePath),
+                                    event: e,
+                                  });
+                                }}
+                              />
+                              <a
+                                href={getPublicScreenshotUrl(singlePath) || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary btn-sm mt-3"
+                              >
+                                🔗 Open Original Screenshot #{idx + 1}
+                              </a>
+                            </>
+                          )}
                         </div>
                       ))}
                   </div>

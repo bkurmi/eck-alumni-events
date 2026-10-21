@@ -160,7 +160,7 @@ export async function uploadAndSaveAttendeePhoto(
       });
     }
 
-    // 2. Update registration record with photo_url and id_card_generated
+    // 2. Update registration record with photo_url
     try {
       const { error: rpcError } = await supabase.rpc('update_attendee_photo_card', {
         p_registration_id: registrationId,
@@ -173,8 +173,6 @@ export async function uploadAndSaveAttendeePhoto(
           .from('event_registrations')
           .update({
             photo_url: photoUrl,
-            id_card_generated: true,
-            id_card_generated_at: new Date().toISOString(),
           })
           .eq('id', registrationId);
       }
@@ -427,5 +425,63 @@ export async function fetchGateEntries(): Promise<GateEntry[]> {
   } catch (err) {
     console.warn('fetchGateEntries exception:', err);
     return [];
+  }
+}
+
+export interface GatePortalStats {
+  totalRegistered: number;
+  totalPaid: number;
+  totalNotPaid: number;
+  totalIdCardsGenerated: number;
+  totalVerifiedAtGate: number;
+  totalHeadsInside: number;
+  turnoutPercent: number;
+}
+
+/**
+ * Fetch aggregated gate dashboard statistics directly via high-speed RPC
+ * Works seamlessly for both PIN-authenticated gate staff (anon) and Admin.
+ */
+export async function fetchGateStats(): Promise<GatePortalStats | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_gate_dashboard_stats');
+    if (!error && data) {
+      return data as GatePortalStats;
+    }
+    if (error) {
+      console.warn('RPC get_gate_dashboard_stats notice:', error.message);
+    }
+  } catch (err) {
+    console.warn('fetchGateStats exception:', err);
+  }
+  return null;
+}
+
+/**
+ * Marks an attendee's ID card / pass as downloaded in the database.
+ * Explicitly triggered when the attendee clicks the "Download Pass" button.
+ */
+export async function markIdCardDownloaded(registrationId: string): Promise<boolean> {
+  if (!registrationId) return false;
+  try {
+    // 1. Try dedicated RPC
+    const { error: rpcError } = await supabase.rpc('mark_id_card_downloaded', {
+      p_registration_id: registrationId,
+    });
+    if (!rpcError) return true;
+
+    // 2. Fallback direct table update
+    const { error } = await supabase
+      .from('event_registrations')
+      .update({
+        id_card_generated: true,
+        id_card_generated_at: new Date().toISOString(),
+      })
+      .eq('id', registrationId);
+
+    return !error;
+  } catch (err) {
+    console.warn('markIdCardDownloaded notice:', err);
+    return false;
   }
 }

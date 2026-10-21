@@ -4,7 +4,9 @@ import {
   verifyGateAttendee,
   spotRegisterAtGate,
   fetchGateEntries,
+  fetchGateStats,
   isAdminGatePortalEnabled,
+  type GatePortalStats,
 } from '../lib/gate';
 import { cleanMobileNumber } from '../lib/registrations';
 import { calculateContribution } from '../lib/pricing';
@@ -31,6 +33,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'manual' | 'spot' | 'log'>('scanner');
   const [gateEntries, setGateEntries] = useState<GateEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
+  const [rpcStats, setRpcStats] = useState<GatePortalStats | null>(null);
 
   // Scanner & Verification State
   const [scannerActive, setScannerActive] = useState(false);
@@ -116,6 +119,39 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
   const scannerInstanceRef = useRef<Html5Qrcode | null>(null);
   const isVerifyingRef = useRef(false);
+  const statusResultRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll screen so the verification status is immediately visible
+  const scrollToStatus = () => {
+    const performScroll = () => {
+      if (statusResultRef.current) {
+        try {
+          statusResultRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        } catch (_) {}
+
+        // Fallback for mobile and emulation viewports
+        try {
+          const rect = statusResultRef.current.getBoundingClientRect();
+          const headerOffset = 85;
+          const targetY = window.pageYOffset + rect.top - headerOffset;
+          window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+        } catch (_) {}
+      }
+    };
+    requestAnimationFrame(performScroll);
+    setTimeout(performScroll, 50);
+    setTimeout(performScroll, 150);
+  };
+
+  // Scroll to status card whenever verifying starts or verification result arrives
+  useEffect(() => {
+    if (isVerifying || scanResult) {
+      scrollToStatus();
+    }
+  }, [isVerifying, scanResult]);
 
   // Discover available cameras
   useEffect(() => {
@@ -137,14 +173,20 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       });
   }, []);
 
-  // Load gate entries on mount and whenever refreshed
+  // Load gate entries & aggregated live stats on mount and whenever refreshed
   const loadGateEntries = async () => {
     setLoadingEntries(true);
     try {
-      const data = await fetchGateEntries();
-      setGateEntries(data);
+      const [entriesData, statsData] = await Promise.all([
+        fetchGateEntries(),
+        fetchGateStats(),
+      ]);
+      setGateEntries(entriesData);
+      if (statsData) {
+        setRpcStats(statsData);
+      }
     } catch (err) {
-      console.warn('Failed to fetch gate entries:', err);
+      console.warn('Failed to fetch gate entries or live stats:', err);
     } finally {
       setLoadingEntries(false);
     }
@@ -156,6 +198,30 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
   // Compute live gate statistics (Requirement #9)
   const stats = React.useMemo(() => {
+    // If live aggregated stats were loaded from the database RPC, use them!
+    if (rpcStats && (registrations.length === 0 || rpcStats.totalRegistered > 0)) {
+      const totalVerifiedAtGate = Math.max(rpcStats.totalVerifiedAtGate, gateEntries.length);
+      const totalHeadsInside = Math.max(
+        rpcStats.totalHeadsInside,
+        gateEntries.reduce((sum, entry) => sum + (entry.accompanying_count || 1), 0)
+      );
+      const turnoutPercent =
+        rpcStats.totalPaid > 0
+          ? Math.round((totalVerifiedAtGate / rpcStats.totalPaid) * 100)
+          : 0;
+
+      return {
+        totalRegistered: rpcStats.totalRegistered,
+        totalPaid: rpcStats.totalPaid,
+        totalNotPaid: rpcStats.totalNotPaid,
+        totalIdCardsGenerated: rpcStats.totalIdCardsGenerated,
+        totalVerifiedAtGate,
+        totalHeadsInside,
+        turnoutPercent,
+      };
+    }
+
+    // Fallback: Compute from registrations prop (e.g. in Admin Portal when logged in)
     const totalRegistered = registrations.length;
     const paidRegistrations = registrations.filter(
       (r) =>
@@ -164,7 +230,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     );
     const totalPaid = paidRegistrations.length;
     const totalNotPaid = Math.max(0, totalRegistered - totalPaid);
-    const totalIdCardsGenerated = registrations.filter((r) => r.id_card_generated || r.photo_url).length;
+    const totalIdCardsGenerated = registrations.filter((r) => r.id_card_generated).length;
 
     // Gate entries counts
     const totalVerifiedAtGate = gateEntries.length;
@@ -180,13 +246,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       totalHeadsInside,
       turnoutPercent,
     };
-  }, [registrations, gateEntries]);
+  }, [registrations, gateEntries, rpcStats]);
 
   // Handle QR scanning logic
   const handleVerifyPhone = async (phone: string, mode: 'qr_scan' | 'manual_phone' = 'qr_scan') => {
     if (isVerifyingRef.current) return;
     isVerifyingRef.current = true;
     setIsVerifying(true);
+    setScanResult(null);
+    scrollToStatus();
 
     // If scanning with camera, immediately stop to prevent duplicate scans
     if (mode === 'qr_scan') {
@@ -201,8 +269,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       }
       setScannerActive(false);
     }
-
-    setScanResult(null);
 
     try {
       const result = await verifyGateAttendee(phone, verifiedBy, mode);
@@ -223,6 +289,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       setTimeout(() => {
         isVerifyingRef.current = false;
       }, 600);
+      scrollToStatus();
     }
   };
 
@@ -429,7 +496,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         <div className="gate-metric-card">
           <span className="metric-label">ID Cards Generated</span>
           <span className="metric-val text-indigo">{stats.totalIdCardsGenerated}</span>
-          <span className="metric-sub">Downloaded/photo added</span>
+          <span className="metric-sub">Downloaded passes</span>
         </div>
 
         <div className="gate-metric-card highlight-metric">
@@ -532,28 +599,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       {/* 3. SUBTAB: QR Camera Scanner */}
       {activeSubTab === 'scanner' && (
         <div className="gate-scanner-section">
-          {!scannerActive ? (
-            <div className="scanner-start-box">
-              <div className="scanner-start-icon-ring">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </div>
-              <h3 className="scanner-start-title">Gate Camera Check-in</h3>
-              <p className="scanner-hint">
-                Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
-              </p>
-              <button
-                type="button"
-                onClick={() => setScannerActive(true)}
-                className="btn-large-camera"
-              >
-                <span>📷</span>
-                <span>Start Camera Scanner</span>
-              </button>
-            </div>
-          ) : (
+          {/* Active Camera Viewport */}
+          {scannerActive && (
             <div className="scanner-active-box">
               {/* Custom Dark-Themed Camera Bar */}
               <div className="scanner-top-bar">
@@ -647,9 +694,22 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             </div>
           )}
 
+          {/* In-Flight Verification Spinner Card */}
+          {isVerifying && (
+            <div ref={statusResultRef} className="gate-scan-result-card verifying">
+              <div className="result-content">
+                <div className="result-icon gate-scan-spinner-icon">🔄</div>
+                <div className="result-text">
+                  <h3 className="result-title">VERIFYING ATTENDEE...</h3>
+                  <p className="result-name">Checking registration &amp; payment status in real-time</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Verification Status Banner Alert */}
-          {scanResult && (
-            <div className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}>
+          {!isVerifying && scanResult && (
+            <div ref={statusResultRef} className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}>
               {scanResult.status === 'ENTERED' && (
                 <>
                   <div className="result-content success">
@@ -769,6 +829,55 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </div>
                 </>
               )}
+
+              {scanResult.status === 'ERROR' && (
+                <>
+                  <div className="result-content error">
+                    <div className="result-icon">⚠️</div>
+                    <div className="result-text">
+                      <h3 className="result-title">VERIFICATION ERROR</h3>
+                      <p className="result-detail">{scanResult.message || 'Verification failed. Please retry.'}</p>
+                    </div>
+                  </div>
+                  <div className="result-actions">
+                    <button
+                      type="button"
+                      className="btn-scan-next btn-error"
+                      onClick={() => {
+                        setScanResult(null);
+                        setScannerActive(true);
+                      }}
+                    >
+                      <span>📷</span>
+                      <span>Retry / Scan Next →</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* If scanner is inactive and no scan in-flight or result is present, show Camera Start button */}
+          {!scannerActive && !isVerifying && !scanResult && (
+            <div className="scanner-start-box">
+              <div className="scanner-start-icon-ring">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </div>
+              <h3 className="scanner-start-title">Gate Camera Check-in</h3>
+              <p className="scanner-hint">
+                Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
+              </p>
+              <button
+                type="button"
+                onClick={() => setScannerActive(true)}
+                className="btn-large-camera"
+              >
+                <span>📷</span>
+                <span>Start Camera Scanner</span>
+              </button>
             </div>
           )}
         </div>
@@ -806,7 +915,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
             {/* Same result feedback card */}
             {scanResult && (
-              <div className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`} style={{ marginTop: '1.25rem' }}>
+              <div
+                ref={statusResultRef}
+                className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}
+                style={{ marginTop: '1.25rem' }}
+              >
                 <div className="result-content">
                   <div className="result-icon">
                     {scanResult.status === 'ENTERED' ? '✅' : scanResult.status === 'ALREADY_ENTERED' ? '⚠️' : '❌'}
@@ -1210,7 +1323,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             </span>
           </div>
 
-          <div className="gate-table-wrapper">
+          <div className="gate-table-wrapper gate-desktop-table">
             <table className="gate-table">
               <thead>
                 <tr>
@@ -1265,6 +1378,52 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View for Phones */}
+          <div className="gate-mobile-log-list">
+            {filteredGateEntries.length === 0 ? (
+              <div className="empty-log-card">
+                {loadingEntries ? 'Loading gate entries...' : 'No gate entries recorded yet.'}
+              </div>
+            ) : (
+              filteredGateEntries.map((entry) => (
+                <div key={entry.id} className="gate-mobile-entry-card">
+                  <div className="card-top-row">
+                    <span className="attendee-name">{entry.attendee_name}</span>
+                    <span className="entry-time">
+                      {new Date(entry.entered_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  <div className="card-meta-row">
+                    <span className="attendee-phone">📞 {entry.phone_number}</span>
+                    <span className="attendee-academic">
+                      🎓 {entry.branch || 'General'}{' '}
+                      {entry.year_of_passing ? `('${String(entry.year_of_passing).slice(-2)})` : ''}
+                    </span>
+                  </div>
+                  <div className="card-badges-row">
+                    <span className="heads-badge">👥 {entry.accompanying_count || 1} Total</span>
+                    <span className={`entry-mode-pill ${entry.entry_mode}`}>
+                      {entry.entry_mode === 'qr_scan'
+                        ? '📷 QR'
+                        : entry.entry_mode === 'manual_phone'
+                        ? '⌨️ Phone'
+                        : '⚡ Spot'}
+                    </span>
+                    <span className="pay-verified-pill">✓ {entry.payment_status}</span>
+                    {entry.verified_by && (
+                      <span className="staff-cell" title={entry.verified_by}>
+                        👤 {entry.verified_by.split(' ')[0]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
