@@ -3341,6 +3341,8 @@
   padding: 0.75rem 0.9rem;
   box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
   animation: fadeInResult 0.2s ease-out;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .preview-thumb-col {
@@ -3406,6 +3408,7 @@
   display: flex;
   gap: 0.5rem;
   margin-top: 0.35rem;
+  flex-wrap: wrap;
 }
 
 .btn-retake-snap {
@@ -3418,6 +3421,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-retake-snap:hover {
@@ -3435,11 +3439,37 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-delete-snap:hover {
   background: #ef4444;
   color: #ffffff;
+}
+
+@media (max-width: 480px) {
+  .spot-qr-display-card {
+    padding: 0.85rem 0.75rem;
+  }
+  .spot-photo-preview-card {
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+  }
+  .preview-thumb-col {
+    width: 62px;
+    height: 62px;
+  }
+  .preview-title {
+    font-size: 0.82rem;
+  }
+  .preview-btn-row {
+    gap: 0.35rem;
+  }
+  .btn-retake-snap,
+  .btn-delete-snap {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.72rem;
+  }
 }
 
 /* Spot Cash Payment Card */

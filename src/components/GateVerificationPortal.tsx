@@ -1999,7 +1999,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             </div>
                             <div className="preview-meta-col">
                               <strong className="preview-title">Payment Screen Captured</strong>
-                              <span className="preview-filename">{spotPhotoFile?.name || 'Live Photo Capture'}</span>
                               <span className="preview-filesize">
                                 {spotPhotoFile ? `${(spotPhotoFile.size / 1024).toFixed(0)} KB • Ready to save` : ''}
                               </span>
