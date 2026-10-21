@@ -3,21 +3,15 @@
 -- Execute this in: Supabase Dashboard → SQL Editor → New Query
 --
 -- Why this is needed:
--- Gate staff / volunteers log in to the Gate Portal using a PIN
--- (not Supabase Auth email/password), so their Supabase client
--- operates with the 'anon' role.
---
--- Previously, Row Level Security (RLS) on event_registrations,
--- alumni, and payment_verifications only permitted 'authenticated'
--- users (admins) to SELECT rows. Therefore:
--- 1. Admins could see Total Registered, Paid & Approved, and ID Cards Generated.
--- 2. PIN-authenticated gate staff always saw 0 for those 3 cards.
---
--- This script fixes that by:
--- 1. Creating a high-speed SECURITY DEFINER RPC 'get_gate_dashboard_stats'
---    granting instant, aggregated metrics to both anon and authenticated.
--- 2. Adding SELECT policies for anon on event_registrations, alumni, and
---    payment_verifications so any fallback client queries succeed.
+-- 1. Gate staff / volunteers log in to the Gate Portal using a PIN
+--    (not Supabase Auth email/password), so their Supabase client
+--    operates with the 'anon' role.
+-- 2. Row Level Security (RLS) on event_registrations, alumni, and
+--    payment_verifications previously blocked 'anon' users from reading
+--    total registration numbers.
+-- 3. Changes ID Cards Generated logic:
+--    Now accurately tracks when an attendee clicks the "Download Pass"
+--    button (instead of triggering prematurely on selfie upload).
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────
@@ -58,11 +52,10 @@ BEGIN
 
   v_total_not_paid := GREATEST(0, v_total_registered - v_total_paid);
 
-  -- 3. ID Cards Generated (id_card_generated = true OR photo_url is provided)
+  -- 3. ID Cards Downloaded (strictly id_card_generated = true)
   SELECT COUNT(*) INTO v_total_id_cards
     FROM event_registrations
-   WHERE id_card_generated = true 
-      OR (photo_url IS NOT NULL AND photo_url <> '');
+   WHERE id_card_generated = true;
 
   -- 4. Gate entries count & heads inside venue
   SELECT 
@@ -90,32 +83,86 @@ BEGIN
 END;
 $$;
 
--- Allow both anon (Gate PIN staff) and authenticated (Admin) to execute
 GRANT EXECUTE ON FUNCTION get_gate_dashboard_stats() TO anon, authenticated;
 
 -- ────────────────────────────────────────────────────────────
--- 2. RLS POLICIES FOR ANONYMOUS READ ACCESS (GATE COUNTER FALLBACK)
+-- 2. RPC: mark_id_card_downloaded
+-- Triggered specifically when attendee clicks "Download Pass (PNG)"
 -- ────────────────────────────────────────────────────────────
 
--- Allow anon to select from event_registrations for gate counters
+CREATE OR REPLACE FUNCTION mark_id_card_downloaded(
+  p_registration_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE event_registrations
+     SET id_card_generated = true,
+         id_card_generated_at = COALESCE(id_card_generated_at, NOW()),
+         updated_at = NOW()
+   WHERE id = p_registration_id;
+
+  RETURN json_build_object(
+    'success', true,
+    'registration_id', p_registration_id
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION mark_id_card_downloaded TO anon, authenticated;
+
+-- ────────────────────────────────────────────────────────────
+-- 3. RPC: update_attendee_photo_card
+-- Uploads selfie photo without prematurely setting id_card_generated
+-- ────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION update_attendee_photo_card(
+  p_registration_id   UUID,
+  p_photo_url         TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE event_registrations
+     SET photo_url = COALESCE(p_photo_url, photo_url),
+         updated_at = NOW()
+   WHERE id = p_registration_id;
+
+  RETURN json_build_object(
+    'success', true,
+    'registration_id', p_registration_id,
+    'photo_url', p_photo_url
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION update_attendee_photo_card TO anon, authenticated;
+
+-- ────────────────────────────────────────────────────────────
+-- 4. RLS POLICIES FOR ANONYMOUS READ ACCESS (GATE COUNTER FALLBACK)
+-- ────────────────────────────────────────────────────────────
+
 DROP POLICY IF EXISTS "allow_anon_read_gate_registrations" ON event_registrations;
 CREATE POLICY "allow_anon_read_gate_registrations"
   ON event_registrations FOR SELECT TO anon
   USING (true);
 
--- Allow anon to select from alumni for gate verification lookups
 DROP POLICY IF EXISTS "allow_anon_read_gate_alumni" ON alumni;
 CREATE POLICY "allow_anon_read_gate_alumni"
   ON alumni FOR SELECT TO anon
   USING (true);
 
--- Allow anon to select payment_verifications to check paid status
 DROP POLICY IF EXISTS "allow_anon_read_gate_payment_verifications" ON payment_verifications;
 CREATE POLICY "allow_anon_read_gate_payment_verifications"
   ON payment_verifications FOR SELECT TO anon
   USING (true);
 
--- Ensure grants are in place for the anon role
 GRANT SELECT ON event_registrations TO anon;
 GRANT SELECT ON alumni TO anon;
 GRANT SELECT ON payment_verifications TO anon;

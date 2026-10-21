@@ -8,6 +8,7 @@ import {
   isAlumniIdCardsEnabled,
   compressAttendeePhoto,
   uploadAndSaveAttendeePhoto,
+  markIdCardDownloaded,
 } from '../lib/gate';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
@@ -230,6 +231,11 @@ export const IdCardPage: React.FC = () => {
       link.download = `ECK_Alumni_Pass_${registration?.alumni?.name?.replace(/\s+/g, '_') || 'Pass'}_${clean}.png`;
       link.href = dataUrl;
       link.click();
+
+      // Record ID Card Download in Database
+      if (registration?.registration_id) {
+        markIdCardDownloaded(registration.registration_id).catch(() => {});
+      }
     } catch (err) {
       console.error('Download pass error:', err);
       alert('Unable to automatically download. You can also take a screenshot of your pass!');

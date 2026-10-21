@@ -197,7 +197,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     );
     const totalPaid = paidRegistrations.length;
     const totalNotPaid = Math.max(0, totalRegistered - totalPaid);
-    const totalIdCardsGenerated = registrations.filter((r) => r.id_card_generated || r.photo_url).length;
+    const totalIdCardsGenerated = registrations.filter((r) => r.id_card_generated).length;
 
     // Gate entries counts
     const totalVerifiedAtGate = gateEntries.length;
@@ -462,7 +462,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         <div className="gate-metric-card">
           <span className="metric-label">ID Cards Generated</span>
           <span className="metric-val text-indigo">{stats.totalIdCardsGenerated}</span>
-          <span className="metric-sub">Downloaded/photo added</span>
+          <span className="metric-sub">Downloaded passes</span>
         </div>
 
         <div className="gate-metric-card highlight-metric">
