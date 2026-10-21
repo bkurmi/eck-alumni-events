@@ -2749,9 +2749,17 @@
   cursor: pointer;
 }
 
+.form-field select optgroup {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+  font-weight: 700;
+  font-style: normal;
+  padding: 8px 12px;
+}
+
 .form-field select option {
-  background: #0f172a;
-  color: #ffffff;
+  background: #0f172a !important;
+  color: #ffffff !important;
   padding: 8px 12px;
 }
 
@@ -2893,6 +2901,59 @@
 .btn-spot-submit:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.btn-spot-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Spot Form Field Validation Errors */
+.form-field.has-error input,
+.form-field.has-error select,
+.input-field-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+}
+
+.form-field.has-error select optgroup,
+.form-field.has-error select option {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+.spot-validation-alert {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+  padding: 0.85rem 1.15rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1.25rem;
+  animation: shakeAlert 0.3s ease;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);
+}
+
+.spot-validation-alert .alert-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.spot-validation-alert .alert-msg {
+  flex: 1;
+}
+
+@keyframes shakeAlert {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 /* Spot QR Desk Payment Card */

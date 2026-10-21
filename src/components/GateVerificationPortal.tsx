@@ -75,13 +75,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [spotKidsAbove10, setSpotKidsAbove10] = useState(0);
   const [spotKidsUnder10, setSpotKidsUnder10] = useState(0);
   const [showKidsBreakdown, setShowKidsBreakdown] = useState(false);
-  const [spotPaymentMode, setSpotPaymentMode] = useState<string>('CASH');
+  const [spotPaymentMode, setSpotPaymentMode] = useState<string>('');
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [spotAmount, setSpotAmount] = useState(800);
   const [spotSubmitting, setSpotSubmitting] = useState(false);
   const [spotSuccessData, setSpotSuccessData] = useState<any | null>(null);
   const [preloadNotice, setPreloadNotice] = useState<string | null>(null);
+  const [spotErrors, setSpotErrors] = useState<Record<string, boolean>>({});
+  const [spotFormErrorMsg, setSpotFormErrorMsg] = useState<string | null>(null);
 
   // Currently selected UPI configuration (if paying via QR)
   const selectedUpiConfig = React.useMemo(() => {
@@ -525,6 +527,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           `Pre-loaded attendee: ${data.name}. Confirm payment mode below to admit and issue pass.`
         );
       }
+      setSpotPaymentMode('');
+      setPaymentConfirmed(false);
+      setSpotErrors({});
+      setSpotFormErrorMsg(null);
     }
     setScanResult(null);
     setActiveSubTab('spot');
@@ -577,13 +583,50 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     }
   };
 
+  // Clear error highlight when volunteer updates a field
+  const clearSpotError = (field: string) => {
+    setSpotErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setSpotFormErrorMsg(null);
+  };
+
   // Handle Spot Registration Submit
   const handleSpotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!spotName.trim() || !spotMobile.trim() || !spotBranch || !spotBatch) {
-      alert('Please fill out Name, Mobile, Branch, and Passing Batch.');
+
+    const errors: Record<string, boolean> = {};
+    if (!spotMobile.trim() || cleanMobileNumber(spotMobile).length < 10) {
+      errors.mobile = true;
+    }
+    if (!spotName.trim()) {
+      errors.name = true;
+    }
+    if (!spotBranch) {
+      errors.branch = true;
+    }
+    if (!spotBatch) {
+      errors.batch = true;
+    }
+    if (!spotPaymentMode) {
+      errors.paymentMode = true;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setSpotErrors(errors);
+      if (errors.paymentMode && Object.keys(errors).length === 1) {
+        setSpotFormErrorMsg('Please select a payment method to complete gate entry.');
+      } else {
+        setSpotFormErrorMsg('Please fill in all mandatory fields highlighted in red.');
+      }
       return;
     }
+
+    setSpotErrors({});
+    setSpotFormErrorMsg(null);
 
     const isUpi = Boolean(selectedUpiConfig);
     if (isUpi && !paymentConfirmed) {
@@ -627,8 +670,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       setSpotAttendees(1);
       setSpotAmount(800);
       setShowKidsBreakdown(false);
-      setSpotPaymentMode('CASH');
+      setSpotPaymentMode('');
       setPaymentConfirmed(false);
+      setSpotErrors({});
+      setSpotFormErrorMsg(null);
       // Refresh entries
       await loadGateEntries();
       onRefreshRegistrations();
@@ -1501,10 +1546,17 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </div>
             )}
 
-            <form onSubmit={handleSpotSubmit} className="gate-spot-form">
+            {spotFormErrorMsg && (
+              <div className="spot-validation-alert">
+                <span className="alert-icon">⚠️</span>
+                <span className="alert-msg">{spotFormErrorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSpotSubmit} noValidate className="gate-spot-form">
               <div className="form-fields-grid">
                 {/* Row 1: Mobile (First for Instant Pre-load) & Full Name */}
-                <div className="form-field">
+                <div className={`form-field ${spotErrors.mobile ? 'has-error' : ''}`}>
                   <label htmlFor="spot-mobile">
                     Mobile Number <span className="req-star">*</span>
                   </label>
@@ -1515,12 +1567,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     placeholder="10-digit mobile number"
                     maxLength={10}
                     value={spotMobile}
-                    onChange={(e) => handleSpotMobileChange(e.target.value)}
+                    onChange={(e) => {
+                      handleSpotMobileChange(e.target.value);
+                      clearSpotError('mobile');
+                    }}
                     autoFocus={activeSubTab === 'spot' && !spotMobile}
                   />
                 </div>
 
-                <div className="form-field">
+                <div className={`form-field ${spotErrors.name ? 'has-error' : ''}`}>
                   <label htmlFor="spot-name">
                     Full Name <span className="req-star">*</span>
                   </label>
@@ -1530,12 +1585,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     required
                     placeholder="Alumnus Name"
                     value={spotName}
-                    onChange={(e) => setSpotName(e.target.value)}
+                    onChange={(e) => {
+                      setSpotName(e.target.value);
+                      clearSpotError('name');
+                    }}
                   />
                 </div>
 
                 {/* Row 2: Branch / Discipline & Passing Batch (Year) */}
-                <div className="form-field">
+                <div className={`form-field ${spotErrors.branch ? 'has-error' : ''}`}>
                   <label htmlFor="spot-branch">
                     Branch / Discipline <span className="req-star">*</span>
                   </label>
@@ -1543,7 +1601,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     id="spot-branch"
                     required
                     value={spotBranch}
-                    onChange={(e) => setSpotBranch(e.target.value)}
+                    onChange={(e) => {
+                      setSpotBranch(e.target.value);
+                      clearSpotError('branch');
+                    }}
                   >
                     <option value="">Select Branch</option>
                     {ENGINEERING_DISCIPLINES.map((discipline) => (
@@ -1554,7 +1615,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </select>
                 </div>
 
-                <div className="form-field">
+                <div className={`form-field ${spotErrors.batch ? 'has-error' : ''}`}>
                   <label htmlFor="spot-batch">
                     Year of Passing (Batch) <span className="req-star">*</span>
                   </label>
@@ -1562,7 +1623,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     id="spot-batch"
                     required
                     value={spotBatch}
-                    onChange={(e) => setSpotBatch(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => {
+                      setSpotBatch(e.target.value ? Number(e.target.value) : '');
+                      clearSpotError('batch');
+                    }}
                   >
                     <option value="">Select Passing Year</option>
                     {passingYears.map((year) => (
@@ -1597,18 +1661,21 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </select>
                 </div>
 
-                <div className="form-field">
+                <div className={`form-field ${spotErrors.paymentMode ? 'has-error' : ''}`}>
                   <label htmlFor="spot-payment-mode">
                     Payment Collected At Gate <span className="req-star">*</span>
                   </label>
                   <select
                     id="spot-payment-mode"
+                    required
                     value={spotPaymentMode}
                     onChange={(e) => {
                       setSpotPaymentMode(e.target.value);
                       setPaymentConfirmed(false);
+                      clearSpotError('paymentMode');
                     }}
                   >
+                    <option value="">-- Select Payment Method --</option>
                     <option value="CASH">💵 Cash Collected (₹{spotAmount})</option>
                     <optgroup label="📱 UPI QR Code (Select Receiver Account)">
                       {DEFAULT_UPI_CONFIGS.map((config) => (
@@ -1838,7 +1905,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       ? 'Complete Spot Entry (Complimentary / VIP) →'
                       : selectedUpiConfig
                         ? `Complete Spot Entry (₹${spotAmount} via ${selectedUpiConfig.account_name} QR) →`
-                        : `Complete Spot Entry (₹${spotAmount} Cash) →`}
+                        : spotPaymentMode === 'CASH'
+                          ? `Complete Spot Entry (₹${spotAmount} Cash) →`
+                          : `Complete Spot Entry (₹${spotAmount}) →`}
                 </button>
               </div>
             </form>
