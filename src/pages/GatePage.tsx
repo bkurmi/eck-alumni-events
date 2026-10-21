@@ -118,37 +118,51 @@ export const GatePage: React.FC = () => {
     <div className="gate-page-wrapper">
       {/* Top Header for Gate Staff */}
       <header className="gate-standalone-header">
-        <div className="gate-header-brand">
-          <span className="gate-brand-icon">⚡</span>
-          <div>
-            <h1 className="gate-brand-title">ECK Alumni Gate Desk</h1>
-            <span className="gate-brand-subtitle">Physical Entry &amp; Attendance</span>
-          </div>
-        </div>
-
-        <div className="gate-header-user-status">
-          <div className="gate-user-badge">
-            <span className="gate-user-dot" />
-            <div className="gate-user-text">
-              <span className="gate-user-name">👤 {staffDisplayName}</span>
-              <span className="gate-station-name">{stationDisplayName}</span>
+        <div className="gate-header-main-bar">
+          <div className="gate-header-brand">
+            <span className="gate-brand-icon" aria-hidden="true">⚡</span>
+            <div className="gate-brand-text">
+              <h1 className="gate-brand-title">
+                <span className="gate-brand-title-full">ECK Alumni Gate Desk</span>
+                <span className="gate-brand-title-short">ECK Gate Desk</span>
+              </h1>
+              <span className="gate-brand-subtitle">Physical Entry &amp; Attendance</span>
             </div>
           </div>
 
-          {adminSession && (
-            <a href="/admin" className="btn btn-outline btn-xs gate-back-admin-btn">
-              ← Admin Portal
-            </a>
-          )}
+          <div className="gate-header-actions">
+            {adminSession && (
+              <a href="/admin" className="gate-nav-btn gate-back-admin-btn" title="Back to Admin Portal">
+                <span className="btn-icon">←</span>
+                <span className="btn-label-full">Admin Portal</span>
+                <span className="btn-label-short">Admin</span>
+              </a>
+            )}
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="btn btn-secondary btn-xs gate-logout-btn"
-            title="Log out of Gate Desk"
-          >
-            Switch PIN / Exit
-          </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="gate-nav-btn gate-logout-btn"
+              title="Log out of Gate Desk / Switch PIN"
+            >
+              <span className="btn-icon">🔄</span>
+              <span className="btn-label-full">Switch PIN / Exit</span>
+              <span className="btn-label-short">Switch PIN</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="gate-header-user-bar">
+          <div className="gate-user-badge">
+            <span className="gate-user-dot" aria-hidden="true" />
+            <div className="gate-user-text">
+              <span className="gate-user-name" title={staffDisplayName}>
+                <span className="user-icon">👤</span> {staffDisplayName}
+              </span>
+              <span className="gate-station-divider">•</span>
+              <span className="gate-station-name">{stationDisplayName}</span>
+            </div>
+          </div>
         </div>
       </header>
 

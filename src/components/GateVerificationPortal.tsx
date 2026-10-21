@@ -1243,7 +1243,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             </span>
           </div>
 
-          <div className="gate-table-wrapper">
+          <div className="gate-table-wrapper gate-desktop-table">
             <table className="gate-table">
               <thead>
                 <tr>
@@ -1298,6 +1298,52 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View for Phones */}
+          <div className="gate-mobile-log-list">
+            {filteredGateEntries.length === 0 ? (
+              <div className="empty-log-card">
+                {loadingEntries ? 'Loading gate entries...' : 'No gate entries recorded yet.'}
+              </div>
+            ) : (
+              filteredGateEntries.map((entry) => (
+                <div key={entry.id} className="gate-mobile-entry-card">
+                  <div className="card-top-row">
+                    <span className="attendee-name">{entry.attendee_name}</span>
+                    <span className="entry-time">
+                      {new Date(entry.entered_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  <div className="card-meta-row">
+                    <span className="attendee-phone">📞 {entry.phone_number}</span>
+                    <span className="attendee-academic">
+                      🎓 {entry.branch || 'General'}{' '}
+                      {entry.year_of_passing ? `('${String(entry.year_of_passing).slice(-2)})` : ''}
+                    </span>
+                  </div>
+                  <div className="card-badges-row">
+                    <span className="heads-badge">👥 {entry.accompanying_count || 1} Total</span>
+                    <span className={`entry-mode-pill ${entry.entry_mode}`}>
+                      {entry.entry_mode === 'qr_scan'
+                        ? '📷 QR'
+                        : entry.entry_mode === 'manual_phone'
+                        ? '⌨️ Phone'
+                        : '⚡ Spot'}
+                    </span>
+                    <span className="pay-verified-pill">✓ {entry.payment_status}</span>
+                    {entry.verified_by && (
+                      <span className="staff-cell" title={entry.verified_by}>
+                        👤 {entry.verified_by.split(' ')[0]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

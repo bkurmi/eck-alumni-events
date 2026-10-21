@@ -1396,6 +1396,44 @@
   font-weight: 600;
 }
 
+.gate-staff-locked-badge {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.gate-operator-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-gate-exit-mini {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-gate-exit-mini:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffffff;
+}
+
 .btn-refresh-gate {
   background: #1e293b;
   color: #cbd5e1;
@@ -2676,73 +2714,399 @@
   color: #64748b;
 }
 
+/* Mobile Entry Card List (for mobile viewport) */
+.gate-mobile-log-list {
+  display: none;
+}
+
+.gate-mobile-entry-card {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.gate-mobile-entry-card .card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.gate-mobile-entry-card .attendee-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.gate-mobile-entry-card .entry-time {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: #f59e0b;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.gate-mobile-entry-card .card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  flex-wrap: wrap;
+}
+
+.gate-mobile-entry-card .attendee-phone {
+  color: #cbd5e1;
+}
+
+.gate-mobile-entry-card .attendee-academic {
+  color: #94a3b8;
+}
+
+.gate-mobile-entry-card .card-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.empty-log-card {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #64748b;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 0.85rem;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+}
+
 /* Mobile & Tablet Responsiveness for Gate Portal */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .gate-page-content {
+    padding: 0.75rem 0.65rem 3rem 0.65rem !important;
+  }
+
+  .gate-portal-container {
+    gap: 1rem !important;
+  }
+
   .gate-metrics-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
+    gap: 0.6rem !important;
   }
+
   .gate-metric-card:last-child {
-    grid-column: 1 / -1;
+    grid-column: 1 / -1 !important;
   }
+
   .gate-metric-card {
-    padding: 1rem 0.85rem !important;
+    padding: 0.85rem 0.8rem !important;
+    border-radius: 0.75rem !important;
   }
+
+  .metric-label {
+    font-size: 0.68rem !important;
+  }
+
   .metric-val {
     font-size: 1.55rem !important;
   }
+
+  .metric-sub {
+    font-size: 0.7rem !important;
+  }
+
   .gate-operator-bar {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    padding: 0.75rem 1rem !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 0.55rem 0.75rem !important;
+    gap: 0.5rem !important;
   }
+
   .gate-operator-info {
-    justify-content: space-between;
-    width: 100%;
+    font-size: 0.8rem !important;
+    gap: 0.4rem !important;
+    min-width: 0 !important;
   }
+
+  .gate-operator-label {
+    display: none !important;
+  }
+
   .gate-staff-input {
-    flex: 1;
-    max-width: 180px;
+    flex: 1 !important;
+    max-width: 140px !important;
+    padding: 3px 6px !important;
+    font-size: 0.78rem !important;
   }
+
+  .gate-staff-locked-badge {
+    max-width: 150px !important;
+    font-size: 0.76rem !important;
+  }
+
+  .gate-operator-actions {
+    gap: 0.35rem !important;
+  }
+
   .btn-refresh-gate {
-    width: 100%;
-    text-align: center;
+    width: auto !important;
+    padding: 5px 9px !important;
+    font-size: 0.75rem !important;
   }
-  .gate-card-box {
-    padding: 1.25rem !important;
+
+  .btn-gate-exit-mini {
+    padding: 5px 9px !important;
+    font-size: 0.75rem !important;
   }
+
+  .gate-subtabs {
+    gap: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .gate-subtab-btn {
+    padding: 7px 11px !important;
+    font-size: 0.78rem !important;
+    min-height: 38px !important;
+  }
+
+  .gate-subtab-btn .gate-tab-full {
+    display: none !important;
+  }
+
+  .gate-subtab-btn .gate-tab-short {
+    display: inline !important;
+  }
+
+  /* Scanner Mobile */
   .scanner-start-box {
-    padding: 2rem 1.25rem !important;
+    padding: 1.75rem 1.15rem !important;
+    width: 100% !important;
   }
+
+  .scanner-start-title {
+    font-size: 1.2rem !important;
+  }
+
+  .scanner-hint {
+    font-size: 0.84rem !important;
+  }
+
   .btn-large-camera {
-    width: 100%;
-    justify-content: center;
+    width: 100% !important;
+    justify-content: center !important;
     padding: 0.85rem 1.25rem !important;
     font-size: 0.95rem !important;
   }
+
+  .scanner-top-bar {
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  .scanner-camera-picker {
+    min-width: 130px !important;
+    padding: 4px 6px !important;
+  }
+
+  .scanner-camera-select {
+    font-size: 0.78rem !important;
+  }
+
+  .scanner-torch-btn {
+    padding: 6px 10px !important;
+    font-size: 0.76rem !important;
+  }
+
+  .scanner-viewport-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .gate-qr-viewport {
+    min-height: 270px !important;
+  }
+
+  .scanner-reticle-box {
+    width: min(210px, 60vw) !important;
+    height: min(210px, 60vw) !important;
+  }
+
+  .btn-stop-camera {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.75rem 1rem !important;
+  }
+
   .gate-scan-result-card {
     padding: 1.15rem 1rem !important;
     border-radius: 1rem !important;
+    width: 100% !important;
   }
+
   .result-content {
     gap: 0.75rem !important;
   }
+
   .result-icon {
     font-size: 1.95rem !important;
   }
+
   .result-title {
     font-size: 1.05rem !important;
   }
+
   .result-name {
     font-size: 1.2rem !important;
     margin-bottom: 0.5rem !important;
   }
+
   .result-actions {
     margin-top: 1rem !important;
   }
+
   .btn-scan-next {
-    padding: 11px 14px !important;
-    font-size: 0.92rem !important;
+    padding: 12px 14px !important;
+    font-size: 0.95rem !important;
+    min-height: 48px !important;
+  }
+
+  .btn-quick-spot-link {
+    min-height: 44px !important;
+  }
+
+  /* Manual Phone Lookup Mobile */
+  .manual-input-row {
+    flex-direction: column !important;
+  }
+
+  .gate-card-box {
+    padding: 1.15rem 0.85rem !important;
+    border-radius: 0.85rem !important;
+    width: 100% !important;
+  }
+
+  .gate-card-box h3 {
+    font-size: 1.15rem !important;
+  }
+
+  .card-sub-desc {
+    font-size: 0.82rem !important;
+    margin-bottom: 1.1rem !important;
+  }
+
+  .manual-phone-field {
+    font-size: 1.05rem !important;
+    padding: 0.75rem !important;
+    text-align: center;
+    letter-spacing: 0.08em;
+  }
+
+  .btn-verify-manual {
+    width: 100% !important;
+    padding: 0.8rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Spot Registration Mobile */
+  .gate-spot-form .form-fields-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .form-field input,
+  .form-field select {
+    height: 46px !important;
+    font-size: 16px !important; /* Prevents auto zoom in iOS */
+  }
+
+  .spot-kids-toggle-btn {
+    padding: 0.65rem 0.85rem !important;
+    font-size: 0.82rem !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  .spot-kids-breakdown-box {
+    padding: 0.75rem 0.85rem !important;
+  }
+
+  .spot-stepper button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .spot-qr-display-card {
+    padding: 0.85rem !important;
+  }
+
+  .spot-qr-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+
+  .spot-qr-body-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .spot-qr-frame-box {
+    width: 100% !important;
+    align-items: center !important;
+  }
+
+  .spot-qr-img {
+    width: 150px !important;
+    height: 150px !important;
+  }
+
+  .upi-id-copy-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .btn-copy-upi {
+    width: 100% !important;
+    text-align: center !important;
+    padding: 0.45rem !important;
+  }
+
+  .btn-spot-submit {
+    padding: 0.9rem !important;
+    font-size: 0.95rem !important;
+    min-height: 48px !important;
+  }
+
+  /* Gate Log Table vs Cards */
+  .gate-desktop-table {
+    display: none !important;
+  }
+
+  .gate-mobile-log-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+
+  .gate-log-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+
+  .gate-log-search {
+    max-width: 100% !important;
+    font-size: 16px !important; /* Prevents auto zoom */
   }
 }
 
@@ -2769,10 +3133,10 @@
 
 /* Standalone Gate Header */
 .gate-standalone-header {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(245, 158, 11, 0.25);
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2780,52 +3144,124 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.gate-header-main-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .gate-header-brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .gate-brand-icon {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
+  line-height: 1;
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));
+  flex-shrink: 0;
+}
+
+.gate-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .gate-brand-title {
-  font-size: 1.15rem;
+  font-size: 1.12rem;
   font-weight: 800;
   color: #ffffff;
   margin: 0;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.gate-brand-title-full {
+  display: inline;
+}
+
+.gate-brand-title-short {
+  display: none;
 }
 
 .gate-brand-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: #94a3b8;
   font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.gate-header-user-status {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.gate-user-badge {
+.gate-header-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(245, 158, 11, 0.12);
+  flex-shrink: 0;
+}
+
+.gate-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 6px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.gate-back-admin-btn {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.gate-back-admin-btn:hover {
+  background: rgba(56, 189, 248, 0.22);
+  transform: translateY(-1px);
+}
+
+.gate-logout-btn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.gate-logout-btn:hover {
+  background: rgba(245, 158, 11, 0.25);
+  transform: translateY(-1px);
+}
+
+.gate-header-user-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gate-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.3);
-  padding: 0.35rem 0.75rem;
+  padding: 0.38rem 0.85rem;
   border-radius: 9999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .gate-user-dot {
@@ -2834,34 +3270,88 @@
   background: #10b981;
   border-radius: 50%;
   box-shadow: 0 0 8px #10b981;
+  flex-shrink: 0;
 }
 
 .gate-user-text {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .gate-user-name {
-  font-size: 0.82rem;
   font-weight: 700;
   color: #fef3c7;
+  white-space: nowrap;
+}
+
+.gate-station-divider {
+  color: rgba(245, 158, 11, 0.4);
+  font-weight: 700;
 }
 
 .gate-station-name {
-  font-size: 0.7rem;
   color: #fbbf24;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.gate-logout-btn {
-  padding: 0.35rem 0.7rem !important;
-  font-size: 0.75rem !important;
+.btn-label-full {
+  display: inline;
 }
 
-.gate-back-admin-btn {
-  padding: 0.35rem 0.7rem !important;
-  font-size: 0.75rem !important;
-  color: #93c5fd !important;
-  border-color: rgba(147, 197, 253, 0.4) !important;
+.btn-label-short {
+  display: none;
+}
+
+/* Header Breakpoint: Medium & Mobile Screens */
+@media (max-width: 768px) {
+  .gate-standalone-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.65rem 0.85rem;
+    gap: 0.55rem;
+  }
+
+  .gate-header-main-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .gate-brand-title-full {
+    display: none;
+  }
+
+  .gate-brand-title-short {
+    display: inline;
+  }
+
+  .btn-label-full {
+    display: none;
+  }
+
+  .btn-label-short {
+    display: inline;
+  }
+
+  .gate-header-user-bar {
+    width: 100%;
+  }
+
+  .gate-user-badge {
+    width: 100%;
+    justify-content: center;
+    padding: 0.32rem 0.65rem;
+    border-radius: 8px;
+  }
+
+  .gate-user-name {
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* Gate PIN Login Container */
