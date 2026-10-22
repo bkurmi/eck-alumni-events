@@ -3568,67 +3568,87 @@
   font-weight: 500;
 }
 
-.spot-kids-breakdown-box {
-  margin-top: 0.75rem;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.65rem;
-  padding: 0.85rem 1.1rem;
+.spot-kids-breakdown-box,
+.spot-unified-attendees-box {
+  margin-top: 0.25rem;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  padding: 0.4rem 1.15rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  animation: slideDownFade 0.2s ease;
+  gap: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.spot-kid-tier-row {
+.spot-kid-tier-row,
+.spot-attendee-unified-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0.75rem 0;
 }
 
-.spot-kid-tier-info {
+.spot-attendee-unified-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spot-kid-tier-info,
+.spot-attendee-unified-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.spot-kid-tier-info strong {
-  font-size: 0.88rem;
+.spot-attendee-unified-info .row-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spot-kid-tier-info strong,
+.spot-attendee-unified-info strong {
+  font-size: 0.95rem;
+  font-weight: 700;
   color: #f8fafc;
 }
 
-.spot-kid-tier-info span {
-  font-size: 0.78rem;
+.spot-kid-tier-info span,
+.spot-attendee-unified-info span.row-desc {
+  font-size: 0.8rem;
   color: #94a3b8;
 }
 
-.spot-kid-tier-info .badge-free {
+.spot-kid-tier-info .badge-free,
+.spot-attendee-unified-info .badge-free {
   color: #34d399;
   font-weight: 700;
+  font-size: 0.8rem;
 }
 
 .spot-stepper {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.5rem;
-  padding: 3px 6px;
+  gap: 0.5rem;
+  background: #0b1120;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.6rem;
+  padding: 4px 6px;
 }
 
 .spot-stepper button {
-  width: 32px;
-  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.08);
   border: none;
-  border-radius: 0.35rem;
+  border-radius: 0.45rem;
   color: #ffffff;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -3645,10 +3665,10 @@
 }
 
 .spot-stepper span {
-  min-width: 24px;
+  min-width: 26px;
   text-align: center;
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-weight: 800;
+  font-size: 1.05rem;
   color: #ffffff;
 }
 

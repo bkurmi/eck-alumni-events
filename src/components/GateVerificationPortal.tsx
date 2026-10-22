@@ -1846,33 +1846,36 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </select>
                 </div>
 
-                {/* Unified Attendee Selection (Adults & Children together - matching RegistrationForm) */}
-                <div className="spot-attendees-full-section" style={{ gridColumn: '1 / -1', width: '100%' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                {/* Unified Attendee Selection (Adults & Children together under single heading) */}
+                <div className={`form-field spot-attendees-full-section`} style={{ gridColumn: '1 / -1', width: '100%' }}>
+                  <label htmlFor="spot-attendees-grid">
+                    Number of People Attending <span className="req-star">*</span>
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                     <div className="rates-summary-badge">
                       <span>₹800 Single • ₹1,500 Couple • ₹300 Kids (10+) • Free (&lt;10)</span>
                     </div>
                   </div>
 
-                  <div className="attendee-tiers-grid">
-                    {/* Adults Stepper */}
-                    <div className="tier-counter-card">
-                      <div className="tier-info">
-                        <div className="tier-name-row">
-                          <span className="tier-title">Adults</span>
+                  <div className="spot-unified-attendees-box">
+                    {/* Row 1: Adults */}
+                    <div className="spot-attendee-unified-row">
+                      <div className="spot-attendee-unified-info">
+                        <div className="row-title-wrap">
+                          <strong>Adults</strong>
                           {spotAdults === 2 && (
-                            <span className="tier-badge couple-badge">Couple Rate</span>
+                            <span className="spot-couple-badge">COUPLE RATE</span>
                           )}
                         </div>
-                        <span className="tier-desc">
+                        <span className="row-desc">
                           {spotAdults === 1
                             ? '₹800 for 1 adult'
                             : spotAdults === 2
                               ? '₹1,500 for couple'
-                              : `₹1,500 couple + ₹800/extra adult`}
+                              : '₹1,500 couple + ₹800/extra adult'}
                         </span>
                       </div>
-                      <div className="stepper-controls">
+                      <div className="spot-stepper">
                         <button
                           type="button"
                           onClick={() => {
@@ -1883,17 +1886,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             setSpotAttendees(newAdults + spotKidsAbove10 + spotKidsUnder10);
                           }}
                           disabled={spotAdults <= 1}
-                          className="stepper-btn"
                           aria-label="Decrease adults"
                         >
                           −
                         </button>
-                        <div className="stepper-count-wrap">
-                          <span className="stepper-count">{spotAdults}</span>
-                          <span className="stepper-person-label">
-                            {spotAdults === 1 ? 'Adult' : 'Adults'}
-                          </span>
-                        </div>
+                        <span>{spotAdults}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -1904,7 +1901,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             setSpotAttendees(newAdults + spotKidsAbove10 + spotKidsUnder10);
                           }}
                           disabled={spotAdults >= 10}
-                          className="stepper-btn"
                           aria-label="Increase adults"
                         >
                           +
@@ -1912,15 +1908,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </div>
                     </div>
 
-                    {/* Children (10+ Years) Counter */}
-                    <div className="tier-counter-card">
-                      <div className="tier-info">
-                        <div className="tier-name-row">
-                          <span className="tier-title">Children (10+ Years)</span>
+                    {/* Row 2: Children (10+ Years) */}
+                    <div className="spot-attendee-unified-row">
+                      <div className="spot-attendee-unified-info">
+                        <div className="row-title-wrap">
+                          <strong>Children (10+ Years)</strong>
                         </div>
-                        <span className="tier-desc">₹300 per child</span>
+                        <span className="row-desc">₹300 per child</span>
                       </div>
-                      <div className="stepper-controls">
+                      <div className="spot-stepper">
                         <button
                           type="button"
                           onClick={() => {
@@ -1931,17 +1927,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
                           }}
                           disabled={spotKidsAbove10 <= 0}
-                          className="stepper-btn"
                           aria-label="Decrease children 10 and above"
                         >
                           −
                         </button>
-                        <div className="stepper-count-wrap">
-                          <span className="stepper-count">{spotKidsAbove10}</span>
-                          <span className="stepper-person-label">
-                            {spotKidsAbove10 === 1 ? 'Child' : 'Children'}
-                          </span>
-                        </div>
+                        <span>{spotKidsAbove10}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -1952,7 +1942,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
                           }}
                           disabled={spotKidsAbove10 >= 10}
-                          className="stepper-btn"
                           aria-label="Increase children 10 and above"
                         >
                           +
@@ -1960,16 +1949,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </div>
                     </div>
 
-                    {/* Children (Under 10 Years) Counter */}
-                    <div className="tier-counter-card">
-                      <div className="tier-info">
-                        <div className="tier-name-row">
-                          <span className="tier-title">Children (Under 10 Years)</span>
-                          <span className="tier-badge free-badge">Free</span>
+                    {/* Row 3: Children (Under 10 Years) */}
+                    <div className="spot-attendee-unified-row">
+                      <div className="spot-attendee-unified-info">
+                        <div className="row-title-wrap">
+                          <strong>Children (Under 10 Years)</strong>
                         </div>
-                        <span className="tier-desc">Complimentary reunion entry</span>
+                        <span className="badge-free">FREE</span>
                       </div>
-                      <div className="stepper-controls">
+                      <div className="spot-stepper">
                         <button
                           type="button"
                           onClick={() => {
@@ -1980,17 +1968,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
                           }}
                           disabled={spotKidsUnder10 <= 0}
-                          className="stepper-btn"
                           aria-label="Decrease children under 10"
                         >
                           −
                         </button>
-                        <div className="stepper-count-wrap">
-                          <span className="stepper-count">{spotKidsUnder10}</span>
-                          <span className="stepper-person-label">
-                            {spotKidsUnder10 === 1 ? 'Child' : 'Children'}
-                          </span>
-                        </div>
+                        <span>{spotKidsUnder10}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -2001,7 +1983,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
                           }}
                           disabled={spotKidsUnder10 >= 10}
-                          className="stepper-btn"
                           aria-label="Increase children under 10"
                         >
                           +
