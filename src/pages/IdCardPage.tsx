@@ -19,7 +19,7 @@ import {
 import { supabase } from '../lib/supabase';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
-export const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
+const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
 
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
