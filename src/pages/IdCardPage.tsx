@@ -6,6 +6,7 @@ import { IdCardPass } from '../components/IdCardPass';
 import {
   lookupRegistrationByMobile,
   lookupRegistrationByRegNumber,
+  fetchAllRegistrationsForLookup,
   cleanMobileNumber,
   formatRegistrationNumberInput,
 } from '../lib/registrations';
@@ -20,9 +21,12 @@ import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
   const [searchParams] = useSearchParams();
-  const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number'>('mobile');
+  const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number' | 'name'>('mobile');
   const [mobileInput, setMobileInput] = useState('');
   const [regInput, setRegInput] = useState('');
+  const [nameSearchQuery, setNameSearchQuery] = useState('');
+  const [allRegistrations, setAllRegistrations] = useState<ExistingRegistrationLookup[]>([]);
+  const [loadingAllRegistrations, setLoadingAllRegistrations] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [registration, setRegistration] = useState<ExistingRegistrationLookup | null>(null);
@@ -239,7 +243,82 @@ export const IdCardPage: React.FC = () => {
     executeRegLookup(padded);
   };
 
-  // URL query param auto-lookup effect (?mobile=... or ?reg=...)
+  // Pre-load event registrations once for instant in-memory lookup (matching Gate Verification Portal)
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingAllRegistrations(true);
+
+    fetchAllRegistrationsForLookup(defaultEvent.event_slug)
+      .then((list) => {
+        if (isMounted) setAllRegistrations(list);
+      })
+      .catch((err) => {
+        console.warn('Preload registrations failed:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingAllRegistrations(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Instant In-Memory Predictive Search Filter (0ms delay on keystrokes)
+  const filteredNameRegistrations = React.useMemo(() => {
+    const query = nameSearchQuery.trim().toLowerCase();
+    if (!query || query.length < 2) return [];
+
+    const tokens = query.split(/\s+/).filter(Boolean);
+
+    return allRegistrations
+      .filter((reg) => {
+        const alumni = reg.alumni;
+        if (!alumni) return false;
+
+        const name = (alumni.name || '').toLowerCase();
+        const branch = (alumni.engineering_discipline || '').toLowerCase();
+        const year = String(alumni.year_of_passing || '');
+        const mobile = cleanMobileNumber(alumni.mobile || '');
+        const regNo = (reg.registration_number || '').toLowerCase();
+        const city = (alumni.city || '').toLowerCase();
+        const org = (alumni.organization || '').toLowerCase();
+
+        return tokens.every(
+          (token) =>
+            name.includes(token) ||
+            branch.includes(token) ||
+            year.includes(token) ||
+            mobile.includes(token) ||
+            regNo.includes(token) ||
+            city.includes(token) ||
+            org.includes(token)
+        );
+      })
+      .slice(0, 25);
+  }, [allRegistrations, nameSearchQuery]);
+
+  // Handle Attendee Selection from Name Search Results
+  const handleSelectAttendee = (reg: ExistingRegistrationLookup) => {
+    if (reg.attendance_status === 'payment_pending' || reg.attendance_status === 'no') {
+      setErrorMsg(
+        'Your registration payment is currently under verification or pending. ID Cards can only be generated once payment has been confirmed by the organizers.'
+      );
+      return;
+    }
+
+    setRegistration(reg);
+    if (reg.photo_url) {
+      setPhotoPreview(reg.photo_url);
+    } else {
+      setPhotoPreview(null);
+    }
+    setErrorMsg(null);
+    setSelfiePrompt(null);
+    setSelfieSkipped(false);
+  };
+
+  // URL query param auto-lookup effect (?mobile=... or ?reg=... or ?name=...)
   useEffect(() => {
     const paramReg =
       searchParams.get('reg') ||
@@ -264,7 +343,14 @@ export const IdCardPage: React.FC = () => {
       setSearchMode('mobile');
       if (clean.length >= 10) {
         executeLookup(clean);
+        return;
       }
+    }
+
+    const paramName = searchParams.get('name') || searchParams.get('attendee');
+    if (paramName) {
+      setNameSearchQuery(paramName);
+      setSearchMode('name');
     }
   }, [searchParams]);
 
@@ -369,7 +455,7 @@ export const IdCardPage: React.FC = () => {
           <span className="badge-pill-accent">Alumni Event Pass Portal</span>
           <h1 className="id-page-title">Generate Your Event ID Card</h1>
           <p className="id-page-subtitle">
-            Search by your phone number or Registration ID, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
+            Search by your phone number, Registration ID, or Attendee Name, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
           </p>
         </div>
 
@@ -389,7 +475,7 @@ export const IdCardPage: React.FC = () => {
                 }}
               >
                 <span className="id-tab-icon">📱</span>
-                <span>Mobile Number</span>
+                <span>Mobile</span>
               </button>
               <button
                 type="button"
@@ -402,11 +488,24 @@ export const IdCardPage: React.FC = () => {
                 }}
               >
                 <span className="id-tab-icon">🎫</span>
-                <span>Registration ID</span>
+                <span>Reg ID</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={searchMode === 'name'}
+                className={`id-search-tab ${searchMode === 'name' ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchMode('name');
+                  setErrorMsg(null);
+                }}
+              >
+                <span className="id-tab-icon">👤</span>
+                <span>Name</span>
               </button>
             </div>
 
-            {searchMode === 'mobile' ? (
+            {searchMode === 'mobile' && (
               <>
                 <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
                 <p className="id-lookup-desc">
@@ -434,7 +533,9 @@ export const IdCardPage: React.FC = () => {
                   {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
                 </form>
               </>
-            ) : (
+            )}
+
+            {searchMode === 'reg_number' && (
               <>
                 <h2 className="id-lookup-title">Enter Registration Number</h2>
                 <p className="id-lookup-desc">
@@ -475,6 +576,143 @@ export const IdCardPage: React.FC = () => {
                 </form>
               </>
             )}
+
+            {searchMode === 'name' && (
+              <>
+                <h2 className="id-lookup-title">Search by Attendee Name</h2>
+                <p className="id-lookup-desc">
+                  Type your name, passing batch, or branch to find and load your delegate pass.
+                </p>
+
+                <div className="name-search-container id-name-search-box">
+                  {/* Search Input Bar */}
+                  <div className="name-search-input-wrapper">
+                  <span className="name-search-icon">🔍</span>
+                  <input
+                    type="text"
+                    placeholder="Type name (e.g. Bhawesh, Rahul), batch (2008), or branch..."
+                    value={nameSearchQuery}
+                    onChange={(e) => {
+                      setNameSearchQuery(e.target.value);
+                      setErrorMsg(null);
+                    }}
+                    className="name-search-input"
+                    autoFocus
+                  />
+                  {nameSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNameSearchQuery('');
+                        setErrorMsg(null);
+                      }}
+                      className="name-search-clear-btn"
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
+
+                {/* Hints / Chips or Results List */}
+                {nameSearchQuery.trim().length < 2 ? (
+                  <div className="name-search-hint-box">
+                    <p>
+                      ⚡ <strong>Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
+                    </p>
+                    <div className="name-search-chips">
+                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                      <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                      <span className="name-search-chip" onClick={() => setNameSearchQuery('2008')}>🎓 2008</span>
+                    </div>
+                  </div>
+                ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
+                  <div className="name-search-hint-box" style={{ padding: '1.25rem' }}>
+                    <p>🔍 Loading registered alumni directory...</p>
+                  </div>
+                ) : filteredNameRegistrations.length === 0 ? (
+                  <div className="name-search-hint-box">
+                    <p>
+                      🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
+                    </p>
+                    <p style={{ fontSize: '0.82rem', margin: '6px 0 0 0' }}>
+                      Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="name-search-header-meta">
+                      <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
+                      <span>Click to load pass</span>
+                    </div>
+
+                    <div className="name-search-results-list">
+                      {filteredNameRegistrations.map((reg) => {
+                        const alumni = reg.alumni;
+                        if (!alumni) return null;
+                        const initials = (alumni.name || 'A')
+                          .split(' ')
+                          .map((p) => p[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase();
+
+                        return (
+                          <div
+                            key={reg.registration_id}
+                            className="name-search-result-card"
+                            onClick={() => handleSelectAttendee(reg)}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <div className="name-result-avatar">
+                              {reg.photo_url ? (
+                                <img
+                                  src={reg.photo_url}
+                                  alt={alumni.name}
+                                  className="name-result-photo"
+                                />
+                              ) : (
+                                <span>{initials}</span>
+                              )}
+                            </div>
+
+                            <div className="name-result-info">
+                              <div className="name-result-header">
+                                <span className="name-result-name">{alumni.name}</span>
+                                <span
+                                  className="result-pill"
+                                  style={{ fontSize: '0.72rem', padding: '2px 6px' }}
+                                >
+                                  {reg.registration_number}
+                                </span>
+                              </div>
+                              <div className="name-result-meta">
+                                <span>
+                                  🎓 {alumni.engineering_discipline || 'Alumni'} ({alumni.year_of_passing || '—'})
+                                </span>
+                                <span>•</span>
+                                <span>📍 {alumni.city || 'Kota'}</span>
+                              </div>
+                            </div>
+
+                            <div className="name-result-status-col">
+                              <span className="name-result-select-indicator">Get Pass →</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
 
             <div className="id-lookup-footer">
               <span>Haven't registered yet? </span>

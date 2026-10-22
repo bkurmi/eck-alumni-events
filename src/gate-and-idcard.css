@@ -346,7 +346,7 @@
   padding: 5px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  max-width: 440px;
+  max-width: 500px;
   margin: 0 auto 1.75rem auto;
   gap: 6px;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -357,17 +357,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 6px;
+  padding: 10px 14px;
   border-radius: 9px;
   border: 1px solid transparent;
   background: transparent;
   color: #94a3b8;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .id-search-tab:hover {
@@ -384,8 +385,24 @@
 }
 
 .id-tab-icon {
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .id-search-tabs {
+    max-width: 100%;
+    gap: 4px;
+    padding: 4px;
+  }
+  .id-search-tab {
+    padding: 8px 6px;
+    font-size: 0.8rem;
+    gap: 4px;
+  }
+  .id-tab-icon {
+    font-size: 0.9rem;
+  }
 }
 
 .id-reg-prefix {
@@ -418,10 +435,27 @@
   letter-spacing: 0.05em;
 }
 
-.id-lookup-form {
+.id-lookup-form,
+.id-name-search-box {
   max-width: 440px;
   margin: 0 auto;
+  width: 100%;
 }
+
+.id-name-search-box .name-search-input {
+  border: 2px solid #334155;
+  border-radius: 0.85rem;
+  background: #0f172a;
+  padding: 0.85rem 2.75rem 0.85rem 2.6rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.id-name-search-box .name-search-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+}
+
 
 /* Unified Integrated Input + Submit Button Box */
 .id-integrated-input-box {
