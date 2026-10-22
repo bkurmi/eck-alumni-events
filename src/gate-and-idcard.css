@@ -2634,36 +2634,55 @@
 /* Unified Manual Lookup Switcher (Phone vs Reg ID vs Name) */
 .manual-mode-segmented-bar {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
   padding: 4px;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   margin-bottom: 1.5rem;
+  width: 100%;
 }
 
 .manual-mode-btn {
-  flex: 1;
-  display: inline-flex;
+  flex: 1 1 0;
+  width: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
+  text-align: center;
+  gap: 6px;
+  padding: 9px 8px;
   border: none;
   background: transparent;
   color: #94a3b8;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  min-height: 42px;
+}
+
+.manual-mode-btn span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  gap: 5px;
 }
 
 @media (max-width: 540px) {
+  .manual-mode-segmented-bar {
+    gap: 4px;
+    padding: 3px;
+  }
   .manual-mode-btn {
-    padding: 8px 6px;
-    font-size: 0.78rem;
+    padding: 7px 4px;
+    font-size: 0.82rem;
     gap: 4px;
   }
 }
@@ -3230,25 +3249,36 @@
 /* Spot Redirect & Pre-fill Actions */
 .btn-redirect-spot {
   width: 100%;
-  padding: 0.95rem 1.5rem;
+  min-height: 44px;
+  padding: 0.75rem 0.85rem;
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #0f172a;
   border: none;
-  border-radius: 0.75rem;
-  font-size: 1.05rem;
+  border-radius: 0.6rem;
+  font-size: 0.94rem;
   font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
   transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .btn-redirect-spot:hover {
   transform: translateY(-1px);
   filter: brightness(1.08);
+}
+
+@media (max-width: 480px) {
+  .btn-redirect-spot {
+    padding: 0.7rem 0.5rem;
+    font-size: 0.88rem;
+    gap: 4px;
+    white-space: nowrap;
+  }
 }
 
 .btn-spot-create-new {
@@ -3431,9 +3461,83 @@
   padding: 6px 10px;
 }
 
+/* Adults Stepper Card (Consistent with Children stepper and RegistrationForm) */
+.spot-adults-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.spot-adults-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.spot-adults-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.spot-adults-pricing-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.spot-adults-stepper-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.95rem;
+  min-height: 48px;
+  transition: border-color 0.2s;
+}
+
+.spot-adults-stepper-card:hover {
+  border-color: #6366f1;
+}
+
+.spot-adult-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spot-couple-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.35);
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 /* Accompanying kids drawer aligned with RegistrationForm rules */
 .spot-kids-toggle-wrap {
-  margin-top: 1.15rem;
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 0;
 }
 
 .spot-kids-toggle-btn {

@@ -77,7 +77,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [spotAdults, setSpotAdults] = useState(1);
   const [spotKidsAbove10, setSpotKidsAbove10] = useState(0);
   const [spotKidsUnder10, setSpotKidsUnder10] = useState(0);
-  const [showKidsBreakdown, setShowKidsBreakdown] = useState(false);
   const [spotPaymentMode, setSpotPaymentMode] = useState<string>('');
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
@@ -115,19 +114,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     return Array.from({ length: currentYear - 1980 + 1 }, (_, i) => currentYear - i);
   }, [currentYear]);
 
-  // Attendee dropdown options matching RegistrationForm pricing rules
-  const attendeeOptions = React.useMemo(() => {
-    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
-      const calc = calculateContribution(num, 0, 0);
-      const label =
-        num === 1
-          ? `1 Person (Single — ₹${calc.totalAmount})`
-          : num === 2
-            ? `2 Persons (Couple — ₹${calc.totalAmount})`
-            : `${num} Persons (₹${calc.totalAmount})`;
-      return { count: num, label, amount: calc.totalAmount };
-    });
-  }, []);
 
   // Log filter
   const [logSearch, setLogSearch] = useState('');
@@ -547,7 +533,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       setSpotKidsAbove10(kAbove);
       setSpotKidsUnder10(kUnder);
       setSpotAttendees(adults + kAbove + kUnder);
-      if (kAbove > 0 || kUnder > 0) setShowKidsBreakdown(true);
       if (data.amount && data.amount > 0) {
         setSpotAmount(data.amount);
       } else {
@@ -591,7 +576,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         setSpotKidsAbove10(kAbove);
         setSpotKidsUnder10(kUnder);
         setSpotAttendees(adults + kAbove + kUnder);
-        if (kAbove > 0 || kUnder > 0) setShowKidsBreakdown(true);
         if (matched.amount && matched.amount > 0) {
           setSpotAmount(matched.amount);
         } else {
@@ -735,7 +719,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       setSpotKidsUnder10(0);
       setSpotAttendees(1);
       setSpotAmount(800);
-      setShowKidsBreakdown(false);
       setSpotPaymentMode('');
       setPaymentConfirmed(false);
       setSpotPhotoFile(null);
@@ -1234,7 +1217,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   setScanResult(null);
                 }}
               >
-                <span>👤 Name / Batch</span>
+                <span>👤 Name</span>
               </button>
             </div>
 
@@ -1526,7 +1509,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                       className="btn-redirect-spot"
                                     >
                                       <span>⚡</span>
-                                      <span>Spot Entry &amp; Collect Fee →</span>
+                                      <span>Spot Entry &amp; Collect Fee</span>
                                     </button>
                                   </>
                                 )}
@@ -1863,28 +1846,180 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </select>
                 </div>
 
-                {/* Row 3: Number of People Attending & Payment Collected */}
-                <div className="form-field">
-                  <label htmlFor="spot-attendees">
-                    Number of People Attending <span className="req-star">*</span>
-                  </label>
-                  <select
-                    id="spot-attendees"
-                    value={spotAdults}
-                    onChange={(e) => {
-                      const count = Number(e.target.value);
-                      setSpotAdults(count);
-                      const calc = calculateContribution(count, spotKidsAbove10, spotKidsUnder10);
-                      setSpotAmount(calc.totalAmount);
-                      setSpotAttendees(count + spotKidsAbove10 + spotKidsUnder10);
-                    }}
-                  >
-                    {attendeeOptions.map((opt) => (
-                      <option key={opt.count} value={opt.count}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                {/* Unified Attendee Selection (Adults & Children together - matching RegistrationForm) */}
+                <div className="spot-attendees-full-section" style={{ gridColumn: '1 / -1', width: '100%' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    <div className="rates-summary-badge">
+                      <span>₹800 Single • ₹1,500 Couple • ₹300 Kids (10+) • Free (&lt;10)</span>
+                    </div>
+                  </div>
+
+                  <div className="attendee-tiers-grid">
+                    {/* Adults Stepper */}
+                    <div className="tier-counter-card">
+                      <div className="tier-info">
+                        <div className="tier-name-row">
+                          <span className="tier-title">Adults</span>
+                          {spotAdults === 2 && (
+                            <span className="tier-badge couple-badge">Couple Rate</span>
+                          )}
+                        </div>
+                        <span className="tier-desc">
+                          {spotAdults === 1
+                            ? '₹800 for 1 adult'
+                            : spotAdults === 2
+                              ? '₹1,500 for couple'
+                              : `₹1,500 couple + ₹800/extra adult`}
+                        </span>
+                      </div>
+                      <div className="stepper-controls">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newAdults = Math.max(1, spotAdults - 1);
+                            setSpotAdults(newAdults);
+                            const calc = calculateContribution(newAdults, spotKidsAbove10, spotKidsUnder10);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(newAdults + spotKidsAbove10 + spotKidsUnder10);
+                          }}
+                          disabled={spotAdults <= 1}
+                          className="stepper-btn"
+                          aria-label="Decrease adults"
+                        >
+                          −
+                        </button>
+                        <div className="stepper-count-wrap">
+                          <span className="stepper-count">{spotAdults}</span>
+                          <span className="stepper-person-label">
+                            {spotAdults === 1 ? 'Adult' : 'Adults'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newAdults = Math.min(10, spotAdults + 1);
+                            setSpotAdults(newAdults);
+                            const calc = calculateContribution(newAdults, spotKidsAbove10, spotKidsUnder10);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(newAdults + spotKidsAbove10 + spotKidsUnder10);
+                          }}
+                          disabled={spotAdults >= 10}
+                          className="stepper-btn"
+                          aria-label="Increase adults"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Children (10+ Years) Counter */}
+                    <div className="tier-counter-card">
+                      <div className="tier-info">
+                        <div className="tier-name-row">
+                          <span className="tier-title">Children (10+ Years)</span>
+                        </div>
+                        <span className="tier-desc">₹300 per child</span>
+                      </div>
+                      <div className="stepper-controls">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = Math.max(0, spotKidsAbove10 - 1);
+                            setSpotKidsAbove10(newKids);
+                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
+                          }}
+                          disabled={spotKidsAbove10 <= 0}
+                          className="stepper-btn"
+                          aria-label="Decrease children 10 and above"
+                        >
+                          −
+                        </button>
+                        <div className="stepper-count-wrap">
+                          <span className="stepper-count">{spotKidsAbove10}</span>
+                          <span className="stepper-person-label">
+                            {spotKidsAbove10 === 1 ? 'Child' : 'Children'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = Math.min(10, spotKidsAbove10 + 1);
+                            setSpotKidsAbove10(newKids);
+                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
+                          }}
+                          disabled={spotKidsAbove10 >= 10}
+                          className="stepper-btn"
+                          aria-label="Increase children 10 and above"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Children (Under 10 Years) Counter */}
+                    <div className="tier-counter-card">
+                      <div className="tier-info">
+                        <div className="tier-name-row">
+                          <span className="tier-title">Children (Under 10 Years)</span>
+                          <span className="tier-badge free-badge">Free</span>
+                        </div>
+                        <span className="tier-desc">Complimentary reunion entry</span>
+                      </div>
+                      <div className="stepper-controls">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = Math.max(0, spotKidsUnder10 - 1);
+                            setSpotKidsUnder10(newKids);
+                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
+                          }}
+                          disabled={spotKidsUnder10 <= 0}
+                          className="stepper-btn"
+                          aria-label="Decrease children under 10"
+                        >
+                          −
+                        </button>
+                        <div className="stepper-count-wrap">
+                          <span className="stepper-count">{spotKidsUnder10}</span>
+                          <span className="stepper-person-label">
+                            {spotKidsUnder10 === 1 ? 'Child' : 'Children'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newKids = Math.min(10, spotKidsUnder10 + 1);
+                            setSpotKidsUnder10(newKids);
+                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
+                            setSpotAmount(calc.totalAmount);
+                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
+                          }}
+                          disabled={spotKidsUnder10 >= 10}
+                          className="stepper-btn"
+                          aria-label="Increase children under 10"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total Summary Row */}
+                  <div className="attendee-total-pill-bar" style={{ marginTop: '12px' }}>
+                    <span className="attendee-total-text">
+                      👥 Total Attending: <strong>{spotAdults + spotKidsAbove10 + spotKidsUnder10}</strong>{' '}
+                      {spotAdults + spotKidsAbove10 + spotKidsUnder10 === 1 ? 'person' : 'persons'}
+                    </span>
+                    <span className="attendee-total-amount" style={{ color: '#fbbf24', fontWeight: 700 }}>
+                      Total Contribution: ₹{spotAmount}
+                    </span>
+                  </div>
                 </div>
 
                 <div className={`form-field ${spotErrors.paymentMode ? 'has-error' : ''}`}>
@@ -1918,104 +2053,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     <option value="COMPLIMENTARY">⭐ Complimentary / VIP (₹0)</option>
                   </select>
                 </div>
-              </div>
-
-              {/* Optional Accompanying Kids Drawer aligned with RegistrationForm rules */}
-              <div className="spot-kids-toggle-wrap">
-                <button
-                  type="button"
-                  className="spot-kids-toggle-btn"
-                  onClick={() => setShowKidsBreakdown(!showKidsBreakdown)}
-                >
-                  <span>👨‍👩‍👧 Accompanying Children?</span>
-                  <span className="spot-kids-toggle-hint">
-                    {showKidsBreakdown
-                      ? '− Hide Children Breakdown'
-                      : spotKidsAbove10 > 0 || spotKidsUnder10 > 0
-                        ? `✓ Added: ${spotKidsAbove10} (10+) • ${spotKidsUnder10} (<10)`
-                        : '+ Add Kids (₹300 for 10+ • Free for <10)'}
-                  </span>
-                </button>
-
-                {showKidsBreakdown && (
-                  <div className="spot-kids-breakdown-box">
-                    <div className="spot-kid-tier-row">
-                      <div className="spot-kid-tier-info">
-                        <strong>Children (10+ Years)</strong>
-                        <span>₹300 per child</span>
-                      </div>
-                      <div className="spot-stepper">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newKids = Math.max(0, spotKidsAbove10 - 1);
-                            setSpotKidsAbove10(newKids);
-                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
-                          }}
-                          disabled={spotKidsAbove10 <= 0}
-                          aria-label="Decrease children 10 and above"
-                        >
-                          −
-                        </button>
-                        <span>{spotKidsAbove10}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newKids = spotKidsAbove10 + 1;
-                            setSpotKidsAbove10(newKids);
-                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
-                          }}
-                          disabled={spotKidsAbove10 >= 10}
-                          aria-label="Increase children 10 and above"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="spot-kid-tier-row">
-                      <div className="spot-kid-tier-info">
-                        <strong>Children (Under 10 Years)</strong>
-                        <span className="badge-free">FREE</span>
-                      </div>
-                      <div className="spot-stepper">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newKids = Math.max(0, spotKidsUnder10 - 1);
-                            setSpotKidsUnder10(newKids);
-                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
-                          }}
-                          disabled={spotKidsUnder10 <= 0}
-                          aria-label="Decrease children under 10"
-                        >
-                          −
-                        </button>
-                        <span>{spotKidsUnder10}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newKids = spotKidsUnder10 + 1;
-                            setSpotKidsUnder10(newKids);
-                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
-                          }}
-                          disabled={spotKidsUnder10 >= 10}
-                          aria-label="Increase children under 10"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* INSTANT UPI QR CODE PAYMENT DESK CARD */}
