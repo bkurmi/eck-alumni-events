@@ -1888,7 +1888,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         <div className="row-title-wrap">
                           <strong>Adults</strong>
                           {spotAdults === 2 && (
-                            <span className="spot-couple-badge">COUPLE RATE</span>
+                            <span className="spot-couple-badge">Couple</span>
                           )}
                         </div>
                         <span className="row-desc">
@@ -2338,15 +2338,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   disabled={spotSubmitting}
                   className="btn-primary-action btn-spot-submit"
                 >
-                  {spotSubmitting
-                    ? 'Registering...'
-                    : spotPaymentMode === 'COMPLIMENTARY'
-                      ? 'Complete Spot Entry (Complimentary / VIP) →'
-                      : selectedUpiConfig
-                        ? `Complete Spot Entry (₹${spotAmount} via ${selectedUpiConfig.account_name} QR) →`
-                        : spotPaymentMode === 'CASH'
-                          ? `Complete Spot Entry (₹${spotAmount} Cash) →`
-                          : `Complete Spot Entry (₹${spotAmount}) →`}
+                  {spotSubmitting ? 'Registering...' : 'Complete Spot Entry'}
                 </button>
               </div>
             </form>

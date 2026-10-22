@@ -1231,6 +1231,11 @@ h6 {
   font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .attendee-tiers-grid {
