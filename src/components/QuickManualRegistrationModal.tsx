@@ -1147,7 +1147,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         <div className="tier-name-row">
                           <span className="tier-title">Adults</span>
                           {adultsCount === 2 && (
-                            <span className="tier-badge couple-badge">Couple Rate</span>
+                            <span className="tier-badge couple-badge">Couple</span>
                           )}
                         </div>
                         <span className="tier-desc">
