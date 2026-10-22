@@ -1552,9 +1552,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 <div className="tier-info">
                   <div className="tier-name-row">
                     <span className="tier-title">Children (Under 10 Years)</span>
-                    <span className="tier-badge free-badge">Free</span>
+                    <span className="tier-badge free-badge desktop-only-badge">Free</span>
                   </div>
-                  <span className="tier-desc">Complimentary reunion entry</span>
+                  <span className="tier-desc desktop-only-desc">Complimentary reunion entry</span>
+                  <span className="tier-badge free-badge mobile-only-badge">Free</span>
                 </div>
                 <div className="stepper-controls">
                   <button

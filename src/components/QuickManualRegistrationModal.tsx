@@ -1239,9 +1239,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       <div className="tier-info">
                         <div className="tier-name-row">
                           <span className="tier-title">Children (Under 10 Years)</span>
-                          <span className="tier-badge free-badge">FREE</span>
+                          <span className="tier-badge free-badge desktop-only-badge">FREE</span>
                         </div>
-                        <span className="tier-desc">Complimentary reunion entry</span>
+                        <span className="tier-desc desktop-only-desc">Complimentary reunion entry</span>
+                        <span className="tier-badge free-badge mobile-only-badge">FREE</span>
                       </div>
                       <div className="stepper-controls">
                         <button

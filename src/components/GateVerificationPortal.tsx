@@ -71,8 +71,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   // Spot Registration State
   const [spotName, setSpotName] = useState('');
   const [spotMobile, setSpotMobile] = useState('');
-  const [spotBranch, setSpotBranch] = useState('Computer Science');
-  const [spotBatch, setSpotBatch] = useState<number | ''>(2020);
+  const [spotBranch, setSpotBranch] = useState('');
+  const [spotBatch, setSpotBatch] = useState<number | ''>('');
   const [spotAttendees, setSpotAttendees] = useState(1);
   const [spotAdults, setSpotAdults] = useState(1);
   const [spotKidsAbove10, setSpotKidsAbove10] = useState(0);
@@ -524,8 +524,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     if (data) {
       if (data.name) setSpotName(data.name);
       if (data.mobile) setSpotMobile(cleanMobileNumber(data.mobile));
-      if (data.branch) setSpotBranch(data.branch);
-      if (data.batch) setSpotBatch(Number(data.batch));
+      setSpotBranch(data.branch || '');
+      setSpotBatch(data.batch ? Number(data.batch) : '');
       const adults = data.adults || 1;
       const kAbove = data.kidsAbove10 || 0;
       const kUnder = data.kidsUnder10 || 0;
@@ -596,6 +596,34 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       }
     } else {
       setPreloadNotice(null);
+    }
+  };
+
+  // Comprehensive reset for Spot Walk-in Registration form
+  const handleResetSpot = (clearResult = true) => {
+    setSpotName('');
+    setSpotMobile('');
+    setSpotBranch('');
+    setSpotBatch('');
+    setSpotAdults(1);
+    setSpotKidsAbove10(0);
+    setSpotKidsUnder10(0);
+    setSpotAttendees(1);
+    setSpotAmount(800);
+    setSpotPaymentMode('');
+    setPaymentConfirmed(false);
+    setSpotPhotoFile(null);
+    if (spotPhotoPreview) {
+      try {
+        URL.revokeObjectURL(spotPhotoPreview);
+      } catch (_) { }
+    }
+    setSpotPhotoPreview(null);
+    setPreloadNotice(null);
+    setSpotErrors({});
+    setSpotFormErrorMsg(null);
+    if (clearResult) {
+      setSpotScanResult(null);
     }
   };
 
@@ -734,24 +762,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       });
 
       // Reset form
-      setSpotName('');
-      setSpotMobile('');
-      setSpotBranch('Computer Science');
-      setSpotBatch(2020);
-      setSpotAdults(1);
-      setSpotKidsAbove10(0);
-      setSpotKidsUnder10(0);
-      setSpotAttendees(1);
-      setSpotAmount(800);
-      setSpotPaymentMode('');
-      setPaymentConfirmed(false);
-      setSpotPhotoFile(null);
-      if (spotPhotoPreview) {
-        URL.revokeObjectURL(spotPhotoPreview);
-      }
-      setSpotPhotoPreview(null);
-      setSpotErrors({});
-      setSpotFormErrorMsg(null);
+      handleResetSpot(false);
       // Refresh entries & stats
       await loadGateEntries();
       onRefreshRegistrations();
@@ -895,7 +906,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         <button
           type="button"
           className={`gate-subtab-btn ${activeSubTab === 'spot' ? 'active' : ''}`}
-          onClick={() => setActiveSubTab('spot')}
+          onClick={() => {
+            handleResetSpot(true);
+            setActiveSubTab('spot');
+          }}
         >
           <span className="gate-tab-icon">⚡</span>
           <span className="gate-tab-full">Spot Walk-in Registration</span>
@@ -1755,12 +1769,20 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         <div className="gate-spot-section">
           <div className="gate-card-box">
             <div className="spot-header-row">
-              <div>
+              <div style={{ flex: '1 1 auto' }}>
                 <h3>⚡ Gate Spot Registration (Walk-ins)</h3>
                 <p className="card-sub-desc">
                   Quickly register walk-in alumni at the gate, accept Cash/UPI, mark entry, and create their pass.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => handleResetSpot(true)}
+                className="btn-spot-reset-header"
+                title="Clear all fields and start a fresh registration"
+              >
+                <span>↺</span> Reset Form
+              </button>
             </div>
 
 
@@ -2334,6 +2356,14 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               <div className="spot-form-actions">
                 <button
+                  type="button"
+                  onClick={() => handleResetSpot(true)}
+                  className="btn-spot-reset-action"
+                  disabled={spotSubmitting}
+                >
+                  <span>↺</span> Reset Form
+                </button>
+                <button
                   type="submit"
                   disabled={spotSubmitting}
                   className="btn-primary-action btn-spot-submit"
@@ -2375,7 +2405,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setSpotScanResult(null);
+                          handleResetSpot(true);
                           const mobileInput = document.getElementById('spot-mobile');
                           if (mobileInput) mobileInput.focus();
                         }}
@@ -2402,14 +2432,24 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         )}
                       </div>
                     </div>
-                    <div className="result-actions">
+                    <div className="result-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         onClick={() => setSpotScanResult(null)}
+                        className="btn-scan-next btn-warning"
+                        style={{ flex: '1 1 160px', minHeight: '44px' }}
+                      >
+                        <span>↩</span>
+                        <span>Edit &amp; Try Again</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleResetSpot(true)}
                         className="btn-scan-next btn-error"
+                        style={{ flex: '1 1 160px', minHeight: '44px' }}
                       >
                         <span>✕</span>
-                        <span>Dismiss &amp; Try Again</span>
+                        <span>Clear &amp; Reset Form</span>
                       </button>
                     </div>
                   </>
