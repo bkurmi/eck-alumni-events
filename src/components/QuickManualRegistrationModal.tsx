@@ -1145,9 +1145,9 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                     <div className="tier-counter-card">
                       <div className="tier-info">
                         <div className="tier-name-row">
-                          <span className="tier-title">Adults</span>
+                          <strong className="tier-title">Adults</strong>
                           {adultsCount === 2 && (
-                            <span className="tier-badge couple-badge">Couple</span>
+                            <span className="couple-badge">Couple</span>
                           )}
                         </div>
                         <span className="tier-desc">
@@ -1171,12 +1171,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         >
                           −
                         </button>
-                        <div className="stepper-count-wrap">
-                          <span className="stepper-count">{adultsCount}</span>
-                          <span className="stepper-person-label">
-                            {adultsCount === 1 ? 'ADULT' : 'ADULTS'}
-                          </span>
-                        </div>
+                        <span className="stepper-count">{adultsCount}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -1196,7 +1191,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                     <div className="tier-counter-card">
                       <div className="tier-info">
                         <div className="tier-name-row">
-                          <span className="tier-title">Children (10+ Years)</span>
+                          <strong className="tier-title">Children (10+ Years)</strong>
                         </div>
                         <span className="tier-desc">₹300 per child</span>
                       </div>
@@ -1213,12 +1208,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         >
                           −
                         </button>
-                        <div className="stepper-count-wrap">
-                          <span className="stepper-count">{kidsAbove10}</span>
-                          <span className="stepper-person-label">
-                            {kidsAbove10 === 1 ? 'CHILD' : 'CHILDREN'}
-                          </span>
-                        </div>
+                        <span className="stepper-count">{kidsAbove10}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -1238,11 +1228,9 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                     <div className="tier-counter-card">
                       <div className="tier-info">
                         <div className="tier-name-row">
-                          <span className="tier-title">Children (Under 10 Years)</span>
-                          <span className="tier-badge free-badge desktop-only-badge">FREE</span>
+                          <strong className="tier-title">Children (Under 10 Years)</strong>
                         </div>
-                        <span className="tier-desc desktop-only-desc">Complimentary reunion entry</span>
-                        <span className="tier-badge free-badge mobile-only-badge">FREE</span>
+                        <span className="badge-free">FREE</span>
                       </div>
                       <div className="stepper-controls">
                         <button
@@ -1257,12 +1245,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         >
                           −
                         </button>
-                        <div className="stepper-count-wrap">
-                          <span className="stepper-count">{kidsUnder10}</span>
-                          <span className="stepper-person-label">
-                            {kidsUnder10 === 1 ? 'CHILD' : 'CHILDREN'}
-                          </span>
-                        </div>
+                        <span className="stepper-count">{kidsUnder10}</span>
                         <button
                           type="button"
                           onClick={() => {

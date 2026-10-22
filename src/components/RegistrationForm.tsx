@@ -1456,9 +1456,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               <div className="tier-counter-card">
                 <div className="tier-info">
                   <div className="tier-name-row">
-                    <span className="tier-title">Adults</span>
+                    <strong className="tier-title">Adults</strong>
                     {(formData.adults_count ?? 1) === 2 && (
-                      <span className="tier-badge couple-badge">Couple Rate</span>
+                      <span className="couple-badge">Couple</span>
                     )}
                   </div>
                   <span className="tier-desc">
@@ -1485,12 +1485,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   >
                     −
                   </button>
-                  <div className="stepper-count-wrap">
-                    <span className="stepper-count">{formData.adults_count ?? 1}</span>
-                    <span className="stepper-person-label">
-                      {(formData.adults_count ?? 1) === 1 ? 'Adult' : 'Adults'}
-                    </span>
-                  </div>
+                  <span className="stepper-count">{formData.adults_count ?? 1}</span>
                   <button
                     type="button"
                     onClick={() => handleCountStep('adults_count', 1)}
@@ -1508,7 +1503,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               <div className="tier-counter-card">
                 <div className="tier-info">
                   <div className="tier-name-row">
-                    <span className="tier-title">Children (10+ Years)</span>
+                    <strong className="tier-title">Children (10+ Years)</strong>
                   </div>
                   <span className="tier-desc">₹300 per child</span>
                 </div>
@@ -1528,12 +1523,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   >
                     −
                   </button>
-                  <div className="stepper-count-wrap">
-                    <span className="stepper-count">{formData.children_above_7_count ?? 0}</span>
-                    <span className="stepper-person-label">
-                      {(formData.children_above_7_count ?? 0) === 1 ? 'Child' : 'Children'}
-                    </span>
-                  </div>
+                  <span className="stepper-count">{formData.children_above_7_count ?? 0}</span>
                   <button
                     type="button"
                     onClick={() => handleCountStep('children_above_7_count', 1)}
@@ -1551,11 +1541,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               <div className="tier-counter-card">
                 <div className="tier-info">
                   <div className="tier-name-row">
-                    <span className="tier-title">Children (Under 10 Years)</span>
-                    <span className="tier-badge free-badge desktop-only-badge">Free</span>
+                    <strong className="tier-title">Children (Under 10 Years)</strong>
                   </div>
-                  <span className="tier-desc desktop-only-desc">Complimentary reunion entry</span>
-                  <span className="tier-badge free-badge mobile-only-badge">Free</span>
+                  <span className="badge-free">FREE</span>
                 </div>
                 <div className="stepper-controls">
                   <button
@@ -1573,12 +1561,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   >
                     −
                   </button>
-                  <div className="stepper-count-wrap">
-                    <span className="stepper-count">{formData.children_under_7_count ?? 0}</span>
-                    <span className="stepper-person-label">
-                      {(formData.children_under_7_count ?? 0) === 1 ? 'Child' : 'Children'}
-                    </span>
-                  </div>
+                  <span className="stepper-count">{formData.children_under_7_count ?? 0}</span>
                   <button
                     type="button"
                     onClick={() => handleCountStep('children_under_7_count', 1)}
