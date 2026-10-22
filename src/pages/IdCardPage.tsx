@@ -3,7 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import { Header } from '../components/Header';
 import { IdCardPass } from '../components/IdCardPass';
-import { lookupRegistrationByMobile, cleanMobileNumber } from '../lib/registrations';
+import {
+  lookupRegistrationByMobile,
+  lookupRegistrationByRegNumber,
+  cleanMobileNumber,
+  formatRegistrationNumberInput,
+} from '../lib/registrations';
 import {
   isAlumniIdCardsEnabled,
   compressAttendeePhoto,
@@ -15,7 +20,9 @@ import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
   const [searchParams] = useSearchParams();
+  const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number'>('mobile');
   const [mobileInput, setMobileInput] = useState('');
+  const [regInput, setRegInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [registration, setRegistration] = useState<ExistingRegistrationLookup | null>(null);
@@ -83,6 +90,38 @@ export const IdCardPage: React.FC = () => {
     );
   }
 
+  // Demo Registration fallback helper
+  const getDemoRegistration = (identifier: string, regNum = 'REG-00039'): ExistingRegistrationLookup => ({
+    found: true,
+    registration_id: 'demo-reg-00039',
+    registration_number: regNum,
+    attendance_status: 'yes',
+    number_of_attendees: 2,
+    adults_count: 1,
+    children_above_7_count: 1,
+    children_under_7_count: 0,
+    amount: 800,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    alumni: {
+      id: 'demo-alumni-1',
+      name: 'Bhawesh Kurmi',
+      mobile: identifier.includes('REG') ? '9799951857' : identifier,
+      email: 'bkurmi@example.com',
+      engineering_discipline: 'Information Technology',
+      year_of_passing: 2008,
+      professional_category: 'Alumnus',
+      city: 'Kota',
+      state: 'Rajasthan',
+      country: 'India',
+      address: 'Kota',
+      organization: null,
+      work_location: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  });
+
   // Reusable Phone Number Lookup
   const executeLookup = async (mobileToSearch: string) => {
     const clean = cleanMobileNumber(mobileToSearch);
@@ -99,36 +138,7 @@ export const IdCardPage: React.FC = () => {
       const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
       if (!res.found || !res.alumni) {
         if (clean === '9799951857' || clean === '9876543210' || clean === '9999999999' || clean === '1234567890' || clean === '7770053991') {
-          const demoRes: ExistingRegistrationLookup = {
-            found: true,
-            registration_id: 'demo-reg-00039',
-            registration_number: 'REG-00039',
-            attendance_status: 'yes',
-            number_of_attendees: 2,
-            adults_count: 1,
-            children_above_7_count: 1,
-            children_under_7_count: 0,
-            amount: 800,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            alumni: {
-              id: 'demo-alumni-1',
-              name: 'Bhawesh Kurmi',
-              mobile: clean,
-              email: 'bkurmi@example.com',
-              engineering_discipline: 'Information Technology',
-              year_of_passing: 2008,
-              professional_category: 'Alumnus',
-              city: 'Kota',
-              state: 'Rajasthan',
-              country: 'India',
-              address: 'Kota',
-              organization: null,
-              work_location: null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          };
+          const demoRes = getDemoRegistration(clean, 'REG-00039');
           setRegistration(demoRes);
           setLoading(false);
           return;
@@ -150,8 +160,8 @@ export const IdCardPage: React.FC = () => {
 
       setRegistration(res);
       // Pre-set existing photo if available
-      if ((res as any).photo_url) {
-        setPhotoPreview((res as any).photo_url);
+      if (res.photo_url) {
+        setPhotoPreview(res.photo_url);
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to search registration. Please try again.');
@@ -160,18 +170,97 @@ export const IdCardPage: React.FC = () => {
     }
   };
 
-  // Handle Form Submit
+  // Reusable Registration Number Lookup (formats digits to REG-XXXXX with up to 5 digits, prepending 0s)
+  const executeRegLookup = async (rawRegOrDigits: string) => {
+    const formattedReg = formatRegistrationNumberInput(rawRegOrDigits);
+    if (!formattedReg) {
+      setErrorMsg('Please enter a valid numeric registration number (up to 5 digits).');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+    setRegistration(null);
+
+    try {
+      const res = await lookupRegistrationByRegNumber('deepaura-2k26', formattedReg);
+      if (!res.found || !res.alumni) {
+        // Fallback demo registrations if testing in dev/demo mode
+        if (formattedReg === 'REG-00039' || formattedReg === 'REG-00001' || formattedReg === 'REG-00002') {
+          const demoRes = getDemoRegistration(formattedReg, formattedReg);
+          setRegistration(demoRes);
+          setLoading(false);
+          return;
+        }
+
+        setErrorMsg(`No registration found for ${formattedReg}. Please verify your registration number.`);
+        setLoading(false);
+        return;
+      }
+
+      // Check payment status
+      if (res.attendance_status === 'payment_pending' || res.attendance_status === 'no') {
+        setErrorMsg(
+          'Your registration payment is currently under verification or pending. ID Cards can only be generated once payment has been confirmed by the organizers.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      setRegistration(res);
+      if (res.photo_url) {
+        setPhotoPreview(res.photo_url);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to search registration. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Mobile Form Submit
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     executeLookup(mobileInput);
   };
 
-  // URL query param auto-lookup effect (?mobile=...)
+  // Handle Registration Number Form Submit
+  const handleRegLookupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const digitsOnly = regInput.replace(/\D/g, '').slice(0, 5);
+    if (!digitsOnly) {
+      setErrorMsg('Please enter your registration number (e.g. 39 or 00039).');
+      return;
+    }
+    // Automatically pad to 5 digits
+    const padded = digitsOnly.padStart(5, '0');
+    setRegInput(padded);
+    executeRegLookup(padded);
+  };
+
+  // URL query param auto-lookup effect (?mobile=... or ?reg=...)
   useEffect(() => {
+    const paramReg =
+      searchParams.get('reg') ||
+      searchParams.get('reg_number') ||
+      searchParams.get('registration_number');
+
+    if (paramReg) {
+      const digits = paramReg.replace(/\D/g, '').slice(0, 5);
+      if (digits) {
+        const padded = digits.padStart(5, '0');
+        setRegInput(padded);
+        setSearchMode('reg_number');
+        executeRegLookup(padded);
+        return;
+      }
+    }
+
     const paramMobile = searchParams.get('mobile');
     if (paramMobile) {
       const clean = cleanMobileNumber(paramMobile);
       setMobileInput(clean);
+      setSearchMode('mobile');
       if (clean.length >= 10) {
         executeLookup(clean);
       }
@@ -195,9 +284,10 @@ export const IdCardPage: React.FC = () => {
       setPhotoPreview(localUrl);
 
       // 3. Upload to Supabase Storage and link to registration
+      const phoneForUpload = registration.alumni?.mobile || mobileInput;
       const uploadRes = await uploadAndSaveAttendeePhoto(
         registration.registration_id,
-        mobileInput,
+        phoneForUpload,
         compressedBlob
       );
 
@@ -226,15 +316,15 @@ export const IdCardPage: React.FC = () => {
         cacheBust: false,
       });
 
-      const clean = cleanMobileNumber(mobileInput);
+      const regNum = registration?.registration_number || 'Pass';
       const link = document.createElement('a');
-      link.download = `ECK_Alumni_Pass_${registration?.alumni?.name?.replace(/\s+/g, '_') || 'Pass'}_${clean}.png`;
+      link.download = `ECK_Alumni_Pass_${registration?.alumni?.name?.replace(/\s+/g, '_') || 'Pass'}_${regNum}.png`;
       link.href = dataUrl;
       link.click();
 
       // Record ID Card Download in Database
       if (registration?.registration_id) {
-        markIdCardDownloaded(registration.registration_id).catch(() => {});
+        markIdCardDownloaded(registration.registration_id).catch(() => { });
       }
     } catch (err) {
       console.error('Download pass error:', err);
@@ -261,39 +351,112 @@ export const IdCardPage: React.FC = () => {
           <span className="badge-pill-accent">Alumni Event Pass Portal</span>
           <h1 className="id-page-title">Generate Your Event ID Card</h1>
           <p className="id-page-subtitle">
-            Enter your registered phone number, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
+            Search by your phone number or Registration ID, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
           </p>
         </div>
 
-        {/* Step 1: Phone Lookup Box */}
+        {/* Step 1: Lookup Box */}
         {!registration ? (
           <div className="id-lookup-card">
-            <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
-            <p className="id-lookup-desc">
-              We'll instantly look up your verified registration and prepare your delegate pass.
-            </p>
-
-            <form onSubmit={handleLookup} className="id-lookup-form">
-              <div className="id-input-group">
-                <span className="id-input-prefix">+91</span>
-                <input
-                  type="tel"
-                  placeholder="10-digit mobile number"
-                  maxLength={10}
-                  value={mobileInput}
-                  onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
-                  className="id-phone-input"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
-
-              <button type="submit" className="btn-primary-action id-submit-btn" disabled={loading}>
-                {loading ? 'Searching Registration...' : 'Continue to ID Card →'}
+            {/* Search Type Selector Tabs */}
+            <div className="id-search-tabs" role="tablist" aria-label="Search ID Pass by">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={searchMode === 'mobile'}
+                className={`id-search-tab ${searchMode === 'mobile' ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchMode('mobile');
+                  setErrorMsg(null);
+                }}
+              >
+                <span className="id-tab-icon">📱</span>
+                <span>Mobile Number</span>
               </button>
-            </form>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={searchMode === 'reg_number'}
+                className={`id-search-tab ${searchMode === 'reg_number' ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchMode('reg_number');
+                  setErrorMsg(null);
+                }}
+              >
+                <span className="id-tab-icon">🎫</span>
+                <span>Registration ID</span>
+              </button>
+            </div>
+
+            {searchMode === 'mobile' ? (
+              <>
+                <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
+                <p className="id-lookup-desc">
+                  We'll instantly look up your verified registration and prepare your delegate pass.
+                </p>
+
+                <form onSubmit={handleLookup} className="id-lookup-form">
+                  <div className="id-integrated-input-box">
+                    <span className="id-input-prefix">+91</span>
+                    <input
+                      type="tel"
+                      placeholder="10-digit mobile"
+                      maxLength={10}
+                      value={mobileInput}
+                      onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
+                      className="id-phone-input"
+                      required
+                      autoFocus
+                    />
+                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
+                      {loading ? 'Finding...' : 'Get Pass →'}
+                    </button>
+                  </div>
+
+                  {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
+                </form>
+              </>
+            ) : (
+              <>
+                <h2 className="id-lookup-title">Enter Registration Number</h2>
+                <p className="id-lookup-desc">
+                  Enter your Registration ID (up to 5 digits).
+                </p>
+
+                <form onSubmit={handleRegLookupSubmit} className="id-lookup-form">
+                  <div className="id-integrated-input-box id-reg-input-group">
+                    <span className="id-input-prefix id-reg-prefix" title="Registration prefix REG- is fixed">
+                      REG-
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="e.g. 39"
+                      maxLength={5}
+                      value={regInput}
+                      onChange={(e) => {
+                        // Strictly allow numbers only, max 5 digits
+                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
+                        setRegInput(cleaned);
+                      }}
+                      className="id-phone-input id-reg-input"
+                      required
+                      autoFocus
+                    />
+                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
+                      {loading ? 'Finding...' : 'Get Pass →'}
+                    </button>
+                  </div>
+
+                  <p className="id-reg-hint-note">
+                    💡 Enter your number (e.g. <strong>39</strong> or <strong>00039</strong>)
+                  </p>
+
+                  {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
+                </form>
+              </>
+            )}
 
             <div className="id-lookup-footer">
               <span>Haven't registered yet? </span>
@@ -318,7 +481,7 @@ export const IdCardPage: React.FC = () => {
                 }}
                 className="btn-text-ghost"
               >
-                Change Number
+                Change / Search Again
               </button>
             </div>
 

@@ -333,9 +333,184 @@
   margin-bottom: 2rem;
 }
 
+/* Lookup Mode Switcher Tabs */
+.id-search-tabs {
+  display: flex;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 440px;
+  margin: 0 auto 1.75rem auto;
+  gap: 6px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.id-search-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+}
+
+.id-search-tab:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.id-search-tab.active {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border-color: rgba(165, 180, 252, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  transform: translateY(-1px);
+}
+
+.id-tab-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.id-reg-prefix {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-weight: 800 !important;
+  color: #f59e0b !important;
+  letter-spacing: 0.06em !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-right: 2px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.id-reg-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  letter-spacing: 0.15em !important;
+  font-size: 1.3rem !important;
+}
+
+.id-reg-hint-note {
+  font-size: 0.86rem;
+  color: #94a3b8;
+  margin: -0.25rem 0 1.25rem 0;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.id-reg-hint-note strong {
+  color: #fbbf24;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
 .id-lookup-form {
   max-width: 440px;
   margin: 0 auto;
+}
+
+/* Unified Integrated Input + Submit Button Box */
+.id-integrated-input-box {
+  display: flex;
+  align-items: center;
+  background: #0f172a;
+  border: 2px solid #334155;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+  padding: 4px 4px 4px 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.id-integrated-input-box:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+}
+
+.id-integrated-input-box .id-input-prefix {
+  padding: 0.85rem 0.95rem;
+  background: #1e293b;
+  color: #94a3b8;
+  font-weight: 600;
+  border-right: 1px solid #334155;
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.id-integrated-input-box .id-phone-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  padding: 0.85rem 0.75rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.id-integrated-input-box .id-phone-input::placeholder {
+  color: #475569;
+  letter-spacing: normal;
+  font-weight: normal;
+  font-size: 0.95rem;
+}
+
+.id-integrated-submit-btn {
+  flex-shrink: 0;
+  padding: 0.82rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.id-integrated-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
+}
+
+.id-integrated-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .id-integrated-input-box .id-input-prefix {
+    padding: 0.75rem 0.75rem;
+    font-size: 0.95rem;
+  }
+  .id-integrated-input-box .id-phone-input {
+    padding: 0.75rem 0.5rem;
+    font-size: 1.05rem;
+  }
+  .id-integrated-submit-btn {
+    padding: 0.75rem 0.9rem;
+    font-size: 0.88rem;
+  }
 }
 
 .id-input-group {

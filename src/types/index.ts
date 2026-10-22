@@ -177,6 +177,7 @@ export interface ExistingRegistrationLookup {
   children_under_7_count?: number;
   amount?: number;
   payment_screenshot_path?: string | null;
+  photo_url?: string | null;
   created_at?: string;
   updated_at?: string;
   alumni?: Alumni;

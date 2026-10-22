@@ -129,6 +129,92 @@ export async function lookupRegistrationByMobile(
 }
 
 /**
+ * Normalizes input numeric registration id (e.g. "39", "00039", or "REG-00039")
+ * into canonical "REG-00039" format with leading zeros up to 5 digits.
+ */
+export function formatRegistrationNumberInput(rawInput: string): string {
+  const digits = (rawInput || '').replace(/\D/g, '').slice(0, 5);
+  if (!digits) return '';
+  const padded = digits.padStart(5, '0');
+  return `REG-${padded}`;
+}
+
+/**
+ * Looks up a registration directly by 5-digit Registration Number (e.g. REG-00039 or 39).
+ * Used for ID Card / Gate Pass download.
+ */
+export async function lookupRegistrationByRegNumber(
+  eventSlug: string,
+  regNumberOrDigits: string
+): Promise<ExistingRegistrationLookup> {
+  const formattedRegNumber = formatRegistrationNumberInput(regNumberOrDigits);
+  if (!formattedRegNumber) {
+    return { found: false };
+  }
+
+  // 1. Primary: Try Supabase RPC get_registration_by_reg_number
+  try {
+    const { data, error } = await supabase.rpc('get_registration_by_reg_number', {
+      p_event_slug: eventSlug,
+      p_reg_number: formattedRegNumber,
+    });
+
+    if (!error && data) {
+      if (data.found) {
+        return data as ExistingRegistrationLookup;
+      }
+      return { found: false };
+    }
+  } catch (rpcErr) {
+    console.warn('RPC get_registration_by_reg_number notice:', rpcErr);
+  }
+
+  // 2. Secondary fallback: Direct Supabase table query
+  try {
+    const { data: eventData } = await supabase
+      .from('events')
+      .select('id')
+      .eq('event_slug', eventSlug)
+      .maybeSingle();
+
+    let query = supabase
+      .from('event_registrations')
+      .select('*, alumni:alumni_id (*)')
+      .ilike('registration_number', formattedRegNumber);
+
+    if (eventData?.id) {
+      query = query.eq('event_id', eventData.id);
+    }
+
+    const { data: regData, error: tableErr } = await query.maybeSingle();
+
+    if (!tableErr && regData && regData.alumni) {
+      const result: ExistingRegistrationLookup = {
+        found: true,
+        registration_id: regData.id,
+        registration_number: regData.registration_number,
+        attendance_status: regData.attendance_status,
+        number_of_attendees: regData.number_of_attendees,
+        adults_count: regData.adults_count ?? 1,
+        children_above_7_count: regData.children_above_7_count ?? 0,
+        children_under_7_count: regData.children_under_7_count ?? 0,
+        amount: regData.amount,
+        payment_screenshot_path: regData.payment_screenshot_path,
+        photo_url: regData.photo_url || null,
+        created_at: regData.created_at,
+        updated_at: regData.updated_at,
+        alumni: regData.alumni as Alumni,
+      };
+      return result;
+    }
+  } catch (tableErr) {
+    console.warn('Table fallback lookup by reg number notice:', tableErr);
+  }
+
+  return { found: false };
+}
+
+/**
  * Cache registration helper retained for backwards compatibility (no-op)
  */
 export function cacheRegistrationLocally(
