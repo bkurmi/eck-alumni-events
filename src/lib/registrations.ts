@@ -69,6 +69,21 @@ export async function lookupRegistrationByMobile(
 
     if (!error && data) {
       if (data.found) {
+        // Fallback: If database RPC did not return photo_url, query event_registrations directly
+        if (!data.photo_url && data.registration_id) {
+          try {
+            const { data: regPhoto } = await supabase
+              .from('event_registrations')
+              .select('photo_url')
+              .eq('id', data.registration_id)
+              .maybeSingle();
+            if (regPhoto?.photo_url) {
+              data.photo_url = regPhoto.photo_url;
+            }
+          } catch {
+            // Silently continue if direct select is restricted
+          }
+        }
         return data as ExistingRegistrationLookup;
       }
       return { found: false };
@@ -112,6 +127,7 @@ export async function lookupRegistrationByMobile(
             children_under_7_count: regData.children_under_7_count ?? 0,
             amount: regData.amount,
             payment_screenshot_path: regData.payment_screenshot_path,
+            photo_url: regData.photo_url || null,
             created_at: regData.created_at,
             updated_at: regData.updated_at,
             alumni: alumniData as Alumni,

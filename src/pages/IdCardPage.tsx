@@ -16,6 +16,7 @@ import {
   uploadAndSaveAttendeePhoto,
   markIdCardDownloaded,
 } from '../lib/gate';
+import { supabase } from '../lib/supabase';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
 export const IdCardPage: React.FC = () => {
@@ -127,6 +128,34 @@ export const IdCardPage: React.FC = () => {
     },
   });
 
+  // Resolve existing photo from DB or directly from storage bucket if DB record lacks photo_url
+  const resolvePhotoWithStorageFallback = async (reg: ExistingRegistrationLookup): Promise<string | null> => {
+    if (reg.photo_url) return reg.photo_url;
+    if (!reg.alumni) return null;
+
+    try {
+      const cleanName = (reg.alumni.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
+      const contact = cleanMobileNumber(reg.alumni.mobile || '');
+      if (!contact) return null;
+
+      const fileName = `${cleanName}_${contact}.jpg`;
+      const { data } = supabase.storage.from('id-photos').getPublicUrl(fileName);
+      if (data?.publicUrl) {
+        // Quick verification if photo file exists in storage
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const check = await fetch(data.publicUrl, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (check.ok) {
+          return `${data.publicUrl}?t=${Date.now()}`;
+        }
+      }
+    } catch {
+      // Ignore if HEAD check fails or CORS blocks HEAD
+    }
+    return null;
+  };
+
   // Reusable Phone Number Lookup
   const executeLookup = async (mobileToSearch: string) => {
     const clean = cleanMobileNumber(mobileToSearch);
@@ -163,10 +192,13 @@ export const IdCardPage: React.FC = () => {
         return;
       }
 
-      setRegistration(res);
-      // Pre-set existing photo if available
-      if (res.photo_url) {
-        setPhotoPreview(res.photo_url);
+      const existingPhoto = await resolvePhotoWithStorageFallback(res);
+      const enrichedRes = { ...res, photo_url: existingPhoto || res.photo_url };
+      setRegistration(enrichedRes);
+      if (existingPhoto) {
+        setPhotoPreview(existingPhoto);
+      } else {
+        setPhotoPreview(null);
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to search registration. Please try again.');
@@ -212,9 +244,13 @@ export const IdCardPage: React.FC = () => {
         return;
       }
 
-      setRegistration(res);
-      if (res.photo_url) {
-        setPhotoPreview(res.photo_url);
+      const existingPhoto = await resolvePhotoWithStorageFallback(res);
+      const enrichedRes = { ...res, photo_url: existingPhoto || res.photo_url };
+      setRegistration(enrichedRes);
+      if (existingPhoto) {
+        setPhotoPreview(existingPhoto);
+      } else {
+        setPhotoPreview(null);
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to search registration. Please try again.');
@@ -299,7 +335,7 @@ export const IdCardPage: React.FC = () => {
   }, [allRegistrations, nameSearchQuery]);
 
   // Handle Attendee Selection from Name Search Results
-  const handleSelectAttendee = (reg: ExistingRegistrationLookup) => {
+  const handleSelectAttendee = async (reg: ExistingRegistrationLookup) => {
     if (reg.attendance_status === 'payment_pending' || reg.attendance_status === 'no') {
       setErrorMsg(
         'Your registration payment is currently under verification or pending. ID Cards can only be generated once payment has been confirmed by the organizers.'
@@ -307,9 +343,11 @@ export const IdCardPage: React.FC = () => {
       return;
     }
 
-    setRegistration(reg);
-    if (reg.photo_url) {
-      setPhotoPreview(reg.photo_url);
+    const existingPhoto = await resolvePhotoWithStorageFallback(reg);
+    const enrichedReg = { ...reg, photo_url: existingPhoto || reg.photo_url };
+    setRegistration(enrichedReg);
+    if (existingPhoto) {
+      setPhotoPreview(existingPhoto);
     } else {
       setPhotoPreview(null);
     }
@@ -373,14 +411,20 @@ export const IdCardPage: React.FC = () => {
 
       // 3. Upload to Supabase Storage and link to registration
       const phoneForUpload = registration.alumni?.mobile || mobileInput;
+      const personName = registration.alumni?.name || '';
+      const regNumber = registration.registration_number || '';
+
       const uploadRes = await uploadAndSaveAttendeePhoto(
         registration.registration_id,
         phoneForUpload,
-        compressedBlob
+        compressedBlob,
+        personName,
+        regNumber
       );
 
       if (uploadRes.success && uploadRes.photoUrl) {
         setPhotoPreview(uploadRes.photoUrl);
+        setRegistration((prev) => (prev ? { ...prev, photo_url: uploadRes.photoUrl } : null));
       }
 
       // Smoothly scroll to the top of the pass card so attendee sees their updated photo!

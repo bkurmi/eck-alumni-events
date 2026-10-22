@@ -713,7 +713,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     let uploadedScreenshotPath: string | null = null;
     if (spotPhotoFile) {
       try {
-        uploadedScreenshotPath = await uploadSpotPaymentScreenshot(spotPhotoFile, spotMobile);
+        uploadedScreenshotPath = await uploadSpotPaymentScreenshot(spotPhotoFile, spotMobile, spotName);
       } catch (uploadErr) {
         console.warn('Screenshot upload issue, proceeding with registration:', uploadErr);
       }

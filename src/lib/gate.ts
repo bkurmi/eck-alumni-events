@@ -130,17 +130,21 @@ export async function compressAttendeePhoto(file: File): Promise<Blob> {
 export async function uploadAndSaveAttendeePhoto(
   registrationId: string,
   phone: string,
-  imageBlob: Blob
+  imageBlob: Blob,
+  personName?: string,
+  regNumber?: string
 ): Promise<{ success: boolean; photoUrl?: string; error?: string }> {
   try {
-    const clean = cleanMobileNumber(phone);
-    const fileName = `${clean}_${registrationId.slice(0, 8)}_${Date.now()}.jpg`;
+    const cleanName = (personName || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
+    const contact = cleanMobileNumber(phone) || (regNumber ? regNumber.toLowerCase().replace(/[^a-z0-9]/g, '') : registrationId.slice(0, 8));
+    const fileName = `${cleanName}_${contact}.jpg`;
 
-    // 1. Upload to Supabase Storage bucket 'id-photos'
+    // 1. Upload to Supabase Storage bucket 'id-photos' (upsert: true overwrites previous photo)
     const { error: uploadError } = await supabase.storage
       .from('id-photos')
       .upload(fileName, imageBlob, {
         contentType: 'image/jpeg',
+        cacheControl: '3600',
         upsert: true,
       });
 
@@ -149,7 +153,7 @@ export async function uploadAndSaveAttendeePhoto(
       const { data: publicUrlData } = supabase.storage
         .from('id-photos')
         .getPublicUrl(fileName);
-      photoUrl = publicUrlData?.publicUrl || '';
+      photoUrl = publicUrlData?.publicUrl ? `${publicUrlData.publicUrl}?t=${Date.now()}` : '';
     } else {
       console.warn('Supabase storage upload notice:', uploadError);
       // Fallback: convert to small base64 data URL if storage bucket is not yet created
@@ -362,12 +366,16 @@ export async function verifyGateAttendee(
  */
 export async function uploadSpotPaymentScreenshot(
   file: File,
-  mobile: string
+  mobile: string,
+  personName?: string,
+  eventSlug = 'deepaura-2k26'
 ): Promise<string | null> {
   try {
     const compressedBlob = await compressAttendeePhoto(file);
     const cleanMobile = mobile.replace(/\D/g, '') || 'nomobile';
-    const filePath = `deepaura-2k26/spot_${cleanMobile}_${Date.now()}.jpg`;
+    const cleanName = (personName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const namePart = cleanName ? `_${cleanName}` : '';
+    const filePath = `${eventSlug}/spot_${cleanMobile}${namePart}_${Date.now()}.jpg`;
 
     const { data, error } = await supabase.storage
       .from('payment-screenshots')
