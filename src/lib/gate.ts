@@ -130,17 +130,21 @@ export async function compressAttendeePhoto(file: File): Promise<Blob> {
 export async function uploadAndSaveAttendeePhoto(
   registrationId: string,
   phone: string,
-  imageBlob: Blob
+  imageBlob: Blob,
+  personName?: string,
+  regNumber?: string
 ): Promise<{ success: boolean; photoUrl?: string; error?: string }> {
   try {
-    const clean = cleanMobileNumber(phone);
-    const fileName = `${clean}_${registrationId.slice(0, 8)}_${Date.now()}.jpg`;
+    const cleanName = (personName || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
+    const contact = cleanMobileNumber(phone) || (regNumber ? regNumber.toLowerCase().replace(/[^a-z0-9]/g, '') : registrationId.slice(0, 8));
+    const fileName = `${cleanName}_${contact}.jpg`;
 
-    // 1. Upload to Supabase Storage bucket 'id-photos'
+    // 1. Upload to Supabase Storage bucket 'id-photos' (upsert: true overwrites previous photo)
     const { error: uploadError } = await supabase.storage
       .from('id-photos')
       .upload(fileName, imageBlob, {
         contentType: 'image/jpeg',
+        cacheControl: '3600',
         upsert: true,
       });
 
@@ -149,7 +153,7 @@ export async function uploadAndSaveAttendeePhoto(
       const { data: publicUrlData } = supabase.storage
         .from('id-photos')
         .getPublicUrl(fileName);
-      photoUrl = publicUrlData?.publicUrl || '';
+      photoUrl = publicUrlData?.publicUrl ? `${publicUrlData.publicUrl}?t=${Date.now()}` : '';
     } else {
       console.warn('Supabase storage upload notice:', uploadError);
       // Fallback: convert to small base64 data URL if storage bucket is not yet created
@@ -358,6 +362,66 @@ export async function verifyGateAttendee(
 }
 
 /**
+ * Upload compressed spot payment proof screenshot to 'payment-screenshots' bucket
+ */
+export async function uploadSpotPaymentScreenshot(
+  file: File,
+  mobile: string,
+  personName?: string,
+  eventSlug = 'deepaura-2k26'
+): Promise<string | null> {
+  try {
+    const compressedBlob = await compressAttendeePhoto(file);
+    const cleanMobile = mobile.replace(/\D/g, '') || 'nomobile';
+    const cleanName = (personName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const namePart = cleanName ? `_${cleanName}` : '';
+    const filePath = `${eventSlug}/spot_${cleanMobile}${namePart}_${Date.now()}.jpg`;
+
+    const { data, error } = await supabase.storage
+      .from('payment-screenshots')
+      .upload(filePath, compressedBlob, {
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('[Gate Spot Screenshot Upload Warning]:', error);
+      return null;
+    }
+    return data?.path || filePath;
+  } catch (err) {
+    console.warn('[Gate Spot Storage Exception]:', err);
+    return null;
+  }
+}
+
+/**
+ * Attach uploaded screenshot path to existing event_registrations record
+ */
+export async function attachSpotPaymentScreenshot(
+  registrationId: string,
+  screenshotPath: string
+): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('attach_spot_payment_screenshot', {
+      p_registration_id: registrationId,
+      p_screenshot_path: screenshotPath,
+    });
+    if (error) {
+      console.warn('[attachSpotPaymentScreenshot RPC warning]:', error);
+      // Fallback direct update attempt
+      await supabase
+        .from('event_registrations')
+        .update({ payment_screenshot_path: screenshotPath })
+        .eq('id', registrationId);
+    }
+  } catch (err) {
+    console.warn('[attachSpotPaymentScreenshot warning]:', err);
+  }
+}
+
+/**
  * Quick spot registration at gate
  */
 export async function spotRegisterAtGate(params: {
@@ -369,6 +433,7 @@ export async function spotRegisterAtGate(params: {
   paymentMode: 'CASH' | 'UPI_SPOT' | 'COMPLIMENTARY' | string;
   amount: number;
   verifiedBy: string;
+  paymentScreenshotPath?: string | null;
   eventSlug?: string;
 }): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
@@ -382,6 +447,7 @@ export async function spotRegisterAtGate(params: {
       p_payment_mode: params.paymentMode,
       p_amount: params.amount,
       p_verified_by: params.verifiedBy,
+      p_payment_screenshot_path: params.paymentScreenshotPath || null,
     });
 
     if (!error && data?.success) {

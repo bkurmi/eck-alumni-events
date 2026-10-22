@@ -320,6 +320,7 @@ h6 {
   .header-nav {
     gap: 6px;
   }
+
   .nav-btn {
     padding: 6px 10px;
     font-size: 0.74rem;
@@ -1231,6 +1232,11 @@ h6 {
   font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .attendee-tiers-grid {
@@ -2675,12 +2681,14 @@ h6 {
     flex-wrap: wrap;
     gap: 8px;
   }
+
   .admin-actions .admin-quick-entry-btn {
     flex: 1 1 100%;
     justify-content: center;
     padding: 10px 16px;
     font-size: 0.9rem;
   }
+
   .admin-actions .btn-secondary,
   .admin-actions .btn-ghost {
     flex: 1 1 calc(50% - 4px);
@@ -5977,6 +5985,7 @@ h6 {
     opacity: 0;
     transform: scale(0.94) translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -6188,8 +6197,15 @@ h6 {
 }
 
 @keyframes pulseGentle {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
 }
 
 .welcome-amount-pill {

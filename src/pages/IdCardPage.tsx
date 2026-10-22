@@ -3,29 +3,44 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import { Header } from '../components/Header';
 import { IdCardPass } from '../components/IdCardPass';
-import { lookupRegistrationByMobile, cleanMobileNumber } from '../lib/registrations';
+import {
+  lookupRegistrationByMobile,
+  lookupRegistrationByRegNumber,
+  fetchAllRegistrationsForLookup,
+  cleanMobileNumber,
+  formatRegistrationNumberInput,
+} from '../lib/registrations';
 import {
   isAlumniIdCardsEnabled,
   compressAttendeePhoto,
   uploadAndSaveAttendeePhoto,
   markIdCardDownloaded,
 } from '../lib/gate';
+import { supabase } from '../lib/supabase';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
+
+const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
 
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
   const [searchParams] = useSearchParams();
+  const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number' | 'name'>('mobile');
   const [mobileInput, setMobileInput] = useState('');
+  const [regInput, setRegInput] = useState('');
+  const [nameSearchQuery, setNameSearchQuery] = useState('');
+  const [allRegistrations, setAllRegistrations] = useState<ExistingRegistrationLookup[]>([]);
+  const [loadingAllRegistrations, setLoadingAllRegistrations] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [registration, setRegistration] = useState<ExistingRegistrationLookup | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [selfiePrompt, setSelfiePrompt] = useState<string | null>(null);
+  const [selfieSkipped, setSelfieSkipped] = useState(false);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const selfieInputRef = useRef<HTMLInputElement | null>(null);
-  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   // Default Event Details
   const defaultEvent: ECKEvent = {
@@ -83,6 +98,66 @@ export const IdCardPage: React.FC = () => {
     );
   }
 
+  // Demo Registration fallback helper
+  const getDemoRegistration = (identifier: string, regNum = 'REG-00039'): ExistingRegistrationLookup => ({
+    found: true,
+    registration_id: 'demo-reg-00039',
+    registration_number: regNum,
+    attendance_status: 'yes',
+    number_of_attendees: 2,
+    adults_count: 1,
+    children_above_7_count: 1,
+    children_under_7_count: 0,
+    amount: 800,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    alumni: {
+      id: 'demo-alumni-1',
+      name: 'Bhawesh Kurmi',
+      mobile: identifier.includes('REG') ? '9799951857' : identifier,
+      email: 'bkurmi@example.com',
+      engineering_discipline: 'Information Technology',
+      year_of_passing: 2008,
+      professional_category: 'Alumnus',
+      city: 'Kota',
+      state: 'Rajasthan',
+      country: 'India',
+      address: 'Kota',
+      organization: null,
+      work_location: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  });
+
+  // Resolve existing photo from DB or directly from storage bucket if DB record lacks photo_url
+  const resolvePhotoWithStorageFallback = async (reg: ExistingRegistrationLookup): Promise<string | null> => {
+    if (reg.photo_url) return reg.photo_url;
+    if (!reg.alumni) return null;
+
+    try {
+      const cleanName = (reg.alumni.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
+      const contact = cleanMobileNumber(reg.alumni.mobile || '');
+      if (!contact) return null;
+
+      const fileName = `${cleanName}_${contact}.jpg`;
+      const { data } = supabase.storage.from('id-photos').getPublicUrl(fileName);
+      if (data?.publicUrl) {
+        // Quick verification if photo file exists in storage
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const check = await fetch(data.publicUrl, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (check.ok) {
+          return `${data.publicUrl}?t=${Date.now()}`;
+        }
+      }
+    } catch {
+      // Ignore if HEAD check fails or CORS blocks HEAD
+    }
+    return null;
+  };
+
   // Reusable Phone Number Lookup
   const executeLookup = async (mobileToSearch: string) => {
     const clean = cleanMobileNumber(mobileToSearch);
@@ -99,59 +174,31 @@ export const IdCardPage: React.FC = () => {
       const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
       if (!res.found || !res.alumni) {
         if (clean === '9799951857' || clean === '9876543210' || clean === '9999999999' || clean === '1234567890' || clean === '7770053991') {
-          const demoRes: ExistingRegistrationLookup = {
-            found: true,
-            registration_id: 'demo-reg-00039',
-            registration_number: 'REG-00039',
-            attendance_status: 'yes',
-            number_of_attendees: 2,
-            adults_count: 1,
-            children_above_7_count: 1,
-            children_under_7_count: 0,
-            amount: 800,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            alumni: {
-              id: 'demo-alumni-1',
-              name: 'Bhawesh Kurmi',
-              mobile: clean,
-              email: 'bkurmi@example.com',
-              engineering_discipline: 'Information Technology',
-              year_of_passing: 2008,
-              professional_category: 'Alumnus',
-              city: 'Kota',
-              state: 'Rajasthan',
-              country: 'India',
-              address: 'Kota',
-              organization: null,
-              work_location: null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          };
+          const demoRes = getDemoRegistration(clean, 'REG-00039');
           setRegistration(demoRes);
           setLoading(false);
           return;
         }
 
-        setErrorMsg('No registration found with this mobile number. Please register first.');
+        setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
       }
 
-      // Check payment status
-      if (res.attendance_status === 'payment_pending' || res.attendance_status === 'no') {
-        setErrorMsg(
-          'Your registration payment is currently under verification or pending. ID Cards can only be generated once payment has been confirmed by the organizers.'
-        );
+      // Check attendance & payment status - only confirmed 'yes' (Attending) can download ID pass
+      if (res.attendance_status !== 'yes') {
+        setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
       }
 
-      setRegistration(res);
-      // Pre-set existing photo if available
-      if ((res as any).photo_url) {
-        setPhotoPreview((res as any).photo_url);
+      const existingPhoto = await resolvePhotoWithStorageFallback(res);
+      const enrichedRes = { ...res, photo_url: existingPhoto || res.photo_url };
+      setRegistration(enrichedRes);
+      if (existingPhoto) {
+        setPhotoPreview(existingPhoto);
+      } else {
+        setPhotoPreview(null);
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to search registration. Please try again.');
@@ -160,21 +207,184 @@ export const IdCardPage: React.FC = () => {
     }
   };
 
-  // Handle Form Submit
+  // Reusable Registration Number Lookup (formats digits to REG-XXXXX with up to 5 digits, prepending 0s)
+  const executeRegLookup = async (rawRegOrDigits: string) => {
+    const formattedReg = formatRegistrationNumberInput(rawRegOrDigits);
+    if (!formattedReg) {
+      setErrorMsg('Please enter a valid numeric registration number (up to 5 digits).');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+    setRegistration(null);
+
+    try {
+      const res = await lookupRegistrationByRegNumber('deepaura-2k26', formattedReg);
+      if (!res.found || !res.alumni) {
+        // Fallback demo registrations if testing in dev/demo mode
+        if (formattedReg === 'REG-00039' || formattedReg === 'REG-00001' || formattedReg === 'REG-00002') {
+          const demoRes = getDemoRegistration(formattedReg, formattedReg);
+          setRegistration(demoRes);
+          setLoading(false);
+          return;
+        }
+
+        setErrorMsg(ID_PASS_LOCKED_MSG);
+        setLoading(false);
+        return;
+      }
+
+      // Check attendance & payment status - only confirmed 'yes' (Attending) can download ID pass
+      if (res.attendance_status !== 'yes') {
+        setErrorMsg(ID_PASS_LOCKED_MSG);
+        setLoading(false);
+        return;
+      }
+
+      const existingPhoto = await resolvePhotoWithStorageFallback(res);
+      const enrichedRes = { ...res, photo_url: existingPhoto || res.photo_url };
+      setRegistration(enrichedRes);
+      if (existingPhoto) {
+        setPhotoPreview(existingPhoto);
+      } else {
+        setPhotoPreview(null);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to search registration. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Mobile Form Submit
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     executeLookup(mobileInput);
   };
 
-  // URL query param auto-lookup effect (?mobile=...)
+  // Handle Registration Number Form Submit
+  const handleRegLookupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const digitsOnly = regInput.replace(/\D/g, '').slice(0, 5);
+    if (!digitsOnly) {
+      setErrorMsg('Please enter your registration number (e.g. 39 or 00039).');
+      return;
+    }
+    // Automatically pad to 5 digits
+    const padded = digitsOnly.padStart(5, '0');
+    setRegInput(padded);
+    executeRegLookup(padded);
+  };
+
+  // Pre-load event registrations once for instant in-memory lookup (matching Gate Verification Portal)
   useEffect(() => {
+    let isMounted = true;
+    setLoadingAllRegistrations(true);
+
+    fetchAllRegistrationsForLookup(defaultEvent.event_slug)
+      .then((list) => {
+        if (isMounted) setAllRegistrations(list);
+      })
+      .catch((err) => {
+        console.warn('Preload registrations failed:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingAllRegistrations(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Instant In-Memory Predictive Search Filter (0ms delay on keystrokes)
+  const filteredNameRegistrations = React.useMemo(() => {
+    const query = nameSearchQuery.trim().toLowerCase();
+    if (!query || query.length < 2) return [];
+
+    const tokens = query.split(/\s+/).filter(Boolean);
+
+    return allRegistrations
+      .filter((reg) => {
+        const alumni = reg.alumni;
+        if (!alumni) return false;
+
+        const name = (alumni.name || '').toLowerCase();
+        const branch = (alumni.engineering_discipline || '').toLowerCase();
+        const year = String(alumni.year_of_passing || '');
+        const mobile = cleanMobileNumber(alumni.mobile || '');
+        const regNo = (reg.registration_number || '').toLowerCase();
+        const city = (alumni.city || '').toLowerCase();
+        const org = (alumni.organization || '').toLowerCase();
+
+        return tokens.every(
+          (token) =>
+            name.includes(token) ||
+            branch.includes(token) ||
+            year.includes(token) ||
+            mobile.includes(token) ||
+            regNo.includes(token) ||
+            city.includes(token) ||
+            org.includes(token)
+        );
+      })
+      .slice(0, 25);
+  }, [allRegistrations, nameSearchQuery]);
+
+  // Handle Attendee Selection from Name Search Results
+  const handleSelectAttendee = async (reg: ExistingRegistrationLookup) => {
+    if (reg.attendance_status !== 'yes') {
+      setErrorMsg(ID_PASS_LOCKED_MSG);
+      return;
+    }
+
+    const existingPhoto = await resolvePhotoWithStorageFallback(reg);
+    const enrichedReg = { ...reg, photo_url: existingPhoto || reg.photo_url };
+    setRegistration(enrichedReg);
+    if (existingPhoto) {
+      setPhotoPreview(existingPhoto);
+    } else {
+      setPhotoPreview(null);
+    }
+    setErrorMsg(null);
+    setSelfiePrompt(null);
+    setSelfieSkipped(false);
+  };
+
+  // URL query param auto-lookup effect (?mobile=... or ?reg=... or ?name=...)
+  useEffect(() => {
+    const paramReg =
+      searchParams.get('reg') ||
+      searchParams.get('reg_number') ||
+      searchParams.get('registration_number');
+
+    if (paramReg) {
+      const digits = paramReg.replace(/\D/g, '').slice(0, 5);
+      if (digits) {
+        const padded = digits.padStart(5, '0');
+        setRegInput(padded);
+        setSearchMode('reg_number');
+        executeRegLookup(padded);
+        return;
+      }
+    }
+
     const paramMobile = searchParams.get('mobile');
     if (paramMobile) {
       const clean = cleanMobileNumber(paramMobile);
       setMobileInput(clean);
+      setSearchMode('mobile');
       if (clean.length >= 10) {
         executeLookup(clean);
+        return;
       }
+    }
+
+    const paramName = searchParams.get('name') || searchParams.get('attendee');
+    if (paramName) {
+      setNameSearchQuery(paramName);
+      setSearchMode('name');
     }
   }, [searchParams]);
 
@@ -185,6 +395,7 @@ export const IdCardPage: React.FC = () => {
 
     setUploadingPhoto(true);
     setErrorMsg(null);
+    setSelfiePrompt(null);
 
     try {
       // 1. Compress image client-side to < 100KB WebP/JPEG
@@ -195,15 +406,27 @@ export const IdCardPage: React.FC = () => {
       setPhotoPreview(localUrl);
 
       // 3. Upload to Supabase Storage and link to registration
+      const phoneForUpload = registration.alumni?.mobile || mobileInput;
+      const personName = registration.alumni?.name || '';
+      const regNumber = registration.registration_number || '';
+
       const uploadRes = await uploadAndSaveAttendeePhoto(
         registration.registration_id,
-        mobileInput,
-        compressedBlob
+        phoneForUpload,
+        compressedBlob,
+        personName,
+        regNumber
       );
 
       if (uploadRes.success && uploadRes.photoUrl) {
         setPhotoPreview(uploadRes.photoUrl);
+        setRegistration((prev) => (prev ? { ...prev, photo_url: uploadRes.photoUrl } : null));
       }
+
+      // Smoothly scroll to the top of the pass card so attendee sees their updated photo!
+      setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 200);
     } catch (err: any) {
       console.error('Photo upload error:', err);
       setErrorMsg('Photo compression/upload encountered an issue. Using local preview for pass.');
@@ -215,6 +438,17 @@ export const IdCardPage: React.FC = () => {
   // Download ID Card as High-Resolution PNG
   const handleDownload = async () => {
     if (!cardRef.current) return;
+
+    // Check if selfie has been taken OR explicitly skipped
+    const hasPhoto = Boolean(photoPreview || registration?.photo_url);
+    if (!hasPhoto && !selfieSkipped) {
+      setSelfiePrompt(
+        "Almost there! Just add your selfie 📸✨ A pass without a photo is like Diwali without sweets! 🪔 Take a quick selfie to personalize your pass, or choose to skip."
+      );
+      return;
+    }
+
+    setSelfiePrompt(null);
     setDownloading(true);
 
     try {
@@ -226,15 +460,15 @@ export const IdCardPage: React.FC = () => {
         cacheBust: false,
       });
 
-      const clean = cleanMobileNumber(mobileInput);
+      const regNum = registration?.registration_number || 'Pass';
       const link = document.createElement('a');
-      link.download = `ECK_Alumni_Pass_${registration?.alumni?.name?.replace(/\s+/g, '_') || 'Pass'}_${clean}.png`;
+      link.download = `ECK_Alumni_Pass_${registration?.alumni?.name?.replace(/\s+/g, '_') || 'Pass'}_${regNum}.png`;
       link.href = dataUrl;
       link.click();
 
       // Record ID Card Download in Database
       if (registration?.registration_id) {
-        markIdCardDownloaded(registration.registration_id).catch(() => {});
+        markIdCardDownloaded(registration.registration_id).catch(() => { });
       }
     } catch (err) {
       console.error('Download pass error:', err);
@@ -261,39 +495,281 @@ export const IdCardPage: React.FC = () => {
           <span className="badge-pill-accent">Alumni Event Pass Portal</span>
           <h1 className="id-page-title">Generate Your Event ID Card</h1>
           <p className="id-page-subtitle">
-            Enter your registered phone number, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
+            Search by your phone number, Registration ID, or Attendee Name, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
           </p>
         </div>
 
-        {/* Step 1: Phone Lookup Box */}
+        {/* Step 1: Lookup Box */}
         {!registration ? (
           <div className="id-lookup-card">
-            <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
-            <p className="id-lookup-desc">
-              We'll instantly look up your verified registration and prepare your delegate pass.
-            </p>
-
-            <form onSubmit={handleLookup} className="id-lookup-form">
-              <div className="id-input-group">
-                <span className="id-input-prefix">+91</span>
-                <input
-                  type="tel"
-                  placeholder="10-digit mobile number"
-                  maxLength={10}
-                  value={mobileInput}
-                  onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
-                  className="id-phone-input"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
-
-              <button type="submit" className="btn-primary-action id-submit-btn" disabled={loading}>
-                {loading ? 'Searching Registration...' : 'Continue to ID Card →'}
+            {/* Search Type Selector Tabs */}
+            <div className="id-search-tabs" role="tablist" aria-label="Search ID Pass by">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={searchMode === 'mobile'}
+                className={`id-search-tab ${searchMode === 'mobile' ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchMode('mobile');
+                  setErrorMsg(null);
+                }}
+              >
+                <span className="id-tab-icon">📱</span>
+                <span>Mobile</span>
               </button>
-            </form>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={searchMode === 'reg_number'}
+                className={`id-search-tab ${searchMode === 'reg_number' ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchMode('reg_number');
+                  setErrorMsg(null);
+                }}
+              >
+                <span className="id-tab-icon">🎫</span>
+                <span>Reg ID</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={searchMode === 'name'}
+                className={`id-search-tab ${searchMode === 'name' ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchMode('name');
+                  setErrorMsg(null);
+                }}
+              >
+                <span className="id-tab-icon">👤</span>
+                <span>Name</span>
+              </button>
+            </div>
+
+            {searchMode === 'mobile' && (
+              <>
+                <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
+                <p className="id-lookup-desc">
+                  We'll instantly look up your verified registration and prepare your delegate pass.
+                </p>
+
+                <form onSubmit={handleLookup} className="id-lookup-form">
+                  <div className="id-integrated-input-box">
+                    <span className="id-input-prefix">+91</span>
+                    <input
+                      type="tel"
+                      placeholder="10-digit mobile"
+                      maxLength={10}
+                      value={mobileInput}
+                      onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
+                      className="id-phone-input"
+                      required
+                      autoFocus
+                    />
+                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
+                      {loading ? 'Finding...' : 'Get Pass →'}
+                    </button>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="id-error-alert">
+                      <span>{errorMsg}</span>
+                      {errorMsg === ID_PASS_LOCKED_MSG && (
+                        <Link to="/" className="id-error-register-link">
+                          Register / Confirm Attendance Now →
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </form>
+              </>
+            )}
+
+            {searchMode === 'reg_number' && (
+              <>
+                <h2 className="id-lookup-title">Enter Registration Number</h2>
+                <p className="id-lookup-desc">
+                  Enter your Registration ID (up to 5 digits).
+                </p>
+
+                <form onSubmit={handleRegLookupSubmit} className="id-lookup-form">
+                  <div className="id-integrated-input-box id-reg-input-group">
+                    <span className="id-input-prefix id-reg-prefix" title="Registration prefix REG- is fixed">
+                      REG-
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="e.g. 39"
+                      maxLength={5}
+                      value={regInput}
+                      onChange={(e) => {
+                        // Strictly allow numbers only, max 5 digits
+                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
+                        setRegInput(cleaned);
+                      }}
+                      className="id-phone-input id-reg-input"
+                      required
+                      autoFocus
+                    />
+                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
+                      {loading ? 'Finding...' : 'Get Pass →'}
+                    </button>
+                  </div>
+
+                  <p className="id-reg-hint-note">
+                    💡 Enter your number (e.g. <strong>39</strong> or <strong>00039</strong>)
+                  </p>
+
+                  {errorMsg && (
+                    <div className="id-error-alert">
+                      <span>{errorMsg}</span>
+                      {errorMsg === ID_PASS_LOCKED_MSG && (
+                        <Link to="/" className="id-error-register-link">
+                          Register / Confirm Attendance Now →
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </form>
+              </>
+            )}
+
+            {searchMode === 'name' && (
+              <>
+                <h2 className="id-lookup-title">Search by Attendee Name</h2>
+                <p className="id-lookup-desc">
+                  Type your name, passing batch, or branch to find and load your delegate pass.
+                </p>
+
+                <div className="name-search-container id-name-search-box">
+                  {/* Search Input Bar */}
+                  <div className="name-search-input-wrapper">
+                    <span className="name-search-icon">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Type name (e.g. Bhawesh, Rahul), batch (2008), or branch..."
+                      value={nameSearchQuery}
+                      onChange={(e) => {
+                        setNameSearchQuery(e.target.value);
+                        setErrorMsg(null);
+                      }}
+                      className="name-search-input"
+                      autoFocus
+                    />
+                    {nameSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNameSearchQuery('');
+                          setErrorMsg(null);
+                        }}
+                        className="name-search-clear-btn"
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {errorMsg && (
+                    <div className="id-error-alert">
+                      <span>{errorMsg}</span>
+                      {errorMsg === ID_PASS_LOCKED_MSG && (
+                        <Link to="/" className="id-error-register-link">
+                          Register / Confirm Attendance Now →
+                        </Link>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Hints / Chips or Results List - Hidden whenever an error message is active */}
+                  {!errorMsg && (
+                    <>
+                      {nameSearchQuery.trim().length < 2 ? (
+                        <div className="name-search-hint-box">
+                          <p>
+                            ⚡ <strong>Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
+                          </p>
+                          <div className="name-search-chips">
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2008')}>🎓 2008</span>
+                          </div>
+                        </div>
+                      ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
+                        <div className="name-search-hint-box" style={{ padding: '1.25rem' }}>
+                          <p>🔍 Loading registered alumni directory...</p>
+                        </div>
+                      ) : filteredNameRegistrations.length === 0 ? (
+                        <div className="name-search-hint-box">
+                          <p>
+                            🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
+                          </p>
+                          <p style={{ fontSize: '0.82rem', margin: '6px 0 0 0' }}>
+                            Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="name-search-header-meta">
+                            <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
+                            <span>Click to load pass</span>
+                          </div>
+
+                          <div className="name-search-results-list">
+                            {filteredNameRegistrations.map((reg) => {
+                              const alumni = reg.alumni;
+                              if (!alumni) return null;
+
+                              return (
+                                <div
+                                  key={reg.registration_id}
+                                  className="name-search-result-card"
+                                  onClick={() => handleSelectAttendee(reg)}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  <div className="name-result-main-row">
+                                    {/* Top row: Name + Reg ID on left, Get Pass indicator on right */}
+                                    <div className="name-result-top-row">
+                                      <div className="name-result-title-group">
+                                        <span className="name-result-name">{alumni.name}</span>
+                                        <span className="name-result-reg-pill">
+                                          {reg.registration_number}
+                                        </span>
+                                      </div>
+
+                                      <div className="name-result-status-col">
+                                        <span className={`name-result-select-indicator ${reg.attendance_status !== 'yes' ? 'locked' : ''}`}>
+                                          {reg.attendance_status === 'yes' ? 'Get Pass →' : 'Locked 🔒'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Middle row: Branch & Passing Year */}
+                                    <div className="name-result-branch-line">
+                                      <span className="meta-icon">🎓</span>
+                                      <span className="meta-text">
+                                        {alumni.engineering_discipline || 'Alumni'}
+                                        {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
 
             <div className="id-lookup-footer">
               <span>Haven't registered yet? </span>
@@ -318,7 +794,7 @@ export const IdCardPage: React.FC = () => {
                 }}
                 className="btn-text-ghost"
               >
-                Change Number
+                Change / Search Again
               </button>
             </div>
 
@@ -341,13 +817,6 @@ export const IdCardPage: React.FC = () => {
                   style={{ display: 'none' }}
                   onChange={handlePhotoSelect}
                 />
-                <input
-                  type="file"
-                  ref={galleryInputRef}
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handlePhotoSelect}
-                />
 
                 <button
                   type="button"
@@ -359,21 +828,7 @@ export const IdCardPage: React.FC = () => {
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                     <circle cx="12" cy="13" r="4" />
                   </svg>
-                  <span>Take Selfie</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-photo-action gallery-btn"
-                  onClick={() => galleryInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                  <span>Choose from Gallery</span>
+                  <span>{photoPreview ? 'Retake Selfie' : 'Take Selfie'}</span>
                 </button>
               </div>
 
@@ -397,6 +852,37 @@ export const IdCardPage: React.FC = () => {
 
             {/* Action Buttons to Save / Download */}
             <div className="id-download-cta-box">
+              {selfiePrompt && (
+                <div className="id-selfie-funny-alert" role="alert">
+                  <div className="id-funny-alert-icon">🤳</div>
+                  <div className="id-funny-alert-body">
+                    <h4 className="id-funny-alert-title">Almost there! Just add your selfie 📸✨</h4>
+                    <p className="id-funny-alert-text">
+                      A pass without a photo is like Diwali without sweets! 🪔 Please take a quick selfie to personalize and download your official pass.
+                    </p>
+                    <div className="id-funny-alert-actions">
+                      <button
+                        type="button"
+                        onClick={() => selfieInputRef.current?.click()}
+                        className="btn-selfie-jump"
+                      >
+                        <span>📸 Snap Selfie Now</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelfieSkipped(true);
+                          setSelfiePrompt(null);
+                        }}
+                        className="btn-selfie-skip"
+                      >
+                        <span>Skip Selfie</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleDownload}
@@ -412,7 +898,7 @@ export const IdCardPage: React.FC = () => {
                       <polyline points="7 10 12 15 17 10" />
                       <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    <span>Download Event Pass (PNG)</span>
+                    <span>Download Event Pass</span>
                   </>
                 )}
               </button>
