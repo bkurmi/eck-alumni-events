@@ -1146,7 +1146,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         <div className="tier-name-row">
                           <span className="tier-title">Adults</span>
                           {adultsCount === 2 && (
-                            <span className="tier-badge couple-badge">Couple</span>
+                            <span className="tier-badge couple-badge">Couple Rate</span>
                           )}
                         </div>
                         <span className="tier-desc">
@@ -1238,10 +1238,9 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       <div className="tier-info">
                         <div className="tier-name-row">
                           <span className="tier-title">Children (Under 10 Years)</span>
-                          <span className="tier-badge free-badge desktop-only-badge">FREE</span>
+                          <span className="tier-badge free-badge">FREE</span>
                         </div>
-                        <span className="tier-desc desktop-only-desc">Complimentary reunion entry</span>
-                        <span className="tier-badge free-badge mobile-only-badge">FREE</span>
+                        <span className="tier-desc">Complimentary reunion entry</span>
                       </div>
                       <div className="stepper-controls">
                         <button
