@@ -683,84 +683,88 @@ export const IdCardPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Hints / Chips or Results List */}
-                  {nameSearchQuery.trim().length < 2 ? (
-                    <div className="name-search-hint-box">
-                      <p>
-                        ⚡ <strong>Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
-                      </p>
-                      <div className="name-search-chips">
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2008')}>🎓 2008</span>
-                      </div>
-                    </div>
-                  ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
-                    <div className="name-search-hint-box" style={{ padding: '1.25rem' }}>
-                      <p>🔍 Loading registered alumni directory...</p>
-                    </div>
-                  ) : filteredNameRegistrations.length === 0 ? (
-                    <div className="name-search-hint-box">
-                      <p>
-                        🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
-                      </p>
-                      <p style={{ fontSize: '0.82rem', margin: '6px 0 0 0' }}>
-                        Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
-                      </p>
-                    </div>
-                  ) : (
+                  {/* Hints / Chips or Results List - Hidden whenever an error message is active */}
+                  {!errorMsg && (
                     <>
-                      <div className="name-search-header-meta">
-                        <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
-                        <span>Click to load pass</span>
-                      </div>
+                      {nameSearchQuery.trim().length < 2 ? (
+                        <div className="name-search-hint-box">
+                          <p>
+                            ⚡ <strong>Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
+                          </p>
+                          <div className="name-search-chips">
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2008')}>🎓 2008</span>
+                          </div>
+                        </div>
+                      ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
+                        <div className="name-search-hint-box" style={{ padding: '1.25rem' }}>
+                          <p>🔍 Loading registered alumni directory...</p>
+                        </div>
+                      ) : filteredNameRegistrations.length === 0 ? (
+                        <div className="name-search-hint-box">
+                          <p>
+                            🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
+                          </p>
+                          <p style={{ fontSize: '0.82rem', margin: '6px 0 0 0' }}>
+                            Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="name-search-header-meta">
+                            <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
+                            <span>Click to load pass</span>
+                          </div>
 
-                      <div className="name-search-results-list">
-                        {filteredNameRegistrations.map((reg) => {
-                          const alumni = reg.alumni;
-                          if (!alumni) return null;
+                          <div className="name-search-results-list">
+                            {filteredNameRegistrations.map((reg) => {
+                              const alumni = reg.alumni;
+                              if (!alumni) return null;
 
-                          return (
-                            <div
-                              key={reg.registration_id}
-                              className="name-search-result-card"
-                              onClick={() => handleSelectAttendee(reg)}
-                              role="button"
-                              tabIndex={0}
-                            >
-                              <div className="name-result-main-row">
-                                {/* Top row: Name + Reg ID on left, Get Pass indicator on right */}
-                                <div className="name-result-top-row">
-                                  <div className="name-result-title-group">
-                                    <span className="name-result-name">{alumni.name}</span>
-                                    <span className="name-result-reg-pill">
-                                      {reg.registration_number}
-                                    </span>
-                                  </div>
+                              return (
+                                <div
+                                  key={reg.registration_id}
+                                  className="name-search-result-card"
+                                  onClick={() => handleSelectAttendee(reg)}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  <div className="name-result-main-row">
+                                    {/* Top row: Name + Reg ID on left, Get Pass indicator on right */}
+                                    <div className="name-result-top-row">
+                                      <div className="name-result-title-group">
+                                        <span className="name-result-name">{alumni.name}</span>
+                                        <span className="name-result-reg-pill">
+                                          {reg.registration_number}
+                                        </span>
+                                      </div>
 
-                                  <div className="name-result-status-col">
-                                    <span className={`name-result-select-indicator ${reg.attendance_status !== 'yes' ? 'locked' : ''}`}>
-                                      {reg.attendance_status === 'yes' ? 'Get Pass →' : 'Locked 🔒'}
-                                    </span>
+                                      <div className="name-result-status-col">
+                                        <span className={`name-result-select-indicator ${reg.attendance_status !== 'yes' ? 'locked' : ''}`}>
+                                          {reg.attendance_status === 'yes' ? 'Get Pass →' : 'Locked 🔒'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Middle row: Branch & Passing Year */}
+                                    <div className="name-result-branch-line">
+                                      <span className="meta-icon">🎓</span>
+                                      <span className="meta-text">
+                                        {alumni.engineering_discipline || 'Alumni'}
+                                        {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
-
-                                {/* Middle row: Branch & Passing Year */}
-                                <div className="name-result-branch-line">
-                                  <span className="meta-icon">🎓</span>
-                                  <span className="meta-text">
-                                    {alumni.engineering_discipline || 'Alumni'}
-                                    {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
