@@ -1198,7 +1198,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           <div className="gate-card-box">
             <h3>Manual Gate Verification</h3>
             <p className="card-sub-desc">
-              Look up and verify an attendee by phone number, registration ID, or name if their QR code is unavailable:
+              Search by phone, Reg ID, or name to verify attendee entry:
             </p>
 
             {/* Segmented Mode Switcher */}
@@ -1423,12 +1423,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         if (!alumni) return null;
                         const gateStatus = getAttendeeGateStatus(reg);
                         const isSelected = selectedAttendee?.id === reg.id;
-                        const initials = (alumni.name || 'A')
-                          .split(' ')
-                          .map((p) => p[0])
-                          .slice(0, 2)
-                          .join('')
-                          .toUpperCase();
+                        const participantCount = reg.number_of_attendees || 1;
 
                         return (
                           <div
@@ -1442,56 +1437,56 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             tabIndex={0}
                           >
                             <div className="name-result-main-row">
-                              <div className="name-result-avatar">
-                                {reg.photo_url ? (
-                                  <img
-                                    src={reg.photo_url}
-                                    alt={alumni.name}
-                                    className="name-result-photo"
-                                  />
-                                ) : (
-                                  <span>{initials}</span>
-                                )}
-                              </div>
-
-                              <div className="name-result-info">
-                                <div className="name-result-header">
+                              {/* Top row: Name + Reg ID on left, Status badge on right */}
+                              <div className="name-result-top-row">
+                                <div className="name-result-title-group">
                                   <span className="name-result-name">{alumni.name}</span>
-                                  <span
-                                    className="result-pill"
-                                    style={{ fontSize: '0.72rem', padding: '2px 6px' }}
-                                  >
+                                  <span className="name-result-reg-pill">
                                     {reg.registration_number}
                                   </span>
                                 </div>
-                                <div className="name-result-meta">
-                                  <span>
-                                    🎓 {alumni.engineering_discipline || 'Alumni'} ({alumni.year_of_passing || '—'})
-                                  </span>
-                                  <span>•</span>
-                                  <span>📞 {alumni.mobile}</span>
-                                  <span>•</span>
-                                  <span>👥 {reg.number_of_attendees || 1} Total</span>
+
+                                <div className="name-result-status-col">
+                                  {gateStatus.status === 'READY' && (
+                                    <span className="gate-status-pill ready">🟢 Ready</span>
+                                  )}
+                                  {gateStatus.status === 'ALREADY_ENTERED' && (
+                                    <span className="gate-status-pill entered">⚠️ Entered</span>
+                                  )}
+                                  {gateStatus.status === 'PAYMENT_PENDING' && (
+                                    <span className="gate-status-pill pending">💳 Pending</span>
+                                  )}
+                                  {gateStatus.status === 'MAYBE' && (
+                                    <span className="gate-status-pill pending">💳 Unpaid</span>
+                                  )}
                                 </div>
                               </div>
 
-                              <div className="name-result-status-col">
-                                {gateStatus.status === 'READY' && (
-                                  <span className="gate-status-pill ready">🟢 Ready</span>
-                                )}
-                                {gateStatus.status === 'ALREADY_ENTERED' && (
-                                  <span className="gate-status-pill entered">⚠️ Entered</span>
-                                )}
-                                {gateStatus.status === 'PAYMENT_PENDING' && (
-                                  <span className="gate-status-pill pending">💳 Pending</span>
-                                )}
-                                {gateStatus.status === 'MAYBE' && (
-                                  <span className="gate-status-pill pending">💳 Unpaid</span>
-                                )}
+                              {/* Middle row: Branch & Passing Year */}
+                              <div className="name-result-branch-line">
+                                <span className="meta-icon">🎓</span>
+                                <span className="meta-text">
+                                  {alumni.engineering_discipline || 'Alumni'}
+                                  {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
+                                </span>
+                              </div>
+
+                              {/* Bottom row: Mobile & Number of Participants */}
+                              <div className="name-result-bottom-meta">
+                                <span className="name-result-phone-badge">
+                                  <span className="meta-icon">📞</span>
+                                  <span>{alumni.mobile}</span>
+                                </span>
+                                <span className="name-result-heads-badge">
+                                  <span className="meta-icon">👥</span>
+                                  <span>
+                                    {participantCount} {participantCount > 1 ? 'Participants' : 'Participant'}
+                                  </span>
+                                </span>
                               </div>
                             </div>
 
-                            {/* Direct action button right below the card without taking much mobile space */}
+                            {/* Direct action button right below the card ONLY when clicked/selected */}
                             {isSelected && (
                               <div
                                 className="name-result-action-drawer"
@@ -1505,21 +1500,14 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                     className="btn-verify-selected"
                                   >
                                     <span>✅</span>
-                                    <span>
-                                      {isVerifying
-                                        ? 'Checking...'
-                                        : `Verify & Allow Entry (${alumni.name}) →`}
-                                    </span>
+                                    <span>{isVerifying ? 'Verifying...' : 'Allow Entry'}</span>
                                   </button>
                                 )}
 
                                 {(gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
                                   <>
-                                    <div
-                                      className="attendee-selected-alert pending"
-                                      style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', marginBottom: '0.4rem' }}
-                                    >
-                                      💳 {gateStatus.status === 'MAYBE' ? 'Registered as MAYBE (Unpaid)' : `Payment Pending (₹${reg.amount || 0})`}. Please collect fee in Spot Entry.
+                                    <div className="attendee-selected-alert pending">
+                                      💳 {gateStatus.status === 'MAYBE' ? 'Registered as MAYBE (Unpaid)' : `Payment Pending (₹${reg.amount || 0})`}
                                     </div>
                                     <button
                                       type="button"
@@ -1538,18 +1526,16 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                       className="btn-redirect-spot"
                                     >
                                       <span>⚡</span>
-                                      <span>Collect Fee &amp; Admit in Spot Entry ({alumni.name}) →</span>
+                                      <span>Spot Entry &amp; Collect Fee →</span>
                                     </button>
                                   </>
                                 )}
 
                                 {gateStatus.status === 'ALREADY_ENTERED' && (
                                   <>
-                                    <div
-                                      className="attendee-selected-alert entered"
-                                      style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', marginBottom: '0.4rem' }}
-                                    >
-                                      ⚠️ {gateStatus.badgeText} (by {gateStatus.entry?.verified_by || 'Gate Staff'})
+                                    <div className="attendee-selected-alert entered">
+                                      ⚠️ {gateStatus.badgeText}
+                                      {gateStatus.entry?.verified_by ? ` (by ${gateStatus.entry.verified_by.split('(')[0].trim() || 'Gate Staff'})` : ''}
                                     </div>
                                     <button
                                       type="button"
