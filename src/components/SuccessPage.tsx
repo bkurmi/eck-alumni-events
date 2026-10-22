@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { isAlumniIdCardsEnabled } from '../lib/gate';
 import type { RegistrationFormData, RegistrationResult, ECKEvent } from '../types';
 
 interface SuccessPageProps {
@@ -50,6 +52,8 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       `🎫 ID: ${result.registration_number}`,
       `👤 ${formData.name} | 🎓 ${batchText}`,
       `👥 Attendance: ${attendanceText}`,
+      '',
+      `🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`,
       '',
       '🙏 Thank you, ECK-RTU Alumni Kota Chapter!',
       'Looking forward to celebrating with seniors, batchmates & juniors!',
@@ -139,6 +143,38 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Direct VIP Entry Pass Highlight Card */}
+      {isAlumniIdCardsEnabled() && (
+        <div className="success-pass-banner animate-slide-down">
+          <div className="success-pass-header">
+            <span className="success-pass-badge">
+              <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
+            </span>
+            <span className="success-pass-stamp">CAMPUS GATE ENTRY</span>
+          </div>
+          <div className="success-pass-body">
+            <div className="success-pass-icon">🎟️</div>
+            <div className="success-pass-text">
+              <h4 className="success-pass-title">Your Digital QR Gate Pass is Ready!</h4>
+              <p className="success-pass-desc">
+                Present your digital pass on phone for instant scan-and-go entry at the college gate.
+              </p>
+            </div>
+          </div>
+          <Link
+            to={`/id-card?reg=${encodeURIComponent(result.registration_number)}`}
+            className="btn btn-idpass-feature-primary btn-block"
+            id="btn-success-view-pass"
+          >
+            <span className="btn-ticket-icon">🎟️</span>
+            <span>Download / View Entry Pass</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </Link>
+        </div>
+      )}
 
       {/* Perfectly Aligned Receipt Table */}
       <div className="success-details-card">
