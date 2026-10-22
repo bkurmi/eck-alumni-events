@@ -760,17 +760,37 @@ export const AdminPage: React.FC = () => {
                                   ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Screenshots Attached`
                                   : 'Screenshot Attached'}
                               </span>
-                            ) : (reg.attendance_status === 'payment_pending' ||
-                                 (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) ? (
-                              <button
-                                type="button"
-                                onClick={(e) => handlePingMissingScreenshot(e, reg)}
-                                className="btn-card-reminder"
-                                title="Send WhatsApp reminder to submit payment screenshot"
-                              >
-                                🔔 Remind
-                              </button>
-                            ) : null}
+                            ) : (() => {
+                              const regVerif = verifications.find((v) => v.registration_id === reg.id) || reg.payment_verifications?.[0];
+                              const isVerifiedOrDesk =
+                                regVerif?.verified_status === 'VERIFIED' ||
+                                regVerif?.upi_id === 'CASH' ||
+                                regVerif?.upi_id === 'COMPLIMENTARY' ||
+                                (regVerif?.notes && regVerif.notes.toLowerCase().includes('spot'));
+
+                              if (isVerifiedOrDesk) {
+                                return (
+                                  <span className="screenshot-tag" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                    ✓ Verified{regVerif?.upi_id === 'CASH' ? ' (Cash)' : ''}
+                                  </span>
+                                );
+                              }
+
+                              if (reg.attendance_status === 'payment_pending' || (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handlePingMissingScreenshot(e, reg)}
+                                    className="btn-card-reminder"
+                                    title="Send WhatsApp reminder to submit payment screenshot"
+                                  >
+                                    🔔 Remind
+                                  </button>
+                                );
+                              }
+
+                              return null;
+                            })()}
 
                             <button
                               type="button"

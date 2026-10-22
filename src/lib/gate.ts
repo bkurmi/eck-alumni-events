@@ -404,10 +404,18 @@ export async function attachSpotPaymentScreenshot(
   screenshotPath: string
 ): Promise<void> {
   try {
-    await supabase
-      .from('event_registrations')
-      .update({ payment_screenshot_path: screenshotPath })
-      .eq('id', registrationId);
+    const { error } = await supabase.rpc('attach_spot_payment_screenshot', {
+      p_registration_id: registrationId,
+      p_screenshot_path: screenshotPath,
+    });
+    if (error) {
+      console.warn('[attachSpotPaymentScreenshot RPC warning]:', error);
+      // Fallback direct update attempt
+      await supabase
+        .from('event_registrations')
+        .update({ payment_screenshot_path: screenshotPath })
+        .eq('id', registrationId);
+    }
   } catch (err) {
     console.warn('[attachSpotPaymentScreenshot warning]:', err);
   }
@@ -425,6 +433,7 @@ export async function spotRegisterAtGate(params: {
   paymentMode: 'CASH' | 'UPI_SPOT' | 'COMPLIMENTARY' | string;
   amount: number;
   verifiedBy: string;
+  paymentScreenshotPath?: string | null;
   eventSlug?: string;
 }): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
@@ -438,6 +447,7 @@ export async function spotRegisterAtGate(params: {
       p_payment_mode: params.paymentMode,
       p_amount: params.amount,
       p_verified_by: params.verifiedBy,
+      p_payment_screenshot_path: params.paymentScreenshotPath || null,
     });
 
     if (!error && data?.success) {

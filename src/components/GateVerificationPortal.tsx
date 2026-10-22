@@ -735,9 +735,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       paymentMode: spotPaymentMode,
       amount: effectiveAmount,
       verifiedBy: verifiedByNote,
+      paymentScreenshotPath: uploadedScreenshotPath,
     });
 
-    // 3. Attach uploaded screenshot path to existing registration record
+    // 3. Reinforce attaching uploaded screenshot path via RPC
     if (res.success && res.data?.registration_id && uploadedScreenshotPath) {
       await attachSpotPaymentScreenshot(res.data.registration_id, uploadedScreenshotPath);
     }
