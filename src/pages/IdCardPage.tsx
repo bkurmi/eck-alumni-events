@@ -699,12 +699,6 @@ export const IdCardPage: React.FC = () => {
                       {filteredNameRegistrations.map((reg) => {
                         const alumni = reg.alumni;
                         if (!alumni) return null;
-                        const initials = (alumni.name || 'A')
-                          .split(' ')
-                          .map((p) => p[0])
-                          .slice(0, 2)
-                          .join('')
-                          .toUpperCase();
 
                         return (
                           <div
@@ -714,39 +708,29 @@ export const IdCardPage: React.FC = () => {
                             role="button"
                             tabIndex={0}
                           >
-                            <div className="name-result-avatar">
-                              {reg.photo_url ? (
-                                <img
-                                  src={reg.photo_url}
-                                  alt={alumni.name}
-                                  className="name-result-photo"
-                                />
-                              ) : (
-                                <span>{initials}</span>
-                              )}
-                            </div>
+                            <div className="name-result-main-row">
+                              {/* Top row: Name + Reg ID on left, Get Pass indicator on right */}
+                              <div className="name-result-top-row">
+                                <div className="name-result-title-group">
+                                  <span className="name-result-name">{alumni.name}</span>
+                                  <span className="name-result-reg-pill">
+                                    {reg.registration_number}
+                                  </span>
+                                </div>
 
-                            <div className="name-result-info">
-                              <div className="name-result-header">
-                                <span className="name-result-name">{alumni.name}</span>
-                                <span
-                                  className="result-pill"
-                                  style={{ fontSize: '0.72rem', padding: '2px 6px' }}
-                                >
-                                  {reg.registration_number}
+                                <div className="name-result-status-col">
+                                  <span className="name-result-select-indicator">Get Pass →</span>
+                                </div>
+                              </div>
+
+                              {/* Middle row: Branch & Passing Year */}
+                              <div className="name-result-branch-line">
+                                <span className="meta-icon">🎓</span>
+                                <span className="meta-text">
+                                  {alumni.engineering_discipline || 'Alumni'}
+                                  {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
                                 </span>
                               </div>
-                              <div className="name-result-meta">
-                                <span>
-                                  🎓 {alumni.engineering_discipline || 'Alumni'} ({alumni.year_of_passing || '—'})
-                                </span>
-                                <span>•</span>
-                                <span>📍 {alumni.city || 'Kota'}</span>
-                              </div>
-                            </div>
-
-                            <div className="name-result-status-col">
-                              <span className="name-result-select-indicator">Get Pass →</span>
                             </div>
                           </div>
                         );
