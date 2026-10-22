@@ -61,9 +61,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [torchSupported, setTorchSupported] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
-  // Manual Lookup State (Phone & Predictive Name Search)
-  const [manualLookupMode, setManualLookupMode] = useState<'phone' | 'name'>('phone');
+  // Manual Lookup State (Phone, Reg ID, & Predictive Name Search)
+  const [manualLookupMode, setManualLookupMode] = useState<'phone' | 'reg_number' | 'name'>('phone');
   const [manualPhone, setManualPhone] = useState('');
+  const [manualRegNumber, setManualRegNumber] = useState('');
   const [nameSearchQuery, setNameSearchQuery] = useState('');
   const [selectedAttendee, setSelectedAttendee] = useState<EventRegistration | null>(null);
 
@@ -476,14 +477,36 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     };
   };
 
-  // Handle Manual Phone Verification Form
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualPhone.trim()) return;
-    handleVerifyPhone(manualPhone, 'manual_phone');
-  };
+  // Instant in-memory search for Phone mode
+  const filteredPhoneRegistrations = React.useMemo(() => {
+    const clean = manualPhone.trim().replace(/\D/g, '');
+    if (!clean || clean.length < 3) return [];
 
-  // Handle Verification of an attendee selected via Name Search
+    return registrations
+      .filter((reg) => {
+        const m = cleanMobileNumber(reg.alumni?.mobile || '');
+        return m.includes(clean);
+      })
+      .slice(0, 20);
+  }, [registrations, manualPhone]);
+
+  // Instant in-memory search for Registration ID mode
+  const filteredRegRegistrations = React.useMemo(() => {
+    const digits = manualRegNumber.trim().replace(/\D/g, '');
+    if (!digits) return [];
+    const padded = digits.padStart(5, '0');
+    const canonical = `REG-${padded}`.toUpperCase();
+
+    return registrations
+      .filter((reg) => {
+        const rNum = (reg.registration_number || '').toUpperCase();
+        const rDigits = rNum.replace(/\D/g, '');
+        return rNum === canonical || rDigits.includes(digits);
+      })
+      .slice(0, 20);
+  }, [registrations, manualRegNumber]);
+
+  // Handle Verification of an attendee selected via Manual Lookup (Phone, Reg ID, or Name)
   const handleVerifySelectedAttendee = (reg: EventRegistration) => {
     if (!reg.alumni?.mobile) {
       alert('No mobile number recorded for this attendee.');
@@ -496,6 +519,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const handleResetLookup = () => {
     setScanResult(null);
     setManualPhone('');
+    setManualRegNumber('');
     setSelectedAttendee(null);
     setNameSearchQuery('');
   };
@@ -1174,7 +1198,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           <div className="gate-card-box">
             <h3>Manual Gate Verification</h3>
             <p className="card-sub-desc">
-              Look up and verify an attendee by mobile number or name if their QR code is unavailable:
+              Look up and verify an attendee by phone number, registration ID, or name if their QR code is unavailable:
             </p>
 
             {/* Segmented Mode Switcher */}
@@ -1184,51 +1208,107 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 className={`manual-mode-btn ${manualLookupMode === 'phone' ? 'active' : ''}`}
                 onClick={() => {
                   setManualLookupMode('phone');
+                  setSelectedAttendee(null);
                   setScanResult(null);
                 }}
               >
-                <span>📱 Search by Phone</span>
+                <span>📱 Phone</span>
+              </button>
+              <button
+                type="button"
+                className={`manual-mode-btn ${manualLookupMode === 'reg_number' ? 'active' : ''}`}
+                onClick={() => {
+                  setManualLookupMode('reg_number');
+                  setSelectedAttendee(null);
+                  setScanResult(null);
+                }}
+              >
+                <span>🎫 Reg ID</span>
               </button>
               <button
                 type="button"
                 className={`manual-mode-btn ${manualLookupMode === 'name' ? 'active' : ''}`}
                 onClick={() => {
                   setManualLookupMode('name');
+                  setSelectedAttendee(null);
                   setScanResult(null);
                 }}
               >
-                <span>👤 Search by Name / Batch</span>
+                <span>👤 Name / Batch</span>
               </button>
             </div>
 
-            {/* MODE 1: Phone Search */}
-            {manualLookupMode === 'phone' && (
-              <form onSubmit={handleManualSubmit} className="gate-manual-form">
-                <div className="manual-input-row">
+            <div className="name-search-container">
+              {/* 1. SEARCH INPUT BASED ON ACTIVE TAB */}
+              {manualLookupMode === 'phone' && (
+                <div className="name-search-input-wrapper">
+                  <span className="name-search-icon">📞</span>
                   <input
                     type="tel"
-                    placeholder="10-digit registered phone number"
-                    maxLength={10}
+                    placeholder="Type phone number (e.g. 9829012345)..."
                     value={manualPhone}
-                    onChange={(e) => setManualPhone(e.target.value.replace(/\D/g, ''))}
-                    className="manual-phone-field"
+                    maxLength={10}
+                    onChange={(e) => {
+                      setManualPhone(e.target.value.replace(/\D/g, ''));
+                      if (selectedAttendee) setSelectedAttendee(null);
+                    }}
+                    className="name-search-input"
                     autoFocus
                   />
-                  <button
-                    type="submit"
-                    disabled={isVerifying || manualPhone.length < 10}
-                    className="btn-primary-action btn-verify-manual"
-                  >
-                    {isVerifying ? 'Checking...' : 'Verify & Allow Entry →'}
-                  </button>
+                  {manualPhone && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualPhone('');
+                        setSelectedAttendee(null);
+                      }}
+                      className="name-search-clear-btn"
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
-              </form>
-            )}
+              )}
 
-            {/* MODE 2: Smart Predictive Name Search */}
-            {manualLookupMode === 'name' && (
-              <div className="name-search-container">
-                {/* Search Input Bar */}
+              {manualLookupMode === 'reg_number' && (
+                <div className="name-search-input-wrapper">
+                  <div className="manual-reg-input-group" style={{ width: '100%' }}>
+                    <span className="manual-reg-prefix">REG-</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="e.g. 39 or 00039"
+                      maxLength={5}
+                      value={manualRegNumber}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
+                        setManualRegNumber(cleaned);
+                        if (selectedAttendee) setSelectedAttendee(null);
+                      }}
+                      className="manual-reg-field"
+                      autoFocus
+                    />
+                    {manualRegNumber && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualRegNumber('');
+                          setSelectedAttendee(null);
+                        }}
+                        className="name-search-clear-btn"
+                        style={{ position: 'relative', right: '12px' }}
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {manualLookupMode === 'name' && (
                 <div className="name-search-input-wrapper">
                   <span className="name-search-icon">🔍</span>
                   <input
@@ -1256,301 +1336,420 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     </button>
                   )}
                 </div>
+              )}
 
-                {/* If an attendee is selected, show detailed confirmation card */}
-                {selectedAttendee && selectedAttendee.alumni && (() => {
-                  const alumni = selectedAttendee.alumni;
-                  const gateStatus = getAttendeeGateStatus(selectedAttendee);
-                  const initials = (alumni.name || 'A')
-                    .split(' ')
-                    .map((p) => p[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase();
+              {/* 2. SEARCH RESULTS LIST (Inline expandable cards with direct action button) */}
+              {(() => {
+                const activeList =
+                  manualLookupMode === 'phone'
+                    ? filteredPhoneRegistrations
+                    : manualLookupMode === 'reg_number'
+                    ? filteredRegRegistrations
+                    : filteredNameRegistrations;
 
+                const queryActive =
+                  manualLookupMode === 'phone'
+                    ? manualPhone.trim()
+                    : manualLookupMode === 'reg_number'
+                    ? manualRegNumber.trim()
+                    : nameSearchQuery.trim();
+
+                const minLen = manualLookupMode === 'phone' ? 3 : manualLookupMode === 'reg_number' ? 1 : 2;
+
+                if (queryActive.length < minLen) {
                   return (
-                    <div className="attendee-selected-card">
-                      <div className="attendee-selected-top">
-                        <div className="attendee-selected-profile">
-                          <div className="attendee-selected-avatar">
-                            {selectedAttendee.photo_url ? (
-                              <img
-                                src={selectedAttendee.photo_url}
-                                alt={alumni.name}
-                                className="name-result-photo"
-                              />
-                            ) : (
-                              <span>{initials}</span>
-                            )}
-                          </div>
-                          <div className="attendee-selected-details">
-                            <h4 className="attendee-selected-name">{alumni.name}</h4>
-                            <span className="attendee-selected-reg">
-                              {selectedAttendee.registration_number} • Class of {alumni.year_of_passing || '—'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedAttendee(null)}
-                          className="btn-back-to-search"
-                        >
-                          ← Change
-                        </button>
-                      </div>
-
-                      {/* Detail Grid */}
-                      <div className="attendee-selected-grid">
-                        <div className="attendee-grid-item">
-                          <span className="grid-label">Branch</span>
-                          <span className="grid-value">{alumni.engineering_discipline || 'Alumni'}</span>
-                        </div>
-                        <div className="attendee-grid-item">
-                          <span className="grid-label">Phone</span>
-                          <span className="grid-value">📞 {alumni.mobile}</span>
-                        </div>
-                        <div className="attendee-grid-item">
-                          <span className="grid-label">Party Size</span>
-                          <span className="grid-value text-gold">
-                            👥 {selectedAttendee.number_of_attendees || 1} Total
-                          </span>
-                        </div>
-                        <div className="attendee-grid-item">
-                          <span className="grid-label">City</span>
-                          <span className="grid-value">{alumni.city || '—'}</span>
-                        </div>
-                      </div>
-
-                      {/* Status Warnings or Badges */}
-                      {gateStatus.status === 'ALREADY_ENTERED' && (
-                        <>
-                          <div className="attendee-selected-alert entered">
-                            ⚠️ {gateStatus.badgeText} (by {gateStatus.entry?.verified_by || 'Gate Staff'})
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setActiveSubTab('log')}
-                            className="btn-scan-next btn-secondary-outline"
-                            style={{ width: '100%' }}
-                          >
-                            <span>📋</span>
-                            <span>View in Gate Entry Log →</span>
-                          </button>
-                        </>
+                    <div className="name-search-hint-box">
+                      {manualLookupMode === 'phone' && (
+                        <p>⚡ <strong>Phone Search:</strong> Type at least 3 digits of attendee's mobile number.</p>
                       )}
-
-                      {(gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
-                        <>
-                          <div className="attendee-selected-alert pending">
-                            💳 {gateStatus.status === 'MAYBE' ? 'Registered as MAYBE (Unpaid)' : `Payment Pending (₹${selectedAttendee.amount || 0})`}. Please collect fee in Spot Entry.
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleRedirectToSpot({
-                                name: alumni.name,
-                                mobile: alumni.mobile,
-                                branch: alumni.engineering_discipline,
-                                batch: alumni.year_of_passing,
-                                adults: selectedAttendee.adults_count || selectedAttendee.number_of_attendees || 1,
-                                kidsAbove10: selectedAttendee.children_above_7_count || 0,
-                                kidsUnder10: selectedAttendee.children_under_7_count || 0,
-                                amount: selectedAttendee.amount,
-                              })
-                            }
-                            className="btn-redirect-spot"
-                          >
-                            <span>⚡</span>
-                            <span>Collect Fee &amp; Admit in Spot Entry ({alumni.name}) →</span>
-                          </button>
-                        </>
+                      {manualLookupMode === 'reg_number' && (
+                        <p>⚡ <strong>Reg ID Search:</strong> Enter registration number digits (e.g. <em>39</em> or <em>00039</em>).</p>
                       )}
-
-                      {gateStatus.status === 'READY' && (
-                        <button
-                          type="button"
-                          disabled={isVerifying}
-                          onClick={() => handleVerifySelectedAttendee(selectedAttendee)}
-                          className="btn-verify-selected"
-                        >
-                          <span>✅</span>
-                          <span>
-                            {isVerifying
-                              ? 'Checking...'
-                              : `Verify & Allow Entry (${alumni.name}) →`}
-                          </span>
-                        </button>
+                      {manualLookupMode === 'name' && (
+                        <>
+                          <p>
+                            ⚡ <strong>Predictive Attendee Search:</strong> Type at least 2 letters of an
+                            attendee's name, passing year (e.g. <em>2015</em>), or branch.
+                          </p>
+                          <div className="name-search-chips">
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2018')}>🎓 2018</span>
+                          </div>
+                        </>
                       )}
                     </div>
                   );
-                })()}
+                }
 
-                {/* If no attendee is selected yet */}
-                {!selectedAttendee && (
+                if (activeList.length === 0) {
+                  return (
+                    <div className="name-search-hint-box">
+                      <p>
+                        🔍 No registered alumni found matching <strong>"{queryActive}"</strong>.
+                      </p>
+                      <p style={{ fontSize: '0.82rem', margin: 0 }}>
+                        Check details, or register this attendee directly at Spot Walk-in Desk:
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRedirectToSpot({
+                            name: manualLookupMode === 'name' ? queryActive : undefined,
+                            mobile: manualLookupMode === 'phone' ? queryActive : undefined,
+                          })
+                        }
+                        className="btn-spot-create-new"
+                      >
+                        ⚡ Register at Spot Walk-in Desk →
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
                   <>
-                    {nameSearchQuery.trim().length < 2 ? (
-                      <div className="name-search-hint-box">
-                        <p>
-                          ⚡ <strong>Predictive Attendee Search:</strong> Type at least 2 letters of an
-                          attendee's name, passing year (e.g. <em>2015</em>), or branch.
-                        </p>
-                        <div className="name-search-chips">
-                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
-                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
-                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
-                          <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
-                          <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
-                          <span className="name-search-chip" onClick={() => setNameSearchQuery('2018')}>🎓 2018</span>
-                        </div>
-                      </div>
-                    ) : filteredNameRegistrations.length === 0 ? (
-                      <div className="name-search-hint-box">
-                        <p>
-                          🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
-                        </p>
-                        <p style={{ fontSize: '0.82rem', margin: 0 }}>
-                          Check the spelling, or register this attendee directly at Spot Walk-in Desk:
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleRedirectToSpot({ name: nameSearchQuery })}
-                          className="btn-spot-create-new"
-                        >
-                          ⚡ Register "{nameSearchQuery}" at Spot Walk-in Desk →
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="name-search-header-meta">
-                          <span>Found {filteredNameRegistrations.length} matching alumni</span>
-                          <span>Click to select &amp; admit</span>
-                        </div>
+                    <div className="name-search-header-meta">
+                      <span>Found {activeList.length} matching {activeList.length === 1 ? 'attendee' : 'attendees'}</span>
+                      <span>Click to verify &amp; admit</span>
+                    </div>
 
-                        <div className="name-search-results-list">
-                          {filteredNameRegistrations.map((reg) => {
-                            const alumni = reg.alumni;
-                            if (!alumni) return null;
-                            const gateStatus = getAttendeeGateStatus(reg);
-                            const initials = (alumni.name || 'A')
-                              .split(' ')
-                              .map((p) => p[0])
-                              .slice(0, 2)
-                              .join('')
-                              .toUpperCase();
+                    <div className="name-search-results-list">
+                      {activeList.map((reg) => {
+                        const alumni = reg.alumni;
+                        if (!alumni) return null;
+                        const gateStatus = getAttendeeGateStatus(reg);
+                        const isSelected = selectedAttendee?.id === reg.id;
+                        const initials = (alumni.name || 'A')
+                          .split(' ')
+                          .map((p) => p[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase();
 
-                            return (
-                              <div
-                                key={reg.id}
-                                className="name-search-result-card"
-                                onClick={() => setSelectedAttendee(reg)}
-                                role="button"
-                                tabIndex={0}
-                              >
-                                <div className="name-result-avatar">
-                                  {reg.photo_url ? (
-                                    <img
-                                      src={reg.photo_url}
-                                      alt={alumni.name}
-                                      className="name-result-photo"
-                                    />
-                                  ) : (
-                                    <span>{initials}</span>
-                                  )}
+                        return (
+                          <div
+                            key={reg.id}
+                            className={`name-search-result-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => {
+                              setSelectedAttendee(isSelected ? null : reg);
+                              setScanResult(null);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <div className="name-result-main-row">
+                              <div className="name-result-avatar">
+                                {reg.photo_url ? (
+                                  <img
+                                    src={reg.photo_url}
+                                    alt={alumni.name}
+                                    className="name-result-photo"
+                                  />
+                                ) : (
+                                  <span>{initials}</span>
+                                )}
+                              </div>
+
+                              <div className="name-result-info">
+                                <div className="name-result-header">
+                                  <span className="name-result-name">{alumni.name}</span>
+                                  <span
+                                    className="result-pill"
+                                    style={{ fontSize: '0.72rem', padding: '2px 6px' }}
+                                  >
+                                    {reg.registration_number}
+                                  </span>
                                 </div>
-
-                                <div className="name-result-info">
-                                  <div className="name-result-header">
-                                    <span className="name-result-name">{alumni.name}</span>
-                                    <span
-                                      className="result-pill"
-                                      style={{ fontSize: '0.72rem', padding: '2px 6px' }}
-                                    >
-                                      {reg.registration_number}
-                                    </span>
-                                  </div>
-                                  <div className="name-result-meta">
-                                    <span>
-                                      🎓 {alumni.engineering_discipline || 'Alumni'} ({alumni.year_of_passing || '—'})
-                                    </span>
-                                    <span>•</span>
-                                    <span>📞 {alumni.mobile}</span>
-                                    <span>•</span>
-                                    <span>👥 {reg.number_of_attendees || 1} Total</span>
-                                  </div>
-                                </div>
-
-                                <div className="name-result-status-col">
-                                  {gateStatus.status === 'READY' && (
-                                    <span className="gate-status-pill ready">🟢 Ready</span>
-                                  )}
-                                  {gateStatus.status === 'ALREADY_ENTERED' && (
-                                    <span className="gate-status-pill entered">⚠️ Entered</span>
-                                  )}
-                                  {gateStatus.status === 'PAYMENT_PENDING' && (
-                                    <span className="gate-status-pill pending">💳 Unpaid</span>
-                                  )}
-                                  <span className="name-result-select-indicator">Select →</span>
+                                <div className="name-result-meta">
+                                  <span>
+                                    🎓 {alumni.engineering_discipline || 'Alumni'} ({alumni.year_of_passing || '—'})
+                                  </span>
+                                  <span>•</span>
+                                  <span>📞 {alumni.mobile}</span>
+                                  <span>•</span>
+                                  <span>👥 {reg.number_of_attendees || 1} Total</span>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
 
-            {/* Same result feedback card */}
+                              <div className="name-result-status-col">
+                                {gateStatus.status === 'READY' && (
+                                  <span className="gate-status-pill ready">🟢 Ready</span>
+                                )}
+                                {gateStatus.status === 'ALREADY_ENTERED' && (
+                                  <span className="gate-status-pill entered">⚠️ Entered</span>
+                                )}
+                                {gateStatus.status === 'PAYMENT_PENDING' && (
+                                  <span className="gate-status-pill pending">💳 Pending</span>
+                                )}
+                                {gateStatus.status === 'MAYBE' && (
+                                  <span className="gate-status-pill pending">💳 Unpaid</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Direct action button right below the card without taking much mobile space */}
+                            {isSelected && (
+                              <div
+                                className="name-result-action-drawer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {gateStatus.status === 'READY' && (
+                                  <button
+                                    type="button"
+                                    disabled={isVerifying}
+                                    onClick={() => handleVerifySelectedAttendee(reg)}
+                                    className="btn-verify-selected"
+                                  >
+                                    <span>✅</span>
+                                    <span>
+                                      {isVerifying
+                                        ? 'Checking...'
+                                        : `Verify & Allow Entry (${alumni.name}) →`}
+                                    </span>
+                                  </button>
+                                )}
+
+                                {(gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
+                                  <>
+                                    <div
+                                      className="attendee-selected-alert pending"
+                                      style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', marginBottom: '0.4rem' }}
+                                    >
+                                      💳 {gateStatus.status === 'MAYBE' ? 'Registered as MAYBE (Unpaid)' : `Payment Pending (₹${reg.amount || 0})`}. Please collect fee in Spot Entry.
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleRedirectToSpot({
+                                          name: alumni.name,
+                                          mobile: alumni.mobile,
+                                          branch: alumni.engineering_discipline,
+                                          batch: alumni.year_of_passing,
+                                          adults: reg.adults_count || reg.number_of_attendees || 1,
+                                          kidsAbove10: reg.children_above_7_count || 0,
+                                          kidsUnder10: reg.children_under_7_count || 0,
+                                          amount: reg.amount,
+                                        })
+                                      }
+                                      className="btn-redirect-spot"
+                                    >
+                                      <span>⚡</span>
+                                      <span>Collect Fee &amp; Admit in Spot Entry ({alumni.name}) →</span>
+                                    </button>
+                                  </>
+                                )}
+
+                                {gateStatus.status === 'ALREADY_ENTERED' && (
+                                  <>
+                                    <div
+                                      className="attendee-selected-alert entered"
+                                      style={{ padding: '0.65rem 0.85rem', fontSize: '0.82rem', marginBottom: '0.4rem' }}
+                                    >
+                                      ⚠️ {gateStatus.badgeText} (by {gateStatus.entry?.verified_by || 'Gate Staff'})
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveSubTab('log')}
+                                      className="btn-scan-next btn-secondary-outline"
+                                    >
+                                      <span>📋</span>
+                                      <span>View in Gate Entry Log →</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Same rich QR Code scan result response experience */}
             {scanResult && (
               <div
                 ref={statusResultRef}
                 className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}
-                style={{ marginTop: '1.25rem' }}
+                style={{ marginTop: '1.25rem', width: '100%', maxWidth: '100%' }}
               >
-                <div className="result-content">
-                  <div className="result-icon">
-                    {scanResult.status === 'ENTERED' ? '✅' : scanResult.status === 'ALREADY_ENTERED' ? '⚠️' : '❌'}
-                  </div>
-                  <div className="result-text">
-                    <h3 className="result-title">{scanResult.status.replace(/_/g, ' ')}</h3>
-                    <p className="result-name">{scanResult.attendee_name || scanResult.message}</p>
-                    {scanResult.number_of_attendees && (
-                      <p className="result-sub">👥 {scanResult.number_of_attendees} Total Persons</p>
-                    )}
-                  </div>
-                </div>
-
-                {(scanResult.status === 'PAYMENT_PENDING' || scanResult.status === 'NOT_FOUND') && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleRedirectToSpot({
-                        name: scanResult.attendee_name || (selectedAttendee?.alumni?.name) || '',
-                        mobile: scanResult.phone_number || manualPhone || (selectedAttendee?.alumni?.mobile) || '',
-                        branch: scanResult.branch || (selectedAttendee?.alumni?.engineering_discipline) || '',
-                        batch: scanResult.year_of_passing || (selectedAttendee?.alumni?.year_of_passing) || '',
-                        adults: scanResult.number_of_attendees || (selectedAttendee?.number_of_attendees) || 1,
-                        amount: scanResult.amount || (selectedAttendee?.amount) || 0,
-                      })
-                    }
-                    className="btn-redirect-spot"
-                    style={{ marginTop: '0.85rem' }}
-                  >
-                    <span>⚡</span>
-                    <span>Collect Fee &amp; Admit at Spot Desk →</span>
-                  </button>
+                {scanResult.status === 'ENTERED' && (
+                  <>
+                    <div className="result-content success">
+                      <div className="result-icon">✅</div>
+                      <div className="result-text">
+                        <h3 className="result-title">VERIFIED SUCCESSFULLY</h3>
+                        <p className="result-name">
+                          {scanResult.attendee_name || selectedAttendee?.alumni?.name}
+                        </p>
+                        <div className="result-badges">
+                          {(scanResult.registration_number || selectedAttendee?.registration_number) && (
+                            <span className="result-pill">
+                              {scanResult.registration_number || selectedAttendee?.registration_number}
+                            </span>
+                          )}
+                          <span className="result-pill">
+                            {scanResult.branch || selectedAttendee?.alumni?.engineering_discipline || 'Alumni'}
+                            {scanResult.year_of_passing || selectedAttendee?.alumni?.year_of_passing
+                              ? ` (${scanResult.year_of_passing || selectedAttendee?.alumni?.year_of_passing})`
+                              : ''}
+                          </span>
+                          <span className="result-pill count-pill">
+                            👥 {scanResult.number_of_attendees || selectedAttendee?.number_of_attendees || 1} Attendees Allowed
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        type="button"
+                        onClick={handleResetLookup}
+                        className="btn-scan-next btn-success"
+                      >
+                        <span>🔍</span>
+                        <span>Verify Next Attendee →</span>
+                      </button>
+                    </div>
+                  </>
                 )}
 
-                <button
-                  type="button"
-                  onClick={handleResetLookup}
-                  className="btn-reset-lookup"
-                >
-                  🔍 Verify Another Attendee
-                </button>
+                {scanResult.status === 'ALREADY_ENTERED' && (
+                  <>
+                    <div className="result-content warning">
+                      <div className="result-icon">⚠️</div>
+                      <div className="result-text">
+                        <h3 className="result-title">ALREADY ENTERED (DUPLICATE PASS)</h3>
+                        <p className="result-detail">{scanResult.message}</p>
+                        <p className="result-sub">
+                          Attendee: <strong>{scanResult.attendee_name || selectedAttendee?.alumni?.name}</strong>{' '}
+                          ({scanResult.registration_number || selectedAttendee?.registration_number})
+                        </p>
+                      </div>
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        type="button"
+                        onClick={handleResetLookup}
+                        className="btn-scan-next btn-warning"
+                      >
+                        <span>🔍</span>
+                        <span>Verify Next Attendee →</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab('log')}
+                        className="btn-scan-next btn-secondary-outline"
+                      >
+                        <span>📋</span>
+                        <span>View in Gate Entry Log →</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {scanResult.status === 'PAYMENT_PENDING' && (
+                  <>
+                    <div className="result-content error">
+                      <div className="result-icon">❌</div>
+                      <div className="result-text">
+                        <h3 className="result-title">PAYMENT NOT APPROVED</h3>
+                        <p className="result-detail">{scanResult.message}</p>
+                        <p className="result-sub">
+                          Attendee: <strong>{scanResult.attendee_name || selectedAttendee?.alumni?.name}</strong> • Amount Due: ₹{scanResult.amount ?? selectedAttendee?.amount ?? 0}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRedirectToSpot({
+                            name: scanResult.attendee_name || selectedAttendee?.alumni?.name || '',
+                            mobile: scanResult.phone_number || manualPhone || selectedAttendee?.alumni?.mobile || '',
+                            branch: scanResult.branch || selectedAttendee?.alumni?.engineering_discipline || '',
+                            batch: scanResult.year_of_passing || selectedAttendee?.alumni?.year_of_passing || '',
+                            adults: scanResult.number_of_attendees || selectedAttendee?.number_of_attendees || 1,
+                            amount: scanResult.amount ?? selectedAttendee?.amount ?? 0,
+                          })
+                        }
+                        className="btn-redirect-spot"
+                      >
+                        <span>⚡</span>
+                        <span>Collect Fee &amp; Admit at Spot Desk →</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetLookup}
+                        className="btn-scan-next btn-error"
+                      >
+                        <span>🔍</span>
+                        <span>Verify Another Attendee</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {scanResult.status === 'NOT_FOUND' && (
+                  <>
+                    <div className="result-content error">
+                      <div className="result-icon">❓</div>
+                      <div className="result-text">
+                        <h3 className="result-title">NOT REGISTERED</h3>
+                        <p className="result-detail">{scanResult.message}</p>
+                      </div>
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        type="button"
+                        className="btn-quick-spot-link"
+                        onClick={() =>
+                          handleRedirectToSpot({
+                            name: selectedAttendee?.alumni?.name || (manualLookupMode === 'name' ? nameSearchQuery : undefined),
+                            mobile: selectedAttendee?.alumni?.mobile || (manualLookupMode === 'phone' ? manualPhone : undefined),
+                          })
+                        }
+                      >
+                        <span>⚡ Spot Register this Attendee →</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-scan-next btn-secondary-outline"
+                        onClick={handleResetLookup}
+                      >
+                        <span>🔍</span>
+                        <span>Try Another Attendee</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {scanResult.status === 'ERROR' && (
+                  <>
+                    <div className="result-content error">
+                      <div className="result-icon">⚠️</div>
+                      <div className="result-text">
+                        <h3 className="result-title">VERIFICATION ERROR</h3>
+                        <p className="result-detail">{scanResult.message || 'Verification failed. Please retry.'}</p>
+                      </div>
+                    </div>
+                    <div className="result-actions">
+                      <button
+                        type="button"
+                        className="btn-scan-next btn-error"
+                        onClick={handleResetLookup}
+                      >
+                        <span>✕</span>
+                        <span>Dismiss &amp; Try Again</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

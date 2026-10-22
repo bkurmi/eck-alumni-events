@@ -2508,7 +2508,130 @@
   white-space: nowrap;
 }
 
-/* Unified Manual Lookup Switcher (Phone vs Name) */
+/* Registration Number Input in Gate Manual Lookup */
+.manual-reg-input-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.manual-reg-input-group:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+
+.manual-reg-prefix {
+  background: #1e293b;
+  color: #f59e0b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.85rem 1rem;
+  border-right: 1px solid #334155;
+  font-size: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.manual-reg-field {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  padding: 0.85rem 1rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+}
+
+.gate-reg-hint-note {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.gate-reg-hint-note strong {
+  color: #fbbf24;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.gate-reg-preview-card {
+  margin-top: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.gate-reg-preview-card:hover {
+  background: #172554;
+  border-color: #6366f1;
+  transform: translateY(-1px);
+}
+
+.gate-reg-preview-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.gate-reg-preview-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gate-reg-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gate-reg-preview-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.gate-reg-preview-meta {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.gate-reg-preview-status {
+  flex-shrink: 0;
+}
+
+/* Unified Manual Lookup Switcher (Phone vs Reg ID vs Name) */
 .manual-mode-segmented-bar {
   display: flex;
   gap: 6px;
@@ -2525,7 +2648,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 10px 14px;
   border: none;
   background: transparent;
   color: #94a3b8;
@@ -2534,6 +2657,15 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+@media (max-width: 540px) {
+  .manual-mode-btn {
+    padding: 8px 6px;
+    font-size: 0.78rem;
+    gap: 4px;
+  }
 }
 
 .manual-mode-btn:hover:not(.active) {
@@ -2546,6 +2678,7 @@
   color: #ffffff;
   box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
 }
+
 
 /* Name Predictive Search Box */
 .name-search-container {
@@ -2668,15 +2801,13 @@
 
 .name-search-result-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
   background: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.75rem;
   padding: 0.85rem 1rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   text-align: left;
   width: 100%;
 }
@@ -2684,7 +2815,68 @@
 .name-search-result-card:hover {
   background: #172554;
   border-color: rgba(99, 102, 241, 0.45);
-  transform: translateY(-1px);
+}
+
+.name-search-result-card.selected {
+  background: #172554;
+  border-color: #6366f1;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.25);
+}
+
+.name-result-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.name-result-action-drawer {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: fadeInDrawer 0.18s ease-out;
+}
+
+@keyframes fadeInDrawer {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .name-result-main-row {
+    gap: 8px;
+  }
+  .name-result-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 0.85rem;
+  }
+  .name-result-name {
+    font-size: 0.94rem;
+  }
+  .name-result-meta {
+    font-size: 0.76rem;
+    gap: 5px;
+  }
+  .gate-status-pill {
+    font-size: 0.72rem;
+    padding: 3px 7px;
+  }
+  .btn-verify-selected {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+  }
 }
 
 .name-result-avatar {
@@ -2747,11 +2939,6 @@
   flex-shrink: 0;
 }
 
-.name-result-select-indicator {
-  font-size: 0.8rem;
-  color: #6366f1;
-  font-weight: 600;
-}
 
 /* Gate Status Badges */
 .gate-status-pill {
