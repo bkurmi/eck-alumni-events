@@ -19,6 +19,8 @@ import {
 import { supabase } from '../lib/supabase';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
+export const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
+
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
   const [searchParams] = useSearchParams();
@@ -178,16 +180,14 @@ export const IdCardPage: React.FC = () => {
           return;
         }
 
-        setErrorMsg('No registration found with this mobile number. Please register first.');
+        setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
       }
 
-      // Check payment status
-      if (res.attendance_status === 'payment_pending' || res.attendance_status === 'no') {
-        setErrorMsg(
-          'Your registration payment is currently under verification or pending. ID Cards can only be generated once payment has been confirmed by the organizers.'
-        );
+      // Check attendance & payment status - only confirmed 'yes' (Attending) can download ID pass
+      if (res.attendance_status !== 'yes') {
+        setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
       }
@@ -230,16 +230,14 @@ export const IdCardPage: React.FC = () => {
           return;
         }
 
-        setErrorMsg(`No registration found for ${formattedReg}. Please verify your registration number.`);
+        setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
       }
 
-      // Check payment status
-      if (res.attendance_status === 'payment_pending' || res.attendance_status === 'no') {
-        setErrorMsg(
-          'Your registration payment is currently under verification or pending. ID Cards can only be generated once payment has been confirmed by the organizers.'
-        );
+      // Check attendance & payment status - only confirmed 'yes' (Attending) can download ID pass
+      if (res.attendance_status !== 'yes') {
+        setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
       }
@@ -336,10 +334,8 @@ export const IdCardPage: React.FC = () => {
 
   // Handle Attendee Selection from Name Search Results
   const handleSelectAttendee = async (reg: ExistingRegistrationLookup) => {
-    if (reg.attendance_status === 'payment_pending' || reg.attendance_status === 'no') {
-      setErrorMsg(
-        'Your registration payment is currently under verification or pending. ID Cards can only be generated once payment has been confirmed by the organizers.'
-      );
+    if (reg.attendance_status !== 'yes') {
+      setErrorMsg(ID_PASS_LOCKED_MSG);
       return;
     }
 
@@ -574,7 +570,16 @@ export const IdCardPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
+                  {errorMsg && (
+                    <div className="id-error-alert">
+                      <span>{errorMsg}</span>
+                      {errorMsg === ID_PASS_LOCKED_MSG && (
+                        <Link to="/" className="id-error-register-link">
+                          Register / Confirm Attendance Now →
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </form>
               </>
             )}
@@ -616,7 +621,16 @@ export const IdCardPage: React.FC = () => {
                     💡 Enter your number (e.g. <strong>39</strong> or <strong>00039</strong>)
                   </p>
 
-                  {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
+                  {errorMsg && (
+                    <div className="id-error-alert">
+                      <span>{errorMsg}</span>
+                      {errorMsg === ID_PASS_LOCKED_MSG && (
+                        <Link to="/" className="id-error-register-link">
+                          Register / Confirm Attendance Now →
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </form>
               </>
             )}
@@ -631,116 +645,127 @@ export const IdCardPage: React.FC = () => {
                 <div className="name-search-container id-name-search-box">
                   {/* Search Input Bar */}
                   <div className="name-search-input-wrapper">
-                  <span className="name-search-icon">🔍</span>
-                  <input
-                    type="text"
-                    placeholder="Type name (e.g. Bhawesh, Rahul), batch (2008), or branch..."
-                    value={nameSearchQuery}
-                    onChange={(e) => {
-                      setNameSearchQuery(e.target.value);
-                      setErrorMsg(null);
-                    }}
-                    className="name-search-input"
-                    autoFocus
-                  />
-                  {nameSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNameSearchQuery('');
+                    <span className="name-search-icon">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Type name (e.g. Bhawesh, Rahul), batch (2008), or branch..."
+                      value={nameSearchQuery}
+                      onChange={(e) => {
+                        setNameSearchQuery(e.target.value);
                         setErrorMsg(null);
                       }}
-                      className="name-search-clear-btn"
-                      title="Clear search"
-                    >
-                      ✕
-                    </button>
+                      className="name-search-input"
+                      autoFocus
+                    />
+                    {nameSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNameSearchQuery('');
+                          setErrorMsg(null);
+                        }}
+                        className="name-search-clear-btn"
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {errorMsg && (
+                    <div className="id-error-alert">
+                      <span>{errorMsg}</span>
+                      {errorMsg === ID_PASS_LOCKED_MSG && (
+                        <Link to="/" className="id-error-register-link">
+                          Register / Confirm Attendance Now →
+                        </Link>
+                      )}
+                    </div>
                   )}
-                </div>
 
-                {errorMsg && <div className="id-error-alert">{errorMsg}</div>}
-
-                {/* Hints / Chips or Results List */}
-                {nameSearchQuery.trim().length < 2 ? (
-                  <div className="name-search-hint-box">
-                    <p>
-                      ⚡ <strong>Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
-                    </p>
-                    <div className="name-search-chips">
-                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
-                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
-                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
-                      <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
-                      <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
-                      <span className="name-search-chip" onClick={() => setNameSearchQuery('2008')}>🎓 2008</span>
+                  {/* Hints / Chips or Results List */}
+                  {nameSearchQuery.trim().length < 2 ? (
+                    <div className="name-search-hint-box">
+                      <p>
+                        ⚡ <strong>Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
+                      </p>
+                      <div className="name-search-chips">
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2008')}>🎓 2008</span>
+                      </div>
                     </div>
-                  </div>
-                ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
-                  <div className="name-search-hint-box" style={{ padding: '1.25rem' }}>
-                    <p>🔍 Loading registered alumni directory...</p>
-                  </div>
-                ) : filteredNameRegistrations.length === 0 ? (
-                  <div className="name-search-hint-box">
-                    <p>
-                      🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
-                    </p>
-                    <p style={{ fontSize: '0.82rem', margin: '6px 0 0 0' }}>
-                      Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="name-search-header-meta">
-                      <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
-                      <span>Click to load pass</span>
+                  ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
+                    <div className="name-search-hint-box" style={{ padding: '1.25rem' }}>
+                      <p>🔍 Loading registered alumni directory...</p>
                     </div>
+                  ) : filteredNameRegistrations.length === 0 ? (
+                    <div className="name-search-hint-box">
+                      <p>
+                        🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
+                      </p>
+                      <p style={{ fontSize: '0.82rem', margin: '6px 0 0 0' }}>
+                        Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="name-search-header-meta">
+                        <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
+                        <span>Click to load pass</span>
+                      </div>
 
-                    <div className="name-search-results-list">
-                      {filteredNameRegistrations.map((reg) => {
-                        const alumni = reg.alumni;
-                        if (!alumni) return null;
+                      <div className="name-search-results-list">
+                        {filteredNameRegistrations.map((reg) => {
+                          const alumni = reg.alumni;
+                          if (!alumni) return null;
 
-                        return (
-                          <div
-                            key={reg.registration_id}
-                            className="name-search-result-card"
-                            onClick={() => handleSelectAttendee(reg)}
-                            role="button"
-                            tabIndex={0}
-                          >
-                            <div className="name-result-main-row">
-                              {/* Top row: Name + Reg ID on left, Get Pass indicator on right */}
-                              <div className="name-result-top-row">
-                                <div className="name-result-title-group">
-                                  <span className="name-result-name">{alumni.name}</span>
-                                  <span className="name-result-reg-pill">
-                                    {reg.registration_number}
+                          return (
+                            <div
+                              key={reg.registration_id}
+                              className="name-search-result-card"
+                              onClick={() => handleSelectAttendee(reg)}
+                              role="button"
+                              tabIndex={0}
+                            >
+                              <div className="name-result-main-row">
+                                {/* Top row: Name + Reg ID on left, Get Pass indicator on right */}
+                                <div className="name-result-top-row">
+                                  <div className="name-result-title-group">
+                                    <span className="name-result-name">{alumni.name}</span>
+                                    <span className="name-result-reg-pill">
+                                      {reg.registration_number}
+                                    </span>
+                                  </div>
+
+                                  <div className="name-result-status-col">
+                                    <span className={`name-result-select-indicator ${reg.attendance_status !== 'yes' ? 'locked' : ''}`}>
+                                      {reg.attendance_status === 'yes' ? 'Get Pass →' : 'Locked 🔒'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Middle row: Branch & Passing Year */}
+                                <div className="name-result-branch-line">
+                                  <span className="meta-icon">🎓</span>
+                                  <span className="meta-text">
+                                    {alumni.engineering_discipline || 'Alumni'}
+                                    {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
                                   </span>
                                 </div>
-
-                                <div className="name-result-status-col">
-                                  <span className="name-result-select-indicator">Get Pass →</span>
-                                </div>
-                              </div>
-
-                              {/* Middle row: Branch & Passing Year */}
-                              <div className="name-result-branch-line">
-                                <span className="meta-icon">🎓</span>
-                                <span className="meta-text">
-                                  {alumni.engineering_discipline || 'Alumni'}
-                                  {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
-                                </span>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
-          )}
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
 
             <div className="id-lookup-footer">
               <span>Haven't registered yet? </span>

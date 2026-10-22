@@ -627,7 +627,27 @@
   margin-bottom: 1.25rem;
   font-size: 0.9rem;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
+
+.id-error-register-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  color: #fbbf24;
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.id-error-register-link:hover {
+  color: #fef08a;
+}
+
 
 .id-lookup-footer {
   margin-top: 1.75rem;
@@ -2966,6 +2986,20 @@
   border-color: #38bdf8;
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
 }
+
+.name-result-select-indicator.locked {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+.name-search-result-card:hover .name-result-select-indicator.locked {
+  background: #f59e0b;
+  color: #030b20;
+  border-color: #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
 
 .name-result-action-drawer {
   margin-top: 0.6rem;
