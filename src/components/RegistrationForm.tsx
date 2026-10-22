@@ -1458,7 +1458,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   <div className="tier-name-row">
                     <span className="tier-title">Adults</span>
                     {(formData.adults_count ?? 1) === 2 && (
-                      <span className="tier-badge couple-badge">Couple Rate</span>
+                      <span className="tier-badge couple-badge">Couple</span>
                     )}
                   </div>
                   <span className="tier-desc">
