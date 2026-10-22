@@ -629,31 +629,54 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     }
     if (!spotPaymentMode) {
       errors.paymentMode = true;
+    } else if (spotPaymentMode === 'CASH' && !paymentConfirmed) {
+      errors.cashConfirmed = true;
+    } else if (Boolean(selectedUpiConfig) && !spotPhotoFile && !paymentConfirmed) {
+      errors.upiConfirmed = true;
     }
 
     if (Object.keys(errors).length > 0) {
       setSpotErrors(errors);
-      if (errors.paymentMode && Object.keys(errors).length === 1) {
+      if (errors.cashConfirmed && Object.keys(errors).length === 1) {
+        setSpotFormErrorMsg('Please verify that cash has been collected in hand before submitting.');
+      } else if (errors.upiConfirmed && Object.keys(errors).length === 1) {
+        setSpotFormErrorMsg("Please snap the attendee's payment screen or confirm payment before submitting.");
+      } else if (errors.paymentMode && Object.keys(errors).length === 1) {
         setSpotFormErrorMsg('Please select a payment method to complete gate entry.');
       } else {
         setSpotFormErrorMsg('Please fill in all mandatory fields highlighted in red.');
+      }
+
+      // Smooth auto-scroll to the first invalid field or confirmation card
+      const fieldIdMap: Record<string, string> = {
+        mobile: 'spot-mobile',
+        name: 'spot-name',
+        branch: 'spot-branch',
+        batch: 'spot-batch',
+        paymentMode: 'spot-payment-mode',
+        cashConfirmed: 'spot-cash-confirm-box',
+        upiConfirmed: 'spot-snap-payment-btn',
+      };
+
+      const firstErrorKey = ['mobile', 'name', 'branch', 'batch', 'paymentMode', 'cashConfirmed', 'upiConfirmed'].find(
+        (key) => errors[key]
+      );
+
+      if (firstErrorKey) {
+        const targetId = fieldIdMap[firstErrorKey];
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+            (el as HTMLElement).focus();
+          }
+        }
       }
       return;
     }
 
     setSpotErrors({});
     setSpotFormErrorMsg(null);
-
-    const isUpi = Boolean(selectedUpiConfig);
-    if (isUpi && !spotPhotoFile && !paymentConfirmed) {
-      setSpotFormErrorMsg("Please snap the attendee's payment screen or confirm payment before submitting.");
-      return;
-    }
-
-    if (spotPaymentMode === 'CASH' && !paymentConfirmed) {
-      setSpotFormErrorMsg('Please verify that cash has been collected in hand before submitting.');
-      return;
-    }
 
     setSpotSubmitting(true);
     setSpotScanResult(null);
@@ -668,6 +691,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       }
     }
 
+    const isUpi = Boolean(selectedUpiConfig);
     const effectiveAmount = spotPaymentMode === 'COMPLIMENTARY' ? 0 : spotAmount;
     const verifiedByNote = isUpi
       ? `${verifiedBy} (UPI: ${selectedUpiConfig?.account_name}${uploadedScreenshotPath ? ' [Proof Attached]' : ''})`
@@ -2155,9 +2179,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         {!spotPhotoPreview ? (
                           <div className="spot-photo-capture-box">
                             <button
+                              id="spot-snap-payment-btn"
                               type="button"
-                              className="btn-snap-payment"
-                              onClick={() => spotCameraInputRef.current?.click()}
+                              className={`btn-snap-payment ${spotErrors.upiConfirmed ? 'has-error' : ''}`}
+                              onClick={() => {
+                                spotCameraInputRef.current?.click();
+                                clearSpotError('upiConfirmed');
+                              }}
                             >
                               <span className="snap-camera-icon">📸</span>
                               <div className="snap-btn-text">
@@ -2166,11 +2194,21 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                               </div>
                             </button>
 
+                            {spotErrors.upiConfirmed && (
+                              <div className="spot-inline-error-alert">
+                                <span className="inline-err-icon">⚠️</span>
+                                <span>Please snap the payment screen or verify manually below.</span>
+                              </div>
+                            )}
+
                             <div className="snap-alt-actions">
                               <button
                                 type="button"
                                 className="btn-snap-alt-link"
-                                onClick={() => spotFileInputRef.current?.click()}
+                                onClick={() => {
+                                  spotFileInputRef.current?.click();
+                                  clearSpotError('upiConfirmed');
+                                }}
                               >
                                 📁 Choose from files
                               </button>
@@ -2178,7 +2216,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                               <button
                                 type="button"
                                 className="btn-snap-alt-link"
-                                onClick={() => setPaymentConfirmed(!paymentConfirmed)}
+                                onClick={() => {
+                                  const next = !paymentConfirmed;
+                                  setPaymentConfirmed(next);
+                                  if (next) clearSpotError('upiConfirmed');
+                                }}
                               >
                                 {paymentConfirmed ? '✓ Confirmed on Screen' : 'Verify manually without photo'}
                               </button>
@@ -2251,18 +2293,28 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </div>
 
                   <div
-                    className={`spot-payment-confirm-card ${paymentConfirmed ? 'confirmed' : ''}`}
-                    onClick={() => setPaymentConfirmed(!paymentConfirmed)}
+                    id="spot-cash-confirm-box"
+                    className={`spot-payment-confirm-card ${paymentConfirmed ? 'confirmed' : ''} ${spotErrors.cashConfirmed ? 'has-error' : ''}`}
+                    onClick={() => {
+                      const next = !paymentConfirmed;
+                      setPaymentConfirmed(next);
+                      if (next) clearSpotError('cashConfirmed');
+                    }}
                   >
                     <input
                       type="checkbox"
                       id="spot-cash-checkbox"
                       checked={paymentConfirmed}
-                      onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                      onChange={(e) => {
+                        setPaymentConfirmed(e.target.checked);
+                        if (e.target.checked) clearSpotError('cashConfirmed');
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     />
                     <label htmlFor="spot-cash-checkbox" className="confirm-label">
-                      <strong>Cash Received in Hand</strong>
+                      <strong>
+                        Cash Received in Hand <span className="req-star">*</span>
+                      </strong>
                       <span>
                         {paymentConfirmed
                           ? `✅ Confirmed: ₹${spotAmount} cash collected at gate desk`
@@ -2270,6 +2322,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </span>
                     </label>
                   </div>
+
+                  {spotErrors.cashConfirmed && (
+                    <div className="spot-inline-error-alert">
+                      <span className="inline-err-icon">⚠️</span>
+                      <span>Please check the box above to confirm cash collection before completing entry.</span>
+                    </div>
+                  )}
                 </div>
               )}
 

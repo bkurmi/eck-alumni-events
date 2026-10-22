@@ -4022,13 +4022,41 @@
   color: #f1f5f9;
 }
 
-.spot-payment-confirm-card.confirmed .confirm-label strong {
-  color: #34d399;
+.spot-payment-confirm-card.has-error {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
+  animation: shakeAlert 0.3s ease;
 }
 
-.confirm-label span {
-  font-size: 0.76rem;
-  color: #94a3b8;
+.spot-payment-confirm-card.has-error .confirm-label strong {
+  color: #fca5a5 !important;
+}
+
+.spot-payment-confirm-card .confirm-label .req-star {
+  color: #f59e0b;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.spot-inline-error-alert {
+  margin-top: 0.65rem;
+  padding: 0.65rem 0.95rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 0.55rem;
+  color: #fca5a5;
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: shakeAlert 0.3s ease;
+}
+
+.spot-inline-error-alert .inline-err-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
 }
 
 /* Spot UPI Proof & Live Camera Photo Snap */
@@ -4062,6 +4090,17 @@
   border-color: #34d399;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-snap-payment.has-error {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.28) !important;
+  animation: shakeAlert 0.3s ease;
+}
+
+.btn-snap-payment.has-error .snap-btn-text strong {
+  color: #fca5a5 !important;
 }
 
 .snap-camera-icon {
