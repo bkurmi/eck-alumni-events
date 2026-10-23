@@ -1134,7 +1134,7 @@
 }
 
 .ticket-v-photo-col {
-  width: 66px;
+  width: 80px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -1144,8 +1144,8 @@
 }
 
 .ticket-v-photo-box {
-  width: 66px;
-  height: 82px;
+  width: 80px;
+  height: 104px;
   border: 1.4px solid #c9a038;
   border-radius: 7px;
   overflow: hidden;
@@ -1184,6 +1184,7 @@
 }
 
 .ticket-v-badge-pill {
+  display: none;
   width: 100%;
   text-align: center;
   margin-top: 4px;
@@ -1349,15 +1350,16 @@
   }
 
   .ticket-v-photo-col {
-    width: 62px;
+    width: 74px;
   }
 
   .ticket-v-photo-box {
-    width: 62px;
-    height: 76px;
+    width: 74px;
+    height: 96px;
   }
 
   .ticket-v-badge-pill {
+    display: none;
     font-size: 0.58rem;
     padding: 1px 4px;
   }
@@ -1378,15 +1380,16 @@
   }
 
   .ticket-v-photo-col {
-    width: 54px;
+    width: 64px;
   }
 
   .ticket-v-photo-box {
-    width: 54px;
-    height: 66px;
+    width: 64px;
+    height: 84px;
   }
 
   .ticket-v-badge-pill {
+    display: none;
     font-size: 0.50rem;
     padding: 1px 2px;
   }
