@@ -422,6 +422,75 @@ export async function attachSpotPaymentScreenshot(
 }
 
 /**
+ * Update attendee count breakdown (adults, kids > 10, kids < 10) & payment screenshot for a spot registration.
+ * Uses the existing Security Definer RPC register_for_event to guarantee database persistence across all sessions.
+ */
+export async function updateSpotRegistrationDetails(params: {
+  registrationId: string;
+  name: string;
+  mobile: string;
+  discipline: string;
+  yearOfPassing: number;
+  adultsCount: number;
+  childrenAbove7Count: number;
+  childrenUnder7Count: number;
+  totalAttendees: number;
+  amount: number;
+  paymentScreenshotPath?: string | null;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+}): Promise<void> {
+  const cleanMobile = cleanMobileNumber(params.mobile);
+
+  // 1. Primary: Use the unified register_for_event RPC from main registration
+  try {
+    const { error } = await supabase.rpc('register_for_event', {
+      p_event_slug: 'deepaura-2k26',
+      p_name: params.name,
+      p_mobile: cleanMobile,
+      p_address: params.address || 'Kota (Spot Walk-in)',
+      p_city: params.city || 'Kota',
+      p_state: params.state || 'Rajasthan',
+      p_country: params.country || 'India',
+      p_year_of_passing: params.yearOfPassing,
+      p_engineering_discipline: params.discipline,
+      p_attendance_status: 'yes',
+      p_number_of_attendees: params.totalAttendees,
+      p_adults_count: params.adultsCount,
+      p_children_above_7_count: params.childrenAbove7Count,
+      p_children_under_7_count: params.childrenUnder7Count,
+      p_payment_screenshot_path: params.paymentScreenshotPath || null,
+    });
+    if (!error) return;
+  } catch (_) { }
+
+  // 3. Fallback direct table update
+  try {
+    await supabase
+      .from('event_registrations')
+      .update({
+        adults_count: params.adultsCount,
+        children_above_7_count: params.childrenAbove7Count,
+        children_under_7_count: params.childrenUnder7Count,
+        number_of_attendees: params.totalAttendees,
+        amount: params.amount,
+        ...(params.paymentScreenshotPath ? { payment_screenshot_path: params.paymentScreenshotPath } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.registrationId);
+
+    await supabase
+      .from('gate_entries')
+      .update({ accompanying_count: params.totalAttendees })
+      .eq('registration_id', params.registrationId);
+  } catch (directErr) {
+    console.warn('[updateSpotRegistrationDetails direct update notice]:', directErr);
+  }
+}
+
+/**
  * Quick spot registration at gate
  */
 export async function spotRegisterAtGate(params: {

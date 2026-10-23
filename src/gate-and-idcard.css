@@ -6351,3 +6351,338 @@
     border-radius: 8px !important;
   }
 }
+
+/* ── Spot Detected Attendee Status Card ── */
+.spot-detected-status-card {
+  border-radius: 0.85rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: all 0.25s ease;
+  animation: slideDownFade 0.2s ease;
+}
+
+.spot-detected-status-card.status-confirmed_paid {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.spot-detected-status-card.status-payment_pending {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+}
+
+.spot-detected-status-card.status-maybe {
+  background: rgba(234, 88, 12, 0.12);
+  border: 1px solid rgba(234, 88, 12, 0.45);
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.15);
+}
+
+.spot-detected-status-card.status-no {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.status-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.spot-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.spot-status-pill.pill-paid {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.spot-status-pill.pill-pending {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.spot-status-pill.pill-maybe {
+  background: rgba(234, 88, 12, 0.22);
+  color: #fb923c;
+  border: 1px solid rgba(234, 88, 12, 0.4);
+}
+
+.spot-status-pill.pill-no {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.spot-reg-number-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.btn-clear-detected {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 36px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-clear-detected:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.status-body-content {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.status-body-content strong {
+  color: #ffffff;
+}
+
+.status-highlight-text {
+  font-weight: 600;
+}
+
+/* ── Spot Amount Summary Box (matches PaymentSection) ── */
+.spot-amount-summary-box {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.75rem;
+  padding: 1rem 1.15rem;
+  margin-top: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.spot-pricing-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.spot-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  gap: 0.5rem;
+}
+
+.spot-amount-label-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.spot-amount-label {
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.spot-amount-sublabel {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.spot-amount-rate {
+  font-weight: 700;
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+.spot-free-tag {
+  color: #34d399;
+}
+
+.spot-amount-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0.75rem 0;
+}
+
+.spot-amount-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #f8fafc;
+  gap: 0.5rem;
+}
+
+.spot-total-label-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spot-total-label {
+  font-weight: 700;
+}
+
+.spot-total-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.spot-total-number {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.spot-deduct-row .text-paid-credit {
+  color: #34d399;
+}
+
+.spot-deduct-row .text-paid-credit-sub {
+  color: rgba(52, 211, 153, 0.8);
+}
+
+.spot-due-highlight-row {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  margin-top: 0.35rem;
+}
+
+/* ── Spot Fully Paid Callout & Difference Alert ── */
+.spot-fully-paid-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 0.85rem 1.15rem;
+  border-radius: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #f1f5f9;
+}
+
+.spot-fully-paid-callout .callout-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.spot-fully-paid-callout .callout-body strong {
+  display: block;
+  color: #34d399;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.spot-fully-paid-callout .callout-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.spot-diff-alert {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.15rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #fde68a;
+}
+
+.spot-diff-alert .alert-flex {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.spot-diff-alert .alert-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.spot-diff-alert .alert-body strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #fbbf24;
+  margin-bottom: 2px;
+}
+
+.spot-diff-alert .alert-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #fde68a;
+}
+
+.spot-fully-paid-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid #10b981;
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.85rem;
+  margin-top: 1.15rem;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.spot-fully-paid-card .fully-paid-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.spot-fully-paid-card .fully-paid-body h4 {
+  margin: 0 0 4px 0;
+  color: #34d399;
+  font-size: 1.05rem;
+}
+
+.spot-fully-paid-card .fully-paid-body p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
