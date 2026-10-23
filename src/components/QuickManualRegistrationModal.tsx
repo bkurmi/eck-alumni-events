@@ -1009,7 +1009,43 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                       </span>
                     </div>
 
-                    <div style={{ position: 'relative' }}>
+                    <div
+                      className="input-prefix-wrap quick-entry-prefix-wrap"
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'stretch',
+                        width: '100%',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <span
+                        className="input-prefix"
+                        style={{
+                          padding: '0 12px',
+                          background: 'rgba(245, 158, 11, 0.12)',
+                          border:
+                            mobileError && mobileTouched
+                              ? '1px solid #ef4444'
+                              : currentDigits.length === 10
+                                ? '1px solid #10b981'
+                                : '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRight: 'none',
+                          borderRadius: '6px 0 0 6px',
+                          color: 'var(--primary-light, #fbbf24)',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          userSelect: 'none',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        +91
+                      </span>
                       <input
                         ref={mobileInputRef}
                         type="tel"
@@ -1017,7 +1053,11 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                         placeholder="Optional (e.g. 9829012345)"
                         value={mobile}
                         onChange={(e) => {
-                          const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          const digits = e.target.value.replace(/\D/g, '');
+                          const digitsOnly =
+                            digits.length > 10 && digits.startsWith('91')
+                              ? digits.slice(2, 12)
+                              : digits.slice(0, 10);
                           setMobile(digitsOnly);
                           if (mobileTouched || mobileError) {
                             validateMobile(digitsOnly);
@@ -1027,9 +1067,10 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                           setMobileTouched(true);
                           validateMobile(e.target.value);
                         }}
-                        className="search-input"
+                        className="search-input prefixed-input"
                         style={{
                           width: '100%',
+                          flex: 1,
                           padding: '10px 12px',
                           background: 'rgba(0, 0, 0, 0.3)',
                           border:
@@ -1038,7 +1079,11 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                               : currentDigits.length === 10
                                 ? '1px solid #10b981'
                                 : '1px solid rgba(255, 255, 255, 0.15)',
-                          borderRadius: '6px',
+                          borderLeft: 'none',
+                          borderTopLeftRadius: 0,
+                          borderBottomLeftRadius: 0,
+                          borderTopRightRadius: '6px',
+                          borderBottomRightRadius: '6px',
                           color: '#fff',
                         }}
                       />

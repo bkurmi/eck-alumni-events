@@ -1123,6 +1123,15 @@ h6 {
   border-bottom-left-radius: 0;
 }
 
+.quick-entry-prefix-wrap:focus-within .input-prefix {
+  border-color: var(--primary-light) !important;
+  background: rgba(245, 158, 11, 0.18) !important;
+}
+
+.quick-entry-prefix-wrap:focus-within .search-input {
+  border-color: var(--primary-light) !important;
+}
+
 /* ── Attendance Selection Chips ── */
 .attendance-options-grid {
   display: grid;

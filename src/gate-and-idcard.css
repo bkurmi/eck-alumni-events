@@ -1134,7 +1134,7 @@
 }
 
 .ticket-v-photo-col {
-  width: 66px;
+  width: 80px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -1144,8 +1144,8 @@
 }
 
 .ticket-v-photo-box {
-  width: 66px;
-  height: 82px;
+  width: 80px;
+  height: 104px;
   border: 1.4px solid #c9a038;
   border-radius: 7px;
   overflow: hidden;
@@ -1184,6 +1184,7 @@
 }
 
 .ticket-v-badge-pill {
+  display: none;
   width: 100%;
   text-align: center;
   margin-top: 4px;
@@ -1349,15 +1350,16 @@
   }
 
   .ticket-v-photo-col {
-    width: 62px;
+    width: 74px;
   }
 
   .ticket-v-photo-box {
-    width: 62px;
-    height: 76px;
+    width: 74px;
+    height: 96px;
   }
 
   .ticket-v-badge-pill {
+    display: none;
     font-size: 0.58rem;
     padding: 1px 4px;
   }
@@ -1378,15 +1380,16 @@
   }
 
   .ticket-v-photo-col {
-    width: 54px;
+    width: 64px;
   }
 
   .ticket-v-photo-box {
-    width: 54px;
-    height: 66px;
+    width: 64px;
+    height: 84px;
   }
 
   .ticket-v-badge-pill {
+    display: none;
     font-size: 0.50rem;
     padding: 1px 2px;
   }
@@ -2701,15 +2704,53 @@
   }
 }
 
-.manual-phone-field {
+/* Phone Number Input in Gate Manual Lookup */
+.manual-phone-input-group {
   flex: 1;
+  display: flex;
+  align-items: center;
   background: #0f172a;
   border: 1px solid #475569;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.manual-phone-input-group:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+
+.manual-phone-prefix {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--primary-light, #fbbf24);
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.85rem 1.1rem;
+  border-right: 1px solid #334155;
+  font-size: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.manual-phone-field {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
   color: #ffffff;
   padding: 0.85rem 1rem;
-  border-radius: 0.6rem;
   font-size: 1.1rem;
   letter-spacing: 0.05em;
+}
+
+.manual-phone-field::placeholder {
+  color: rgba(148, 163, 184, 0.55);
 }
 
 .btn-verify-manual {
@@ -3691,6 +3732,55 @@
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
 }
 
+/* Spot Form Phone Input Prefix (+91) */
+.form-field .input-prefix-wrap {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.form-field .input-prefix {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-right: none;
+  border-radius: 0.6rem 0 0 0.6rem;
+  color: var(--primary-light, #fbbf24);
+  font-weight: 700;
+  font-size: 0.95rem;
+  user-select: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.form-field .input-prefix-wrap input.prefixed-input {
+  flex: 1;
+  min-width: 0;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-radius: 0 0.6rem 0.6rem 0 !important;
+}
+
+.form-field .input-prefix-wrap:focus-within .input-prefix {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.form-field.has-error .input-prefix {
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
 .form-field select {
   -webkit-appearance: none;
   appearance: none;
@@ -4001,7 +4091,8 @@
 }
 
 .btn-spot-submit {
-  flex: 1 1 220px;
+  flex: 1 1 100%;
+  width: 100%;
   min-height: 48px;
   padding: 0.95rem 1.25rem;
   font-size: 1.05rem;
@@ -5150,9 +5241,9 @@
 
   .manual-phone-field {
     font-size: 1.05rem !important;
-    padding: 0.75rem !important;
-    text-align: center;
-    letter-spacing: 0.08em;
+    padding: 0.75rem 0.85rem !important;
+    text-align: left;
+    letter-spacing: 0.05em;
   }
 
   .btn-verify-manual {
