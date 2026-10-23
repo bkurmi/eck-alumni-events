@@ -276,7 +276,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     }
 
     if (name === 'mobile') {
-      const clean = cleanMobileNumber(value);
+      const rawDigits = value.replace(/\D/g, '');
+      const clean =
+        rawDigits.length > 10 && rawDigits.startsWith('91')
+          ? rawDigits.slice(2, 12)
+          : rawDigits.slice(0, 10);
+
       // If user edits phone number to something else, reset update mode if it was tied to the previous number
       if (isUpdateMode && activeExistingReg && activeExistingReg.alumni?.mobile !== clean) {
         setIsUpdateMode(false);
@@ -284,8 +289,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       }
 
       if (clean.length === 10) {
-        checkMobileForExistingRegistration(value);
+        checkMobileForExistingRegistration(clean);
       }
+
+      setFormData((prev) => ({
+        ...prev,
+        mobile: clean,
+      }));
+      return;
     }
 
     setFormData((prev) => ({
@@ -1009,6 +1020,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               <input
                 id="field-mobile"
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 name="mobile"
                 value={formData.mobile}
                 onChange={handleChange}

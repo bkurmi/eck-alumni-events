@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { loginWithGatePin, getDeviceDisplayName, type GateStaffSession } from '../lib/gateAuth';
 
 interface GatePinLoginProps {
@@ -15,19 +15,18 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
   const deviceName = getDeviceDisplayName();
+  const isAuthenticatingRef = useRef(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pin.trim()) {
-      setErrorMsg('Please enter your Gate Access PIN.');
-      return;
-    }
+  const executePinLogin = async (pinToVerify: string) => {
+    if (isAuthenticatingRef.current || loading) return;
+    if (pinToVerify.trim().length !== 4) return;
 
+    isAuthenticatingRef.current = true;
     setErrorMsg(null);
     setLoading(true);
 
     try {
-      const res = await loginWithGatePin(pin);
+      const res = await loginWithGatePin(pinToVerify);
       if (res.success && res.session) {
         onLoginSuccess(res.session);
       } else {
@@ -37,17 +36,46 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
       setErrorMsg(err.message || 'Network error during PIN authentication.');
     } finally {
       setLoading(false);
+      isAuthenticatingRef.current = false;
     }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!pin.trim()) {
+      setErrorMsg('Please enter your Gate Access PIN.');
+      return;
+    }
+    if (pin.length !== 4) {
+      setErrorMsg('PIN must be 4 digits.');
+      return;
+    }
+    executePinLogin(pin);
   };
 
   const handleKeypadPress = (val: string) => {
     setErrorMsg(null);
+    if (loading || isAuthenticatingRef.current) return;
+
     if (val === 'DEL') {
       setPin((prev) => prev.slice(0, -1));
     } else if (val === 'CLR') {
       setPin('');
     } else if (pin.length < 4) {
-      setPin((prev) => prev + val);
+      const nextPin = pin + val;
+      setPin(nextPin);
+      if (nextPin.length === 4) {
+        executePinLogin(nextPin);
+      }
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMsg(null);
+    const cleaned = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setPin(cleaned);
+    if (cleaned.length === 4) {
+      executePinLogin(cleaned);
     }
   };
 
@@ -92,14 +120,12 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
                 pattern="[0-9]*"
                 maxLength={4}
                 value={pin}
-                onChange={(e) => {
-                  setErrorMsg(null);
-                  setPin(e.target.value.replace(/\D/g, '').slice(0, 4));
-                }}
+                onChange={handleInputChange}
                 placeholder="••••"
                 className="gate-pin-input"
                 autoFocus
                 autoComplete="off"
+                disabled={loading}
               />
               <button
                 type="button"
@@ -121,6 +147,7 @@ export const GatePinLogin: React.FC<GatePinLoginProps> = ({
               <button
                 key={k}
                 type="button"
+                disabled={loading}
                 className={`gate-keypad-btn ${k === 'DEL' || k === 'CLR' ? 'gate-keypad-action' : ''}`}
                 onClick={() => handleKeypadPress(k)}
               >
