@@ -29,8 +29,8 @@ const DEFAULT_EVENT: ECKEvent = {
   upi_id: '9799951857@upi',
   banner_image_url: '/deepaura-banner.jpg',
   tagline: '“दीप जले, यादें मुस्कुराएँ।”',
-  theme_primary_color: '#6366f1',
-  theme_accent_color: '#f59e0b',
+  theme_primary_color: '#f59e0b',
+  theme_accent_color: '#d97706',
   qr_image_url: '/qr-1.png',
   status: 'OPEN',
   created_at: new Date().toISOString(),
@@ -111,7 +111,7 @@ export const EventPage: React.FC = () => {
 
   // Apply dynamic theming based on event config
   useEffect(() => {
-    if (event.theme_primary_color) {
+    if (event.theme_primary_color && event.theme_primary_color !== '#6366f1') {
       document.documentElement.style.setProperty('--primary', event.theme_primary_color);
     }
     if (event.theme_accent_color) {
@@ -193,6 +193,25 @@ export const EventPage: React.FC = () => {
       .catch(() => { });
   };
 
+  const handleEditSubmittedRegistration = () => {
+    if (!submittedData) return;
+    setPreloadedRegistration({
+      found: true,
+      registration_id: submittedData.result.registration_id,
+      registration_number: submittedData.result.registration_number,
+      attendance_status: (submittedData.formData.attendance_status || 'maybe') as any,
+      number_of_attendees: submittedData.formData.number_of_attendees || 1,
+      adults_count: submittedData.formData.adults_count ?? 1,
+      children_above_7_count: submittedData.formData.children_above_7_count ?? 0,
+      children_under_7_count: submittedData.formData.children_under_7_count ?? 0,
+      amount: submittedData.result.amount || 0,
+    });
+    setPreloadedFormData(submittedData.formData);
+    setSubmittedData(null);
+    setCurrentStep('form');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="app-layout">
       <Header
@@ -213,6 +232,7 @@ export const EventPage: React.FC = () => {
               formData={submittedData.formData}
               result={submittedData.result}
               onReset={handleResetRegistration}
+              onEdit={handleEditSubmittedRegistration}
             />
           ) : currentStep === 'form' ? (
             <div className="form-view">
@@ -251,51 +271,32 @@ export const EventPage: React.FC = () => {
                 <section className="idpass-home-feature-card" aria-label="Alumni ID Card and Entry Pass">
                   <div className="idpass-ticket-notch idpass-ticket-notch-left" aria-hidden="true" />
                   <div className="idpass-ticket-notch idpass-ticket-notch-right" aria-hidden="true" />
-                  <div className="idpass-feature-glow" />
                   
                   <div className="idpass-feature-inner">
                     <div className="idpass-feature-top">
-                      <span className="idpass-live-pill">
-                        <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
+                      <span className="idpass-badge-pill">
+                        <span className="idpass-badge-dot">●</span>
+                        <span className="idpass-badge-label">ENTRY PASS</span>
+                        <span className="idpass-badge-sep">•</span>
+                        <span className="idpass-badge-sub">Fast-Track Gate Entry</span>
                       </span>
-                      <span className="idpass-corner-stamp">FAST-TRACK GATE ENTRY</span>
                     </div>
 
                     <div className="idpass-feature-body">
-                      <div className="idpass-feature-content">
-                        <h3 className="idpass-title">
-                          <span className="idpass-emoji-glyph">🎟️</span>
-                          <span>Alumni Event Pass &amp; Digital ID Card</span>
-                        </h3>
-                        <p className="idpass-desc">
-                          Already registered? Access your verified digital QR pass with roll number &amp; batch for fast-track college gate entry.
-                        </p>
-                      </div>
-                      <div className="idpass-qr-visual" aria-hidden="true">
-                        <svg className="idpass-mini-qr" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <rect x="2" y="2" width="8" height="8" rx="1.5" stroke="#f59e0b" strokeWidth="1.8" fill="rgba(245,158,11,0.15)" />
-                          <rect x="14" y="2" width="8" height="8" rx="1.5" stroke="#f59e0b" strokeWidth="1.8" fill="rgba(245,158,11,0.15)" />
-                          <rect x="2" y="14" width="8" height="8" rx="1.5" stroke="#f59e0b" strokeWidth="1.8" fill="rgba(245,158,11,0.15)" />
-                          <rect x="4.5" y="4.5" width="3" height="3" fill="#fbbf24" />
-                          <rect x="16.5" y="4.5" width="3" height="3" fill="#fbbf24" />
-                          <rect x="4.5" y="16.5" width="3" height="3" fill="#fbbf24" />
-                          <path d="M14 14h3v3h-3zM18 18h4v4h-4zM14 20h3v2h-3zM20 14h2v3h-2z" fill="#f59e0b" />
-                        </svg>
-                        <span className="idpass-qr-tag">SCAN &amp; GO</span>
-                      </div>
-                    </div>
-
-                    <div className="idpass-ticket-divider" aria-hidden="true">
-                      <span className="idpass-ticket-divider-line" />
-                      <span className="idpass-ticket-divider-badge">INSTANT ACCESS</span>
-                      <span className="idpass-ticket-divider-line" />
+                      <h3 className="idpass-title">
+                        <span className="idpass-icon-badge">🎟️</span>
+                        <span>Alumni Event Pass &amp; Digital ID</span>
+                      </h3>
+                      <p className="idpass-desc">
+                        Already registered? Download or view your verified QR pass on your phone for fast college gate entry.
+                      </p>
                     </div>
 
                     <div className="idpass-feature-cta-wrap">
                       <Link to="/id-card" className="btn btn-idpass-feature-primary" id="btn-home-download-pass">
                         <span className="btn-ticket-icon">🎟️</span>
                         <span>Download / View Pass</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <svg className="btn-arrow-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <polyline points="9 18 15 12 9 6" />
                         </svg>
                       </Link>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { isAlumniIdCardsEnabled } from '../lib/gate';
 import type { RegistrationFormData, RegistrationResult, ECKEvent } from '../types';
@@ -8,6 +8,7 @@ interface SuccessPageProps {
   formData: RegistrationFormData;
   result: RegistrationResult;
   onReset: () => void;
+  onEdit?: () => void;
 }
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({
@@ -15,18 +16,11 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
   formData,
   result,
   onReset,
+  onEdit,
 }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyRegNumber = () => {
-    navigator.clipboard.writeText(result.registration_number).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
+  const isAttending = formData.attendance_status === 'yes';
 
   const buildWhatsAppMessage = () => {
-    const isAttending = formData.attendance_status === 'yes';
     const count = formData.number_of_attendees || 1;
     const batchText = formData.year_of_passing ? `${formData.year_of_passing} Batch` : 'Alumnus';
     const attendanceText = isAttending
@@ -53,8 +47,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       `👤 ${formData.name} | 🎓 ${batchText}`,
       `👥 Attendance: ${attendanceText}`,
       '',
-      `🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`,
-      '',
+      ...(isAttending ? [`🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`, ''] : []),
       '🙏 Thank you, ECK-RTU Alumni Kota Chapter!',
       'Looking forward to celebrating with seniors, batchmates & juniors!',
       '',
@@ -85,16 +78,6 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
 
   return (
     <div className="success-page-card">
-      {/* Official Organiser & Institution Crests */}
-      <div className="success-crest-header">
-        <div className="success-crests-pair">
-          <img src="/logo-eck.png" alt="Engineering College Kota" className="success-crest-img" width="48" height="48" />
-          <img src="/logo-rtu.png" alt="Rajasthan Technical University" className="success-crest-img" width="48" height="48" />
-        </div>
-        <span className="success-org-label">ECK-RTU Alumni Kota Chapter</span>
-        <span className="success-tagline-pill">“दीप जले, यादें मुस्कुराएँ।”</span>
-      </div>
-
       {/* Celebratory Icon */}
       <div className="success-icon-wrap">
         <div className="success-pulse-ring" />
@@ -110,9 +93,11 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
         <p className="success-sub">
           {result.is_update
             ? 'Your alumni details and reunion registration have been updated.'
-            : formData.attendance_status === 'yes'
+            : isAttending
               ? 'Shubh Deepawali! We eagerly look forward to seeing you at the reunion.'
-              : 'Thank you for keeping your alumni directory details updated.'}
+              : formData.attendance_status === 'maybe'
+                ? 'Your tentative registration has been saved. We hope to see you at the reunion!'
+                : 'Thank you for keeping your alumni directory details updated.'}
         </p>
       </div>
 
@@ -125,15 +110,6 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
         <div className="badge-actions-row">
           <button
             type="button"
-            onClick={handleCopyRegNumber}
-            className="btn-copy-reg"
-            id="btn-copy-reg-number"
-            title="Copy Registration ID"
-          >
-            {copied ? '✓ Copied ID' : '📋 Copy ID'}
-          </button>
-          <button
-            type="button"
             onClick={handleShareWhatsApp}
             className="btn-share-whatsapp-badge"
             id="btn-share-whatsapp-badge"
@@ -142,39 +118,41 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
             💬 Share on WhatsApp
           </button>
         </div>
-      </div>
 
-      {/* Direct VIP Entry Pass Highlight Card */}
-      {isAlumniIdCardsEnabled() && (
-        <div className="success-pass-banner animate-slide-down">
-          <div className="success-pass-header">
-            <span className="success-pass-badge">
-              <span className="badge-dot pulse-gold">●</span> OFFICIAL ENTRY PASS
-            </span>
-            <span className="success-pass-stamp">CAMPUS GATE ENTRY</span>
+        {isAlumniIdCardsEnabled() && isAttending && (
+          <div className="badge-pass-row">
+            <Link
+              to={`/id-card?reg=${encodeURIComponent(result.registration_number)}`}
+              className="btn-pass-badge"
+              id="btn-success-view-pass"
+            >
+              <span>🎟️ Download / View Pass</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
           </div>
-          <div className="success-pass-body">
-            <div className="success-pass-icon">🎟️</div>
-            <div className="success-pass-text">
-              <h4 className="success-pass-title">Your Digital QR Gate Pass is Ready!</h4>
-              <p className="success-pass-desc">
-                Present your digital pass on phone for instant scan-and-go entry at the college gate.
-              </p>
-            </div>
-          </div>
-          <Link
-            to={`/id-card?reg=${encodeURIComponent(result.registration_number)}`}
-            className="btn btn-idpass-feature-primary btn-block"
-            id="btn-success-view-pass"
+        )}
+
+        {isAlumniIdCardsEnabled() && !isAttending && (
+          <div
+            className="badge-pass-notice"
+            style={{
+              marginTop: '10px',
+              padding: '10px 14px',
+              background: 'rgba(234, 179, 8, 0.12)',
+              border: '1px solid rgba(234, 179, 8, 0.3)',
+              borderRadius: '10px',
+              fontSize: '0.86rem',
+              color: '#fef08a',
+              textAlign: 'center',
+              lineHeight: '1.45',
+            }}
           >
-            <span className="btn-ticket-icon">🎟️</span>
-            <span>Download / View Entry Pass</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </Link>
-        </div>
-      )}
+            🔒 <strong>Entry Pass:</strong> Available once attendance is confirmed and contribution payment is completed.
+          </div>
+        )}
+      </div>
 
       {/* Perfectly Aligned Receipt Table */}
       <div className="success-details-card">
@@ -219,11 +197,15 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           <div className="detail-row">
             <span className="detail-label">Attendance Status</span>
             <span className="detail-val capitalize">
-              {formData.attendance_status === 'yes' ? '✅ Attending' : formData.attendance_status}
+              {formData.attendance_status === 'yes'
+                ? '✅ Attending'
+                : formData.attendance_status === 'maybe'
+                  ? '⏳ Maybe (Tentative)'
+                  : '❌ Not Attending'}
             </span>
           </div>
 
-          {formData.attendance_status === 'yes' && (
+          {isAttending && (
             <>
               <div className="detail-row">
                 <span className="detail-label">Confirmed Attendees</span>
@@ -256,29 +238,54 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       <div className="info-callout">
         <div className="callout-icon">✨</div>
         <div className="callout-text">
-          <p>
-            <strong>Organizer Verification:</strong>
-          </p>
-          <p>
-            Your response and payment screenshot have been recorded in the system. The organizing committee will verify your payment details shortly. Please keep a screenshot of this receipt.
-          </p>
+          {isAttending ? (
+            <>
+              <p>
+                <strong>Organizer Verification:</strong>
+              </p>
+              <p>
+                Your response and payment screenshot have been recorded in the system. The organizing committee will verify your payment details shortly. Please keep a screenshot of this receipt.
+              </p>
+            </>
+          ) : formData.attendance_status === 'maybe' ? (
+            <>
+              <p>
+                <strong>Tentative Response Recorded:</strong>
+              </p>
+              <p>
+                Your response has been recorded with attendance status <strong>Maybe</strong>. No contribution was charged. When your travel and reunion plans are finalized, you can update your registration to 'Attending' and make your contribution to generate your official Entry Pass!
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                <strong>Response Recorded:</strong>
+              </p>
+              <p>
+                Thank you for keeping your alumni details updated. We will miss you at the reunion! If your plans change, you can update your registration anytime.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="success-actions-row">
-        <button
-          type="button"
-          onClick={handleShareWhatsApp}
-          className="btn btn-whatsapp-primary btn-block"
-        >
-          <span>💬 Share Confirmation on WhatsApp</span>
-        </button>
-
+      <div className="success-actions-row" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {onEdit && !isAttending && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="btn btn-festive-primary btn-large btn-block"
+            id="btn-update-to-attending"
+          >
+            ✏️ Update to 'Attending' &amp; Make Payment
+          </button>
+        )}
         <button
           type="button"
           onClick={onReset}
-          className="btn btn-ghost btn-block"
+          className={`btn ${!isAttending && onEdit ? 'btn-secondary-festive' : 'btn-festive-primary'} btn-large btn-block`}
+          id="btn-register-another-alumni"
         >
           Register Another Alumni
         </button>

@@ -5,12 +5,13 @@ import {
   spotRegisterAtGate,
   uploadSpotPaymentScreenshot,
   attachSpotPaymentScreenshot,
+  updateSpotRegistrationDetails,
   fetchGateEntries,
   fetchGateStats,
   isAdminGatePortalEnabled,
   type GatePortalStats,
 } from '../lib/gate';
-import { cleanMobileNumber } from '../lib/registrations';
+import { cleanMobileNumber, lookupRegistrationByMobile } from '../lib/registrations';
 import { calculateContribution } from '../lib/pricing';
 import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
 import { ENGINEERING_DISCIPLINES } from '../types';
@@ -18,7 +19,7 @@ import type { EventRegistration, GateEntry, GateVerificationResult } from '../ty
 
 interface GateVerificationPortalProps {
   registrations: EventRegistration[];
-  onRefreshRegistrations: () => void;
+  onRefreshRegistrations: () => Promise<void> | void;
   staffName?: string;
   stationName?: string;
   onLogout?: () => void;
@@ -68,19 +69,19 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [nameSearchQuery, setNameSearchQuery] = useState('');
   const [selectedAttendee, setSelectedAttendee] = useState<EventRegistration | null>(null);
 
-  // Spot Registration State
+  // Spot Registration State & Detected Existing Attendee
+  const [existingMatchedReg, setExistingMatchedReg] = useState<EventRegistration | null>(null);
   const [spotName, setSpotName] = useState('');
   const [spotMobile, setSpotMobile] = useState('');
   const [spotBranch, setSpotBranch] = useState('');
   const [spotBatch, setSpotBatch] = useState<number | ''>('');
-  const [spotAttendees, setSpotAttendees] = useState(1);
   const [spotAdults, setSpotAdults] = useState(1);
   const [spotKidsAbove10, setSpotKidsAbove10] = useState(0);
   const [spotKidsUnder10, setSpotKidsUnder10] = useState(0);
+  const spotAttendees = spotAdults + spotKidsAbove10 + spotKidsUnder10;
   const [spotPaymentMode, setSpotPaymentMode] = useState<string>('');
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
-  const [spotAmount, setSpotAmount] = useState(800);
   const [spotSubmitting, setSpotSubmitting] = useState(false);
   const [spotScanResult, setSpotScanResult] = useState<GateVerificationResult | null>(null);
   const [spotPhotoFile, setSpotPhotoFile] = useState<File | null>(null);
@@ -88,6 +89,60 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [preloadNotice, setPreloadNotice] = useState<string | null>(null);
   const [spotErrors, setSpotErrors] = useState<Record<string, boolean>>({});
   const [spotFormErrorMsg, setSpotFormErrorMsg] = useState<string | null>(null);
+
+  // Computed status & difference-to-pay calculations matching RegistrationForm
+  const isExistingPaid = Boolean(
+    existingMatchedReg &&
+      (existingMatchedReg.attendance_status === 'yes' ||
+        existingMatchedReg.payment_verifications?.some((v) => v.verified_status === 'VERIFIED') ||
+        Boolean(existingMatchedReg.payment_screenshot_path))
+  );
+
+  const existingStatusType: 'CONFIRMED_PAID' | 'PAYMENT_PENDING' | 'MAYBE' | 'NO' | 'NONE' = React.useMemo(() => {
+    if (!existingMatchedReg) return 'NONE';
+    if (isExistingPaid) return 'CONFIRMED_PAID';
+    if (existingMatchedReg.attendance_status === 'payment_pending') return 'PAYMENT_PENDING';
+    if (existingMatchedReg.attendance_status === 'maybe') return 'MAYBE';
+    if (existingMatchedReg.attendance_status === 'no') return 'NO';
+    return 'PAYMENT_PENDING';
+  }, [existingMatchedReg, isExistingPaid]);
+
+  const previousPaidAmount = React.useMemo(() => {
+    if (!isExistingPaid || !existingMatchedReg) return 0;
+    if (typeof existingMatchedReg.amount === 'number' && existingMatchedReg.amount > 0) {
+      return existingMatchedReg.amount;
+    }
+    const prevAdults = existingMatchedReg.adults_count ?? 1;
+    const prevKidsAbove = existingMatchedReg.children_above_7_count ?? 0;
+    const prevKidsUnder = existingMatchedReg.children_under_7_count ?? 0;
+    return calculateContribution(prevAdults, prevKidsAbove, prevKidsUnder).totalAmount;
+  }, [isExistingPaid, existingMatchedReg]);
+
+  const minAdults = isExistingPaid ? Math.max(1, existingMatchedReg?.adults_count ?? 1) : 1;
+  const minKidsAbove10 = isExistingPaid ? (existingMatchedReg?.children_above_7_count ?? 0) : 0;
+  const minKidsUnder10 = isExistingPaid ? (existingMatchedReg?.children_under_7_count ?? 0) : 0;
+
+  const spotPricing = React.useMemo(() => {
+    return calculateContribution(spotAdults, spotKidsAbove10, spotKidsUnder10);
+  }, [spotAdults, spotKidsAbove10, spotKidsUnder10]);
+
+  const totalContributionAmount = spotPricing.totalAmount;
+  const differenceDue = isExistingPaid
+    ? Math.max(0, totalContributionAmount - previousPaidAmount)
+    : totalContributionAmount;
+  const isFullyPaid = isExistingPaid && differenceDue === 0;
+  const amountToCollect = isExistingPaid ? differenceDue : totalContributionAmount;
+
+  // Auto-manage payment mode when fully paid vs difference due
+  useEffect(() => {
+    if (isFullyPaid) {
+      setSpotPaymentMode('ALL_DUES_CLEARED');
+      setPaymentConfirmed(true);
+    } else if (spotPaymentMode === 'ALL_DUES_CLEARED') {
+      setSpotPaymentMode('');
+      setPaymentConfirmed(false);
+    }
+  }, [isFullyPaid]);
 
   // Input refs for Spot photo capture
   const spotCameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -511,7 +566,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   };
 
   // Redirect to Spot Walk-in Desk with pre-filled attendee data
-  const handleRedirectToSpot = (data?: {
+  const handleRedirectToSpot = async (data?: {
     name?: string;
     mobile?: string;
     branch?: string | null;
@@ -520,30 +575,61 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     kidsAbove10?: number;
     kidsUnder10?: number;
     amount?: number;
+    reg?: EventRegistration;
   }) => {
     if (data) {
+      const clean = data.mobile ? cleanMobileNumber(data.mobile) : '';
+      let matched: EventRegistration | null = null;
+
+      // 1. Always attempt live database lookup first for most accurate snapshot and counts
+      if (clean && clean.length === 10) {
+        try {
+          const remote = await lookupRegistrationByMobile('deepaura-2k26', clean);
+          if (remote.found && remote.alumni) {
+            matched = {
+              id: remote.registration_id || '',
+              registration_number: remote.registration_number || '',
+              event_id: '',
+              alumni_id: remote.alumni.id || '',
+              attendance_status: (remote.attendance_status as any) || 'yes',
+              number_of_attendees: remote.number_of_attendees || 1,
+              adults_count: remote.adults_count ?? 1,
+              children_above_7_count: remote.children_above_7_count ?? 0,
+              children_under_7_count: remote.children_under_7_count ?? 0,
+              amount: remote.amount || 0,
+              payment_screenshot_path: remote.payment_screenshot_path || null,
+              created_at: remote.created_at || new Date().toISOString(),
+              updated_at: remote.updated_at || new Date().toISOString(),
+              alumni: remote.alumni,
+            };
+          }
+        } catch (_) { }
+      }
+
+      if (!matched && data.reg) {
+        matched = data.reg;
+      }
+      if (!matched && clean) {
+        matched =
+          registrations.find(
+            (r) => cleanMobileNumber(r.alumni?.mobile || '') === clean
+          ) || null;
+      }
+
+      if (matched) {
+        setExistingMatchedReg(matched);
+      }
+
       if (data.name) setSpotName(data.name);
-      if (data.mobile) setSpotMobile(cleanMobileNumber(data.mobile));
+      if (clean) setSpotMobile(clean);
       setSpotBranch(data.branch || '');
       setSpotBatch(data.batch ? Number(data.batch) : '');
-      const adults = data.adults || 1;
-      const kAbove = data.kidsAbove10 || 0;
-      const kUnder = data.kidsUnder10 || 0;
+      const adults = data.adults || (matched?.adults_count ?? (matched?.number_of_attendees || 1));
+      const kAbove = data.kidsAbove10 ?? (matched?.children_above_7_count ?? 0);
+      const kUnder = data.kidsUnder10 ?? (matched?.children_under_7_count ?? 0);
       setSpotAdults(adults);
       setSpotKidsAbove10(kAbove);
       setSpotKidsUnder10(kUnder);
-      setSpotAttendees(adults + kAbove + kUnder);
-      if (data.amount && data.amount > 0) {
-        setSpotAmount(data.amount);
-      } else {
-        const calc = calculateContribution(adults, kAbove, kUnder);
-        setSpotAmount(calc.totalAmount);
-      }
-      if (data.name) {
-        setPreloadNotice(
-          `Pre-loaded attendee: ${data.name}. Confirm payment mode below to admit and issue pass.`
-        );
-      }
       setSpotPaymentMode('');
       setPaymentConfirmed(false);
       setSpotErrors({});
@@ -553,19 +639,52 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     setActiveSubTab('spot');
   };
 
-  // Smart Mobile lookup on typing in Spot Walk-in form
-  const handleSpotMobileChange = (val: string) => {
+  // Smart Mobile lookup on typing in Spot Walk-in form - Live Server Single Source of Truth
+  const handleSpotMobileChange = async (val: string) => {
     const rawDigits = val.replace(/\D/g, '');
     const clean =
       rawDigits.length > 10 && rawDigits.startsWith('91')
         ? rawDigits.slice(2, 12)
         : rawDigits.slice(0, 10);
     setSpotMobile(clean);
+
     if (clean.length === 10) {
-      const matched = registrations.find(
-        (r) => cleanMobileNumber(r.alumni?.mobile || '') === clean
-      );
+      // 1. Query live database directly to fetch the latest counts and combined screenshots
+      let matched: EventRegistration | null = null;
+      try {
+        const remote = await lookupRegistrationByMobile('deepaura-2k26', clean);
+        if (remote.found && remote.alumni) {
+          matched = {
+            id: remote.registration_id || '',
+            registration_number: remote.registration_number || '',
+            event_id: '',
+            alumni_id: remote.alumni.id || '',
+            attendance_status: (remote.attendance_status as any) || 'yes',
+            number_of_attendees: remote.number_of_attendees || 1,
+            adults_count: remote.adults_count ?? 1,
+            children_above_7_count: remote.children_above_7_count ?? 0,
+            children_under_7_count: remote.children_under_7_count ?? 0,
+            amount: remote.amount || 0,
+            payment_screenshot_path: remote.payment_screenshot_path || null,
+            created_at: remote.created_at || new Date().toISOString(),
+            updated_at: remote.updated_at || new Date().toISOString(),
+            alumni: remote.alumni,
+          };
+        }
+      } catch (lookupErr) {
+        console.warn('Spot remote lookup notice, falling back to in-memory:', lookupErr);
+      }
+
+      // 2. In-memory registrations fallback if remote lookup didn't return a record
+      if (!matched) {
+        matched =
+          registrations.find(
+            (r) => cleanMobileNumber(r.alumni?.mobile || '') === clean
+          ) || null;
+      }
+
       if (matched && matched.alumni) {
+        setExistingMatchedReg(matched);
         setSpotName(matched.alumni.name || '');
         if (matched.alumni.engineering_discipline) {
           setSpotBranch(matched.alumni.engineering_discipline);
@@ -573,38 +692,25 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         if (matched.alumni.year_of_passing) {
           setSpotBatch(Number(matched.alumni.year_of_passing));
         }
-        const adults = matched.adults_count || matched.number_of_attendees || 1;
-        const kAbove = matched.children_above_7_count || 0;
-        const kUnder = matched.children_under_7_count || 0;
+        const adults = matched.adults_count ?? (matched.number_of_attendees || 1);
+        const kAbove = matched.children_above_7_count ?? 0;
+        const kUnder = matched.children_under_7_count ?? 0;
         setSpotAdults(adults);
         setSpotKidsAbove10(kAbove);
         setSpotKidsUnder10(kUnder);
-        setSpotAttendees(adults + kAbove + kUnder);
-        if (matched.amount && matched.amount > 0) {
-          setSpotAmount(matched.amount);
-        } else {
-          const calc = calculateContribution(adults, kAbove, kUnder);
-          setSpotAmount(calc.totalAmount);
-        }
-        const statusLabel =
-          matched.attendance_status === 'payment_pending'
-            ? 'Payment Pending'
-            : matched.attendance_status === 'maybe'
-              ? 'Marked Maybe'
-              : 'Existing Record';
-        setPreloadNotice(
-          `✨ Existing record found for ${matched.alumni.name} (${statusLabel}). Details auto-loaded!`
-        );
       } else {
-        setPreloadNotice(null);
+        setExistingMatchedReg(null);
       }
     } else {
-      setPreloadNotice(null);
+      if (existingMatchedReg) {
+        setExistingMatchedReg(null);
+      }
     }
   };
 
   // Comprehensive reset for Spot Walk-in Registration form
   const handleResetSpot = (clearResult = true) => {
+    setExistingMatchedReg(null);
     setSpotName('');
     setSpotMobile('');
     setSpotBranch('');
@@ -612,8 +718,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     setSpotAdults(1);
     setSpotKidsAbove10(0);
     setSpotKidsUnder10(0);
-    setSpotAttendees(1);
-    setSpotAmount(800);
     setSpotPaymentMode('');
     setPaymentConfirmed(false);
     setSpotPhotoFile(null);
@@ -659,7 +763,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     if (!spotBatch) {
       errors.batch = true;
     }
-    if (!spotPaymentMode) {
+    if (!spotPaymentMode && !isFullyPaid) {
       errors.paymentMode = true;
     } else if (spotPaymentMode === 'CASH' && !paymentConfirmed) {
       errors.cashConfirmed = true;
@@ -723,11 +827,38 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       }
     }
 
+    // Combine existing screenshots with newly uploaded screenshot (comma-separated), preserving initial proof
+    let finalCombinedScreenshotPath: string | null = existingMatchedReg?.payment_screenshot_path || null;
+    if (uploadedScreenshotPath) {
+      if (existingMatchedReg?.payment_screenshot_path) {
+        const existingParts = existingMatchedReg.payment_screenshot_path
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (!existingParts.includes(uploadedScreenshotPath)) {
+          finalCombinedScreenshotPath = `${existingMatchedReg.payment_screenshot_path},${uploadedScreenshotPath}`;
+        }
+      } else {
+        finalCombinedScreenshotPath = uploadedScreenshotPath;
+      }
+    }
+
     const isUpi = Boolean(selectedUpiConfig);
-    const effectiveAmount = spotPaymentMode === 'COMPLIMENTARY' ? 0 : spotAmount;
+    const effectiveAmount =
+      isFullyPaid || spotPaymentMode === 'COMPLIMENTARY'
+        ? 0
+        : amountToCollect;
+
+    const diffNote = isExistingPaid
+      ? isFullyPaid
+        ? ' [All Dues Cleared - Paid Online]'
+        : ` [Diff ₹${effectiveAmount} Collected, Prev ₹${previousPaidAmount}]`
+      : '';
+
+    const effectivePaymentMode = isFullyPaid ? 'ALL_DUES_CLEARED' : spotPaymentMode;
     const verifiedByNote = isUpi
-      ? `${verifiedBy} (UPI: ${selectedUpiConfig?.account_name}${uploadedScreenshotPath ? ' [Proof Attached]' : ''})`
-      : verifiedBy;
+      ? `${verifiedBy} (UPI: ${selectedUpiConfig?.account_name}${uploadedScreenshotPath ? ' [Proof Attached]' : ''}${diffNote})`
+      : `${verifiedBy} (${effectivePaymentMode}${diffNote})`;
 
     // 2. Perform spot registration at gate
     const res = await spotRegisterAtGate({
@@ -735,42 +866,83 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       mobile: spotMobile.trim(),
       discipline: spotBranch,
       year_of_passing: Number(spotBatch),
-      numberOfAttendees: spotAttendees,
-      paymentMode: spotPaymentMode,
-      amount: effectiveAmount,
+      numberOfAttendees: spotAdults + spotKidsAbove10 + spotKidsUnder10,
+      paymentMode: effectivePaymentMode,
+      amount: totalContributionAmount,
       verifiedBy: verifiedByNote,
-      paymentScreenshotPath: uploadedScreenshotPath,
+      paymentScreenshotPath: finalCombinedScreenshotPath,
     });
 
-    // 3. Reinforce attaching uploaded screenshot path via RPC
-    if (res.success && res.data?.registration_id && uploadedScreenshotPath) {
-      await attachSpotPaymentScreenshot(res.data.registration_id, uploadedScreenshotPath);
+    // 3. Reinforce updating exact attendee counts and attached screenshot via Security Definer RPC
+    if (res.success && res.data?.registration_id) {
+      const regId = res.data.registration_id;
+      if (finalCombinedScreenshotPath) {
+        await attachSpotPaymentScreenshot(regId, finalCombinedScreenshotPath);
+      }
+
+      await updateSpotRegistrationDetails({
+        registrationId: regId,
+        name: spotName.trim(),
+        mobile: spotMobile.trim(),
+        discipline: spotBranch,
+        yearOfPassing: Number(spotBatch),
+        adultsCount: spotAdults,
+        childrenAbove7Count: spotKidsAbove10,
+        childrenUnder7Count: spotKidsUnder10,
+        totalAttendees: spotAdults + spotKidsAbove10 + spotKidsUnder10,
+        amount: totalContributionAmount,
+        paymentScreenshotPath: finalCombinedScreenshotPath,
+        address: existingMatchedReg?.alumni?.address,
+        city: existingMatchedReg?.alumni?.city,
+        state: existingMatchedReg?.alumni?.state,
+        country: existingMatchedReg?.alumni?.country,
+      });
     }
 
     setSpotSubmitting(false);
 
     if (res.success && res.data) {
+      const successMessage = isExistingPaid
+        ? isFullyPaid
+          ? 'Gate Entry Confirmed (All Dues Cleared ✓)!'
+          : `Spot Update & Gate Entry Complete (Diff ₹${effectiveAmount} Collected)!`
+        : 'Spot Registration & Gate Entry Complete!';
+
       setSpotScanResult({
         success: true,
         status: 'ENTERED',
-        message: 'Spot Registration & Gate Entry Complete!',
+        message: successMessage,
         registration_id: res.data.registration_id,
         registration_number: res.data.registration_number,
         attendee_name: res.data.attendee_name,
         phone_number: res.data.phone_number,
         branch: res.data.branch,
         year_of_passing: res.data.year_of_passing,
-        number_of_attendees: res.data.number_of_attendees,
-        amount: res.data.amount,
+        number_of_attendees: spotAdults + spotKidsAbove10 + spotKidsUnder10,
+        amount: totalContributionAmount,
         badge_category: 'Alumnus',
         verified_by: verifiedByNote,
       });
+
+      // Update local registration record in memory immediately so any local check sees the new counts
+      const cleanSpotMobile = cleanMobileNumber(spotMobile);
+      const matchedIdx = registrations.findIndex(
+        (r) => cleanMobileNumber(r.alumni?.mobile || '') === cleanSpotMobile
+      );
+      if (matchedIdx !== -1) {
+        registrations[matchedIdx].adults_count = spotAdults;
+        registrations[matchedIdx].children_above_7_count = spotKidsAbove10;
+        registrations[matchedIdx].children_under_7_count = spotKidsUnder10;
+        registrations[matchedIdx].number_of_attendees = spotAdults + spotKidsAbove10 + spotKidsUnder10;
+        registrations[matchedIdx].amount = totalContributionAmount;
+        registrations[matchedIdx].payment_screenshot_path = finalCombinedScreenshotPath;
+      }
 
       // Reset form
       handleResetSpot(false);
       // Refresh entries & stats
       await loadGateEntries();
-      onRefreshRegistrations();
+      await onRefreshRegistrations();
     } else {
       setSpotScanResult({
         success: false,
@@ -1527,15 +1699,40 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {gateStatus.status === 'READY' && (
-                                  <button
-                                    type="button"
-                                    disabled={isVerifying}
-                                    onClick={() => handleVerifySelectedAttendee(reg)}
-                                    className="btn-verify-selected"
-                                  >
-                                    <span>✅</span>
-                                    <span>{isVerifying ? 'Verifying...' : 'Allow Entry'}</span>
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%' }}>
+                                    <button
+                                      type="button"
+                                      disabled={isVerifying}
+                                      onClick={() => handleVerifySelectedAttendee(reg)}
+                                      className="btn-verify-selected"
+                                      style={{ flex: '1 1 auto' }}
+                                    >
+                                      <span>✅</span>
+                                      <span>{isVerifying ? 'Verifying...' : 'Allow Entry'}</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleRedirectToSpot({
+                                          name: alumni.name,
+                                          mobile: alumni.mobile,
+                                          branch: alumni.engineering_discipline,
+                                          batch: alumni.year_of_passing,
+                                          adults: reg.adults_count || reg.number_of_attendees || 1,
+                                          kidsAbove10: reg.children_above_7_count || 0,
+                                          kidsUnder10: reg.children_under_7_count || 0,
+                                          amount: reg.amount,
+                                          reg,
+                                        })
+                                      }
+                                      className="btn-redirect-spot"
+                                      style={{ flex: '1 1 auto', background: 'rgba(255, 255, 255, 0.08)', borderColor: 'rgba(255, 255, 255, 0.2)', color: '#f8fafc' }}
+                                      title="Increase attendees or children and collect difference at spot desk"
+                                    >
+                                      <span>👥</span>
+                                      <span>Add Guests (Pay Diff) →</span>
+                                    </button>
+                                  </div>
                                 )}
 
                                 {(gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
@@ -1555,6 +1752,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                           kidsAbove10: reg.children_above_7_count || 0,
                                           kidsUnder10: reg.children_under_7_count || 0,
                                           amount: reg.amount,
+                                          reg,
                                         })
                                       }
                                       className="btn-redirect-spot"
@@ -1571,14 +1769,39 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                       ⚠️ {gateStatus.badgeText}
                                       {gateStatus.entry?.verified_by ? ` (by ${gateStatus.entry.verified_by.split('(')[0].trim() || 'Gate Staff'})` : ''}
                                     </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => setActiveSubTab('log')}
-                                      className="btn-scan-next btn-secondary-outline"
-                                    >
-                                      <span>📋</span>
-                                      <span>View in Gate Entry Log →</span>
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleRedirectToSpot({
+                                            name: alumni.name,
+                                            mobile: alumni.mobile,
+                                            branch: alumni.engineering_discipline,
+                                            batch: alumni.year_of_passing,
+                                            adults: reg.adults_count || reg.number_of_attendees || 1,
+                                            kidsAbove10: reg.children_above_7_count || 0,
+                                            kidsUnder10: reg.children_under_7_count || 0,
+                                            amount: reg.amount,
+                                            reg,
+                                          })
+                                        }
+                                        className="btn-redirect-spot"
+                                        style={{ flex: '1 1 auto', background: 'rgba(255, 255, 255, 0.08)', borderColor: 'rgba(255, 255, 255, 0.2)', color: '#f8fafc' }}
+                                        title="Add more attendees and collect difference at spot desk"
+                                      >
+                                        <span>👥</span>
+                                        <span>Add More Guests (Pay Diff) →</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveSubTab('log')}
+                                        className="btn-scan-next btn-secondary-outline"
+                                        style={{ flex: '1 1 auto' }}
+                                      >
+                                        <span>📋</span>
+                                        <span>View in Gate Log</span>
+                                      </button>
+                                    </div>
                                   </>
                                 )}
                               </div>
@@ -1814,6 +2037,86 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </div>
             )}
 
+            {existingMatchedReg && (
+              <div className={`spot-detected-status-card status-${existingStatusType.toLowerCase()}`}>
+                <div className="status-header-row">
+                  <div className="status-badge-wrap">
+                    {existingStatusType === 'CONFIRMED_PAID' && (
+                      <span className="spot-status-pill pill-paid">
+                        ✓ Confirmed &amp; Paid
+                      </span>
+                    )}
+                    {existingStatusType === 'PAYMENT_PENDING' && (
+                      <span className="spot-status-pill pill-pending">
+                        ⏳ Payment Pending (Unpaid)
+                      </span>
+                    )}
+                    {existingStatusType === 'MAYBE' && (
+                      <span className="spot-status-pill pill-maybe">
+                        ❓ Marked Maybe (Unpaid)
+                      </span>
+                    )}
+                    {existingStatusType === 'NO' && (
+                      <span className="spot-status-pill pill-no">
+                        ✕ Marked Not Attending (Unpaid)
+                      </span>
+                    )}
+                    {existingMatchedReg.registration_number && (
+                      <span className="spot-reg-number-chip">
+                        {existingMatchedReg.registration_number}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-clear-detected"
+                    onClick={() => handleResetSpot(true)}
+                    title="Clear and register a new attendee"
+                  >
+                    ✕ Clear
+                  </button>
+                </div>
+
+                <div className="status-body-content">
+                  {existingStatusType === 'CONFIRMED_PAID' ? (
+                    <p className="status-main-desc">
+                      Alumnus is <strong>Confirmed &amp; Paid</strong> (₹{previousPaidAmount} credited online).
+                      {isFullyPaid ? (
+                        <span className="status-highlight-text" style={{ color: '#34d399' }}>
+                          {' '}Current attendee count ({spotAdults + spotKidsAbove10 + spotKidsUnder10}) is fully covered — no extra payment required!
+                        </span>
+                      ) : (
+                        <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                          {' '}Attendee count increased! Previous <strong>₹{previousPaidAmount}</strong> is credited. Collect only the difference of <strong>₹{differenceDue}</strong>.
+                        </span>
+                      )}
+                    </p>
+                  ) : existingStatusType === 'PAYMENT_PENDING' ? (
+                    <p className="status-main-desc">
+                      Attendee signed up online with status <strong>Payment Pending</strong> (unpaid).
+                      <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                        {' '}Full contribution of <strong>₹{totalContributionAmount}</strong> must be collected at the gate desk.
+                      </span>
+                    </p>
+                  ) : existingStatusType === 'MAYBE' ? (
+                    <p className="status-main-desc">
+                      Attendee originally registered online as <strong>“Maybe”</strong> without making payment.
+                      <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                        {' '}Full contribution of <strong>₹{totalContributionAmount}</strong> must be collected at the gate desk.
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="status-main-desc">
+                      Attendee originally registered online as <strong>“Not Attending”</strong>.
+                      <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                        {' '}Attending in-person today — full contribution of <strong>₹{totalContributionAmount}</strong> must be collected at the gate desk.
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {spotFormErrorMsg && (
               <div className="spot-validation-alert">
                 <span className="alert-icon">⚠️</span>
@@ -1929,6 +2232,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           {spotAdults === 2 && (
                             <span className="spot-couple-badge">Couple</span>
                           )}
+                          {isExistingPaid && (
+                            <span className="spot-reg-number-chip" style={{ fontSize: '0.72rem', padding: '0.1rem 0.4rem' }}>
+                              Min: {minAdults}
+                            </span>
+                          )}
                         </div>
                         <span className="row-desc">
                           {spotAdults === 1
@@ -1942,14 +2250,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            const newAdults = Math.max(1, spotAdults - 1);
+                            const newAdults = Math.max(minAdults, spotAdults - 1);
                             setSpotAdults(newAdults);
-                            const calc = calculateContribution(newAdults, spotKidsAbove10, spotKidsUnder10);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(newAdults + spotKidsAbove10 + spotKidsUnder10);
                           }}
-                          disabled={spotAdults <= 1}
+                          disabled={spotAdults <= minAdults}
                           aria-label="Decrease adults"
+                          title={isExistingPaid && spotAdults <= minAdults ? `Cannot reduce below previously registered count (${minAdults})` : undefined}
                         >
                           −
                         </button>
@@ -1959,9 +2265,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           onClick={() => {
                             const newAdults = Math.min(10, spotAdults + 1);
                             setSpotAdults(newAdults);
-                            const calc = calculateContribution(newAdults, spotKidsAbove10, spotKidsUnder10);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(newAdults + spotKidsAbove10 + spotKidsUnder10);
                           }}
                           disabled={spotAdults >= 10}
                           aria-label="Increase adults"
@@ -1976,6 +2279,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       <div className="spot-attendee-unified-info">
                         <div className="row-title-wrap">
                           <strong>Children (10+ Years)</strong>
+                          {isExistingPaid && minKidsAbove10 > 0 && (
+                            <span className="spot-reg-number-chip" style={{ fontSize: '0.72rem', padding: '0.1rem 0.4rem' }}>
+                              Min: {minKidsAbove10}
+                            </span>
+                          )}
                         </div>
                         <span className="row-desc">₹300 per child</span>
                       </div>
@@ -1983,14 +2291,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            const newKids = Math.max(0, spotKidsAbove10 - 1);
+                            const newKids = Math.max(minKidsAbove10, spotKidsAbove10 - 1);
                             setSpotKidsAbove10(newKids);
-                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
                           }}
-                          disabled={spotKidsAbove10 <= 0}
+                          disabled={spotKidsAbove10 <= minKidsAbove10}
                           aria-label="Decrease children 10 and above"
+                          title={isExistingPaid && spotKidsAbove10 <= minKidsAbove10 ? `Cannot reduce below previously registered count (${minKidsAbove10})` : undefined}
                         >
                           −
                         </button>
@@ -2000,9 +2306,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           onClick={() => {
                             const newKids = Math.min(10, spotKidsAbove10 + 1);
                             setSpotKidsAbove10(newKids);
-                            const calc = calculateContribution(spotAdults, newKids, spotKidsUnder10);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + newKids + spotKidsUnder10);
                           }}
                           disabled={spotKidsAbove10 >= 10}
                           aria-label="Increase children 10 and above"
@@ -2017,6 +2320,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       <div className="spot-attendee-unified-info">
                         <div className="row-title-wrap">
                           <strong>Children (Under 10 Years)</strong>
+                          {isExistingPaid && minKidsUnder10 > 0 && (
+                            <span className="spot-reg-number-chip" style={{ fontSize: '0.72rem', padding: '0.1rem 0.4rem' }}>
+                              Min: {minKidsUnder10}
+                            </span>
+                          )}
                         </div>
                         <span className="badge-free">FREE</span>
                       </div>
@@ -2024,14 +2332,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            const newKids = Math.max(0, spotKidsUnder10 - 1);
+                            const newKids = Math.max(minKidsUnder10, spotKidsUnder10 - 1);
                             setSpotKidsUnder10(newKids);
-                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
                           }}
-                          disabled={spotKidsUnder10 <= 0}
+                          disabled={spotKidsUnder10 <= minKidsUnder10}
                           aria-label="Decrease children under 10"
+                          title={isExistingPaid && spotKidsUnder10 <= minKidsUnder10 ? `Cannot reduce below previously registered count (${minKidsUnder10})` : undefined}
                         >
                           −
                         </button>
@@ -2041,9 +2347,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           onClick={() => {
                             const newKids = Math.min(10, spotKidsUnder10 + 1);
                             setSpotKidsUnder10(newKids);
-                            const calc = calculateContribution(spotAdults, spotKidsAbove10, newKids);
-                            setSpotAmount(calc.totalAmount);
-                            setSpotAttendees(spotAdults + spotKidsAbove10 + newKids);
                           }}
                           disabled={spotKidsUnder10 >= 10}
                           aria-label="Increase children under 10"
@@ -2054,16 +2357,109 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     </div>
                   </div>
 
-                  {/* Total Summary Row */}
-                  <div className="attendee-total-pill-bar" style={{ marginTop: '12px' }}>
-                    <span className="attendee-total-text">
-                      👥 Total Attending: <strong>{spotAdults + spotKidsAbove10 + spotKidsUnder10}</strong>{' '}
-                      {spotAdults + spotKidsAbove10 + spotKidsUnder10 === 1 ? 'person' : 'persons'}
-                    </span>
-                    <span className="attendee-total-amount" style={{ color: '#fbbf24', fontWeight: 700 }}>
-                      Total Contribution: ₹{spotAmount}
-                    </span>
+                  {/* Amount Breakdown Card Matching Registration Form (Requirement: Difference Calculation) */}
+                  <div className="spot-amount-summary-box">
+                    <div className="spot-pricing-items-list">
+                      {spotPricing.items.map((item, idx) => (
+                        <div key={idx} className="spot-amount-row">
+                          <div className="spot-amount-label-wrap">
+                            <span className="spot-amount-label">{item.label}</span>
+                            <span className="spot-amount-sublabel">{item.rateDescription}</span>
+                          </div>
+                          <span className={`spot-amount-rate ${item.isFree ? 'spot-free-tag' : ''}`}>
+                            {item.isFree ? 'FREE' : `₹${item.amount}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="spot-amount-divider" />
+
+                    <div className="spot-amount-total-row">
+                      <div className="spot-total-label-wrap">
+                        <span className="spot-total-label">
+                          {isExistingPaid ? 'Updated Total Contribution:' : 'Total Contribution:'}
+                        </span>
+                        <span className="spot-total-hint">
+                          ({spotAttendees}{' '}
+                          {spotAttendees === 1 ? 'attendee' : 'attendees'})
+                        </span>
+                      </div>
+                      <span className="spot-total-number">₹{totalContributionAmount}</span>
+                    </div>
+
+                    {/* If Existing Paid Attendee: Deduct previously paid amount and show Difference */}
+                    {isExistingPaid && (
+                      <>
+                        <div className="spot-amount-row spot-deduct-row">
+                          <div className="spot-amount-label-wrap">
+                            <span className="spot-amount-label text-paid-credit">
+                              ✓ Previously Paid Contribution:
+                            </span>
+                            <span className="spot-amount-sublabel text-paid-credit-sub">
+                              Credited from existing registration ({existingMatchedReg?.registration_number})
+                            </span>
+                          </div>
+                          <span className="spot-amount-rate text-paid-credit font-semibold">
+                            − ₹{previousPaidAmount}
+                          </span>
+                        </div>
+
+                        <div className="spot-amount-divider" />
+
+                        <div className="spot-amount-total-row spot-due-highlight-row">
+                          <div className="spot-total-label-wrap">
+                            <span className="spot-total-label font-bold">
+                              {isFullyPaid ? 'Additional Amount Due:' : 'Difference to Pay Now:'}
+                            </span>
+                            <span className="spot-total-hint">
+                              {isFullyPaid
+                                ? 'All dues cleared for registered members'
+                                : 'Difference to pay for additional member(s)'}
+                            </span>
+                          </div>
+                          <span
+                            className={`spot-total-number ${
+                              isFullyPaid ? 'text-cleared font-bold' : 'text-due font-extrabold'
+                            }`}
+                            style={{ color: isFullyPaid ? '#34d399' : '#f59e0b' }}
+                          >
+                            {isFullyPaid ? '₹0 (Paid ✓)' : `₹${differenceDue}`}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
+
+                  {/* Fully Paid Callout if dues cleared */}
+                  {isFullyPaid && (
+                    <div className="spot-fully-paid-callout">
+                      <div className="callout-icon">🎉</div>
+                      <div className="callout-body">
+                        <strong>All Dues Cleared!</strong>
+                        <p>
+                          Previous online payment of <strong>₹{previousPaidAmount}</strong> fully covers all{' '}
+                          {spotAdults + spotKidsAbove10 + spotKidsUnder10} attendee(s). No payment collection needed at gate. Click below to confirm entry!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Difference Alert if extra attendees added */}
+                  {isExistingPaid && differenceDue > 0 && (
+                    <div className="spot-diff-alert">
+                      <div className="alert-flex">
+                        <span className="alert-icon">💳</span>
+                        <div className="alert-body">
+                          <strong>Additional Payment of ₹{differenceDue} Required</strong>
+                          <p>
+                            You added attendee(s). Previous payment of <strong>₹{previousPaidAmount}</strong> is credited.
+                            Please collect only the remaining difference of <strong>₹{differenceDue}</strong> via Cash or UPI below.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className={`form-field ${spotErrors.paymentMode ? 'has-error' : ''}`}>
@@ -2076,13 +2472,20 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     value={spotPaymentMode}
                     onChange={(e) => {
                       setSpotPaymentMode(e.target.value);
-                      setPaymentConfirmed(false);
+                      setPaymentConfirmed(e.target.value === 'ALL_DUES_CLEARED');
                       clearSpotError('paymentMode');
                     }}
                   >
                     <option value="">-- Select Payment Method --</option>
-                    <option value="CASH">💵 Cash Collected (₹{spotAmount})</option>
-                    <optgroup label="📱 UPI QR (Choose Account)">
+                    {isFullyPaid && (
+                      <option value="ALL_DUES_CLEARED">
+                        🎉 All Dues Cleared (₹0 - Previous Payment Covers All Attendees)
+                      </option>
+                    )}
+                    <option value="CASH">
+                      💵 Cash Collected ({isExistingPaid ? `Difference: ₹${amountToCollect}` : `₹${amountToCollect}`})
+                    </option>
+                    <optgroup label={`📱 UPI QR - Scan to Pay ${isExistingPaid ? `Difference (₹${amountToCollect})` : `(₹${amountToCollect})`}`}>
                       {DEFAULT_UPI_CONFIGS.map((config) => {
                         const bankHandle = config.upi_id.includes('@')
                           ? `@${config.upi_id.split('@')[1]}`
@@ -2099,6 +2502,20 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 </div>
               </div>
 
+              {/* ALL DUES CLEARED CARD (When difference is 0) */}
+              {spotPaymentMode === 'ALL_DUES_CLEARED' && (
+                <div className="spot-fully-paid-card">
+                  <div className="fully-paid-icon">🎉</div>
+                  <div className="fully-paid-body">
+                    <h4>No Payment Required (Dues Cleared)</h4>
+                    <p>
+                      Attendee's previous payment of <strong>₹{previousPaidAmount}</strong> completely covers all registered attendees.
+                      You can admit this attendee immediately.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* INSTANT UPI QR CODE PAYMENT DESK CARD */}
               {selectedUpiConfig && (
                 <div className="spot-qr-display-card">
@@ -2111,8 +2528,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </div>
                     </div>
                     <div className="spot-qr-amount-pill">
-                      <span className="lbl">Amount</span>
-                      <span className="val">₹{spotAmount}</span>
+                      <span className="lbl">{isExistingPaid ? 'Difference Due' : 'Amount'}</span>
+                      <span className="val">₹{amountToCollect}</span>
                     </div>
                   </div>
 
@@ -2147,7 +2564,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         />
                       </div>
                       <div className="spot-qr-badge">
-                        <span>⚡ Scan to Pay ₹{spotAmount}</span>
+                        <span>⚡ {isExistingPaid ? `Scan to Pay Difference ₹${amountToCollect}` : `Scan to Pay ₹${amountToCollect}`}</span>
                       </div>
                     </div>
 
@@ -2175,7 +2592,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       <div className="spot-qr-detail-row">
                         <span className="detail-label">Attendees Covered</span>
                         <span className="detail-value">
-                          {spotAttendees} {spotAttendees === 1 ? 'Person' : 'People'}
+                          {spotAdults + spotKidsAbove10 + spotKidsUnder10}{' '}
+                          {spotAdults + spotKidsAbove10 + spotKidsUnder10 === 1 ? 'Person' : 'People'}
                         </span>
                       </div>
 
@@ -2323,11 +2741,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     <span className="cash-card-icon">💵</span>
                     <div className="cash-card-info">
                       <h4>Cash Collection at Gate Desk</h4>
-                      <p>Collect ₹{spotAmount} cash in hand from alumnus before admitting entry.</p>
+                      <p>Collect {isExistingPaid ? 'remaining difference of ' : ''}₹{amountToCollect} cash in hand from alumnus before admitting entry.</p>
                     </div>
                     <div className="cash-amount-badge">
-                      <span className="lbl">Amount</span>
-                      <span className="val">₹{spotAmount}</span>
+                      <span className="lbl">{isExistingPaid ? 'Difference Due' : 'Amount'}</span>
+                      <span className="val">₹{amountToCollect}</span>
                     </div>
                   </div>
 
@@ -2356,8 +2774,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </strong>
                       <span>
                         {paymentConfirmed
-                          ? `✅ Confirmed: ₹${spotAmount} cash collected at gate desk`
-                          : `Check this once alumnus hands over ₹${spotAmount} in cash.`}
+                          ? `✅ Confirmed: ₹${amountToCollect} cash collected at gate desk`
+                          : `Check this once alumnus hands over ₹${amountToCollect} in cash.`}
                       </span>
                     </label>
                   </div>
@@ -2377,7 +2795,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   disabled={spotSubmitting}
                   className="btn-primary-action btn-spot-submit"
                 >
-                  {spotSubmitting ? 'Registering...' : 'Complete Spot Entry'}
+                  {spotSubmitting
+                    ? 'Registering...'
+                    : isFullyPaid
+                    ? '✅ Confirm Gate Entry (Dues Cleared)'
+                    : isExistingPaid
+                    ? `⚡ Complete Spot Entry (Collect Diff ₹${amountToCollect}) →`
+                    : `⚡ Complete Spot Entry (Collect ₹${amountToCollect}) →`}
                 </button>
               </div>
             </form>

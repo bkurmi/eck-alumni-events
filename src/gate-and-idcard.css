@@ -55,41 +55,46 @@
 .idpass-home-feature-card {
   position: relative;
   margin: 1.35rem 0;
-  border-radius: 16px;
-  background: radial-gradient(130% 120% at 50% 0%, rgba(35, 30, 22, 0.98) 0%, rgba(20, 18, 28, 0.98) 55%, rgba(12, 14, 24, 0.99) 100%);
-  border: 1.5px solid rgba(245, 158, 11, 0.55);
+  border-radius: 18px;
+  background: radial-gradient(120% 120% at 50% 0%, #3d2a0e 0%, #291b08 45%, #181105 100%);
+  border: 2px solid #fbbf24;
   box-shadow: 
-    0 12px 36px -4px rgba(0, 0, 0, 0.65),
-    0 0 28px rgba(245, 158, 11, 0.2),
-    inset 0 1px 0 rgba(255, 235, 180, 0.18);
+    0 0 32px rgba(245, 158, 11, 0.35),
+    0 14px 38px rgba(0, 0, 0, 0.7),
+    inset 0 0 20px rgba(245, 158, 11, 0.18),
+    inset 0 1px 2px rgba(254, 240, 138, 0.6);
   overflow: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.idpass-home-feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fef08a 35%, #f59e0b 65%, transparent);
+  box-shadow: 0 0 12px rgba(254, 240, 138, 0.9);
+  pointer-events: none;
 }
 
 .idpass-home-feature-card:hover {
+  border-color: #fde047;
   box-shadow: 
-    0 16px 42px -4px rgba(0, 0, 0, 0.7),
-    0 0 36px rgba(245, 158, 11, 0.28),
-    inset 0 1px 0 rgba(255, 235, 180, 0.25);
-}
-
-/* Ambient Ticket Glowing Header */
-.idpass-feature-glow {
-  position: absolute;
-  top: -40px;
-  left: 30%;
-  width: 200px;
-  height: 120px;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.24) 0%, rgba(217, 119, 6, 0.08) 50%, transparent 75%);
-  pointer-events: none;
+    0 0 40px rgba(245, 158, 11, 0.45),
+    0 18px 44px rgba(0, 0, 0, 0.75),
+    inset 0 0 24px rgba(245, 158, 11, 0.25),
+    inset 0 1px 3px rgba(254, 240, 138, 0.8);
 }
 
 /* Physical Perforated Ticket Notches */
 .idpass-ticket-notch {
   position: absolute;
-  top: 55%;
-  width: 16px;
-  height: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 26px;
   background: #060913;
   z-index: 3;
   pointer-events: none;
@@ -97,180 +102,149 @@
 
 .idpass-ticket-notch-left {
   left: -2px;
-  border-radius: 0 14px 14px 0;
-  border: 1.5px solid rgba(245, 158, 11, 0.55);
+  border-radius: 0 16px 16px 0;
+  border: 2px solid #fbbf24;
   border-left: none;
-  box-shadow: inset -2px 0 6px rgba(0, 0, 0, 0.5);
+  box-shadow: inset -2px 0 6px rgba(0, 0, 0, 0.6);
 }
 
 .idpass-ticket-notch-right {
   right: -2px;
-  border-radius: 14px 0 0 14px;
-  border: 1.5px solid rgba(245, 158, 11, 0.55);
+  border-radius: 16px 0 0 16px;
+  border: 2px solid #fbbf24;
   border-right: none;
-  box-shadow: inset 2px 0 6px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 2px 0 6px rgba(0, 0, 0, 0.6);
 }
 
 .idpass-feature-inner {
   position: relative;
   z-index: 2;
   padding: 1.25rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .idpass-feature-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.85rem;
-  gap: 10px;
+  justify-content: flex-start;
 }
 
-.idpass-live-pill {
+.idpass-badge-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.16);
-  border: 1px solid rgba(245, 158, 11, 0.45);
-  padding: 3.5px 10px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(254, 240, 138, 0.16);
+  border: 1.5px solid rgba(251, 191, 36, 0.65);
+  padding: 4px 12px;
   border-radius: 9999px;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.18);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+  line-height: 1.25;
 }
 
-.idpass-corner-stamp {
+.idpass-badge-dot {
+  color: #fde047;
   font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+.idpass-badge-label {
+  color: #fef08a;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px dashed rgba(56, 189, 248, 0.45);
-  padding: 3px 8px;
-  border-radius: 5px;
+}
+
+.idpass-badge-sep {
+  color: #f59e0b;
+  font-weight: 800;
+}
+
+.idpass-badge-sub {
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .idpass-feature-body {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 0.85rem;
-}
-
-.idpass-feature-content {
-  flex: 1;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .idpass-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.08rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #ffffff;
-  margin: 0 0 6px 0;
+  margin: 0;
   line-height: 1.3;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(245, 158, 11, 0.4);
 }
 
-.idpass-emoji-glyph {
+.idpass-icon-badge {
   font-size: 1.25rem;
   line-height: 1;
-  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6));
 }
 
 .idpass-desc {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   line-height: 1.48;
-  color: rgba(241, 245, 249, 0.9);
+  color: #fef3c7;
   margin: 0;
-}
-
-/* Mini QR Stamp graphic */
-.idpass-qr-visual {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 8px;
-  border-radius: 10px;
-  background: rgba(15, 20, 35, 0.7);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.1);
-  flex-shrink: 0;
-}
-
-.idpass-qr-tag {
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: #fbbf24;
-  margin-top: 3px;
-  text-align: center;
-}
-
-/* Perforated Divider */
-.idpass-ticket-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0.85rem 0 0.95rem;
-}
-
-.idpass-ticket-divider-line {
-  flex: 1;
-  height: 1px;
-  border-top: 1.5px dashed rgba(245, 158, 11, 0.35);
-}
-
-.idpass-ticket-divider-badge {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  padding: 2px 8px;
-  border-radius: 9999px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .idpass-feature-cta-wrap {
   display: flex;
+  margin-top: 0.4rem;
 }
 
+/* Radiant Golden Ticket Button */
 .btn-idpass-feature-primary {
   width: 100% !important;
-  min-height: 48px !important;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-  color: #0b0f19 !important;
-  font-weight: 800 !important;
-  font-size: 0.95rem !important;
-  letter-spacing: 0.01em !important;
+  min-height: 50px !important;
+  background: linear-gradient(135deg, #fef08a 0%, #facc15 35%, #eab308 70%, #ca8a04 100%) !important;
+  color: #1a0f00 !important;
+  font-weight: 900 !important;
+  font-size: 0.98rem !important;
+  letter-spacing: 0.02em !important;
   padding: 12px 20px !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
+  border: 1.5px solid #ffffff !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 10px !important;
   text-decoration: none !important;
-  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 6px 24px rgba(234, 179, 8, 0.55), inset 0 1px 2px #ffffff !important;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .btn-idpass-feature-primary:hover {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #fde047 40%, #eab308 100%) !important;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-  color: #07090e !important;
+  box-shadow: 0 8px 30px rgba(234, 179, 8, 0.7), inset 0 1px 3px #ffffff !important;
+  color: #0d0700 !important;
+}
+
+.btn-arrow-icon {
+  transition: transform 0.2s ease;
+}
+
+.btn-idpass-feature-primary:hover .btn-arrow-icon {
+  transform: translateX(4px);
 }
 
 .btn-ticket-icon {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
 }
 
 
@@ -350,29 +324,34 @@
 }
 
 @media (max-width: 480px) {
+  .idpass-home-feature-card {
+    margin: 1.15rem 0;
+    border-radius: 16px;
+  }
+
   .idpass-feature-inner {
-    padding: 1rem 1.05rem;
+    padding: 1.1rem 1.05rem;
+    gap: 0.65rem;
+  }
+
+  .idpass-badge-pill {
+    font-size: 0.68rem;
+    padding: 3.5px 10px;
+    gap: 5px 6px;
   }
 
   .idpass-title {
-    font-size: 1rem;
+    font-size: 1.05rem;
   }
 
   .idpass-desc {
-    font-size: 0.82rem;
-  }
-
-  .idpass-feature-body {
-    gap: 10px;
-  }
-
-  .idpass-qr-visual {
-    padding: 4px 6px;
+    font-size: 0.84rem;
+    line-height: 1.44;
   }
 
   .btn-idpass-feature-primary {
-    font-size: 0.9rem !important;
-    padding: 11px 16px !important;
+    font-size: 0.94rem !important;
+    padding: 12px 16px !important;
   }
 }
 
@@ -381,8 +360,13 @@
    ------------------------------------------------------------ */
 .id-card-page-wrapper {
   min-height: 100vh;
-  background: linear-gradient(180deg, #0b0f19 0%, #111827 50%, #0b0f19 100%);
-  color: #f8fafc;
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 100% 50%, rgba(225, 29, 72, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 80%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
 }
@@ -425,16 +409,17 @@
 
 .badge-pill-accent {
   display: inline-block;
-  background: rgba(99, 102, 241, 0.18);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 4px 14px;
+  padding: 5px 16px;
   border-radius: 9999px;
   margin-bottom: 0.85rem;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
 }
 
 .id-page-title {
@@ -442,7 +427,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0 0 0.75rem 0;
-  background: linear-gradient(135deg, #ffffff 30%, #e2e8f0 70%, #f59e0b 100%);
+  background: linear-gradient(135deg, #ffffff 30%, #fef08a 70%, #f59e0b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -459,13 +444,13 @@
    Feature Disabled / Countdown Card
    ------------------------------------------------------------ */
 .id-disabled-card {
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--bg-card);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-gold);
   border-radius: 1.25rem;
   padding: 3rem 2rem;
   text-align: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 .id-disabled-icon {
@@ -492,7 +477,7 @@
   display: inline-flex;
   flex-direction: column;
   gap: 0.5rem;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(10, 12, 22, 0.6);
   border: 1px dashed rgba(245, 158, 11, 0.4);
   padding: 1rem 1.5rem;
   border-radius: 0.75rem;
@@ -512,12 +497,12 @@
    Lookup Form Box
    ------------------------------------------------------------ */
 .id-lookup-card {
-  background: rgba(30, 41, 59, 0.75);
+  background: var(--bg-card);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-gold);
   border-radius: 1.25rem;
   padding: 2.5rem 2rem;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg), 0 0 25px rgba(245, 158, 11, 0.08);
   text-align: center;
 }
 
@@ -537,14 +522,14 @@
 /* Lookup Mode Switcher Tabs */
 .id-search-tabs {
   display: flex;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(10, 12, 22, 0.85);
   padding: 5px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
   max-width: 500px;
   margin: 0 auto 1.75rem auto;
   gap: 6px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 .id-search-tab {
@@ -567,15 +552,16 @@
 }
 
 .id-search-tab:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.05);
+  color: #fef08a;
+  background: rgba(245, 158, 11, 0.08);
 }
 
 .id-search-tab.active {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: #ffffff;
-  border-color: rgba(165, 180, 252, 0.3);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+  color: #0a0c16;
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  font-weight: 800;
   transform: translateY(-1px);
 }
 
@@ -632,23 +618,25 @@
 
 .id-lookup-form,
 .id-name-search-box {
-  max-width: 440px;
+  max-width: 480px;
   margin: 0 auto;
   width: 100%;
 }
 
 .id-name-search-box .name-search-input {
-  border: 2px solid #334155;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 0.85rem;
-  background: #0f172a;
+  background: rgba(10, 12, 22, 0.85);
   padding: 0.85rem 2.75rem 0.85rem 2.6rem;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   transition: all 0.2s ease;
+  color: #ffffff;
 }
 
 .id-name-search-box .name-search-input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+  border-color: #fbbf24;
+  background: rgba(10, 12, 22, 0.95);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
 }
 
 
@@ -656,8 +644,8 @@
 .id-integrated-input-box {
   display: flex;
   align-items: center;
-  background: #0f172a;
-  border: 2px solid #334155;
+  background: rgba(10, 12, 22, 0.85);
+  border: 1px solid rgba(245, 158, 11, 0.25);
   border-radius: 0.85rem;
   overflow: hidden;
   transition: all 0.2s ease;
@@ -667,17 +655,17 @@
 }
 
 .id-integrated-input-box:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
 }
 
 .id-integrated-input-box .id-input-prefix {
   padding: 0.85rem 0.95rem;
-  background: #1e293b;
-  color: #94a3b8;
-  font-weight: 600;
-  border-right: 1px solid #334155;
-  font-size: 1.1rem;
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  font-weight: 700;
+  border-right: 1px solid rgba(245, 158, 11, 0.25);
+  font-size: 1.05rem;
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
@@ -705,12 +693,12 @@
 
 .id-integrated-submit-btn {
   flex-shrink: 0;
-  padding: 0.82rem 1.25rem;
+  padding: 0.82rem 1.35rem;
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 800;
   border-radius: 0.65rem;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+  color: #0a0c16;
   border: none;
   cursor: pointer;
   white-space: nowrap;
@@ -719,13 +707,13 @@
   justify-content: center;
   gap: 6px;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 3px 12px rgba(245, 158, 11, 0.35);
 }
 
 .id-integrated-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  background: linear-gradient(135deg, #fde047 0%, #fbbf24 60%, #f59e0b 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 5px 18px rgba(245, 158, 11, 0.5);
 }
 
 .id-integrated-submit-btn:disabled {
@@ -745,7 +733,7 @@
   }
 
   .id-integrated-submit-btn {
-    padding: 0.75rem 0.9rem;
+    padding: 0.75rem 0.95rem;
     font-size: 0.88rem;
   }
 }
@@ -753,8 +741,8 @@
 .id-input-group {
   display: flex;
   align-items: center;
-  background: #0f172a;
-  border: 2px solid #334155;
+  background: rgba(10, 12, 22, 0.85);
+  border: 1px solid rgba(245, 158, 11, 0.25);
   border-radius: 0.75rem;
   overflow: hidden;
   transition: all 0.2s ease;
@@ -762,16 +750,16 @@
 }
 
 .id-input-group:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
 }
 
 .id-input-prefix {
   padding: 0.9rem 1rem;
-  background: #1e293b;
-  color: #94a3b8;
-  font-weight: 600;
-  border-right: 1px solid #334155;
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  font-weight: 700;
+  border-right: 1px solid rgba(245, 158, 11, 0.25);
   font-size: 1.1rem;
 }
 
@@ -798,19 +786,20 @@
   width: 100%;
   padding: 1rem;
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 800;
   border-radius: 0.75rem;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+  color: #0a0c16;
   border: none;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
 }
 
 .id-submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 12px 25px rgba(99, 102, 241, 0.45);
+  background: linear-gradient(135deg, #fde047 0%, #fbbf24 60%, #f59e0b 100%);
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.5);
 }
 
 .id-error-alert {
@@ -851,9 +840,15 @@
 }
 
 .id-link-accent {
-  color: #818cf8;
-  font-weight: 600;
+  color: #fbbf24;
+  font-weight: 700;
   text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.id-link-accent:hover {
+  color: #fde047;
 }
 
 /* ------------------------------------------------------------
@@ -909,11 +904,12 @@
 
 /* Photo Upload Box */
 .id-photo-action-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.85rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: 1rem;
   padding: 1.25rem 1.5rem;
   margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -949,24 +945,32 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 1.1rem;
-  border-radius: 0.6rem;
-  font-size: 0.88rem;
-  font-weight: 600;
+  padding: 0.7rem 1.25rem;
+  border-radius: 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent;
 }
 
 .selfie-btn {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #0f172a;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+  color: #0a0c16;
+  font-weight: 800;
+  box-shadow: 0 3px 12px rgba(245, 158, 11, 0.35);
+}
+
+.selfie-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fde047 0%, #fbbf24 60%, #f59e0b 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 18px rgba(245, 158, 11, 0.5);
 }
 
 .gallery-btn {
-  background: #1e293b;
+  background: rgba(10, 12, 22, 0.85);
   color: #e2e8f0;
-  border-color: #475569;
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 .btn-photo-action:hover:not(:disabled) {
@@ -1684,23 +1688,25 @@
   width: 100%;
   padding: 1.1rem;
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 900;
   border-radius: 0.85rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
-  border: none;
+  background: linear-gradient(135deg, #fef08a 0%, #facc15 35%, #eab308 70%, #ca8a04 100%);
+  color: #1a0f00;
+  border: 1.5px solid #ffffff;
   cursor: pointer;
-  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);
-  transition: all 0.2s;
+  box-shadow: 0 6px 24px rgba(234, 179, 8, 0.55), inset 0 1px 2px #ffffff;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .download-card-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(16, 185, 129, 0.45);
+  background: linear-gradient(135deg, #ffffff 0%, #fde047 40%, #eab308 100%);
+  box-shadow: 0 8px 30px rgba(234, 179, 8, 0.7), inset 0 1px 3px #ffffff;
+  color: #0d0700;
 }
 
 /* Friendly / Funny Selfie Required Callout */
@@ -3041,19 +3047,20 @@
 }
 
 .name-search-chip {
-  background: rgba(99, 102, 241, 0.12);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.28);
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 0.78rem;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s;
 }
 
 .name-search-chip:hover {
-  background: rgba(99, 102, 241, 0.25);
+  background: rgba(245, 158, 11, 0.25);
   color: #ffffff;
+  border-color: rgba(245, 158, 11, 0.5);
 }
 
 .name-search-header-meta {
@@ -3077,8 +3084,8 @@
 .name-search-result-card {
   display: flex;
   flex-direction: column;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 12, 22, 0.85);
+  border: 1px solid rgba(245, 158, 11, 0.18);
   border-radius: 0.75rem;
   padding: 0.85rem 1rem;
   cursor: pointer;
@@ -3088,14 +3095,14 @@
 }
 
 .name-search-result-card:hover {
-  background: #172554;
-  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(17, 20, 37, 0.95);
+  border-color: rgba(245, 158, 11, 0.45);
 }
 
 .name-search-result-card.selected {
-  background: #172554;
-  border-color: #6366f1;
-  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.25);
+  background: rgba(17, 20, 37, 0.95);
+  border-color: #fbbf24;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.25);
 }
 
 .name-result-main-row {
@@ -3131,12 +3138,12 @@
 
 .name-result-reg-pill {
   font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 7px;
-  background: rgba(99, 102, 241, 0.2);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  border-radius: 5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
   letter-spacing: 0.03em;
   white-space: nowrap;
 }
@@ -3174,7 +3181,7 @@
   align-items: center;
   gap: 5px;
   font-size: 0.84rem;
-  color: #93c5fd;
+  color: #fbbf24;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -3183,9 +3190,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #bfdbfe;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fde047;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 0.78rem;
@@ -3205,11 +3212,11 @@
   align-items: center;
   gap: 4px;
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.32);
-  padding: 3px 10px;
+  font-weight: 700;
+  color: #0a0c16;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  padding: 3px 11px;
   border-radius: 9999px;
   white-space: nowrap;
   letter-spacing: 0.01em;
@@ -3217,10 +3224,8 @@
 }
 
 .name-search-result-card:hover .name-result-select-indicator {
-  background: #38bdf8;
-  color: #030b20;
-  border-color: #38bdf8;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  background: linear-gradient(135deg, #fde047 0%, #fbbf24 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
 .name-result-select-indicator.locked {
@@ -6345,4 +6350,339 @@
     margin-bottom: 0.85rem !important;
     border-radius: 8px !important;
   }
+}
+
+/* ── Spot Detected Attendee Status Card ── */
+.spot-detected-status-card {
+  border-radius: 0.85rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: all 0.25s ease;
+  animation: slideDownFade 0.2s ease;
+}
+
+.spot-detected-status-card.status-confirmed_paid {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.spot-detected-status-card.status-payment_pending {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+}
+
+.spot-detected-status-card.status-maybe {
+  background: rgba(234, 88, 12, 0.12);
+  border: 1px solid rgba(234, 88, 12, 0.45);
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.15);
+}
+
+.spot-detected-status-card.status-no {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.status-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.spot-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.spot-status-pill.pill-paid {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.spot-status-pill.pill-pending {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.spot-status-pill.pill-maybe {
+  background: rgba(234, 88, 12, 0.22);
+  color: #fb923c;
+  border: 1px solid rgba(234, 88, 12, 0.4);
+}
+
+.spot-status-pill.pill-no {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.spot-reg-number-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.btn-clear-detected {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 36px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-clear-detected:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.status-body-content {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.status-body-content strong {
+  color: #ffffff;
+}
+
+.status-highlight-text {
+  font-weight: 600;
+}
+
+/* ── Spot Amount Summary Box (matches PaymentSection) ── */
+.spot-amount-summary-box {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.75rem;
+  padding: 1rem 1.15rem;
+  margin-top: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.spot-pricing-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.spot-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  gap: 0.5rem;
+}
+
+.spot-amount-label-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.spot-amount-label {
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.spot-amount-sublabel {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.spot-amount-rate {
+  font-weight: 700;
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+.spot-free-tag {
+  color: #34d399;
+}
+
+.spot-amount-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0.75rem 0;
+}
+
+.spot-amount-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #f8fafc;
+  gap: 0.5rem;
+}
+
+.spot-total-label-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spot-total-label {
+  font-weight: 700;
+}
+
+.spot-total-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.spot-total-number {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.spot-deduct-row .text-paid-credit {
+  color: #34d399;
+}
+
+.spot-deduct-row .text-paid-credit-sub {
+  color: rgba(52, 211, 153, 0.8);
+}
+
+.spot-due-highlight-row {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  margin-top: 0.35rem;
+}
+
+/* ── Spot Fully Paid Callout & Difference Alert ── */
+.spot-fully-paid-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 0.85rem 1.15rem;
+  border-radius: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #f1f5f9;
+}
+
+.spot-fully-paid-callout .callout-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.spot-fully-paid-callout .callout-body strong {
+  display: block;
+  color: #34d399;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.spot-fully-paid-callout .callout-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.spot-diff-alert {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.15rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #fde68a;
+}
+
+.spot-diff-alert .alert-flex {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.spot-diff-alert .alert-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.spot-diff-alert .alert-body strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #fbbf24;
+  margin-bottom: 2px;
+}
+
+.spot-diff-alert .alert-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #fde68a;
+}
+
+.spot-fully-paid-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid #10b981;
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.85rem;
+  margin-top: 1.15rem;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.spot-fully-paid-card .fully-paid-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.spot-fully-paid-card .fully-paid-body h4 {
+  margin: 0 0 4px 0;
+  color: #34d399;
+  font-size: 1.05rem;
+}
+
+.spot-fully-paid-card .fully-paid-body p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #e2e8f0;
+  line-height: 1.4;
 }
