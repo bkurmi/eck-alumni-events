@@ -29,8 +29,8 @@ const DEFAULT_EVENT: ECKEvent = {
   upi_id: '9799951857@upi',
   banner_image_url: '/deepaura-banner.jpg',
   tagline: '“दीप जले, यादें मुस्कुराएँ।”',
-  theme_primary_color: '#6366f1',
-  theme_accent_color: '#f59e0b',
+  theme_primary_color: '#f59e0b',
+  theme_accent_color: '#d97706',
   qr_image_url: '/qr-1.png',
   status: 'OPEN',
   created_at: new Date().toISOString(),
@@ -111,7 +111,7 @@ export const EventPage: React.FC = () => {
 
   // Apply dynamic theming based on event config
   useEffect(() => {
-    if (event.theme_primary_color) {
+    if (event.theme_primary_color && event.theme_primary_color !== '#6366f1') {
       document.documentElement.style.setProperty('--primary', event.theme_primary_color);
     }
     if (event.theme_accent_color) {
