@@ -250,12 +250,14 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
                   </>
                 )}
 
-                <div className="found-reg-item">
-                  <span className="found-label">Payment Proof</span>
-                  <span className="found-value">
-                    {foundReg.payment_screenshot_path ? '✓ Screenshot Uploaded' : 'Pending Verification'}
-                  </span>
-                </div>
+                {foundReg.attendance_status === 'yes' && (
+                  <div className="found-reg-item">
+                    <span className="found-label">Payment Proof</span>
+                    <span className="found-value">
+                      {foundReg.payment_screenshot_path ? '✓ Screenshot Uploaded' : 'Pending Verification'}
+                    </span>
+                  </div>
+                )}
 
                 {foundReg.updated_at && (
                   <div className="found-reg-item">
@@ -273,7 +275,7 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
 
               {/* Action Buttons */}
               <div className="found-reg-actions">
-                {isAlumniIdCardsEnabled() && (
+                {isAlumniIdCardsEnabled() && foundReg.attendance_status === 'yes' && (
                   <Link
                     to={`/id-card?mobile=${cleanMobileNumber(foundReg.alumni?.mobile || mobile)}`}
                     onClick={onClose}

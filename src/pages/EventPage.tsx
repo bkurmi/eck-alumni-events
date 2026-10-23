@@ -193,6 +193,25 @@ export const EventPage: React.FC = () => {
       .catch(() => { });
   };
 
+  const handleEditSubmittedRegistration = () => {
+    if (!submittedData) return;
+    setPreloadedRegistration({
+      found: true,
+      registration_id: submittedData.result.registration_id,
+      registration_number: submittedData.result.registration_number,
+      attendance_status: (submittedData.formData.attendance_status || 'maybe') as any,
+      number_of_attendees: submittedData.formData.number_of_attendees || 1,
+      adults_count: submittedData.formData.adults_count ?? 1,
+      children_above_7_count: submittedData.formData.children_above_7_count ?? 0,
+      children_under_7_count: submittedData.formData.children_under_7_count ?? 0,
+      amount: submittedData.result.amount || 0,
+    });
+    setPreloadedFormData(submittedData.formData);
+    setSubmittedData(null);
+    setCurrentStep('form');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="app-layout">
       <Header
@@ -213,6 +232,7 @@ export const EventPage: React.FC = () => {
               formData={submittedData.formData}
               result={submittedData.result}
               onReset={handleResetRegistration}
+              onEdit={handleEditSubmittedRegistration}
             />
           ) : currentStep === 'form' ? (
             <div className="form-view">

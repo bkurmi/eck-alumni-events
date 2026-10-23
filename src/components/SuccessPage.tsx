@@ -8,6 +8,7 @@ interface SuccessPageProps {
   formData: RegistrationFormData;
   result: RegistrationResult;
   onReset: () => void;
+  onEdit?: () => void;
 }
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({
@@ -15,9 +16,11 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
   formData,
   result,
   onReset,
+  onEdit,
 }) => {
+  const isAttending = formData.attendance_status === 'yes';
+
   const buildWhatsAppMessage = () => {
-    const isAttending = formData.attendance_status === 'yes';
     const count = formData.number_of_attendees || 1;
     const batchText = formData.year_of_passing ? `${formData.year_of_passing} Batch` : 'Alumnus';
     const attendanceText = isAttending
@@ -44,8 +47,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       `👤 ${formData.name} | 🎓 ${batchText}`,
       `👥 Attendance: ${attendanceText}`,
       '',
-      `🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`,
-      '',
+      ...(isAttending ? [`🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`, ''] : []),
       '🙏 Thank you, ECK-RTU Alumni Kota Chapter!',
       'Looking forward to celebrating with seniors, batchmates & juniors!',
       '',
@@ -91,9 +93,11 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
         <p className="success-sub">
           {result.is_update
             ? 'Your alumni details and reunion registration have been updated.'
-            : formData.attendance_status === 'yes'
+            : isAttending
               ? 'Shubh Deepawali! We eagerly look forward to seeing you at the reunion.'
-              : 'Thank you for keeping your alumni directory details updated.'}
+              : formData.attendance_status === 'maybe'
+                ? 'Your tentative registration has been saved. We hope to see you at the reunion!'
+                : 'Thank you for keeping your alumni directory details updated.'}
         </p>
       </div>
 
@@ -115,7 +119,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           </button>
         </div>
 
-        {isAlumniIdCardsEnabled() && (
+        {isAlumniIdCardsEnabled() && isAttending && (
           <div className="badge-pass-row">
             <Link
               to={`/id-card?reg=${encodeURIComponent(result.registration_number)}`}
@@ -127,6 +131,25 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </Link>
+          </div>
+        )}
+
+        {isAlumniIdCardsEnabled() && !isAttending && (
+          <div
+            className="badge-pass-notice"
+            style={{
+              marginTop: '10px',
+              padding: '10px 14px',
+              background: 'rgba(234, 179, 8, 0.12)',
+              border: '1px solid rgba(234, 179, 8, 0.3)',
+              borderRadius: '10px',
+              fontSize: '0.86rem',
+              color: '#fef08a',
+              textAlign: 'center',
+              lineHeight: '1.45',
+            }}
+          >
+            🔒 <strong>Entry Pass:</strong> Available once attendance is confirmed and contribution payment is completed.
           </div>
         )}
       </div>
@@ -174,11 +197,15 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           <div className="detail-row">
             <span className="detail-label">Attendance Status</span>
             <span className="detail-val capitalize">
-              {formData.attendance_status === 'yes' ? '✅ Attending' : formData.attendance_status}
+              {formData.attendance_status === 'yes'
+                ? '✅ Attending'
+                : formData.attendance_status === 'maybe'
+                  ? '⏳ Maybe (Tentative)'
+                  : '❌ Not Attending'}
             </span>
           </div>
 
-          {formData.attendance_status === 'yes' && (
+          {isAttending && (
             <>
               <div className="detail-row">
                 <span className="detail-label">Confirmed Attendees</span>
@@ -211,21 +238,53 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       <div className="info-callout">
         <div className="callout-icon">✨</div>
         <div className="callout-text">
-          <p>
-            <strong>Organizer Verification:</strong>
-          </p>
-          <p>
-            Your response and payment screenshot have been recorded in the system. The organizing committee will verify your payment details shortly. Please keep a screenshot of this receipt.
-          </p>
+          {isAttending ? (
+            <>
+              <p>
+                <strong>Organizer Verification:</strong>
+              </p>
+              <p>
+                Your response and payment screenshot have been recorded in the system. The organizing committee will verify your payment details shortly. Please keep a screenshot of this receipt.
+              </p>
+            </>
+          ) : formData.attendance_status === 'maybe' ? (
+            <>
+              <p>
+                <strong>Tentative Response Recorded:</strong>
+              </p>
+              <p>
+                Your response has been recorded with attendance status <strong>Maybe</strong>. No contribution was charged. When your travel and reunion plans are finalized, you can update your registration to 'Attending' and make your contribution to generate your official Entry Pass!
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                <strong>Response Recorded:</strong>
+              </p>
+              <p>
+                Thank you for keeping your alumni details updated. We will miss you at the reunion! If your plans change, you can update your registration anytime.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="success-actions-row">
+      <div className="success-actions-row" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {onEdit && !isAttending && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="btn btn-festive-primary btn-large btn-block"
+            id="btn-update-to-attending"
+          >
+            ✏️ Update to 'Attending' &amp; Make Payment
+          </button>
+        )}
         <button
           type="button"
           onClick={onReset}
-          className="btn btn-festive-primary btn-large btn-block"
+          className={`btn ${!isAttending && onEdit ? 'btn-secondary-festive' : 'btn-festive-primary'} btn-large btn-block`}
           id="btn-register-another-alumni"
         >
           Register Another Alumni
