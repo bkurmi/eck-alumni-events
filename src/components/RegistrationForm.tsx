@@ -1711,7 +1711,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   additionalAmountDue > 0 ? (
                     `Save & Update Registration • Pay Additional ₹${additionalAmountDue}`
                   ) : (
-                    `Save & Update Registration (${activeExistingReg?.registration_number || 'REG'})`
+                    'Save & Update Registration'
                   )
                 ) : formData.attendance_status === 'yes' ? (
                   `Complete Registration • ₹${totalAmount}`
