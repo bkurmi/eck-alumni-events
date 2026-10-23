@@ -61,8 +61,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [torchSupported, setTorchSupported] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
-  // Manual Lookup State (Phone, Reg ID, & Predictive Name Search)
-  const [manualLookupMode, setManualLookupMode] = useState<'phone' | 'reg_number' | 'name'>('phone');
+  // Manual Lookup State (Reg ID, Phone, & Predictive Name Search)
+  const [manualLookupMode, setManualLookupMode] = useState<'phone' | 'reg_number' | 'name'>('reg_number');
   const [manualPhone, setManualPhone] = useState('');
   const [manualRegNumber, setManualRegNumber] = useState('');
   const [nameSearchQuery, setNameSearchQuery] = useState('');
@@ -555,7 +555,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
   // Smart Mobile lookup on typing in Spot Walk-in form
   const handleSpotMobileChange = (val: string) => {
-    const clean = val.replace(/\D/g, '');
+    const rawDigits = val.replace(/\D/g, '');
+    const clean =
+      rawDigits.length > 10 && rawDigits.startsWith('91')
+        ? rawDigits.slice(2, 12)
+        : rawDigits.slice(0, 10);
     setSpotMobile(clean);
     if (clean.length === 10) {
       const matched = registrations.find(
@@ -1227,17 +1231,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             <div className="manual-mode-segmented-bar">
               <button
                 type="button"
-                className={`manual-mode-btn ${manualLookupMode === 'phone' ? 'active' : ''}`}
-                onClick={() => {
-                  setManualLookupMode('phone');
-                  setSelectedAttendee(null);
-                  setScanResult(null);
-                }}
-              >
-                <span>📱 Phone</span>
-              </button>
-              <button
-                type="button"
                 className={`manual-mode-btn ${manualLookupMode === 'reg_number' ? 'active' : ''}`}
                 onClick={() => {
                   setManualLookupMode('reg_number');
@@ -1246,6 +1239,17 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 }}
               >
                 <span>🎫 Reg ID</span>
+              </button>
+              <button
+                type="button"
+                className={`manual-mode-btn ${manualLookupMode === 'phone' ? 'active' : ''}`}
+                onClick={() => {
+                  setManualLookupMode('phone');
+                  setSelectedAttendee(null);
+                  setScanResult(null);
+                }}
+              >
+                <span>📱 Phone</span>
               </button>
               <button
                 type="button"
@@ -1262,37 +1266,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
             <div className="name-search-container">
               {/* 1. SEARCH INPUT BASED ON ACTIVE TAB */}
-              {manualLookupMode === 'phone' && (
-                <div className="name-search-input-wrapper">
-                  <span className="name-search-icon">📞</span>
-                  <input
-                    type="tel"
-                    placeholder="Type phone number (e.g. 9829012345)..."
-                    value={manualPhone}
-                    maxLength={10}
-                    onChange={(e) => {
-                      setManualPhone(e.target.value.replace(/\D/g, ''));
-                      if (selectedAttendee) setSelectedAttendee(null);
-                    }}
-                    className="name-search-input"
-                    autoFocus
-                  />
-                  {manualPhone && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setManualPhone('');
-                        setSelectedAttendee(null);
-                      }}
-                      className="name-search-clear-btn"
-                      title="Clear search"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              )}
-
               {manualLookupMode === 'reg_number' && (
                 <div className="name-search-input-wrapper">
                   <div className="manual-reg-input-group" style={{ width: '100%' }}>
@@ -1317,6 +1290,45 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         type="button"
                         onClick={() => {
                           setManualRegNumber('');
+                          setSelectedAttendee(null);
+                        }}
+                        className="name-search-clear-btn"
+                        style={{ position: 'relative', right: '12px' }}
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {manualLookupMode === 'phone' && (
+                <div className="name-search-input-wrapper">
+                  <div className="manual-phone-input-group" style={{ width: '100%' }}>
+                    <span className="manual-phone-prefix">+91</span>
+                    <input
+                      type="tel"
+                      placeholder="10-digit number"
+                      value={manualPhone}
+                      maxLength={10}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        const clean =
+                          raw.length > 10 && raw.startsWith('91')
+                            ? raw.slice(2, 12)
+                            : raw.slice(0, 10);
+                        setManualPhone(clean);
+                        if (selectedAttendee) setSelectedAttendee(null);
+                      }}
+                      className="manual-phone-field"
+                      autoFocus
+                    />
+                    {manualPhone && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualPhone('');
                           setSelectedAttendee(null);
                         }}
                         className="name-search-clear-btn"
@@ -1816,19 +1828,23 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   <label htmlFor="spot-mobile">
                     Mobile Number <span className="req-star">*</span>
                   </label>
-                  <input
-                    id="spot-mobile"
-                    type="tel"
-                    required
-                    placeholder="10-digit mobile number"
-                    maxLength={10}
-                    value={spotMobile}
-                    onChange={(e) => {
-                      handleSpotMobileChange(e.target.value);
-                      clearSpotError('mobile');
-                    }}
-                    autoFocus={activeSubTab === 'spot' && !spotMobile}
-                  />
+                  <div className="input-prefix-wrap">
+                    <span className="input-prefix">+91</span>
+                    <input
+                      id="spot-mobile"
+                      type="tel"
+                      required
+                      placeholder="10-digit number"
+                      maxLength={10}
+                      value={spotMobile}
+                      onChange={(e) => {
+                        handleSpotMobileChange(e.target.value);
+                        clearSpotError('mobile');
+                      }}
+                      className="prefixed-input"
+                      autoFocus={activeSubTab === 'spot' && !spotMobile}
+                    />
+                  </div>
                 </div>
 
                 <div className={`form-field ${spotErrors.name ? 'has-error' : ''}`}>

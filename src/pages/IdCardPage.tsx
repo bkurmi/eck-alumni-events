@@ -24,7 +24,7 @@ const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unl
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
   const [searchParams] = useSearchParams();
-  const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number' | 'name'>('mobile');
+  const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number' | 'name'>('reg_number');
   const [mobileInput, setMobileInput] = useState('');
   const [regInput, setRegInput] = useState('');
   const [nameSearchQuery, setNameSearchQuery] = useState('');
@@ -78,11 +78,11 @@ export const IdCardPage: React.FC = () => {
             <div className="id-disabled-icon">⏳</div>
             <h1 className="id-disabled-title">ID Card Generation Opening Soon</h1>
             <p className="id-disabled-desc">
-              Event ID Pass generation will be enabled <strong>2 to 3 days prior to the event (October 29)</strong>.
+              Event ID Pass generation will be enabled <strong>4 to 5 days prior to the event</strong>.
             </p>
             <div className="id-disabled-badge-box">
               <span>Event Date: <strong>1st November 2026</strong></span>
-              <span>Venue: <strong>ECK Campus, Kota</strong></span>
+              <span>Venue: <strong>Agora Ground, ECK-RTU, Kota</strong></span>
             </div>
             <p className="id-disabled-tip">
               Please ensure you have completed your registration and payment verification in advance so your pass is ready for instant download.
@@ -507,19 +507,6 @@ export const IdCardPage: React.FC = () => {
               <button
                 type="button"
                 role="tab"
-                aria-selected={searchMode === 'mobile'}
-                className={`id-search-tab ${searchMode === 'mobile' ? 'active' : ''}`}
-                onClick={() => {
-                  setSearchMode('mobile');
-                  setErrorMsg(null);
-                }}
-              >
-                <span className="id-tab-icon">📱</span>
-                <span>Mobile</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
                 aria-selected={searchMode === 'reg_number'}
                 className={`id-search-tab ${searchMode === 'reg_number' ? 'active' : ''}`}
                 onClick={() => {
@@ -529,6 +516,19 @@ export const IdCardPage: React.FC = () => {
               >
                 <span className="id-tab-icon">🎫</span>
                 <span>Reg ID</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={searchMode === 'mobile'}
+                className={`id-search-tab ${searchMode === 'mobile' ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchMode('mobile');
+                  setErrorMsg(null);
+                }}
+              >
+                <span className="id-tab-icon">📱</span>
+                <span>Mobile</span>
               </button>
               <button
                 type="button"
@@ -544,45 +544,6 @@ export const IdCardPage: React.FC = () => {
                 <span>Name</span>
               </button>
             </div>
-
-            {searchMode === 'mobile' && (
-              <>
-                <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
-                <p className="id-lookup-desc">
-                  We'll instantly look up your verified registration and prepare your delegate pass.
-                </p>
-
-                <form onSubmit={handleLookup} className="id-lookup-form">
-                  <div className="id-integrated-input-box">
-                    <span className="id-input-prefix">+91</span>
-                    <input
-                      type="tel"
-                      placeholder="10-digit mobile"
-                      maxLength={10}
-                      value={mobileInput}
-                      onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
-                      className="id-phone-input"
-                      required
-                      autoFocus
-                    />
-                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
-                      {loading ? 'Finding...' : 'Get Pass →'}
-                    </button>
-                  </div>
-
-                  {errorMsg && (
-                    <div className="id-error-alert">
-                      <span>{errorMsg}</span>
-                      {errorMsg === ID_PASS_LOCKED_MSG && (
-                        <Link to="/" className="id-error-register-link">
-                          Register / Confirm Attendance Now →
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                </form>
-              </>
-            )}
 
             {searchMode === 'reg_number' && (
               <>
@@ -620,6 +581,45 @@ export const IdCardPage: React.FC = () => {
                   <p className="id-reg-hint-note">
                     💡 Enter your number (e.g. <strong>39</strong> or <strong>00039</strong>)
                   </p>
+
+                  {errorMsg && (
+                    <div className="id-error-alert">
+                      <span>{errorMsg}</span>
+                      {errorMsg === ID_PASS_LOCKED_MSG && (
+                        <Link to="/" className="id-error-register-link">
+                          Register / Confirm Attendance Now →
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </form>
+              </>
+            )}
+
+            {searchMode === 'mobile' && (
+              <>
+                <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
+                <p className="id-lookup-desc">
+                  We'll instantly look up your verified registration and prepare your delegate pass.
+                </p>
+
+                <form onSubmit={handleLookup} className="id-lookup-form">
+                  <div className="id-integrated-input-box">
+                    <span className="id-input-prefix">+91</span>
+                    <input
+                      type="tel"
+                      placeholder="10-digit number"
+                      maxLength={10}
+                      value={mobileInput}
+                      onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
+                      className="id-phone-input"
+                      required
+                      autoFocus
+                    />
+                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
+                      {loading ? 'Finding...' : 'Get Pass →'}
+                    </button>
+                  </div>
 
                   {errorMsg && (
                     <div className="id-error-alert">
