@@ -95,7 +95,15 @@ BEGIN
   RETURNING id INTO v_alumni_id;
 
   -- 3. Create Event Registration
-  v_reg_number := 'REG-' || LPAD(nextval('registration_seq')::TEXT, 5, '0');
+  -- Check if this alumnus is already registered for this event
+  SELECT registration_number INTO v_reg_number
+    FROM event_registrations
+   WHERE event_id = v_event_id AND alumni_id = v_alumni_id;
+
+  -- Only generate a new registration number if not already registered!
+  IF v_reg_number IS NULL THEN
+    v_reg_number := 'REG-' || LPAD(nextval('registration_seq')::TEXT, 5, '0');
+  END IF;
 
   INSERT INTO event_registrations (
     registration_number,
