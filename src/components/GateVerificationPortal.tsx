@@ -2357,14 +2357,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               <div className="spot-form-actions">
                 <button
-                  type="button"
-                  onClick={() => handleResetSpot(true)}
-                  className="btn-spot-reset-action"
-                  disabled={spotSubmitting}
-                >
-                  <span>↺</span> Reset Form
-                </button>
-                <button
                   type="submit"
                   disabled={spotSubmitting}
                   className="btn-primary-action btn-spot-submit"
