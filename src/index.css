@@ -2514,10 +2514,14 @@ h6 {
   background: rgba(245, 158, 11, 0.2);
   border: 1px solid var(--border-gold);
   color: var(--primary-light);
-  padding: 6px 14px;
+  padding: 8px 16px;
+  min-height: 44px;
   border-radius: var(--radius-full);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -2531,31 +2535,69 @@ h6 {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 4px;
+  width: 100%;
+  margin-top: 6px;
 }
 
 .btn-share-whatsapp-badge {
-  background: #25d366;
-  border: 1px solid #20bd5a;
+  background: linear-gradient(135deg, #025907 0%, #087f10 50%, #0d9616 100%);
+  border: 1px solid rgba(13, 150, 22, 0.5);
   color: #ffffff;
-  padding: 6px 14px;
+  padding: 10px 18px;
+  min-height: 44px;
+  width: 100%;
+  max-width: 320px;
   border-radius: var(--radius-full);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+  box-shadow: 0 4px 14px rgba(8, 127, 16, 0.35);
 }
 
 .btn-share-whatsapp-badge:hover {
-  background: #20bd5a;
+  background: linear-gradient(135deg, #036809 0%, #0a8e13 50%, #0fa81a 100%);
+  border-color: #12b31c;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.45);
+  box-shadow: 0 6px 18px rgba(8, 127, 16, 0.5);
+}
+
+.badge-pass-row {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-pass-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  min-height: 44px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0b0f19;
+  font-weight: 800;
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+  transition: all var(--transition-fast);
+}
+
+.btn-pass-badge:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #000000;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
 }
 
 /* Aligned Success Receipt Table */
@@ -2997,12 +3039,13 @@ h6 {
 }
 
 .btn-card-whatsapp {
-  background: rgba(37, 211, 102, 0.12);
-  border: 1px solid rgba(37, 211, 102, 0.35);
-  color: #25D366;
-  padding: 4px 9px;
+  background: rgba(8, 127, 16, 0.16);
+  border: 1px solid rgba(13, 150, 22, 0.45);
+  color: #22c55e;
+  padding: 6px 12px;
+  min-height: 38px;
   border-radius: var(--radius-full);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
@@ -3015,10 +3058,11 @@ h6 {
 }
 
 .btn-card-whatsapp:hover {
-  background: rgba(37, 211, 102, 0.25);
-  color: #4ade80;
-  border-color: #4ade80;
+  background: linear-gradient(135deg, #025907 0%, #087f10 100%);
+  color: #ffffff;
+  border-color: #0fa81a;
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(8, 127, 16, 0.4);
 }
 
 @media (max-width: 768px) {
@@ -3849,10 +3893,10 @@ h6 {
 /* ── WhatsApp Broadcast & Share Styles ── */
 
 .btn-whatsapp-primary {
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  background: linear-gradient(135deg, #025907 0%, #087f10 50%, #0d9616 100%);
   color: #ffffff;
-  border: none;
-  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4);
+  border: 1px solid rgba(13, 150, 22, 0.45);
+  box-shadow: 0 4px 14px rgba(8, 127, 16, 0.4);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -3866,8 +3910,9 @@ h6 {
 
 .btn-whatsapp-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 22px rgba(37, 211, 102, 0.6);
-  background: linear-gradient(135deg, #2ae06d 0%, #0e7367 100%);
+  box-shadow: 0 6px 22px rgba(8, 127, 16, 0.6);
+  background: linear-gradient(135deg, #036809 0%, #0a8e13 50%, #0fa81a 100%);
+  border-color: #12b31c;
 }
 
 .btn-copied {
@@ -4135,8 +4180,8 @@ h6 {
 
 /* Mobile Banner & Card WhatsApp quick buttons */
 .admin-mobile-share-banner {
-  background: linear-gradient(135deg, rgba(37, 211, 102, 0.12) 0%, rgba(245, 158, 11, 0.12) 100%);
-  border: 1px solid rgba(37, 211, 102, 0.35);
+  background: linear-gradient(135deg, rgba(2, 89, 7, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
+  border: 1px solid rgba(13, 150, 22, 0.4);
   border-radius: var(--radius-md);
   padding: 12px 16px;
   display: flex;
