@@ -71,9 +71,9 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
   const { displayName: attendeeName, fontSizeClass: nameSizeClass, fullName: originalFullName } =
     formatSmartAttendeeName(alumni?.name || 'Alumnus');
-  const regNumber = registration.registration_number || 'REG-00039';
-  const branch = alumni?.engineering_discipline || 'Information Technology';
-  const batchYear = alumni?.year_of_passing ? String(alumni.year_of_passing) : '2008';
+  const regNumber = registration.registration_number || '';
+  const branch = alumni?.engineering_discipline || '';
+  const batchYear = alumni?.year_of_passing ? String(alumni.year_of_passing) : '';
   const category = alumni?.professional_category || 'Alumnus';
   const badgeLabel = category.toLowerCase().includes('faculty')
     ? 'FACULTY'

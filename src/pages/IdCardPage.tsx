@@ -101,38 +101,6 @@ export const IdCardPage: React.FC = () => {
     );
   }
 
-  // Demo Registration fallback helper
-  const getDemoRegistration = (identifier: string, regNum = 'REG-00039'): ExistingRegistrationLookup => ({
-    found: true,
-    registration_id: 'demo-reg-00039',
-    registration_number: regNum,
-    attendance_status: 'yes',
-    number_of_attendees: 2,
-    adults_count: 1,
-    children_above_7_count: 1,
-    children_under_7_count: 0,
-    amount: 800,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    alumni: {
-      id: 'demo-alumni-1',
-      name: 'Bhawesh Kurmi',
-      mobile: identifier.includes('REG') ? '9799951857' : identifier,
-      email: 'bkurmi@example.com',
-      engineering_discipline: 'Information Technology',
-      year_of_passing: 2008,
-      professional_category: 'Alumnus',
-      city: 'Kota',
-      state: 'Rajasthan',
-      country: 'India',
-      address: 'Kota',
-      organization: null,
-      work_location: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  });
-
   // Resolve existing photo from DB or directly from storage bucket if DB record lacks photo_url
   const resolvePhotoWithStorageFallback = async (reg: ExistingRegistrationLookup): Promise<string | null> => {
     if (reg.photo_url) return reg.photo_url;
@@ -177,13 +145,6 @@ export const IdCardPage: React.FC = () => {
     try {
       const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
       if (!res.found || !res.alumni) {
-        if (clean === '9799951857' || clean === '9876543210' || clean === '9999999999' || clean === '1234567890' || clean === '7770053991') {
-          const demoRes = getDemoRegistration(clean, 'REG-00039');
-          setRegistration(demoRes);
-          setLoading(false);
-          return;
-        }
-
         setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
@@ -227,14 +188,6 @@ export const IdCardPage: React.FC = () => {
     try {
       const res = await lookupRegistrationByRegNumber('deepaura-2k26', formattedReg);
       if (!res.found || !res.alumni) {
-        // Fallback demo registrations if testing in dev/demo mode
-        if (formattedReg === 'REG-00039' || formattedReg === 'REG-00001' || formattedReg === 'REG-00002') {
-          const demoRes = getDemoRegistration(formattedReg, formattedReg);
-          setRegistration(demoRes);
-          setLoading(false);
-          return;
-        }
-
         setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
         return;
