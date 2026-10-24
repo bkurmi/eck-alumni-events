@@ -443,44 +443,5 @@ export async function fetchAllRegistrationsForLookup(
     console.warn('fetchAllRegistrationsForLookup error:', err);
   }
 
-  // Fallback demo registrations for local dev
-  const demoCandidates = [
-    { name: 'Bhawesh Kurmi', year: 2008, branch: 'Information Technology', reg: 'REG-00039', mobile: '9799951857' },
-    { name: 'Rahul Sharma', year: 2012, branch: 'Computer Science', reg: 'REG-00012', mobile: '9829012345' },
-    { name: 'Priya Verma', year: 2016, branch: 'Electrical Engineering', reg: 'REG-00045', mobile: '9414012345' },
-    { name: 'Amit Kumar Meena', year: 2015, branch: 'Mechanical Engineering', reg: 'REG-00088', mobile: '9876543210' },
-    { name: 'Vikram Singh Rathore', year: 2010, branch: 'Civil Engineering', reg: 'REG-00021', mobile: '9828054321' },
-    { name: 'Neha Gupta', year: 2019, branch: 'Electronics & Comm.', reg: 'REG-00104', mobile: '9928011223' },
-  ];
-
-  return demoCandidates.map((c) => ({
-    found: true,
-    registration_id: `demo-${c.reg}`,
-    registration_number: c.reg,
-    attendance_status: 'yes' as const,
-    number_of_attendees: 1,
-    adults_count: 1,
-    children_above_7_count: 0,
-    children_under_7_count: 0,
-    amount: 800,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    alumni: {
-      id: `demo-alumni-${c.reg}`,
-      name: c.name,
-      mobile: c.mobile,
-      email: `${c.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-      engineering_discipline: c.branch,
-      year_of_passing: c.year,
-      professional_category: 'Alumnus',
-      city: 'Kota',
-      state: 'Rajasthan',
-      country: 'India',
-      address: 'Kota',
-      organization: 'ECK Alumni',
-      work_location: 'Kota',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  }));
+  return [];
 }

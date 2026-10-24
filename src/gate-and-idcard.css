@@ -1817,6 +1817,103 @@
   line-height: 1.5;
 }
 
+/* ID Pass Actions & WhatsApp Share Button */
+.id-pass-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.btn-whatsapp-pass-download {
+  width: 100%;
+  padding: 1.05rem;
+  min-height: 48px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-radius: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  background: linear-gradient(135deg, #025907 0%, #087f10 50%, #0d9616 100%);
+  color: #ffffff;
+  border: 1.5px solid rgba(13, 150, 22, 0.45);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(8, 127, 16, 0.4);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.btn-whatsapp-pass-download:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(8, 127, 16, 0.6);
+  background: linear-gradient(135deg, #036809 0%, #0a8e13 50%, #0fa81a 100%);
+  border-color: #12b31c;
+  color: #ffffff;
+}
+
+.btn-whatsapp-pass-download:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-whatsapp-pass-download:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.id-download-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, rgba(8, 127, 16, 0.18) 0%, rgba(2, 89, 7, 0.24) 100%);
+  border: 1.5px solid rgba(13, 150, 22, 0.45);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 0.85rem;
+  text-align: left;
+  animation: bounceIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.id-download-success-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.id-download-success-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.id-download-success-text strong {
+  color: #4ade80;
+  font-size: 0.95rem;
+}
+
+/* Real Image Copied Toast */
+.id-image-copied-toast {
+  margin-top: 0.75rem;
+  padding: 0.7rem 1rem;
+  background: rgba(8, 127, 16, 0.22);
+  border: 1px solid rgba(13, 150, 22, 0.55);
+  border-radius: 0.75rem;
+  color: #4ade80;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(8, 127, 16, 0.25);
+  animation: bounceIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.id-image-copied-toast strong {
+  color: #ffffff;
+}
+
 /* ============================================================
    GATE VERIFICATION PORTAL (ADMIN SIDE)
    ============================================================ */
