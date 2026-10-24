@@ -67,7 +67,7 @@ export const IdCardPage: React.FC = () => {
     event_slug: 'deepaura-2k26',
     event_date: '2026-11-01',
     event_time: '5:00 PM onwards',
-    location: 'College Ground, ECK Campus, Kota',
+    location: 'Agora Ground, ECK-RTU Campus, Kota',
     description: 'Nostalgic reunion, networking, dinner & Diwali celebrations.',
     registration_fee: 800,
     upi_id: '9799951857@upi',
@@ -513,7 +513,7 @@ export const IdCardPage: React.FC = () => {
       ...(branchAndBatch ? [`🎓 *Branch & Batch:* ${branchAndBatch}`] : []),
       ...(totalGuests ? [`👥 *Total Attendees:* ${totalGuests}`] : []),
       '📅 *Event Date:* 1st November 2026 | 5:00 PM onwards',
-      '📍 *Venue:* College Ground, ECK Campus, Kota',
+      '📍 *Venue:* Agora Ground, ECK-RTU Campus, Kota',
       '',
       '✨ _“दीप जले, यादें मुस्कुराएँ।”_ See you at the grand reunion! 🪔',
     ];
