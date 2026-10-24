@@ -2056,6 +2056,34 @@
   box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
 }
 
+.btn-pass-mode-tab.tab-disabled,
+.btn-pass-mode-tab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #94a3b8 !important;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.btn-pass-mode-tab.tab-disabled:hover {
+  color: #94a3b8 !important;
+}
+
+.id-coming-soon-note {
+  margin: 1rem auto 0 auto;
+  text-align: center;
+  color: #fde047;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  padding: 0.65rem 1.1rem;
+  border-radius: 0.75rem;
+  max-width: 440px;
+}
+
 /* Ownership Confirmed Centered Wrapper & Pill */
 .id-unlock-verified-pill-wrapper {
   width: 100%;

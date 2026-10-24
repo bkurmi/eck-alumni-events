@@ -12,6 +12,7 @@ import {
 } from '../lib/registrations';
 import {
   isAlumniIdCardsEnabled,
+  isGatePassReleased,
   compressAttendeePhoto,
   uploadAndSaveAttendeePhoto,
   markIdCardDownloaded,
@@ -20,6 +21,9 @@ import { supabase } from '../lib/supabase';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
 const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
+
+// Feature Flag: Reads VITE_IS_GATE_PASS_RELEASED from .env (defaults to false until released)
+const IS_GATE_PASS_RELEASED = isGatePassReleased();
 
 function dataURLtoBlob(dataurl: string): Blob {
   const arr = dataurl.split(',');
@@ -54,7 +58,7 @@ export const IdCardPage: React.FC = () => {
   const [imageCopiedHint, setImageCopiedHint] = useState(false);
   const [selfiePrompt, setSelfiePrompt] = useState<string | null>(null);
   const [selfieSkipped, setSelfieSkipped] = useState(false);
-  const [passViewMode, setPassViewMode] = useState<'entry' | 'social'>('entry');
+  const [passViewMode, setPassViewMode] = useState<'entry' | 'social'>('social');
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [showPhoneVerifyModal, setShowPhoneVerifyModal] = useState(false);
   const [verifyPhoneInput, setVerifyPhoneInput] = useState('');
@@ -186,7 +190,7 @@ export const IdCardPage: React.FC = () => {
       const enrichedRes = { ...res, photo_url: existingPhoto || res.photo_url };
       setRegistration(enrichedRes);
       setIsPhoneVerified(true);
-      setPassViewMode('entry');
+      setPassViewMode(IS_GATE_PASS_RELEASED ? 'entry' : 'social');
       if (existingPhoto) {
         setPhotoPreview(existingPhoto);
       } else {
@@ -1064,23 +1068,7 @@ export const IdCardPage: React.FC = () => {
 
             {/* Pass Mode Toggle Switcher */}
             <div className="id-pass-mode-toggle" role="tablist" aria-label="Pass Display Mode">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={passViewMode === 'entry'}
-                onClick={() => {
-                  if (!isPhoneVerified) {
-                    setVerifyPhoneError(null);
-                    setShowPhoneVerifyModal(true);
-                    return;
-                  }
-                  setPassViewMode('entry');
-                }}
-                className={`btn-pass-mode-tab ${passViewMode === 'entry' ? 'active' : ''}`}
-                title={isPhoneVerified ? 'View official gate entry pass with scannable QR code' : 'Locked — Click to verify registered phone and unlock'}
-              >
-                <span>{isPhoneVerified ? '🎟️ Gate Entry Pass' : '🔒 Gate Pass (Locked)'}</span>
-              </button>
+              {/* 1. Social Share Pass (First & Active) */}
               <button
                 type="button"
                 role="tab"
@@ -1091,10 +1079,49 @@ export const IdCardPage: React.FC = () => {
               >
                 <span>🌟 Social Share Pass</span>
               </button>
+
+              {/* 2. Gate Pass (Second & Coming Soon Disabled) */}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={passViewMode === 'entry'}
+                disabled={!IS_GATE_PASS_RELEASED}
+                onClick={() => {
+                  if (!IS_GATE_PASS_RELEASED) return;
+                  if (!isPhoneVerified) {
+                    setVerifyPhoneError(null);
+                    setShowPhoneVerifyModal(true);
+                    return;
+                  }
+                  setPassViewMode('entry');
+                }}
+                className={`btn-pass-mode-tab ${
+                  !IS_GATE_PASS_RELEASED
+                    ? 'tab-disabled'
+                    : passViewMode === 'entry'
+                    ? 'active'
+                    : ''
+                }`}
+                title={
+                  !IS_GATE_PASS_RELEASED
+                    ? 'Official Gate Entry Pass with scannable QR code will be released closer to event day (1st November)'
+                    : isPhoneVerified
+                    ? 'View official gate entry pass with scannable QR code'
+                    : 'Locked — Click to verify registered phone and unlock'
+                }
+              >
+                <span>
+                  {!IS_GATE_PASS_RELEASED
+                    ? '🔒 Gate Pass (Coming Soon)'
+                    : isPhoneVerified
+                    ? '🎟️ Gate Entry Pass'
+                    : '🔒 Gate Pass (Locked)'}
+                </span>
+              </button>
             </div>
 
-            {/* Ownership verified subtle indicator */}
-            {isPhoneVerified && (
+            {/* Ownership verified subtle indicator (only when Gate Pass released & active) */}
+            {IS_GATE_PASS_RELEASED && isPhoneVerified && passViewMode === 'entry' && (
               <div
                 className="id-unlock-verified-pill-wrapper"
                 style={{ width: '100%', display: 'flex', justifyContent: 'center', margin: '0.25rem 0 0.85rem 0' }}
@@ -1111,7 +1138,7 @@ export const IdCardPage: React.FC = () => {
               style={{ alignSelf: 'center', marginLeft: 'auto', marginRight: 'auto', textAlign: 'center' }}
             >
               <span>
-                {passViewMode === 'social' || !isPhoneVerified
+                {passViewMode === 'social' || !IS_GATE_PASS_RELEASED
                   ? '🔒 Social Pass: Personal phone QR code shielded for safe sharing with friends & groups'
                   : '🎟️ Official Entry Pass: Show this QR code at the ECK-RTU gate on 1st November'}
               </span>
@@ -1255,7 +1282,11 @@ export const IdCardPage: React.FC = () => {
                 )}
               </div>
 
-              {!isPhoneVerified && passViewMode === 'social' && (
+              {!IS_GATE_PASS_RELEASED ? (
+                <div className="id-coming-soon-note">
+                  <span>🎟️ <em>Official Gate Entry Passes with entry QR codes will unlock for download closer to event day (1st November).</em></span>
+                </div>
+              ) : !isPhoneVerified && passViewMode === 'social' ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -1266,7 +1297,7 @@ export const IdCardPage: React.FC = () => {
                 >
                   <span>🎟️ Need your Official Gate Pass with QR? Click to Unlock 🔓</span>
                 </button>
-              )}
+              ) : null}
 
               {imageCopiedHint && (
                 <div className="id-image-copied-toast" role="status">
@@ -1274,9 +1305,11 @@ export const IdCardPage: React.FC = () => {
                 </div>
               )}
 
-              <p className="id-download-hint">
-                💡 <strong>Gate Check-in Tip:</strong> Save the <strong>Gate Entry Pass (With QR)</strong> to your phone gallery. Simply show that QR code to the gate verification team at Agora Ground on 1st November for instant VIP entry!
-              </p>
+              {passViewMode === 'entry' && IS_GATE_PASS_RELEASED && (
+                <p className="id-download-hint">
+                  💡 <strong>Gate Check-in Tip:</strong> Save the <strong>Gate Entry Pass (With QR)</strong> to your phone gallery. Simply show that QR code to the gate verification team at Agora Ground on 1st November for instant VIP entry!
+                </p>
+              )}
             </div>
           </div>
         )}
