@@ -504,6 +504,11 @@ export const IdCardPage: React.FC = () => {
         ? `${registration.number_of_attendees} Attendee(s)`
         : null;
 
+    const baseUrl =
+      typeof window !== 'undefined' && window.location.origin
+        ? `${window.location.origin}/id-card`
+        : 'https://eck-alumni-events.pages.dev/id-card';
+
     const lines = [
       '🪔 *ECK-RTU Alumni DeepAura 2K26* 🪔',
       '🎟️ *Official Entry ID Card Pass*',
@@ -514,6 +519,8 @@ export const IdCardPage: React.FC = () => {
       ...(totalGuests ? [`👥 *Total Attendees:* ${totalGuests}`] : []),
       '📅 *Event Date:* 1st November 2026 | 5:00 PM onwards',
       '📍 *Venue:* Agora Ground, ECK-RTU Campus, Kota',
+      '',
+      `👉 *Get your pass:* ${baseUrl}`,
       '',
       '✨ _“दीप जले, यादें मुस्कुराएँ।”_ See you at the grand reunion! 🪔',
     ];

@@ -187,7 +187,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                 </div>
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Venue</span>
-                  <span className="ticket-v-meta-val">Agora Ground, ECK-RTU</span>
+                  <span className="ticket-v-meta-val">Agora Ground, RTU</span>
                 </div>
               </div>
             </div>
