@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { toPng, toBlob } from 'html-to-image';
+import { toPng } from 'html-to-image';
 import { Header } from '../components/Header';
 import { IdCardPass } from '../components/IdCardPass';
 import {
@@ -20,6 +20,19 @@ import { supabase } from '../lib/supabase';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
 const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
+
+function dataURLtoBlob(dataurl: string): Blob {
+  const arr = dataurl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
 
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
@@ -44,6 +57,8 @@ export const IdCardPage: React.FC = () => {
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const selfieInputRef = useRef<HTMLInputElement | null>(null);
+  const cachedPassBlobRef = useRef<Blob | null>(null);
+  const cachedPassDataUrlRef = useRef<string | null>(null);
 
   // Default Event Details
   const defaultEvent: ECKEvent = {
@@ -347,6 +362,40 @@ export const IdCardPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Pre-generate Pass Image in background so mobile WhatsApp image share has 0ms delay
+  // and never loses user gesture activation (avoiding NotAllowedError on mobile)
+  useEffect(() => {
+    if (!cardRef.current || !registration) {
+      cachedPassBlobRef.current = null;
+      cachedPassDataUrlRef.current = null;
+      return;
+    }
+
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        if (!cardRef.current || !active) return;
+        const dataUrl = await toPng(cardRef.current, {
+          quality: 0.95,
+          pixelRatio: 2.5,
+          backgroundColor: '#071238',
+          skipFonts: true,
+          cacheBust: false,
+        });
+        if (!active) return;
+        cachedPassDataUrlRef.current = dataUrl;
+        cachedPassBlobRef.current = dataURLtoBlob(dataUrl);
+      } catch (err) {
+        console.warn('Background pass image preparation warning:', err);
+      }
+    }, 400);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [registration, photoPreview, selfieSkipped]);
+
   // Handle Photo / Selfie Upload
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -411,13 +460,15 @@ export const IdCardPage: React.FC = () => {
     setDownloading(true);
 
     try {
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 0.95,
-        pixelRatio: 2.5, // Crisp retina quality for phone screens
-        backgroundColor: '#071238',
-        skipFonts: true,
-        cacheBust: false,
-      });
+      const dataUrl =
+        cachedPassDataUrlRef.current ||
+        (await toPng(cardRef.current, {
+          quality: 0.95,
+          pixelRatio: 2.5, // Crisp retina quality for phone screens
+          backgroundColor: '#071238',
+          skipFonts: true,
+          cacheBust: false,
+        }));
 
       const regNum = registration?.registration_number || 'Pass';
       const link = document.createElement('a');
@@ -492,36 +543,6 @@ export const IdCardPage: React.FC = () => {
         markIdCardDownloaded(registration.registration_id).catch(() => {});
       }
 
-      // Generate the crisp high-res ID Card Pass image blob
-      let blob: Blob | null = null;
-      try {
-        blob = await toBlob(cardRef.current, {
-          quality: 0.95,
-          pixelRatio: 2.5,
-          backgroundColor: '#071238',
-          skipFonts: true,
-          cacheBust: false,
-        });
-      } catch (blobErr) {
-        console.warn('toBlob error:', blobErr);
-      }
-
-      if (!blob) {
-        try {
-          const dataUrl = await toPng(cardRef.current, {
-            quality: 0.95,
-            pixelRatio: 2.5,
-            backgroundColor: '#071238',
-            skipFonts: true,
-            cacheBust: false,
-          });
-          const res = await fetch(dataUrl);
-          blob = await res.blob();
-        } catch (pngErr) {
-          console.warn('toPng error:', pngErr);
-        }
-      }
-
       const captionText = buildWhatsAppShareMessage();
       const encoded = encodeURIComponent(captionText);
 
@@ -529,23 +550,41 @@ export const IdCardPage: React.FC = () => {
         typeof navigator !== 'undefined' &&
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-      // 1. On mobile phones: Share the REAL image file directly to WhatsApp!
-      if (isMobile && blob) {
-        const regNum = registration?.registration_number || 'Pass';
-        const cleanName = registration?.alumni?.name?.replace(/\s+/g, '_') || 'Pass';
-        const file = new File([blob], `ECK_Alumni_Pass_${cleanName}_${regNum}.png`, { type: 'image/png' });
+      // Retrieve already pre-cached pass image or generate instantly (0ms lag preserves mobile user gesture)
+      let blob = cachedPassBlobRef.current;
+      if (!blob) {
+        const dataUrl = await toPng(cardRef.current, {
+          quality: 0.95,
+          pixelRatio: 2.5,
+          backgroundColor: '#071238',
+          skipFonts: true,
+          cacheBust: false,
+        });
+        cachedPassDataUrlRef.current = dataUrl;
+        blob = dataURLtoBlob(dataUrl);
+        cachedPassBlobRef.current = blob;
+      }
 
+      const regNum = registration?.registration_number || 'Pass';
+      const cleanName = registration?.alumni?.name?.replace(/\s+/g, '_') || 'Pass';
+      const file = new File([blob], `ECK_Alumni_Pass_${cleanName}_${regNum}.png`, { type: 'image/png' });
+
+      // 1. On mobile phones: Share the REAL image file directly to WhatsApp via Web Share API
+      if (isMobile) {
         if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] }) && typeof navigator.share === 'function') {
           try {
+            // Note: Omit title when sharing file to ensure WhatsApp handles it as media with caption
             await navigator.share({
               files: [file],
-              title: 'ECK Alumni DeepAura 2K26 - Official Event Pass',
               text: captionText,
             });
             return;
           } catch (shareErr: any) {
-            if (shareErr?.name === 'AbortError') return;
-            console.warn('Mobile native share error, falling back:', shareErr);
+            if (shareErr?.name === 'AbortError') {
+              // User dismissed the native share sheet
+              return;
+            }
+            console.warn('Mobile native file share error, proceeding with link fallback:', shareErr);
           }
         }
       }
