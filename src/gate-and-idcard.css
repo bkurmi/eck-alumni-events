@@ -990,12 +990,18 @@
    - Realistic glowing traditional deepaks and illuminated rangoli
    ------------------------------------------------------------ */
 .ticket-mobile-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   text-align: center;
+  max-width: 440px;
+  margin: 0 auto 0.85rem auto;
   font-size: 0.85rem;
   color: #fbbf24;
-  margin-bottom: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  line-height: 1.4;
+  padding: 0 0.5rem;
 }
 
 .id-preview-container {
@@ -1608,6 +1614,90 @@
   margin: 2px 0;
 }
 
+/* Privacy Protected Social Seal on Pass */
+.ticket-v-qr-box.ticket-v-privacy-seal-box {
+  background: radial-gradient(circle at 50% 35%, #11204d 0%, #060e26 100%);
+  border: 2.2px solid #ffd700;
+  box-shadow: 0 0 16px rgba(253, 224, 71, 0.45), 0 6px 20px rgba(0, 0, 0, 0.7);
+  width: 136px;
+  height: 136px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.ticket-v-seal-inner {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed rgba(254, 240, 138, 0.55);
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 2px;
+  box-sizing: border-box;
+  text-align: center;
+  background: rgba(10, 20, 52, 0.45);
+}
+
+.ticket-v-seal-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.ticket-v-seal-diya-svg {
+  filter: drop-shadow(0 2px 5px rgba(254, 240, 138, 0.85));
+}
+
+.ticket-v-seal-brand {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fef08a;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.ticket-v-seal-verified {
+  font-size: 0.54rem;
+  font-weight: 800;
+  color: #ffd700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  margin: 1px 0;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ticket-v-seal-event {
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.ticket-v-seal-privacy {
+  font-size: 0.48rem;
+  font-weight: 700;
+  color: #93c5fd;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
+  background: rgba(147, 197, 253, 0.15);
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  border: 0.5px solid rgba(147, 197, 253, 0.35);
+  white-space: nowrap;
+}
+
+.ticket-v-social-hint {
+  color: #fde047;
+}
+
 .ticket-v-qr-loading {
   width: 118px;
   height: 118px;
@@ -1912,6 +2002,313 @@
 
 .id-image-copied-toast strong {
   color: #ffffff;
+}
+
+/* ============================================================
+   PASS VIEW MODE SWITCHER & PRIVACY ASSURANCE
+   ============================================================ */
+.id-pass-mode-toggle {
+  display: flex;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  padding: 4px;
+  margin: 0 auto 1rem auto;
+  max-width: 390px;
+  width: 100%;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.btn-pass-mode-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  min-height: 44px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.btn-pass-mode-tab:hover {
+  color: #ffffff;
+}
+
+.btn-pass-mode-tab.active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #1e1302;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+}
+
+.btn-pass-mode-tab.active.tab-social {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+}
+
+/* Ownership Confirmed Centered Wrapper & Pill */
+.id-unlock-verified-pill-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0.25rem 0 0.85rem 0;
+}
+
+.id-unlock-verified-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.42rem 1.15rem;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 9999px;
+  color: #d1fae5;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.id-unlock-verified-pill strong {
+  color: #34d399;
+}
+
+/* Privacy Guarantee Badge */
+.id-privacy-guarantee-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 0.85rem;
+  padding: 0.8rem 1.1rem;
+  margin: 0.65rem 0;
+  text-align: left;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #d1fae5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.id-privacy-guarantee-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  color: #34d399;
+}
+
+.id-privacy-guarantee-badge strong {
+  color: #6ee7b7;
+}
+
+/* ============================================================
+   REGISTERED PHONE VERIFICATION MODAL POPUP
+   ============================================================ */
+.id-unlock-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 1rem;
+  box-sizing: border-box;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.id-unlock-modal-content {
+  background: linear-gradient(135deg, #0b1533 0%, #060b1c 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(212, 175, 55, 0.2);
+  border-radius: 1.25rem;
+  padding: 2rem 1.65rem 1.65rem 1.65rem;
+  max-width: 420px;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  text-align: center;
+  animation: bounceIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.id-unlock-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  font-size: 1.1rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.id-unlock-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.id-unlock-modal-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 0.65rem;
+}
+
+.id-unlock-modal-title {
+  margin: 0 0 0.45rem 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffd700;
+  font-family: 'Cinzel', Georgia, serif;
+  letter-spacing: 0.04em;
+}
+
+.id-unlock-modal-desc {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.id-unlock-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.id-unlock-phone-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.65rem 1rem;
+  font-size: 1.05rem; /* >= 16px prevents iOS Safari auto-zoom */
+  color: #ffffff;
+  background: #090f20;
+  border: 1.5px solid rgba(212, 175, 55, 0.6);
+  border-radius: 0.75rem;
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.id-unlock-phone-input:focus {
+  border-color: #ffd700;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
+}
+
+.id-unlock-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.35rem;
+}
+
+.btn-unlock-phone-action {
+  flex: 1;
+  min-height: 46px;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #1e1302;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-unlock-phone-action:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.45);
+}
+
+.id-unlock-phone-error {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.84rem;
+  color: #f87171;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.btn-link-unlock-entry {
+  background: transparent;
+  border: none;
+  color: #ffd700;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  margin: 0.35rem auto 0 auto;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-link-unlock-entry:hover {
+  color: #fef08a;
+}
+
+/* Verified Ownership Badge */
+.id-unlock-verified-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.22) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  border-radius: 9999px;
+  padding: 0.45rem 1rem;
+  margin: 0 auto 0.85rem auto;
+  font-size: 0.82rem;
+  color: #a7f3d0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.id-unlock-verified-pill strong {
+  color: #6ee7b7;
+}
+
+.id-download-safety-tip {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  background: rgba(245, 158, 11, 0.14);
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #fef08a;
+  text-align: left;
 }
 
 /* ============================================================
