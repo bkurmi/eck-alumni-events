@@ -2014,7 +2014,7 @@
   border-radius: 9999px;
   padding: 4px;
   margin: 0 auto 1rem auto;
-  max-width: 390px;
+  max-width: 420px;
   width: 100%;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   gap: 4px;
@@ -2026,18 +2026,43 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  min-height: 44px;
+  gap: 5px;
+  padding: 6px 10px;
+  min-height: 42px;
   border-radius: 9999px;
   border: none;
   background: transparent;
   color: #94a3b8;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+}
+
+.tab-subtext {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.82;
+  letter-spacing: -0.2px;
+  display: inline-block;
+  margin-left: 2px;
+}
+
+@media (max-width: 440px) {
+  .id-pass-mode-toggle {
+    max-width: 100%;
+    padding: 3px;
+    gap: 3px;
+  }
+  .btn-pass-mode-tab {
+    padding: 6px 6px;
+    font-size: 0.74rem;
+    gap: 3px;
+  }
+  .tab-subtext {
+    font-size: 0.62rem;
+  }
 }
 
 .btn-pass-mode-tab:hover {

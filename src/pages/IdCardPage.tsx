@@ -1111,11 +1111,13 @@ export const IdCardPage: React.FC = () => {
                 }
               >
                 <span>
-                  {!IS_GATE_PASS_RELEASED
-                    ? '🔒 Gate Pass (Coming Soon)'
-                    : isPhoneVerified
-                    ? '🎟️ Gate Entry Pass'
-                    : '🔒 Gate Pass (Locked)'}
+                  {!IS_GATE_PASS_RELEASED ? (
+                    <>🔒 Gate Pass <span className="tab-subtext">(Coming Soon)</span></>
+                  ) : isPhoneVerified ? (
+                    '🎟️ Gate Entry Pass'
+                  ) : (
+                    '🔒 Gate Pass (Locked)'
+                  )}
                 </span>
               </button>
             </div>
