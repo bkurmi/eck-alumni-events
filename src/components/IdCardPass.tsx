@@ -7,6 +7,7 @@ interface IdCardPassProps {
   event?: ECKEvent | null;
   photoUrl?: string | null;
   cardRef?: React.RefObject<HTMLDivElement | null>;
+  hideQr?: boolean;
 }
 
 function toTitleCase(str: string): string {
@@ -64,6 +65,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
   event: _event,
   photoUrl,
   cardRef,
+  hideQr = false,
 }) => {
   const alumni = registration.alumni;
   const rawMobile = alumni?.mobile || '';
@@ -226,26 +228,82 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
             <h3 className="ticket-v-stub-title-main">DEEPAURA 2K26</h3>
             <p className="ticket-v-stub-title-desc">A ROYAL DIWALI REUNION</p>
 
-            <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
+            {hideQr ? (
+              <>
+                <span className="ticket-v-scan-hint ticket-v-social-hint">OFFICIAL EVENT PASS</span>
 
-            {/* QR Code Container */}
-            <div className="ticket-v-qr-box">
-              {cleanMobile ? (
-                <QRCodeSVG
-                  value={cleanMobile}
-                  size={118}
-                  level="M"
-                  includeMargin={false}
-                  bgColor="#ffffff"
-                  fgColor="#0a122c"
-                />
-              ) : (
-                <div className="ticket-v-qr-loading">QR</div>
-              )}
-            </div>
+                {/* Privacy Protected Social Seal */}
+                <div className="ticket-v-qr-box ticket-v-privacy-seal-box" title="Gate QR Code & phone number protected for social sharing">
+                  <div className="ticket-v-seal-inner">
+                    <div className="ticket-v-seal-emblem">
+                      <svg
+                        className="ticket-v-seal-diya-svg"
+                        viewBox="0 0 24 24"
+                        width="30"
+                        height="30"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <defs>
+                          <linearGradient id="sealDiyaFlame" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fef08a" />
+                            <stop offset="45%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#dc2626" />
+                          </linearGradient>
+                          <linearGradient id="sealDiyaBase" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stopColor="#ffd700" />
+                            <stop offset="50%" stopColor="#d97706" />
+                            <stop offset="100%" stopColor="#78350f" />
+                          </linearGradient>
+                        </defs>
+                        {/* Glow Diya Flame */}
+                        <path
+                          d="M12 2C12 2 15.5 5.5 15.5 8C15.5 10 13.8 11.5 12 11.5C10.2 11.5 8.5 10 8.5 8C8.5 5.5 12 2 12 2Z"
+                          fill="url(#sealDiyaFlame)"
+                        />
+                        {/* Diya Clay Base */}
+                        <path
+                          d="M4 13.5C4 17.5 7.5 20.5 12 20.5C16.5 20.5 20 17.5 20 13.5H4Z"
+                          fill="url(#sealDiyaBase)"
+                          stroke="#ffd700"
+                          strokeWidth="0.8"
+                        />
+                        <ellipse cx="12" cy="13.5" rx="7.8" ry="2" fill="#d97706" />
+                      </svg>
+                    </div>
+                    <span className="ticket-v-seal-brand">ECK-RTU</span>
+                    <span className="ticket-v-seal-verified">★ VERIFIED ★</span>
+                    <span className="ticket-v-seal-event">DEEPAURA 2K26</span>
+                    <span className="ticket-v-seal-privacy">🔒 QR PROTECTED</span>
+                  </div>
+                </div>
 
-            {/* Scan hint repeated below QR code matching reference */}
-            <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
+                <span className="ticket-v-scan-hint ticket-v-social-hint">ALUMNI ROYAL PASS</span>
+              </>
+            ) : (
+              <>
+                <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
+
+                {/* QR Code Container */}
+                <div className="ticket-v-qr-box">
+                  {cleanMobile ? (
+                    <QRCodeSVG
+                      value={cleanMobile}
+                      size={118}
+                      level="M"
+                      includeMargin={false}
+                      bgColor="#ffffff"
+                      fgColor="#0a122c"
+                    />
+                  ) : (
+                    <div className="ticket-v-qr-loading">QR</div>
+                  )}
+                </div>
+
+                {/* Scan hint repeated below QR code matching reference */}
+                <span className="ticket-v-scan-hint">SCAN FOR ENTRY</span>
+              </>
+            )}
 
             {/* Admit Pill Button with Star Sparkle */}
             <div className="ticket-v-admit-pill">

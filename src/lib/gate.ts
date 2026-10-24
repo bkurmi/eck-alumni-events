@@ -13,6 +13,10 @@ export const isAdminGatePortalEnabled = (): boolean => {
   return import.meta.env.VITE_ENABLE_ADMIN_GATE_PORTAL === 'true';
 };
 
+export const isGatePassReleased = (): boolean => {
+  return import.meta.env.VITE_IS_GATE_PASS_RELEASED === 'true';
+};
+
 /**
  * Native Web Audio sound synthesizers for instant gate auditory feedback.
  * No external mp3 files required.
