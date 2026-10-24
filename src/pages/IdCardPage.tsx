@@ -495,12 +495,6 @@ export const IdCardPage: React.FC = () => {
     const batch = alumni?.year_of_passing ? `Batch of ${alumni.year_of_passing}` : '';
     const branchAndBatch = [discipline, batch].filter(Boolean).join(' • ');
 
-    const baseUrl =
-      typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
-        ? window.location.origin
-        : 'https://eck-alumni-events.web.app';
-    const passUrl = `${baseUrl}/id-card?reg=${encodeURIComponent(regNum)}`;
-
     const totalGuests =
       registration.number_of_attendees && registration.number_of_attendees > 1
         ? `${registration.number_of_attendees} Attendee(s)`
@@ -516,9 +510,6 @@ export const IdCardPage: React.FC = () => {
       ...(totalGuests ? [`👥 *Total Attendees:* ${totalGuests}`] : []),
       '📅 *Event Date:* 1st November 2026 | 5:00 PM onwards',
       '📍 *Venue:* College Ground, ECK Campus, Kota',
-      '',
-      '👉 *View & Download Event Pass:*',
-      passUrl,
       '',
       '✨ _“दीप जले, यादें मुस्कुराएँ।”_ See you at the grand reunion! 🪔',
     ];
