@@ -522,6 +522,7 @@ export const AdminPage: React.FC = () => {
 
     return {
       totalRegs,
+      attendingCount: attendingRegs.length,
       totalAttendees,
       totalAmount,
       pendingAmount,
@@ -771,7 +772,8 @@ export const AdminPage: React.FC = () => {
                   expenses={expenses}
                   registrationAmount={stats.totalAmount}
                   sponsorshipAmount={sponsorships.reduce((sum, s) => sum + Number(s.amount || 0), 0)}
-                  registrationCount={stats.totalRegs}
+                  registrationCount={stats.attendingCount}
+                  totalHeadcount={stats.totalAttendees}
                   sponsorshipCount={sponsorships.length}
                   eventName={activeEvent.event_name}
                   onAddExpense={() => {
@@ -834,9 +836,11 @@ export const AdminPage: React.FC = () => {
                     </div>
 
                     <div className="stat-card">
-                      <span className="stat-label">Total Attending</span>
+                      <span className="stat-label">Attending Headcount</span>
                       <span className="stat-value font-success">{stats.totalAttendees}</span>
-                      <span className="stat-hint">Confirmed Guests</span>
+                      <span className="stat-hint">
+                        {stats.attendingCount} Confirmed Regs{stats.totalAttendees > stats.attendingCount ? ` (+${stats.totalAttendees - stats.attendingCount} guests)` : ''}
+                      </span>
                     </div>
 
                     <div className="stat-card">
