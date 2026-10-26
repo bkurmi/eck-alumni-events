@@ -54,7 +54,7 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
       if (initialData) {
         setSponsorName(initialData.sponsor_name || '');
         setAmount(initialData.amount ? String(initialData.amount) : '');
-        
+
         const existingUpi = (initialData.receiving_upi_id || '').toLowerCase().trim();
         if (!existingUpi) {
           setReceivingUpiId('');
@@ -964,7 +964,7 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
               ) : (
                 <>
                   <span>💾</span>
-                  <span>{initialData ? 'Update Sponsorship' : 'Save Sponsorship'}</span>
+                  <span>{initialData ? 'Update' : 'Save'}</span>
                 </>
               )}
             </button>
