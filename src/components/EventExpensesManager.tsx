@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import type { EventExpense } from '../types';
-import { EXPENSE_CATEGORIES } from '../types';
 import {
   formatINR,
   getExpenseCategoryIcon,
@@ -34,7 +33,6 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   loading: _loading = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
@@ -79,7 +77,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
     };
   }, [expenses, registrationAmount, sponsorshipAmount]);
 
-  // Filtered expenses based on search and filters
+  // Filtered expenses based on search and status
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
       const q = searchQuery.toLowerCase().trim();
@@ -90,15 +88,12 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         (e.notes || '').toLowerCase().includes(q) ||
         (e.category || '').toLowerCase().includes(q);
 
-      const matchesCategory =
-        selectedCategory === 'all' ? true : e.category === selectedCategory;
-
       const matchesStatus =
         selectedStatus === 'all' ? true : e.status === selectedStatus;
 
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesSearch && matchesStatus;
     });
-  }, [expenses, searchQuery, selectedCategory, selectedStatus]);
+  }, [expenses, searchQuery, selectedStatus]);
 
   // WhatsApp Share Action
   const handleShareWhatsApp = () => {
@@ -302,92 +297,50 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         </div>
       )}
 
-      {/* Action Toolbar */}
+      {/* ── SECTION HEADER & PRIMARY ACTIONS ── */}
       <div
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
           gap: '12px',
-          backgroundColor: '#1e293b',
-          padding: '12px 16px',
-          borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingTop: '2px',
         }}
       >
-        {/* Left: Search & Filters */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', flex: 1 }}>
-          <div style={{ position: 'relative', minWidth: '180px', flex: 1 }}>
-            <span style={{ position: 'absolute', left: '10px', top: '9px', color: '#64748b', fontSize: '14px' }}>
-              🔍
-            </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search expenses or vendors..."
+        <div>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: '1.05rem',
+              fontWeight: 800,
+              color: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span>Itemized Expense Ledger</span>
+            <span
               style={{
-                width: '100%',
-                padding: '8px 12px 8px 32px',
-                borderRadius: '8px',
-                backgroundColor: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#f8fafc',
-                fontSize: '0.9rem',
-                outline: 'none',
-                minHeight: '40px',
-                boxSizing: 'border-box',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: 'rgba(99, 102, 241, 0.15)',
+                color: '#a5b4fc',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
               }}
-            />
-          </div>
-
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              backgroundColor: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#f8fafc',
-              fontSize: '0.85rem',
-              outline: 'none',
-              minHeight: '40px',
-            }}
-          >
-            <option value="all">All Categories</option>
-            {EXPENSE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              backgroundColor: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#f8fafc',
-              fontSize: '0.85rem',
-              outline: 'none',
-              minHeight: '40px',
-            }}
-          >
-            <option value="all">All Statuses</option>
-            <option value="planned">Planned</option>
-            <option value="partially_paid">Partially Paid</option>
-            <option value="paid">Paid</option>
-            <option value="settled">Settled</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+            >
+              {expenses.length} Items
+            </span>
+          </h3>
+          <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+            Vendor quotes, planned budgets &amp; real payments
+          </p>
         </div>
 
-        {/* Right: Actions (Add Expense first, then Share Report on same line) */}
+        {/* Action Buttons: Add Expense & Share Report */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
           <button
             type="button"
@@ -397,8 +350,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               color: '#ffffff',
               border: 'none',
               borderRadius: '8px',
-              padding: '8px 14px',
-              fontWeight: 600,
+              padding: '9px 15px',
+              fontWeight: 700,
               fontSize: '0.85rem',
               cursor: 'pointer',
               display: 'inline-flex',
@@ -423,7 +376,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               color: '#ffffff',
               border: 'none',
               borderRadius: '8px',
-              padding: '8px 14px',
+              padding: '9px 14px',
               fontWeight: 600,
               fontSize: '0.85rem',
               cursor: 'pointer',
@@ -440,6 +393,110 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             <span>Share Report</span>
           </button>
         </div>
+      </div>
+
+      {/* ── SEARCH & STATUS BAR (Single Line, Even on Mobile) ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          backgroundColor: '#1e293b',
+          padding: '8px 10px',
+          borderRadius: '12px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          width: '100%',
+          boxSizing: 'border-box',
+          flexWrap: 'nowrap',
+        }}
+      >
+        {/* Search Input Box */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <span
+            style={{
+              position: 'absolute',
+              left: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#64748b',
+              fontSize: '14px',
+              pointerEvents: 'none',
+            }}
+          >
+            🔍
+          </span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search expenses, vendor..."
+            style={{
+              width: '100%',
+              padding: '8px 28px 8px 30px',
+              borderRadius: '8px',
+              backgroundColor: '#0f172a',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#f8fafc',
+              fontSize: '16px',
+              outline: 'none',
+              minHeight: '40px',
+              boxSizing: 'border-box',
+            }}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                fontSize: '13px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Status Dropdown */}
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          style={{
+            padding: '8px 10px',
+            borderRadius: '8px',
+            backgroundColor: '#0f172a',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            color: '#f8fafc',
+            fontSize: '14px',
+            outline: 'none',
+            minHeight: '40px',
+            flexShrink: 0,
+            maxWidth: '135px',
+            minWidth: '105px',
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+          }}
+          title="Filter by expense status"
+        >
+          <option value="all">⚡ Status: All</option>
+          <option value="planned">📝 Planned</option>
+          <option value="partially_paid">🟡 Partial</option>
+          <option value="paid">✅ Paid</option>
+          <option value="settled">🎉 Settled</option>
+          <option value="cancelled">❌ Cancelled</option>
+        </select>
       </div>
 
       {/* Main Expense Ledger List */}

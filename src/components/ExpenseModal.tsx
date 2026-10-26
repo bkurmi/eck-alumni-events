@@ -57,8 +57,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       if (initialData) {
         setItemName(initialData.item_name || '');
         setCategory(initialData.category || EXPENSE_CATEGORIES[0]);
-        setExpectedAmount(initialData.expected_amount ? String(initialData.expected_amount) : '');
-        setActualAmount(initialData.actual_amount ? String(initialData.actual_amount) : '');
+        setExpectedAmount(initialData.expected_amount ? String(Math.round(Number(initialData.expected_amount))) : '');
+        setActualAmount(initialData.actual_amount ? String(Math.round(Number(initialData.actual_amount))) : '');
         setStatus(initialData.status || 'planned');
         setVendorName(initialData.vendor_name || '');
         setVendorPhone(initialData.vendor_phone || '');
@@ -118,8 +118,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
     }
   };
 
-  const numExpected = Number(expectedAmount) || 0;
-  const numActual = Number(actualAmount) || 0;
+  const numExpected = parseInt(expectedAmount, 10) || 0;
+  const numActual = parseInt(actualAmount, 10) || 0;
   const diff = numExpected - numActual;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -432,11 +432,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8', fontSize: '1rem' }}>₹</span>
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={expectedAmount}
-                    onChange={(e) => setExpectedAmount(e.target.value)}
+                    onChange={(e) => setExpectedAmount(e.target.value.replace(/\D/g, ''))}
                     placeholder="e.g. 50000"
                     style={{
                       width: '100%',
@@ -462,14 +462,14 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8', fontSize: '1rem' }}>₹</span>
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={actualAmount}
                     onChange={(e) => {
-                      const val = e.target.value;
-                      setActualAmount(val);
-                      if (Number(val) > 0 && status === 'planned') {
+                      const intOnly = e.target.value.replace(/\D/g, '');
+                      setActualAmount(intOnly);
+                      if (Number(intOnly) > 0 && status === 'planned') {
                         setStatus('paid');
                       }
                     }}
