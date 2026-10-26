@@ -146,8 +146,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* 4 Stats Cards — Styled exactly like the Registration tab (.stats-grid & .stat-card) */}
-      <div className="stats-grid">
+      {/* 4 Stats Cards — 2 rows with 2 blocks on laptop/desktop */}
+      <div className="stats-grid budget-stats-grid">
         {/* Card 1: Total Available Funds */}
         <div className="stat-card">
           <span className="stat-label">Total Available Funds</span>

@@ -2775,6 +2775,32 @@ h6 {
   }
 }
 
+/* Budget & Expenses Overview: 2 rows with 2 blocks on laptop/desktop */
+.budget-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 480px) {
+  .budget-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (min-width: 900px) {
+  .budget-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+.budget-stats-grid .stat-card {
+  justify-content: center;
+  min-height: 106px;
+}
+
 .stat-card {
   background: var(--bg-card);
   border: 1px solid var(--border-gold);
