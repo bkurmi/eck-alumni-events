@@ -85,45 +85,6 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
     }
   };
 
-  const handleExportCSV = () => {
-    if (sponsorships.length === 0) {
-      alert('No sponsorship data to export.');
-      return;
-    }
-
-    const headers = [
-      'Sponsor / Contributor Name',
-      'Amount (INR)',
-      'Receiving UPI / Account',
-      'Contact Person',
-      'Contact Phone',
-      'Contact Email',
-      'Notes & Commitments',
-      'Date Added',
-    ];
-
-    const rows = filteredList.map((s) => [
-      `"${(s.sponsor_name || '').replace(/"/g, '""')}"`,
-      s.amount || 0,
-      `"${(s.receiving_upi_id || '').replace(/"/g, '""')}"`,
-      `"${(s.contact_person || '').replace(/"/g, '""')}"`,
-      `"${(s.contact_phone || '').replace(/"/g, '""')}"`,
-      `"${(s.contact_email || '').replace(/"/g, '""')}"`,
-      `"${(s.notes || '').replace(/"/g, '""')}"`,
-      `"${formatDDMMYYYY(s.created_at)}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `ECK_DeepAura_Sponsorships_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   // Format date strictly as DD-MM-YYYY (matching UPI Reconciliation screen)
   const formatDDMMYYYY = (dateStr: string | null | undefined) => {
     if (!dateStr || dateStr === 'No Date') return '—';
@@ -155,10 +116,10 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '20px' }}>💎</span>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0, flex: '1 1 auto' }}>
+          <span style={{ fontSize: '20px', flexShrink: 0, lineHeight: 1.2, marginTop: '2px' }}>💎</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span>Event Sponsorships</span>
               <span
                 style={{
@@ -174,7 +135,7 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
                 {sponsorships.length}
               </span>
             </h2>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word' }}>
               Total Collected: <strong style={{ color: '#10b981' }}>₹{stats.totalAmount.toLocaleString('en-IN')}</strong>
               {registrationAmount > 0 && (
                 <> • Combined Fund: <strong style={{ color: '#a5b4fc' }}>₹{stats.grandEventTotal.toLocaleString('en-IN')}</strong> ({totalAttendeesCount} guests attending)</>
@@ -209,35 +170,12 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
 
           <button
             type="button"
-            onClick={handleExportCSV}
-            style={{
-              minHeight: '44px',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              color: '#e2e8f0',
-              fontSize: '0.86rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-            title="Download CSV"
-          >
-            <span>📥</span>
-            <span>CSV</span>
-          </button>
-
-          <button
-            type="button"
             onClick={handleShareAllWhatsApp}
             className="btn btn-whatsapp-primary btn-sm"
             style={{ minHeight: '44px' }}
-            title="Broadcast all sponsorships on WhatsApp"
+            title="Share all sponsorships on WhatsApp"
           >
-            💬 Broadcast
+            💬 Share
           </button>
         </div>
       </div>
