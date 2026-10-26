@@ -663,18 +663,6 @@ export const AdminPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  className={`admin-view-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('expenses')}
-                >
-                  <span className="tab-title">
-                    <span className="tab-icon">📊</span>
-                    <span className="tab-text-full">Budget &amp; Expenses</span>
-                    <span className="tab-text-short">Expenses</span>
-                  </span>
-                  <span className="admin-tab-count">{expenses.length}</span>
-                </button>
-                <button
-                  type="button"
                   className={`admin-view-tab-btn ${activeTab === 'upi_report' ? 'active' : ''}`}
                   onClick={() => setActiveTab('upi_report')}
                 >
@@ -687,6 +675,18 @@ export const AdminPage: React.FC = () => {
                     <span className="tab-count-full">{verifications.length} Tagged</span>
                     <span className="tab-count-short">{verifications.length}</span>
                   </span>
+                </button>
+                <button
+                  type="button"
+                  className={`admin-view-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('expenses')}
+                >
+                  <span className="tab-title">
+                    <span className="tab-icon">📊</span>
+                    <span className="tab-text-full">Budget &amp; Expenses</span>
+                    <span className="tab-text-short">Expenses</span>
+                  </span>
+                  <span className="admin-tab-count">{expenses.length}</span>
                 </button>
                 {isAdminGatePortalEnabled() && (
                   <button
