@@ -8,14 +8,21 @@ import { GateVerificationPortal } from '../components/GateVerificationPortal';
 import { GateStaffManagerModal } from '../components/GateStaffManagerModal';
 import { SponsorshipsManager } from '../components/SponsorshipsManager';
 import { SponsorshipModal } from '../components/SponsorshipModal';
+import { EventExpensesManager } from '../components/EventExpensesManager';
+import { ExpenseModal } from '../components/ExpenseModal';
 import {
   fetchSponsorshipsFromDb,
   saveSponsorshipToDb,
 } from '../lib/sponsorships';
+import {
+  fetchExpensesFromDb,
+  saveExpenseToDb,
+  deleteExpenseFromDb,
+} from '../lib/expenses';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { isAdminGatePortalEnabled } from '../lib/gate';
-import type { EventRegistration, ECKEvent, PaymentVerification, Sponsorship } from '../types';
+import type { EventRegistration, ECKEvent, PaymentVerification, Sponsorship, EventExpense } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
   id: 'mock-deepaura-2026',
@@ -42,11 +49,12 @@ export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'registrations' | 'sponsorships' | 'upi_report' | 'gate_portal'
+    'registrations' | 'sponsorships' | 'expenses' | 'upi_report' | 'gate_portal'
   >('registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
   const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
+  const [expenses, setExpenses] = useState<EventExpense[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
@@ -58,6 +66,8 @@ export const AdminPage: React.FC = () => {
   const [isGatePinModalOpen, setIsGatePinModalOpen] = useState(false);
   const [isSponsorshipModalOpen, setIsSponsorshipModalOpen] = useState(false);
   const [selectedSponsorship, setSelectedSponsorship] = useState<Sponsorship | null>(null);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<EventExpense | null>(null);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [singleCopied, setSingleCopied] = useState(false);
 
@@ -264,23 +274,73 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  const fetchExpensesData = async (eventIdToUse?: string) => {
+    try {
+      const targetId = eventIdToUse || activeEvent.id;
+      const data = await fetchExpensesFromDb(targetId);
+      setExpenses(data);
+    } catch (err) {
+      console.warn('Error fetching expenses data:', err);
+    }
+  };
+
+  const handleSaveExpense = async (
+    payload: Partial<EventExpense>,
+    receiptFile?: File | null
+  ): Promise<boolean> => {
+    try {
+      await saveExpenseToDb(
+        {
+          ...payload,
+          event_id: activeEvent.id || null,
+        },
+        receiptFile,
+        activeEvent.event_slug
+      );
+      await fetchExpensesData();
+      return true;
+    } catch (err: any) {
+      console.error('Failed to save expense:', err);
+      alert('Failed to save expense: ' + (err?.message || 'Unknown error'));
+      return false;
+    }
+  };
+
+  const handleDeleteExpense = async (id: string): Promise<boolean> => {
+    try {
+      await deleteExpenseFromDb(id);
+      await fetchExpensesData();
+      return true;
+    } catch (err: any) {
+      console.error('Failed to delete expense:', err);
+      alert('Failed to delete expense: ' + (err?.message || 'Unknown error'));
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (session) {
       fetchRegistrations();
       fetchSponsorshipsData();
+      fetchExpensesData();
     }
   }, [session]);
 
-  // Re-fetch sponsorships if activeEvent changes or when switching to the sponsorships tab
+  // Re-fetch sponsorships or expenses if activeEvent changes or when switching tabs
   useEffect(() => {
-    if (session && activeTab === 'sponsorships') {
-      fetchSponsorshipsData();
+    if (session) {
+      if (activeTab === 'sponsorships') {
+        fetchSponsorshipsData();
+      } else if (activeTab === 'expenses') {
+        fetchExpensesData();
+      }
     }
   }, [session, activeTab]);
 
   useEffect(() => {
     if (session && activeEvent.id && activeEvent.id !== 'mock-deepaura-2026') {
       fetchSponsorshipsData(activeEvent.id);
+      fetchExpensesData(activeEvent.id);
     }
   }, [session, activeEvent.id]);
 
@@ -515,7 +575,9 @@ export const AdminPage: React.FC = () => {
                         ? 'UPI Reconciliation Ledger'
                         : activeTab === 'sponsorships'
                           ? 'Sponsorships Ledger'
-                          : 'Registrations Overview'}
+                          : activeTab === 'expenses'
+                            ? 'Event Budget & Expenses'
+                            : 'Registrations Overview'}
                   </h1>
                   <p className="admin-subtitle">
                     {activeTab === 'gate_portal'
@@ -524,7 +586,9 @@ export const AdminPage: React.FC = () => {
                         ? 'Track & verify payments across receiving UPI accounts.'
                         : activeTab === 'sponsorships'
                           ? 'Track Alumni sponsors'
-                          : 'Verify screenshots and alumni submissions.'}
+                          : activeTab === 'expenses'
+                            ? 'Track expected budget vs real expenses & net financial balance.'
+                            : 'Verify screenshots and alumni submissions.'}
                   </p>
                 </div>
                 <div className="admin-actions">
@@ -551,6 +615,7 @@ export const AdminPage: React.FC = () => {
                     onClick={() => {
                       fetchRegistrations();
                       fetchSponsorshipsData();
+                      fetchExpensesData();
                     }}
                     disabled={loadingData}
                     className="btn btn-secondary btn-sm"
@@ -594,6 +659,18 @@ export const AdminPage: React.FC = () => {
                     <span className="tab-text-short">Sponsors</span>
                   </span>
                   <span className="admin-tab-count">{sponsorships.length}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`admin-view-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('expenses')}
+                >
+                  <span className="tab-title">
+                    <span className="tab-icon">📊</span>
+                    <span className="tab-text-full">Budget &amp; Expenses</span>
+                    <span className="tab-text-short">Expenses</span>
+                  </span>
+                  <span className="admin-tab-count">{expenses.length}</span>
                 </button>
                 <button
                   type="button"
@@ -685,6 +762,30 @@ export const AdminPage: React.FC = () => {
                   onRefresh={() => {
                     fetchRegistrations();
                     fetchSponsorshipsData();
+                    fetchExpensesData();
+                  }}
+                  loading={loadingData}
+                />
+              ) : activeTab === 'expenses' ? (
+                <EventExpensesManager
+                  expenses={expenses}
+                  registrationAmount={stats.totalAmount}
+                  sponsorshipAmount={sponsorships.reduce((sum, s) => sum + Number(s.amount || 0), 0)}
+                  registrationCount={stats.totalRegs}
+                  sponsorshipCount={sponsorships.length}
+                  eventName={activeEvent.event_name}
+                  onAddExpense={() => {
+                    setSelectedExpense(null);
+                    setIsExpenseModalOpen(true);
+                  }}
+                  onEditExpense={(item) => {
+                    setSelectedExpense(item);
+                    setIsExpenseModalOpen(true);
+                  }}
+                  onRefresh={() => {
+                    fetchRegistrations();
+                    fetchSponsorshipsData();
+                    fetchExpensesData();
                   }}
                   loading={loadingData}
                 />
@@ -1204,6 +1305,20 @@ export const AdminPage: React.FC = () => {
         onSave={handleSaveSponsorship}
         initialData={selectedSponsorship}
         currentUserEmail={session?.user?.email}
+      />
+
+      {/* Expense Entry & Edit Modal */}
+      <ExpenseModal
+        isOpen={isExpenseModalOpen}
+        onClose={() => {
+          setIsExpenseModalOpen(false);
+          setSelectedExpense(null);
+        }}
+        onSave={handleSaveExpense}
+        onDelete={handleDeleteExpense}
+        initialData={selectedExpense}
+        currentUserEmail={session?.user?.email}
+        eventId={activeEvent.id}
       />
     </div>
   );

@@ -314,7 +314,7 @@ export function convertLookupToFormData(lookup: ExistingRegistrationLookup): Reg
     country: isIndia ? 'India' : 'Other',
     country_other: isIndia ? '' : (alumni?.country || ''),
     city: alumni?.city || '',
-    state: isIndia ? (alumni?.state || 'Rajasthan') : '',
+    state: isIndia ? (alumni?.state || '') : '',
     state_other: isIndia ? '' : (alumni?.state || ''),
     year_of_passing: alumni?.year_of_passing || '',
     engineering_discipline: alumni?.engineering_discipline || '',
