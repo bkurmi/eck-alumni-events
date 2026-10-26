@@ -12,6 +12,7 @@ interface EventExpensesManagerProps {
   registrationAmount: number;
   sponsorshipAmount: number;
   registrationCount?: number;
+  totalHeadcount?: number;
   sponsorshipCount?: number;
   eventName?: string;
   onAddExpense: () => void;
@@ -25,6 +26,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   registrationAmount,
   sponsorshipAmount,
   registrationCount = 0,
+  totalHeadcount = 0,
   sponsorshipCount = 0,
   eventName = 'ECK-RTU Alumni DeepAura 2K26',
   onAddExpense,
@@ -108,7 +110,9 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       eventName,
       stats.totalAvailableFunds,
       registrationAmount,
-      sponsorshipAmount
+      sponsorshipAmount,
+      registrationCount,
+      totalHeadcount
     );
     const encoded = encodeURIComponent(text);
     const isMobile =
@@ -148,9 +152,16 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         <div className="stat-card">
           <span className="stat-label">Total Available Funds</span>
           <span className="stat-value font-accent">₹{formatINR(stats.totalAvailableFunds)}</span>
-          <span className="stat-hint">
-            ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount})` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
-          </span>
+          <div className="stat-hint" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px' }}>
+            <span>
+              ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount} attending)` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
+            </span>
+            {totalHeadcount > 0 && (
+              <span style={{ color: '#38bdf8', fontWeight: 600, fontSize: '0.73rem' }}>
+                👥 {totalHeadcount} Total Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Card 2: Expected Budget */}
@@ -159,6 +170,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           <span className="stat-value">₹{formatINR(stats.totalExpected)}</span>
           <span className="stat-hint">
             {stats.totalItems} planned line items
+            {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
           </span>
         </div>
 

@@ -213,7 +213,9 @@ export function buildExpensesWhatsAppMessage(
   eventName = 'ECK-RTU Alumni DeepAura 2K26',
   totalAvailableFunds = 0,
   registrationAmount = 0,
-  sponsorshipAmount = 0
+  sponsorshipAmount = 0,
+  attendingRegistrationCount = 0,
+  totalHeadcount = 0
 ): string {
   const fundingGap = totalAvailableFunds - totalExpected;
   const isDeficit = fundingGap < 0;
@@ -223,8 +225,16 @@ export function buildExpensesWhatsAppMessage(
 
   const header = `📊 *EVENT BUDGET & EXPENSE FEASIBILITY REPORT*\n*Event:* ${eventName}\n📅 Date: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
 
+  const attendingDetails = attendingRegistrationCount > 0
+    ? ` (${attendingRegistrationCount} attending${totalHeadcount > 0 ? `, 👥 ${totalHeadcount} headcount` : ''})`
+    : '';
+
+  const costPerHead = totalHeadcount > 0 && totalExpected > 0
+    ? ` (~₹${formatINR(Math.round(totalExpected / totalHeadcount))}/head for ${totalHeadcount} guests)`
+    : '';
+
   const fundingSection = totalAvailableFunds > 0
-    ? `\n💰 *FUNDS & BUDGET FEASIBILITY:*\n• *Available Inflow:* ₹${formatINR(totalAvailableFunds)} (Regs: ₹${formatINR(registrationAmount)} + Sponsors: ₹${formatINR(sponsorshipAmount)})\n• *Planned Budget:* ₹${formatINR(totalExpected)}\n• *Funding Status:* ${isDeficit ? `🚨 Deficit of -₹${formatINR(Math.abs(fundingGap))} (${coveragePct}% funded)` : `✅ Fully Funded (+₹${formatINR(fundingGap)} surplus)`}\n• *Real Paid Outflow:* ₹${formatINR(totalActual)}\n• *Live Cash Balance:* ₹${formatINR(liveCash)}`
+    ? `\n💰 *FUNDS & BUDGET FEASIBILITY:*\n• *Available Inflow:* ₹${formatINR(totalAvailableFunds)} (Regs: ₹${formatINR(registrationAmount)}${attendingDetails} + Sponsors: ₹${formatINR(sponsorshipAmount)})\n• *Planned Budget:* ₹${formatINR(totalExpected)}${costPerHead}\n• *Funding Status:* ${isDeficit ? `🚨 Deficit of -₹${formatINR(Math.abs(fundingGap))} (${coveragePct}% funded)` : `✅ Fully Funded (+₹${formatINR(fundingGap)} surplus)`}\n• *Real Paid Outflow:* ₹${formatINR(totalActual)}\n• *Live Cash Balance:* ₹${formatINR(liveCash)}`
     : `\n💰 *EXPENSE OVERVIEW:*\n• *Expected Budget:* ₹${formatINR(totalExpected)}\n• *Actual Paid:* ₹${formatINR(totalActual)}`;
 
   // Itemized listing
