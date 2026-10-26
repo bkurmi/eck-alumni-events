@@ -57,8 +57,12 @@ export async function fetchSponsorshipsFromDb(eventId?: string): Promise<Sponsor
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (eventId) {
-      query = query.or(`event_id.eq.${eventId},event_id.is.null`);
+    const isUUID =
+      typeof eventId === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eventId.trim());
+
+    if (isUUID) {
+      query = query.or(`event_id.eq.${eventId.trim()},event_id.is.null`);
     }
 
     const { data, error } = await query;
@@ -95,8 +99,13 @@ export async function saveSponsorshipToDb(
     }
   }
 
+  const isUUID =
+    typeof sponsorship.event_id === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sponsorship.event_id.trim());
+
   const payload: any = {
     ...sponsorship,
+    event_id: isUUID ? sponsorship.event_id?.trim() : null,
     amount: Number(sponsorship.amount) || 0,
     payment_screenshot_path: screenshotPath,
     updated_at: new Date().toISOString(),

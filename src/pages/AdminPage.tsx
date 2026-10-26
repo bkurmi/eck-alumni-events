@@ -83,7 +83,7 @@ export const AdminPage: React.FC = () => {
   const fetchRegistrations = async () => {
     setLoadingData(true);
     try {
-      const [regRes, verifRes] = await Promise.all([
+      const [regRes, verifRes, eventRes] = await Promise.all([
         supabase
           .from('event_registrations')
           .select(`
@@ -96,6 +96,12 @@ export const AdminPage: React.FC = () => {
           .from('payment_verifications')
           .select('*')
           .order('created_at', { ascending: false }),
+        supabase
+          .from('events')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       if (regRes.error) {
@@ -115,6 +121,8 @@ export const AdminPage: React.FC = () => {
       setVerifications(verifList);
       if (list.length > 0 && list[0]?.events) {
         setActiveEvent(list[0].events);
+      } else if (eventRes.data) {
+        setActiveEvent(eventRes.data as ECKEvent);
       }
     } catch (err) {
       console.warn('Registrations fetch note:', err);
@@ -224,9 +232,10 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  const fetchSponsorshipsData = async () => {
+  const fetchSponsorshipsData = async (eventIdToUse?: string) => {
     try {
-      const data = await fetchSponsorshipsFromDb(activeEvent.id);
+      const targetId = eventIdToUse || activeEvent.id;
+      const data = await fetchSponsorshipsFromDb(targetId);
       setSponsorships(data);
     } catch (err) {
       console.warn('Error fetching sponsorships data:', err);
@@ -261,6 +270,19 @@ export const AdminPage: React.FC = () => {
       fetchSponsorshipsData();
     }
   }, [session]);
+
+  // Re-fetch sponsorships if activeEvent changes or when switching to the sponsorships tab
+  useEffect(() => {
+    if (session && activeTab === 'sponsorships') {
+      fetchSponsorshipsData();
+    }
+  }, [session, activeTab]);
+
+  useEffect(() => {
+    if (session && activeEvent.id && activeEvent.id !== 'mock-deepaura-2026') {
+      fetchSponsorshipsData(activeEvent.id);
+    }
+  }, [session, activeEvent.id]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
