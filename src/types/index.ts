@@ -306,4 +306,47 @@ export const SPONSORSHIP_PAYMENT_MODES = [
   'Other',
 ] as const;
 
+// Expense Ledger Types
+export type ExpenseStatus = 'planned' | 'partially_paid' | 'paid' | 'settled' | 'cancelled';
+
+export interface EventExpense {
+  id: string;
+  event_id?: string | null;
+  item_name: string;
+  category: string;
+  expected_amount: number;
+  actual_amount: number;
+  status: ExpenseStatus;
+  vendor_name?: string | null;
+  vendor_phone?: string | null;
+  payment_mode?: string | null;
+  payment_date?: string | null;
+  payment_screenshot_path?: string | null;
+  notes?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const EXPENSE_CATEGORIES = [
+  'Catering & Food',
+  'Tent & Infrastructure',
+  'Sound, DJ & Cultural',
+  'Decorations & Lighting',
+  'Printing, Badges & ID Cards',
+  'Mementos, Gifts & Souvenirs',
+  'Photography & Videography',
+  'Venue, Electricity & Logistics',
+  'Marketing & Communication',
+  'Miscellaneous & Contingency',
+] as const;
+
+export const EXPENSE_PAYMENT_MODES = [
+  'UPI',
+  'Cash',
+  'Bank Transfer (NEFT/IMPS)',
+  'Cheque',
+  'Other',
+] as const;
+
 
