@@ -669,6 +669,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
       </div>
 
+
       {/* ── VIEW MODE SWITCHER (Overall Flat View as First Option) ── */}
       <div className="view-mode-toggle-card">
         <div className="view-mode-toggle-label">

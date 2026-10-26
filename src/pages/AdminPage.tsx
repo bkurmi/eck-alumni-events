@@ -6,10 +6,16 @@ import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
 import { QuickManualRegistrationModal } from '../components/QuickManualRegistrationModal';
 import { GateVerificationPortal } from '../components/GateVerificationPortal';
 import { GateStaffManagerModal } from '../components/GateStaffManagerModal';
+import { SponsorshipsManager } from '../components/SponsorshipsManager';
+import { SponsorshipModal } from '../components/SponsorshipModal';
+import {
+  fetchSponsorshipsFromDb,
+  saveSponsorshipToDb,
+} from '../lib/sponsorships';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { isAdminGatePortalEnabled } from '../lib/gate';
-import type { EventRegistration, ECKEvent, PaymentVerification } from '../types';
+import type { EventRegistration, ECKEvent, PaymentVerification, Sponsorship } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
   id: 'mock-deepaura-2026',
@@ -35,9 +41,12 @@ const DEFAULT_EVENT: ECKEvent = {
 export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [activeTab, setActiveTab] = useState<'registrations' | 'upi_report' | 'gate_portal'>('registrations');
+  const [activeTab, setActiveTab] = useState<
+    'registrations' | 'sponsorships' | 'upi_report' | 'gate_portal'
+  >('registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
+  const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
@@ -47,6 +56,8 @@ export const AdminPage: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [isGatePinModalOpen, setIsGatePinModalOpen] = useState(false);
+  const [isSponsorshipModalOpen, setIsSponsorshipModalOpen] = useState(false);
+  const [selectedSponsorship, setSelectedSponsorship] = useState<Sponsorship | null>(null);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [singleCopied, setSingleCopied] = useState(false);
 
@@ -213,9 +224,41 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  const fetchSponsorshipsData = async () => {
+    try {
+      const data = await fetchSponsorshipsFromDb(activeEvent.id);
+      setSponsorships(data);
+    } catch (err) {
+      console.warn('Error fetching sponsorships data:', err);
+    }
+  };
+
+  const handleSaveSponsorship = async (
+    payload: Partial<Sponsorship>,
+    screenshotFile?: File | null
+  ): Promise<boolean> => {
+    try {
+      await saveSponsorshipToDb(
+        {
+          ...payload,
+          event_id: activeEvent.id || null,
+        },
+        screenshotFile,
+        activeEvent.event_slug
+      );
+      await fetchSponsorshipsData();
+      return true;
+    } catch (err: any) {
+      console.error('Failed to save sponsorship:', err);
+      alert('Failed to save sponsorship: ' + (err?.message || 'Unknown error'));
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (session) {
       fetchRegistrations();
+      fetchSponsorshipsData();
     }
   }, [session]);
 
@@ -234,8 +277,8 @@ export const AdminPage: React.FC = () => {
       reg.attendance_status === 'yes'
         ? 'Confirmed Attending'
         : reg.attendance_status === 'payment_pending'
-        ? 'Payment Pending (Awaiting Proof)'
-        : reg.attendance_status;
+          ? 'Payment Pending (Awaiting Proof)'
+          : reg.attendance_status;
     const rawDate = activeEvent?.event_date || '2026-11-01';
     let eventDate = rawDate;
     const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -388,6 +431,13 @@ export const AdminPage: React.FC = () => {
     const pendingAmount = paymentPendingRegs.reduce((sum, r) => sum + Number(r.amount || 0), 0);
     const maybeCount = registrations.filter((r) => r.attendance_status === 'maybe').length;
 
+    const confirmedSponsorshipAmount = sponsorships.reduce(
+      (sum, s) => sum + Number(s.amount || 0),
+      0
+    );
+
+    const grandTotalFunds = totalAmount + confirmedSponsorshipAmount;
+
     return {
       totalRegs,
       totalAttendees,
@@ -395,8 +445,11 @@ export const AdminPage: React.FC = () => {
       pendingAmount,
       maybeCount,
       paymentPendingCount: paymentPendingRegs.length,
+      confirmedSponsorshipAmount,
+      grandTotalFunds,
+      sponsorshipsCount: sponsorships.length,
     };
-  }, [registrations]);
+  }, [registrations, sponsorships]);
 
   const getPublicScreenshotUrl = (path: string | null) => {
     if (!path) return null;
@@ -437,15 +490,19 @@ export const AdminPage: React.FC = () => {
                     {activeTab === 'gate_portal'
                       ? 'Gate Verification & Live Turnout'
                       : activeTab === 'upi_report'
-                      ? 'UPI Reconciliation Ledger'
-                      : 'Registrations Overview'}
+                        ? 'UPI Reconciliation Ledger'
+                        : activeTab === 'sponsorships'
+                          ? 'Sponsorships Ledger'
+                          : 'Registrations Overview'}
                   </h1>
                   <p className="admin-subtitle">
                     {activeTab === 'gate_portal'
-                      ? 'Live QR scanner, gate attendance records, walk-in spot entries & headcounts.'
+                      ? 'QR scanning, attendance & walk-ins.'
                       : activeTab === 'upi_report'
-                      ? 'Track collections & verify payments across receiving UPI accounts.'
-                      : 'Verify screenshots and alumni submissions.'}
+                        ? 'Track & verify payments across receiving UPI accounts.'
+                        : activeTab === 'sponsorships'
+                          ? 'Track Alumni sponsors'
+                          : 'Verify screenshots and alumni submissions.'}
                   </p>
                 </div>
                 <div className="admin-actions">
@@ -465,11 +522,14 @@ export const AdminPage: React.FC = () => {
                     title="Quickly register alumnus who paid via QR/UPI directly"
                   >
                     <span>⚡</span>
-                    <span>+ Quick Entry</span>
+                    <span>Quick Entry</span>
                   </button>
                   <button
                     type="button"
-                    onClick={fetchRegistrations}
+                    onClick={() => {
+                      fetchRegistrations();
+                      fetchSponsorshipsData();
+                    }}
                     disabled={loadingData}
                     className="btn btn-secondary btn-sm"
                     title="Refresh Data"
@@ -500,6 +560,18 @@ export const AdminPage: React.FC = () => {
                     <span className="tab-text-short">Directory</span>
                   </span>
                   <span className="admin-tab-count">{registrations.length}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`admin-view-tab-btn ${activeTab === 'sponsorships' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('sponsorships')}
+                >
+                  <span className="tab-title">
+                    <span className="tab-icon">💎</span>
+                    <span className="tab-text-full">Sponsorships</span>
+                    <span className="tab-text-short">Sponsors</span>
+                  </span>
+                  <span className="admin-tab-count">{sponsorships.length}</span>
                 </button>
                 <button
                   type="button"
@@ -575,6 +647,25 @@ export const AdminPage: React.FC = () => {
                     stationName="Central Admin"
                   />
                 </>
+              ) : activeTab === 'sponsorships' ? (
+                <SponsorshipsManager
+                  sponsorships={sponsorships}
+                  registrationAmount={stats.totalAmount}
+                  totalAttendeesCount={stats.totalAttendees}
+                  onAddSponsorship={() => {
+                    setSelectedSponsorship(null);
+                    setIsSponsorshipModalOpen(true);
+                  }}
+                  onEditSponsorship={(s) => {
+                    setSelectedSponsorship(s);
+                    setIsSponsorshipModalOpen(true);
+                  }}
+                  onRefresh={() => {
+                    fetchRegistrations();
+                    fetchSponsorshipsData();
+                  }}
+                  loading={loadingData}
+                />
               ) : activeTab === 'upi_report' ? (
                 <UpiReconciliationReport
                   registrations={registrations}
@@ -608,7 +699,7 @@ export const AdminPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Stats Cards */}
+                  {/* Stats Cards with Combined Grand Total */}
                   <div className="stats-grid">
                     <div className="stat-card">
                       <span className="stat-label">Total Submissions</span>
@@ -632,6 +723,14 @@ export const AdminPage: React.FC = () => {
                         {stats.pendingAmount > 0
                           ? `+ ₹${stats.pendingAmount.toLocaleString('en-IN')} pending`
                           : 'Via verified screenshot'}
+                      </span>
+                    </div>
+
+                    <div className="stat-card">
+                      <span className="stat-label">Total Funds Raised</span>
+                      <span className="stat-value font-accent">₹{stats.grandTotalFunds.toLocaleString('en-IN')}</span>
+                      <span className="stat-hint">
+                        ₹{stats.totalAmount.toLocaleString('en-IN')} Regs + ₹{stats.confirmedSponsorshipAmount.toLocaleString('en-IN')} Sponsors
                       </span>
                     </div>
                   </div>
@@ -722,10 +821,10 @@ export const AdminPage: React.FC = () => {
                                 {reg.attendance_status === 'yes'
                                   ? 'Attending'
                                   : reg.attendance_status === 'payment_pending'
-                                  ? '⚠️ Payment Pending'
-                                  : reg.attendance_status === 'maybe'
-                                  ? 'Maybe'
-                                  : 'Not Attending'}
+                                    ? '⚠️ Payment Pending'
+                                    : reg.attendance_status === 'maybe'
+                                      ? 'Maybe'
+                                      : 'Not Attending'}
                               </span>
                             </div>
                             <span className="reg-amount">
@@ -1071,6 +1170,18 @@ export const AdminPage: React.FC = () => {
       <GateStaffManagerModal
         isOpen={isGatePinModalOpen}
         onClose={() => setIsGatePinModalOpen(false)}
+      />
+
+      {/* Sponsorship Entry & Edit Modal */}
+      <SponsorshipModal
+        isOpen={isSponsorshipModalOpen}
+        onClose={() => {
+          setIsSponsorshipModalOpen(false);
+          setSelectedSponsorship(null);
+        }}
+        onSave={handleSaveSponsorship}
+        initialData={selectedSponsorship}
+        currentUserEmail={session?.user?.email}
       />
     </div>
   );

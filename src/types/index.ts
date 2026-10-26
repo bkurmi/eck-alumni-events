@@ -251,3 +251,59 @@ export const COUNTRY_OPTIONS = [
   { value: 'Other', label: '🌐 Other (International)' },
 ] as const;
 
+export type SponsorshipTier =
+  | 'Title Sponsor'
+  | 'Associate Sponsor'
+  | 'Gold Sponsor'
+  | 'Silver Sponsor'
+  | 'Bronze Sponsor'
+  | 'Dinner & Catering'
+  | 'Stage & Cultural'
+  | 'Alumni Patron'
+  | 'Other';
+
+export type SponsorshipPaymentStatus = 'CONFIRMED' | 'CANCELLED';
+
+export interface Sponsorship {
+  id: string;
+  event_id?: string | null;
+  sponsor_name: string;
+  amount: number;
+  receiving_upi_id?: string | null;
+  contact_person?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  payment_screenshot_path?: string | null;
+  notes?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Legacy optional fields
+  category?: string | null;
+  payment_status?: SponsorshipPaymentStatus;
+  payment_mode?: string | null;
+  transaction_reference?: string | null;
+  logo_url?: string | null;
+}
+
+export const SPONSORSHIP_TIERS: SponsorshipTier[] = [
+  'Title Sponsor',
+  'Associate Sponsor',
+  'Gold Sponsor',
+  'Silver Sponsor',
+  'Bronze Sponsor',
+  'Dinner & Catering',
+  'Stage & Cultural',
+  'Alumni Patron',
+  'Other',
+];
+
+export const SPONSORSHIP_PAYMENT_MODES = [
+  'UPI',
+  'Bank Transfer (NEFT/RTGS)',
+  'Cheque',
+  'Cash',
+  'Other',
+] as const;
+
+
