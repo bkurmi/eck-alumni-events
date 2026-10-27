@@ -97,6 +97,21 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     attendeesDesc += ` (Alumnus + ${totalCount - 1} Guest${totalCount - 1 > 1 ? 's' : ''})`;
   }
 
+  const [photoLoadFailed, setPhotoLoadFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    setPhotoLoadFailed(false);
+  }, [photoUrl, registration.registration_id, registration.registration_number]);
+
+  const getAttendeeInitials = (name?: string): string => {
+    if (!name) return 'ECK';
+    const clean = name.trim().replace(/^(mr\.?|mrs\.?|ms\.?|dr\.?|er\.?)\s+/i, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'ECK';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   const photoSrc = photoUrl || registration.payment_screenshot_path ? (photoUrl || undefined) : undefined;
 
   // Format short name like "B. Kurmi" matching reference
@@ -136,15 +151,21 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
             {/* Left Column: Photo & Badge */}
             <div className="ticket-v-photo-col">
               <div className="ticket-v-photo-box">
-                {photoSrc ? (
-                  <img src={photoSrc} alt={attendeeName} className="ticket-v-photo-img" />
+                {photoSrc && !photoLoadFailed ? (
+                  <img
+                    src={photoSrc}
+                    alt={attendeeName}
+                    className="ticket-v-photo-img"
+                    onError={() => setPhotoLoadFailed(true)}
+                  />
                 ) : (
-                  <div className="ticket-v-photo-placeholder">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    <span>PHOTO</span>
+                  <div className="ticket-v-avatar-box">
+                    <div className="ticket-v-avatar-circle">
+                      <span className="ticket-v-avatar-initials">
+                        {getAttendeeInitials(alumni?.name || attendeeName)}
+                      </span>
+                    </div>
+                    <span className="ticket-v-avatar-badge">{badgeLabel}</span>
                   </div>
                 )}
               </div>
