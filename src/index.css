@@ -465,6 +465,165 @@ h6 {
   color: var(--success);
 }
 
+.badge-closed {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-weight: 600;
+}
+
+/* ============================================================
+   REGISTRATION CLOSED BANNERS & CARDS (Mobile-First)
+   ============================================================ */
+.registration-closed-card {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(30, 27, 46, 0.95), rgba(45, 25, 30, 0.95));
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  margin-bottom: 0.75rem;
+  text-align: left;
+}
+
+.closed-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.18);
+  padding-bottom: 0.65rem;
+}
+
+.closed-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(239, 68, 68, 0.18);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.closed-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fca5a5;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.closed-subtitle {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  margin: 0.15rem 0 0;
+}
+
+.closed-card-body {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+}
+
+.closed-card-body p {
+  margin: 0 0 0.65rem;
+}
+
+.spot-summary-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.spot-rate-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fde68a;
+}
+
+.spot-rate-chip.chip-free {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #86efac;
+}
+
+/* Dedicated Closed Notice in Form View */
+.registration-closed-form-notice {
+  background: linear-gradient(135deg, rgba(30, 27, 46, 0.98), rgba(45, 25, 30, 0.98));
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 16px;
+  padding: 1.75rem 1.25rem;
+  text-align: center;
+  margin: 1.5rem 0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.closed-icon-big {
+  font-size: 2.75rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.registration-closed-form-notice h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fca5a5;
+  margin-bottom: 0.5rem;
+}
+
+.closed-lead {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  margin-bottom: 1.25rem;
+}
+
+.closed-spot-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.closed-spot-box h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fde68a;
+  margin-bottom: 0.4rem;
+}
+
+.closed-spot-box p {
+  font-size: 0.88rem;
+  color: #e2e8f0;
+  line-height: 1.45;
+  margin-bottom: 0.5rem;
+}
+
+.closed-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .closed-actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+
 .pulse-gold {
   color: var(--primary-light);
   animation: pulse-glow 2s infinite ease-in-out;
@@ -2728,30 +2887,65 @@ h6 {
 .admin-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.admin-actions .admin-quick-entry-btn,
+.admin-actions .admin-refresh-btn,
+.admin-actions .btn-signout {
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-signout {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(220, 38, 38, 0.28));
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.22);
+  min-height: 38px;
+}
+
+.btn-signout:hover {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-signout:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 640px) {
   .admin-actions {
     width: 100%;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
     gap: 8px;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .admin-actions .admin-quick-entry-btn {
-    flex: 1 1 100%;
-    justify-content: center;
-    padding: 10px 16px;
-    font-size: 0.9rem;
-  }
-
-  .admin-actions .btn-secondary,
-  .admin-actions .btn-ghost {
-    flex: 1 1 calc(50% - 4px);
+  .admin-actions .admin-quick-entry-btn,
+  .admin-actions .admin-refresh-btn,
+  .admin-actions .btn-signout {
+    flex: 1 1 auto;
     justify-content: center;
     padding: 8px 12px;
+    font-size: 0.82rem;
   }
 }
 

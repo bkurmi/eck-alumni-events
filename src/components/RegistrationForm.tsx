@@ -22,6 +22,7 @@ import {
   recordCompletedRegistrationLocally,
   cleanMobileNumber,
 } from '../lib/registrations';
+import { isRegistrationClosed } from '../lib/eventStatus';
 
 interface RegistrationFormProps {
   event: ECKEvent;
@@ -362,6 +363,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     if (formError) setFormError(null);
     if (errorFieldId) setErrorFieldId(null);
 
+    if (isRegistrationClosed(event) || event.status === 'CLOSED') {
+      scrollToError(
+        'Online registration is now closed. Please visit the Spot Walk-in Registration Desk at the gate on event day.',
+        'field-name'
+      );
+      return;
+    }
+
     // Validate minimum required fields before launching UPI
     if (!formData.name.trim()) {
       scrollToError('Please enter your full name first so we can link your payment to you.', 'field-name');
@@ -510,6 +519,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     setFormError(null);
     setErrorFieldId(null);
     setScreenshotError(null);
+
+    if (isRegistrationClosed(event) || event.status === 'CLOSED') {
+      scrollToError(
+        'Online registration has closed as of 31st October at 6:00 PM. Please register on-the-spot at the college gate desk.',
+        'field-name'
+      );
+      return;
+    }
 
     if (!formData.name.trim()) {
       scrollToError('Please enter your full name.', 'field-name');

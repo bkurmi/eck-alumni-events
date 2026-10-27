@@ -28,6 +28,12 @@ export const PRICING_RULES = {
   KID_UNDER_7: 0,
 } as const;
 
+export const SPOT_PRICING_RULES = {
+  ADULT: 1000,
+  KID_ABOVE_10: 500,
+  KID_UNDER_10: 0,
+} as const;
+
 /**
  * Calculates total reunion contribution based on attendee composition:
  * - 1 Adult: ₹800
@@ -119,3 +125,70 @@ export function calculateContribution(
     items,
   };
 }
+
+/**
+ * Calculates Spot Entry contribution at event gate:
+ * - ₹1,000 per adult (flat, no couple discounts)
+ * - ₹500 per child above 10 years
+ * - Free (₹0) for children under 10 years
+ * Note: Applied ONLY for Spot Entry Walk-ins at the gate desk.
+ */
+export function calculateSpotContribution(
+  adults: number = 1,
+  kidsAbove10: number = 0,
+  kidsUnder10: number = 0
+): PricingBreakdown {
+  const safeAdults = Math.max(0, Math.floor(adults || 0));
+  const safeKidsAbove10 = Math.max(0, Math.floor(kidsAbove10 || 0));
+  const safeKidsUnder10 = Math.max(0, Math.floor(kidsUnder10 || 0));
+
+  const adultsAmount = safeAdults * SPOT_PRICING_RULES.ADULT;
+  const kidsAbove10Amount = safeKidsAbove10 * SPOT_PRICING_RULES.KID_ABOVE_10;
+  const kidsUnder10Amount = 0;
+
+  const items: PricingBreakdownItem[] = [];
+
+  if (safeAdults > 0) {
+    items.push({
+      label: safeAdults === 1 ? 'Spot Entry (1 Adult)' : `Spot Entry (${safeAdults} Adults)`,
+      count: safeAdults,
+      rateDescription: safeAdults === 1 ? '₹1,000 per adult' : `${safeAdults} × ₹1,000`,
+      amount: adultsAmount,
+    });
+  }
+
+  if (safeKidsAbove10 > 0) {
+    items.push({
+      label: `Child${safeKidsAbove10 > 1 ? 'ren' : ''} (10+ yrs)`,
+      count: safeKidsAbove10,
+      rateDescription: `${safeKidsAbove10} × ₹500`,
+      amount: kidsAbove10Amount,
+    });
+  }
+
+  if (safeKidsUnder10 > 0) {
+    items.push({
+      label: `Child${safeKidsUnder10 > 1 ? 'ren' : ''} (<10 yrs)`,
+      count: safeKidsUnder10,
+      rateDescription: 'Complimentary (Free)',
+      amount: 0,
+      isFree: true,
+    });
+  }
+
+  const totalAttendees = safeAdults + safeKidsAbove10 + safeKidsUnder10;
+  const totalAmount = adultsAmount + kidsAbove10Amount;
+
+  return {
+    adults: safeAdults,
+    kidsAbove7: safeKidsAbove10,
+    kidsUnder7: safeKidsUnder10,
+    adultsAmount,
+    kidsAbove7Amount: kidsAbove10Amount,
+    kidsUnder7Amount: kidsUnder10Amount,
+    totalAttendees,
+    totalAmount,
+    items,
+  };
+}
+

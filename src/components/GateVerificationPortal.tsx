@@ -12,7 +12,7 @@ import {
   type GatePortalStats,
 } from '../lib/gate';
 import { cleanMobileNumber, lookupRegistrationByMobile } from '../lib/registrations';
-import { calculateContribution } from '../lib/pricing';
+import { calculateContribution, calculateSpotContribution } from '../lib/pricing';
 import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
 import { ENGINEERING_DISCIPLINES } from '../types';
 import type { EventRegistration, GateEntry, GateVerificationResult } from '../types';
@@ -123,7 +123,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const minKidsUnder10 = isExistingPaid ? (existingMatchedReg?.children_under_7_count ?? 0) : 0;
 
   const spotPricing = React.useMemo(() => {
-    return calculateContribution(spotAdults, spotKidsAbove10, spotKidsUnder10);
+    return calculateSpotContribution(spotAdults, spotKidsAbove10, spotKidsUnder10);
   }, [spotAdults, spotKidsAbove10, spotKidsUnder10]);
 
   const totalContributionAmount = spotPricing.totalAmount;
@@ -2219,7 +2219,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                     <div className="rates-summary-badge">
-                      <span>₹800 Single • ₹1,500 Couple • ₹300 Kids (10+) • Free (&lt;10)</span>
+                      <span>⚡ Spot Entry: ₹1,000 per adult • ₹500 per child (10+) • Free (&lt;10 yrs)</span>
                     </div>
                   </div>
 
@@ -2229,9 +2229,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       <div className="spot-attendee-unified-info">
                         <div className="row-title-wrap">
                           <strong>Adults</strong>
-                          {spotAdults === 2 && (
-                            <span className="spot-couple-badge">Couple</span>
-                          )}
                           {isExistingPaid && (
                             <span className="spot-reg-number-chip" style={{ fontSize: '0.72rem', padding: '0.1rem 0.4rem' }}>
                               Min: {minAdults}
@@ -2240,10 +2237,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         </div>
                         <span className="row-desc">
                           {spotAdults === 1
-                            ? '₹800 for 1 adult'
-                            : spotAdults === 2
-                              ? '₹1,500 for couple'
-                              : '₹1,500 couple + ₹800/extra adult'}
+                            ? '₹1,000 for 1 adult'
+                            : `${spotAdults} × ₹1,000 = ₹${spotAdults * 1000}`}
                         </span>
                       </div>
                       <div className="spot-stepper">
@@ -2285,7 +2280,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             </span>
                           )}
                         </div>
-                        <span className="row-desc">₹300 per child</span>
+                        <span className="row-desc">
+                          {spotKidsAbove10 === 0
+                            ? '₹500 per child'
+                            : `${spotKidsAbove10} × ₹500 = ₹${spotKidsAbove10 * 500}`}
+                        </span>
                       </div>
                       <div className="spot-stepper">
                         <button

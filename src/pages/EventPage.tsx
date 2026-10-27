@@ -9,6 +9,11 @@ import { supabase } from '../lib/supabase';
 import { convertLookupToFormData, getEventRegistrationCount } from '../lib/registrations';
 import { resolveActivePaymentConfig } from '../lib/paymentRotation';
 import { isAlumniIdCardsEnabled } from '../lib/gate';
+import {
+  getRegistrationStatusInfo,
+  syncEventRegistrationStatus,
+  isRegistrationClosed,
+} from '../lib/eventStatus';
 import type {
   ECKEvent,
   RegistrationFormData,
@@ -77,6 +82,15 @@ export const EventPage: React.FC = () => {
             ? { ...DEFAULT_EVENT, event_slug: activeSlug }
             : (data as ECKEvent);
 
+        // Check database-driven registration deadline and maintain in Supabase events table
+        const deadlineInfo = getRegistrationStatusInfo(rawEvent);
+        if (deadlineInfo.isClosed) {
+          rawEvent.status = 'CLOSED';
+        }
+
+        // Maintain in the Supabase events table
+        syncEventRegistrationStatus(activeSlug, rawEvent.status, rawEvent.registration_closes_at).catch(() => {});
+
         const rotation = resolveActivePaymentConfig(rawEvent, regCount);
 
         if (isMounted) {
@@ -90,9 +104,12 @@ export const EventPage: React.FC = () => {
       } catch (err) {
         console.warn('Event fetch error handled:', err);
         const rotation = resolveActivePaymentConfig(DEFAULT_EVENT, 0);
+        const deadlineInfo = getRegistrationStatusInfo(DEFAULT_EVENT);
+        const fallbackStatus = deadlineInfo.isClosed ? 'CLOSED' : DEFAULT_EVENT.status;
         if (isMounted) {
           setEvent({
             ...DEFAULT_EVENT,
+            status: fallbackStatus,
             upi_id: rotation.activeConfig.upi_id,
             qr_image_url: rotation.activeConfig.qr_image_url,
           });
@@ -120,6 +137,9 @@ export const EventPage: React.FC = () => {
   }, [event.theme_primary_color, event.theme_accent_color]);
 
   const handleStartRegistration = () => {
+    if (isRegistrationClosed(event) || event.status === 'CLOSED') {
+      return;
+    }
     setPreloadedRegistration(null);
     setPreloadedFormData(null);
     setCurrentStep('form');
@@ -246,17 +266,56 @@ export const EventPage: React.FC = () => {
                 </button>
               </div>
 
-              <div className="form-event-summary-bar">
-                <span className="summary-title">{event.event_name}</span>
-                <span className="summary-fee">₹800 Single • ₹1,500 Couple</span>
-              </div>
+              {event.status === 'CLOSED' || isRegistrationClosed(event) ? (
+                <div className="registration-closed-form-notice">
+                  <div className="closed-icon-big">🔒</div>
+                  <h2>Online Registration is Closed</h2>
+                  <p className="closed-lead">
+                    Online registrations for DeepAura 2K26 are closed as per schedule.
+                  </p>
+                  <div className="closed-spot-box">
+                    <h4>⚡ Spot Walk-in Registration at College Gate</h4>
+                    <p>
+                      Missed registering online? You can still attend! Please visit the Spot Walk-in Registration Desk at the ECK Campus Gate on the event day.
+                    </p>
+                    <div className="spot-summary-pills">
+                      <span className="spot-rate-chip">Adults: ₹1,000 / person</span>
+                      <span className="spot-rate-chip">Kids (10+ yrs): ₹500</span>
+                      <span className="spot-rate-chip chip-free">Kids (&lt;10 yrs): Free</span>
+                    </div>
+                  </div>
+                  <div className="closed-actions">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep('overview')}
+                      className="btn btn-festive-primary"
+                    >
+                      Back to Event Details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenManageModal}
+                      className="btn btn-lookup-trigger"
+                    >
+                      🔍 Lookup Existing Registration / Pass
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="form-event-summary-bar">
+                    <span className="summary-title">{event.event_name}</span>
+                    <span className="summary-fee">₹800 Single • ₹1,500 Couple</span>
+                  </div>
 
-              <RegistrationForm
-                event={event}
-                onSuccess={handleRegistrationSuccess}
-                initialData={preloadedFormData}
-                existingRegistration={preloadedRegistration}
-              />
+                  <RegistrationForm
+                    event={event}
+                    onSuccess={handleRegistrationSuccess}
+                    initialData={preloadedFormData}
+                    existingRegistration={preloadedRegistration}
+                  />
+                </>
+              )}
             </div>
           ) : (
             <div className="overview-view">
@@ -342,18 +401,20 @@ export const EventPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bottom-cta-wrap">
-                  <button
-                    type="button"
-                    onClick={handleStartRegistration}
-                    className="btn btn-festive-primary btn-large btn-block"
-                  >
-                    <span>Register for DeepAura 2K26</span>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </button>
-                </div>
+                {event.status === 'OPEN' && !isRegistrationClosed() && (
+                  <div className="bottom-cta-wrap">
+                    <button
+                      type="button"
+                      onClick={handleStartRegistration}
+                      className="btn btn-festive-primary btn-large btn-block"
+                    >
+                      <span>Register for DeepAura 2K26</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
