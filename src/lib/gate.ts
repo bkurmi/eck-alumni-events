@@ -624,3 +624,38 @@ export async function markIdCardDownloaded(registrationId: string): Promise<bool
     return false;
   }
 }
+
+/**
+ * Resolves the attendee's profile photo from DB record, or fallback storage lookup in 'id-photos'.
+ */
+export async function resolveAttendeePhoto(reg: any): Promise<string | null> {
+  if (!reg) return null;
+  if (reg.photo_url) return reg.photo_url;
+  if (!reg.alumni) return null;
+
+  try {
+    const cleanName = (reg.alumni.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
+    const contact = cleanMobileNumber(reg.alumni.mobile || '');
+    if (!contact) return null;
+
+    const fileName = `${cleanName}_${contact}.jpg`;
+    const { data } = supabase.storage.from('id-photos').getPublicUrl(fileName);
+    if (data?.publicUrl) {
+      // Quick verification if photo file actually exists in storage bucket
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      try {
+        const check = await fetch(data.publicUrl, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (check.ok) {
+          return `${data.publicUrl}?t=${Date.now()}`;
+        }
+      } catch (_) {
+        clearTimeout(timeoutId);
+      }
+    }
+  } catch (err) {
+    console.warn('resolveAttendeePhoto notice:', err);
+  }
+  return null;
+}

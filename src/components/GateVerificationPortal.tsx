@@ -9,13 +9,64 @@ import {
   fetchGateEntries,
   fetchGateStats,
   isAdminGatePortalEnabled,
+  resolveAttendeePhoto,
   type GatePortalStats,
 } from '../lib/gate';
-import { cleanMobileNumber, lookupRegistrationByMobile } from '../lib/registrations';
+import {
+  cleanMobileNumber,
+  lookupRegistrationByMobile,
+  lookupRegistrationByRegNumber,
+  formatRegistrationNumberInput,
+} from '../lib/registrations';
 import { calculateContribution, calculateSpotContribution } from '../lib/pricing';
 import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
 import { ENGINEERING_DISCIPLINES } from '../types';
 import type { EventRegistration, GateEntry, GateVerificationResult } from '../types';
+
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word) => {
+      if (word.endsWith('.')) {
+        const clean = word.replace(/\./g, '');
+        return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase() + '.';
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+function formatSmartAttendeeName(rawName: string): { displayName: string; fontSizeClass: string; fullName: string } {
+  const fullName = toTitleCase(rawName || 'Alumnus');
+  const words = fullName.split(/\s+/).filter(Boolean);
+
+  let displayName = fullName;
+  if (displayName.length > 29 && words.length >= 3) {
+    const hasTitle = /^(Dr\.|Prof\.|Er\.|Mr\.|Mrs\.|Ms\.)/i.test(words[0]);
+    if (hasTitle && words.length >= 4) {
+      const title = words[0];
+      const firstName = words[1];
+      const middleInitials = words.slice(2, -1).map((w) => `${w.charAt(0).toUpperCase()}.`).join(' ');
+      const lastName = words[words.length - 1];
+      displayName = `${title} ${firstName} ${middleInitials} ${lastName}`;
+    } else if (!hasTitle && words.length >= 3) {
+      const firstName = words[0];
+      const middleInitials = words.slice(1, -1).map((w) => `${w.charAt(0).toUpperCase()}.`).join(' ');
+      const lastName = words[words.length - 1];
+      displayName = `${firstName} ${middleInitials} ${lastName}`;
+    }
+  }
+
+  let fontSizeClass = 'name-size-normal';
+  if (displayName.length > 24) {
+    fontSizeClass = 'name-size-compact';
+  } else if (displayName.length > 18) {
+    fontSizeClass = 'name-size-medium';
+  }
+
+  return { displayName, fontSizeClass, fullName };
+}
 
 interface GateVerificationPortalProps {
   registrations: EventRegistration[];
@@ -68,6 +119,14 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [manualRegNumber, setManualRegNumber] = useState('');
   const [nameSearchQuery, setNameSearchQuery] = useState('');
   const [selectedAttendee, setSelectedAttendee] = useState<EventRegistration | null>(null);
+
+  // Verified Attendee Card & Entry Approval State
+  const [verifiedAttendee, setVerifiedAttendee] = useState<EventRegistration | null>(null);
+  const [verifiedAttendeePhoto, setVerifiedAttendeePhoto] = useState<string | null>(null);
+  const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
+  const [entryAllowedMsg, setEntryAllowedMsg] = useState<string | null>(null);
+  const [lookupNotFoundMsg, setLookupNotFoundMsg] = useState<string | null>(null);
+  const [isSearchingLookup, setIsSearchingLookup] = useState(false);
 
   // Spot Registration State & Detected Existing Attendee
   const [existingMatchedReg, setExistingMatchedReg] = useState<EventRegistration | null>(null);
@@ -174,7 +233,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const [logSearch, setLogSearch] = useState('');
 
   const scannerInstanceRef = useRef<Html5Qrcode | null>(null);
-  const isVerifyingRef = useRef(false);
   const statusResultRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-scroll screen so the verification status is immediately visible
@@ -304,48 +362,129 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     };
   }, [registrations, gateEntries, rpcStats]);
 
-  // Handle QR scanning logic
-  const handleVerifyPhone = async (phone: string, mode: 'qr_scan' | 'manual_phone' = 'qr_scan') => {
-    if (isVerifyingRef.current) return;
-    isVerifyingRef.current = true;
-    setIsVerifying(true);
+  // Helper to lookup attendee by phone or reg number, and display their horizontal ID card for approval
+  const lookupAndDisplayAttendee = async (query: { phone?: string; reg?: string }) => {
+    setIsSearchingLookup(true);
+    setLookupNotFoundMsg(null);
+    setVerifiedAttendee(null);
+    setEntryAllowedMsg(null);
     setScanResult(null);
-    scrollToStatus();
 
-    // If scanning with camera, immediately stop to prevent duplicate scans
-    if (mode === 'qr_scan') {
-      if (scannerInstanceRef.current) {
-        const scanner = scannerInstanceRef.current;
-        scannerInstanceRef.current = null;
-        if (scanner.isScanning) {
-          scanner.stop().then(() => scanner.clear()).catch(() => { });
-        } else {
-          try { scanner.clear(); } catch (_) { }
+    let found: EventRegistration | null = null;
+
+    if (query.phone) {
+      const clean = cleanMobileNumber(query.phone);
+      found = registrations.find((r) => cleanMobileNumber(r.alumni?.mobile || '') === clean) || null;
+      if (!found && clean.length === 10) {
+        try {
+          const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
+          if (res.found && res.alumni) {
+            found = {
+              id: res.registration_id || '',
+              registration_number: res.registration_number || '',
+              event_id: '',
+              alumni_id: res.alumni.id || '',
+              attendance_status: (res.attendance_status as any) || 'yes',
+              number_of_attendees: res.number_of_attendees || 1,
+              adults_count: res.adults_count ?? 1,
+              children_above_7_count: res.children_above_7_count ?? 0,
+              children_under_7_count: res.children_under_7_count ?? 0,
+              amount: res.amount || 0,
+              payment_screenshot_path: res.payment_screenshot_path || null,
+              photo_url: res.photo_url || null,
+              alumni: res.alumni,
+              payment_verifications: (res as any).payment_verifications || [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+          }
+        } catch (err) {
+          console.warn('lookupRegistrationByMobile notice:', err);
         }
       }
-      setScannerActive(false);
+      if (!found) {
+        setLookupNotFoundMsg(`No registered attendee found for mobile +91 ${clean}.`);
+      }
+    } else if (query.reg) {
+      const digits = query.reg.replace(/\D/g, '').slice(0, 5);
+      const canonical = formatRegistrationNumberInput(digits);
+
+      found =
+        registrations.find((r) => {
+          const rNum = (r.registration_number || '').toUpperCase();
+          const rDigits = rNum.replace(/\D/g, '');
+          return rNum === canonical || rDigits === digits || Number(rDigits) === Number(digits);
+        }) || null;
+
+      if (!found && canonical) {
+        try {
+          const res = await lookupRegistrationByRegNumber('deepaura-2k26', canonical);
+          if (res.found && res.alumni) {
+            found = {
+              id: res.registration_id || '',
+              registration_number: res.registration_number || canonical,
+              event_id: '',
+              alumni_id: res.alumni.id || '',
+              attendance_status: (res.attendance_status as any) || 'yes',
+              number_of_attendees: res.number_of_attendees || 1,
+              adults_count: res.adults_count ?? 1,
+              children_above_7_count: res.children_above_7_count ?? 0,
+              children_under_7_count: res.children_under_7_count ?? 0,
+              amount: res.amount || 0,
+              payment_screenshot_path: res.payment_screenshot_path || null,
+              photo_url: res.photo_url || null,
+              alumni: res.alumni,
+              payment_verifications: (res as any).payment_verifications || [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+          }
+        } catch (err) {
+          console.warn('lookupRegistrationByRegNumber notice:', err);
+        }
+      }
+      if (!found) {
+        setLookupNotFoundMsg(`No registered attendee found for "${canonical || query.reg}".`);
+      }
     }
 
+    setIsSearchingLookup(false);
+
+    if (found) {
+      setVerifiedAttendee(found);
+      setPhotoLoadFailed(false);
+      resolveAttendeePhoto(found).then((url) => setVerifiedAttendeePhoto(url));
+    }
+  };
+
+  // Called when gate staff clicks "Allow Entry" button below the verified ID card
+  const handleAllowEntry = async (attendee: EventRegistration) => {
+    const phone = attendee.alumni?.mobile;
+    if (!phone) {
+      alert('No mobile number recorded for this attendee.');
+      return;
+    }
+    setIsVerifying(true);
     try {
-      const result = await verifyGateAttendee(phone, verifiedBy, mode);
-      setScanResult(result);
+      const result = await verifyGateAttendee(
+        phone,
+        verifiedBy,
+        activeSubTab === 'scanner' ? 'qr_scan' : 'manual_phone'
+      );
       if (result.success) {
-        // Refresh entries and parent stats
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setEntryAllowedMsg(`🟢 Entry Allowed • Admitted at ${nowTime} by ${verifiedBy}`);
         await loadGateEntries();
         onRefreshRegistrations();
+      } else if (result.status === 'ALREADY_ENTERED') {
+        alert(`Already entered: ${result.message}`);
+      } else {
+        alert(result.message || 'Verification failed.');
       }
     } catch (err: any) {
-      setScanResult({
-        success: false,
-        status: 'ERROR',
-        message: err?.message || 'Verification failed. Please retry.',
-      });
+      alert(err?.message || 'Failed to allow entry.');
     } finally {
       setIsVerifying(false);
-      setTimeout(() => {
-        isVerifyingRef.current = false;
-      }, 600);
-      scrollToStatus();
     }
   };
 
@@ -399,8 +538,34 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         (decodedText) => {
           if (!isMounted) return;
           const clean = cleanMobileNumber(decodedText);
-          if (clean.length === 10) {
-            handleVerifyPhone(clean, 'qr_scan');
+          let targetPhone = clean.length === 10 ? clean : '';
+          let targetReg = !targetPhone && decodedText.toUpperCase().includes('REG-') ? decodedText : '';
+
+          // Stop camera scanner immediately to freeze frame and show attendee card
+          if (scannerInstanceRef.current) {
+            const sc = scannerInstanceRef.current;
+            scannerInstanceRef.current = null;
+            if (sc.isScanning) {
+              sc.stop().then(() => sc.clear()).catch(() => { });
+            } else {
+              try { sc.clear(); } catch (_) { }
+            }
+          }
+          setScannerActive(false);
+
+          if (targetPhone) {
+            lookupAndDisplayAttendee({ phone: targetPhone });
+          } else if (targetReg) {
+            lookupAndDisplayAttendee({ reg: targetReg });
+          } else {
+            const digits = decodedText.replace(/\D/g, '');
+            if (digits.length === 10) {
+              lookupAndDisplayAttendee({ phone: digits });
+            } else if (digits.length > 0) {
+              lookupAndDisplayAttendee({ reg: digits });
+            } else {
+              setLookupNotFoundMsg(`Scanned QR is unrecognized: ${decodedText}`);
+            }
           }
         },
         () => {
@@ -518,51 +683,53 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     };
   };
 
-  // Instant in-memory search for Phone mode
-  const filteredPhoneRegistrations = React.useMemo(() => {
-    const clean = manualPhone.trim().replace(/\D/g, '');
-    if (!clean || clean.length < 3) return [];
-
-    return registrations
-      .filter((reg) => {
-        const m = cleanMobileNumber(reg.alumni?.mobile || '');
-        return m.includes(clean);
-      })
-      .slice(0, 20);
-  }, [registrations, manualPhone]);
-
-  // Instant in-memory search for Registration ID mode
-  const filteredRegRegistrations = React.useMemo(() => {
+  // Search by registration number on button click or form submit (NO live suggestions while typing)
+  const handleSearchByRegNumber = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const digits = manualRegNumber.trim().replace(/\D/g, '');
-    if (!digits) return [];
-    const padded = digits.padStart(5, '0');
-    const canonical = `REG-${padded}`.toUpperCase();
-
-    return registrations
-      .filter((reg) => {
-        const rNum = (reg.registration_number || '').toUpperCase();
-        const rDigits = rNum.replace(/\D/g, '');
-        return rNum === canonical || rDigits.includes(digits);
-      })
-      .slice(0, 20);
-  }, [registrations, manualRegNumber]);
-
-  // Handle Verification of an attendee selected via Manual Lookup (Phone, Reg ID, or Name)
-  const handleVerifySelectedAttendee = (reg: EventRegistration) => {
-    if (!reg.alumni?.mobile) {
-      alert('No mobile number recorded for this attendee.');
+    if (!digits) {
+      setLookupNotFoundMsg('Please enter registration number digits (e.g. 3 or 00003).');
       return;
     }
-    handleVerifyPhone(reg.alumni.mobile, 'manual_phone');
+    lookupAndDisplayAttendee({ reg: digits });
+  };
+
+  // Search by phone on button click or form submit (NO live suggestions while typing)
+  const handleSearchByPhone = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = cleanMobileNumber(manualPhone);
+    if (clean.length < 10) {
+      setLookupNotFoundMsg('Please enter a valid 10-digit registered mobile number.');
+      return;
+    }
+    lookupAndDisplayAttendee({ phone: clean });
+  };
+
+  // When user selects an attendee from the Name predictive dropdown, show ONLY that attendee's ID card
+  const handleSelectNameAttendee = (reg: EventRegistration) => {
+    setVerifiedAttendee(reg);
+    setPhotoLoadFailed(false);
+    setEntryAllowedMsg(null);
+    setLookupNotFoundMsg(null);
+    resolveAttendeePhoto(reg).then((url) => setVerifiedAttendeePhoto(url));
   };
 
   // Reset lookup form and clear search selection
   const handleResetLookup = () => {
+    setVerifiedAttendee(null);
+    setVerifiedAttendeePhoto(null);
+    setPhotoLoadFailed(false);
+    setEntryAllowedMsg(null);
+    setLookupNotFoundMsg(null);
     setScanResult(null);
     setManualPhone('');
     setManualRegNumber('');
     setSelectedAttendee(null);
     setNameSearchQuery('');
+
+    if (activeSubTab === 'scanner') {
+      setScannerActive(true);
+    }
   };
 
   // Redirect to Spot Walk-in Desk with pre-filled attendee data
@@ -953,6 +1120,216 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     }
   };
 
+  const getAttendeeInitials = (name?: string): string => {
+    if (!name) return 'ECK';
+    const clean = name.trim().replace(/^(mr\.?|mrs\.?|ms\.?|dr\.?|er\.?)\s+/i, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'ECK';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  // Render the horizontal attendee ID card with approval actions down below
+  const renderAttendeeIdCardWithActions = (attendee: EventRegistration) => {
+    const alumni = attendee.alumni;
+    const { displayName: attendeeName, fontSizeClass: nameSizeClass, fullName: originalFullName } =
+      formatSmartAttendeeName(alumni?.name || 'Alumnus');
+    const regNumber = attendee.registration_number || '';
+    const branch = alumni?.engineering_discipline || '';
+    const batchYear = alumni?.year_of_passing ? String(alumni.year_of_passing) : '';
+
+    const totalCount = attendee.number_of_attendees || 1;
+    const adultsCount = attendee.adults_count ?? 1;
+    const kidsCount = (attendee.children_above_7_count || 0) + (attendee.children_under_7_count || 0);
+
+    let attendeesDesc = `${totalCount} Member${totalCount > 1 ? 's' : ''}`;
+    if (totalCount === 1) {
+      attendeesDesc += ' (Alumnus)';
+    } else if (kidsCount > 0) {
+      attendeesDesc += ` (${adultsCount} Adults + ${kidsCount} Kids)`;
+    } else {
+      attendeesDesc += ` (Alumnus + ${totalCount - 1} Guest${totalCount - 1 > 1 ? 's' : ''})`;
+    }
+
+    const gateStatus = getAttendeeGateStatus(attendee);
+    const isPaid =
+      attendee.attendance_status === 'yes' ||
+      attendee.payment_verifications?.some((v) => v.verified_status === 'VERIFIED');
+
+    return (
+      <div className="gate-id-card-wrapper" ref={statusResultRef}>
+        {/* ============================================================
+            ATTENDEE ID CARD (Exact Match to ID Pass & User Screenshot)
+            ============================================================ */}
+        <div className="ticket-v-attendee-card">
+          {/* 4 Ornate Gold Corner Filigree Flourishes */}
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tl" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tr" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-bl" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-br" />
+
+          {/* Left Column: Photo & Avatar */}
+          <div className="ticket-v-photo-col">
+            <div className="ticket-v-photo-box">
+              {verifiedAttendeePhoto && !photoLoadFailed ? (
+                <img
+                  src={verifiedAttendeePhoto}
+                  alt={attendeeName}
+                  className="ticket-v-photo-img"
+                  onError={() => setPhotoLoadFailed(true)}
+                />
+              ) : (
+                <div className="ticket-v-avatar-box">
+                  <div className="ticket-v-avatar-circle">
+                    <span className="ticket-v-avatar-initials">
+                      {getAttendeeInitials(alumni?.name || attendeeName)}
+                    </span>
+                  </div>
+                  <span className="ticket-v-avatar-badge">ALUMNI</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Key Details */}
+          <div className="ticket-v-info-col">
+            {/* Row 1: Attendee Name */}
+            <div className="ticket-v-info-field ticket-v-name-row">
+              <span className="ticket-v-label">Attendee Name</span>
+              <h3 className={`ticket-v-val-name ${nameSizeClass}`} title={originalFullName}>
+                {attendeeName}
+              </h3>
+            </div>
+
+            {/* Row 2: Batch & Registration No */}
+            <div className="ticket-v-info-split-row">
+              <div className="ticket-v-batch-box">
+                <span className="ticket-v-label">Batch</span>
+                <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
+                  <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
+                </p>
+              </div>
+              <div className="ticket-v-reg-box">
+                <span className="ticket-v-label">Registration No</span>
+                <span className="ticket-v-val-reg">{regNumber}</span>
+              </div>
+            </div>
+
+            {/* Row 3: Attendees Count */}
+            <div className="ticket-v-info-field">
+              <span className="ticket-v-label">No. of Attendees</span>
+              <p className="ticket-v-val-text ticket-v-highlight">{attendeesDesc}</p>
+            </div>
+
+            {/* Row 4: Date & Venue */}
+            <div className="ticket-v-meta-row">
+              <div className="ticket-v-meta-item">
+                <span className="ticket-v-label">Date &amp; Time</span>
+                <span className="ticket-v-meta-val">01 Nov 2026, 5:00 PM</span>
+              </div>
+              <div className="ticket-v-meta-item">
+                <span className="ticket-v-label">Venue</span>
+                <span className="ticket-v-meta-val">Agora Ground, RTU</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================
+            APPROVAL & ENTRY ACTIONS DOWN BELOW
+            ============================================================ */}
+        <div className="gate-card-actions-area">
+          {entryAllowedMsg ? (
+            <>
+              <div className="gate-entry-allowed-line">
+                <span>{entryAllowedMsg}</span>
+              </div>
+              <button
+                type="button"
+                className="btn-gate-next-card"
+                onClick={handleResetLookup}
+              >
+                {activeSubTab === 'scanner' ? '📷 Scan Next Attendee →' : '🔍 Verify Next Attendee →'}
+              </button>
+            </>
+          ) : (
+            <>
+              {gateStatus.status === 'ALREADY_ENTERED' && (
+                <>
+                  <div className="gate-entry-alert-line warning">
+                    <span>⚠️ Already Admitted at {new Date(gateStatus.entry!.entered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} by {gateStatus.entry!.verified_by || 'Staff'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-gate-next-card"
+                    onClick={handleResetLookup}
+                  >
+                    {activeSubTab === 'scanner' ? '📷 Scan Next Attendee →' : '🔍 Verify Next Attendee →'}
+                  </button>
+                </>
+              )}
+
+              {(!isPaid || gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
+                <>
+                  <div className="gate-entry-alert-line pending">
+                    <span>💳 Payment Pending (₹{attendee.amount || 0}) • Not Marked Paid</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="gate-allow-entry-btn"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+                    onClick={() =>
+                      handleRedirectToSpot({
+                        name: alumni?.name,
+                        mobile: alumni?.mobile,
+                        branch: alumni?.engineering_discipline,
+                        batch: alumni?.year_of_passing,
+                        adults: attendee.adults_count || attendee.number_of_attendees || 1,
+                        kidsAbove10: attendee.children_above_7_count || 0,
+                        kidsUnder10: attendee.children_under_7_count || 0,
+                        amount: attendee.amount,
+                        reg: attendee,
+                      })
+                    }
+                  >
+                    ⚡ Collect Payment at Spot Desk →
+                  </button>
+                  <button
+                    type="button"
+                    className="gate-card-clear-link"
+                    onClick={handleResetLookup}
+                  >
+                    Cancel / Search Another
+                  </button>
+                </>
+              )}
+
+              {isPaid && gateStatus.status !== 'ALREADY_ENTERED' && (
+                <>
+                  <button
+                    type="button"
+                    className="gate-allow-entry-btn"
+                    disabled={isVerifying}
+                    onClick={() => handleAllowEntry(attendee)}
+                  >
+                    {isVerifying ? 'Admitting...' : '✅ Allow Entry'}
+                  </button>
+                  <button
+                    type="button"
+                    className="gate-card-clear-link"
+                    onClick={handleResetLookup}
+                  >
+                    Cancel / Search Another
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // If Gate Portal is disabled by .env flag
   if (!isGateEnabled) {
     return (
@@ -1106,286 +1483,155 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       {/* 3. SUBTAB: QR Camera Scanner */}
       {activeSubTab === 'scanner' && (
         <div className="gate-scanner-section">
-          {/* Active Camera Viewport */}
-          {scannerActive && (
-            <div className="scanner-active-box">
-              {/* Custom Dark-Themed Camera Bar */}
-              <div className="scanner-top-bar">
-                {cameras.length > 1 && (
-                  <div className="scanner-camera-picker">
-                    <span className="camera-picker-label">📷</span>
-                    <select
-                      value={selectedCameraId}
-                      onChange={(e) => setSelectedCameraId(e.target.value)}
-                      className="scanner-camera-select"
-                      title="Select Camera"
-                    >
-                      {cameras.map((cam, idx) => (
-                        <option key={cam.id} value={cam.id}>
-                          {cam.label || `Camera ${idx + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {torchSupported && (
-                  <button
-                    type="button"
-                    onClick={toggleTorch}
-                    className={`scanner-torch-btn ${torchOn ? 'active' : ''}`}
-                    title={torchOn ? 'Turn Flashlight Off' : 'Turn Flashlight On'}
-                  >
-                    <span>{torchOn ? '🔦 Torch ON' : '💡 Torch'}</span>
-                  </button>
-                )}
-              </div>
-
-              {cameraError ? (
-                <div className="scanner-error-card">
-                  <span className="scanner-error-icon">⚠️</span>
-                  <div className="scanner-error-text">
-                    <h4>Camera Access Notice</h4>
-                    <p>{cameraError}</p>
-                    <div className="scanner-error-actions">
-                      <button
-                        type="button"
-                        onClick={() => setActiveSubTab('manual')}
-                        className="btn-primary-action"
-                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-                      >
-                        ⌨️ Use Phone Lookup Instead
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCameraError(null);
-                          setScannerActive(false);
-                          setTimeout(() => setScannerActive(true), 150);
-                        }}
-                        className="btn-secondary"
-                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-                      >
-                        🔄 Retry Camera
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="scanner-viewport-wrapper">
-                  <div id="gate-reader-view" className="gate-qr-viewport" />
-                  <div className="scanner-reticle-overlay">
-                    <div className="scanner-reticle-box">
-                      <span className="scanner-corner scanner-corner-tl" />
-                      <span className="scanner-corner scanner-corner-tr" />
-                      <span className="scanner-corner scanner-corner-bl" />
-                      <span className="scanner-corner scanner-corner-br" />
-                      <div className="scanner-laser-line" />
-                    </div>
-                    <span className="scanner-overlay-hint">Align QR Code inside box</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="scanner-controls-row">
+          {/* If attendee found via QR scan */}
+          {verifiedAttendee ? (
+            renderAttendeeIdCardWithActions(verifiedAttendee)
+          ) : lookupNotFoundMsg ? (
+            <div className="gate-search-not-found">
+              <p>🔍 {lookupNotFoundMsg}</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', justifyContent: 'center' }}>
                 <button
                   type="button"
-                  onClick={() => setScannerActive(false)}
-                  className="btn-stop-camera"
+                  className="btn-gate-next-card"
+                  style={{ maxWidth: '240px' }}
+                  onClick={() => {
+                    setLookupNotFoundMsg(null);
+                    setScannerActive(true);
+                  }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                  <span>Pause Scanner</span>
+                  <span>📷</span>
+                  <span>Retry Camera Scanner</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-spot-create-new"
+                  onClick={() => setActiveSubTab('spot')}
+                >
+                  ⚡ Register at Spot Walk-in Desk →
                 </button>
               </div>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Active Camera Viewport */}
+              {scannerActive && (
+                <div className="scanner-active-box">
+                  {/* Custom Dark-Themed Camera Bar */}
+                  <div className="scanner-top-bar">
+                    {cameras.length > 1 && (
+                      <div className="scanner-camera-picker">
+                        <span className="camera-picker-label">📷</span>
+                        <select
+                          value={selectedCameraId}
+                          onChange={(e) => setSelectedCameraId(e.target.value)}
+                          className="scanner-camera-select"
+                          title="Select Camera"
+                        >
+                          {cameras.map((cam, idx) => (
+                            <option key={cam.id} value={cam.id}>
+                              {cam.label || `Camera ${idx + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {torchSupported && (
+                      <button
+                        type="button"
+                        onClick={toggleTorch}
+                        className={`scanner-torch-btn ${torchOn ? 'active' : ''}`}
+                        title={torchOn ? 'Turn Flashlight Off' : 'Turn Flashlight On'}
+                      >
+                        <span>{torchOn ? '🔦 Torch ON' : '💡 Torch'}</span>
+                      </button>
+                    )}
+                  </div>
 
-          {/* In-Flight Verification Spinner Card */}
-          {isVerifying && (
-            <div ref={statusResultRef} className="gate-scan-result-card verifying">
-              <div className="result-content">
-                <div className="result-icon gate-scan-spinner-icon">🔄</div>
-                <div className="result-text">
-                  <h3 className="result-title">VERIFYING ATTENDEE...</h3>
-                  <p className="result-name">Checking registration &amp; payment status in real-time</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Verification Status Banner Alert */}
-          {!isVerifying && scanResult && (
-            <div ref={statusResultRef} className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}>
-              {scanResult.status === 'ENTERED' && (
-                <>
-                  <div className="result-content success">
-                    <div className="result-icon">✅</div>
-                    <div className="result-text">
-                      <h3 className="result-title">VERIFIED SUCCESSFULLY</h3>
-                      <p className="result-name">{scanResult.attendee_name}</p>
-                      <div className="result-badges">
-                        <span className="result-pill">{scanResult.registration_number}</span>
-                        <span className="result-pill">{scanResult.branch} ({scanResult.year_of_passing})</span>
-                        <span className="result-pill count-pill">
-                          👥 {scanResult.number_of_attendees || 1} Attendees Allowed
-                        </span>
+                  {cameraError ? (
+                    <div className="scanner-error-card">
+                      <span className="scanner-error-icon">⚠️</span>
+                      <div className="scanner-error-text">
+                        <h4>Camera Access Notice</h4>
+                        <p>{cameraError}</p>
+                        <div className="scanner-error-actions">
+                          <button
+                            type="button"
+                            onClick={() => setActiveSubTab('manual')}
+                            className="btn-primary-action"
+                            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                          >
+                            ⌨️ Use Phone Lookup Instead
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCameraError(null);
+                              setScannerActive(false);
+                              setTimeout(() => setScannerActive(true), 150);
+                            }}
+                            className="btn-secondary"
+                            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                          >
+                            🔄 Retry Camera
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="result-actions">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScanResult(null);
-                        setScannerActive(true);
-                      }}
-                      className="btn-scan-next btn-success"
-                    >
-                      <span>📷</span>
-                      <span>Scan Next Attendee →</span>
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {scanResult.status === 'ALREADY_ENTERED' && (
-                <>
-                  <div className="result-content warning">
-                    <div className="result-icon">⚠️</div>
-                    <div className="result-text">
-                      <h3 className="result-title">ALREADY ENTERED (DUPLICATE PASS)</h3>
-                      <p className="result-detail">{scanResult.message}</p>
-                      <p className="result-sub">
-                        Attendee: <strong>{scanResult.attendee_name}</strong> ({scanResult.registration_number})
-                      </p>
+                  ) : (
+                    <div className="scanner-viewport-wrapper">
+                      <div id="gate-reader-view" className="gate-qr-viewport" />
+                      <div className="scanner-reticle-overlay">
+                        <div className="scanner-reticle-box">
+                          <span className="scanner-corner scanner-corner-tl" />
+                          <span className="scanner-corner scanner-corner-tr" />
+                          <span className="scanner-corner scanner-corner-bl" />
+                          <span className="scanner-corner scanner-corner-br" />
+                          <div className="scanner-laser-line" />
+                        </div>
+                        <span className="scanner-overlay-hint">Align QR Code inside box</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="result-actions">
+                  )}
+
+                  <div className="scanner-controls-row">
                     <button
                       type="button"
-                      onClick={() => {
-                        setScanResult(null);
-                        setScannerActive(true);
-                      }}
-                      className="btn-scan-next btn-warning"
+                      onClick={() => setScannerActive(false)}
+                      className="btn-stop-camera"
                     >
-                      <span>📷</span>
-                      <span>Scan Next Attendee →</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
+                      </svg>
+                      <span>Pause Scanner</span>
                     </button>
                   </div>
-                </>
+                </div>
               )}
 
-              {scanResult.status === 'PAYMENT_PENDING' && (
-                <>
-                  <div className="result-content error">
-                    <div className="result-icon">❌</div>
-                    <div className="result-text">
-                      <h3 className="result-title">PAYMENT NOT APPROVED</h3>
-                      <p className="result-detail">{scanResult.message}</p>
-                      <p className="result-sub">
-                        Attendee: <strong>{scanResult.attendee_name}</strong> • Amount Due: ₹{scanResult.amount}
-                      </p>
-                    </div>
+              {/* If scanner is inactive and no scan in-flight, show Camera Start button */}
+              {!scannerActive && !isVerifying && (
+                <div className="scanner-start-box">
+                  <div className="scanner-start-icon-ring">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
                   </div>
-                  <div className="result-actions">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScanResult(null);
-                        setScannerActive(true);
-                      }}
-                      className="btn-scan-next btn-error"
-                    >
-                      <span>📷</span>
-                      <span>Scan Next Attendee →</span>
-                    </button>
-                  </div>
-                </>
+                  <h3 className="scanner-start-title">Gate Camera Check-in</h3>
+                  <p className="scanner-hint">
+                    Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setScannerActive(true)}
+                    className="btn-large-camera"
+                  >
+                    <span>📷</span>
+                    <span>Start Camera Scanner</span>
+                  </button>
+                </div>
               )}
-
-              {scanResult.status === 'NOT_FOUND' && (
-                <>
-                  <div className="result-content error">
-                    <div className="result-icon">❓</div>
-                    <div className="result-text">
-                      <h3 className="result-title">NOT REGISTERED</h3>
-                      <p className="result-detail">{scanResult.message}</p>
-                    </div>
-                  </div>
-                  <div className="result-actions">
-                    <button
-                      type="button"
-                      className="btn-scan-next btn-secondary-outline"
-                      onClick={() => {
-                        setScanResult(null);
-                        setScannerActive(true);
-                      }}
-                    >
-                      <span>📷</span>
-                      <span>Scan Next Attendee →</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-quick-spot-link"
-                      onClick={() => setActiveSubTab('spot')}
-                    >
-                      <span>⚡ Spot Register this Attendee →</span>
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {scanResult.status === 'ERROR' && (
-                <>
-                  <div className="result-content error">
-                    <div className="result-icon">⚠️</div>
-                    <div className="result-text">
-                      <h3 className="result-title">VERIFICATION ERROR</h3>
-                      <p className="result-detail">{scanResult.message || 'Verification failed. Please retry.'}</p>
-                    </div>
-                  </div>
-                  <div className="result-actions">
-                    <button
-                      type="button"
-                      className="btn-scan-next btn-error"
-                      onClick={() => {
-                        setScanResult(null);
-                        setScannerActive(true);
-                      }}
-                    >
-                      <span>📷</span>
-                      <span>Retry / Scan Next →</span>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* If scanner is inactive and no scan in-flight or result is present, show Camera Start button */}
-          {!scannerActive && !isVerifying && !scanResult && (
-            <div className="scanner-start-box">
-              <div className="scanner-start-icon-ring">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </div>
-              <h3 className="scanner-start-title">Gate Camera Check-in</h3>
-              <p className="scanner-hint">
-                Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
-              </p>
-              <button
-                type="button"
-                onClick={() => setScannerActive(true)}
-                className="btn-large-camera"
-              >
-                <span>📷</span>
-                <span>Start Camera Scanner</span>
-              </button>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -1406,8 +1652,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 className={`manual-mode-btn ${manualLookupMode === 'reg_number' ? 'active' : ''}`}
                 onClick={() => {
                   setManualLookupMode('reg_number');
-                  setSelectedAttendee(null);
-                  setScanResult(null);
+                  handleResetLookup();
                 }}
               >
                 <span>🎫 Reg ID</span>
@@ -1417,8 +1662,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 className={`manual-mode-btn ${manualLookupMode === 'phone' ? 'active' : ''}`}
                 onClick={() => {
                   setManualLookupMode('phone');
-                  setSelectedAttendee(null);
-                  setScanResult(null);
+                  handleResetLookup();
                 }}
               >
                 <span>📱 Phone</span>
@@ -1428,8 +1672,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 className={`manual-mode-btn ${manualLookupMode === 'name' ? 'active' : ''}`}
                 onClick={() => {
                   setManualLookupMode('name');
-                  setSelectedAttendee(null);
-                  setScanResult(null);
+                  handleResetLookup();
                 }}
               >
                 <span>👤 Name</span>
@@ -1437,80 +1680,136 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             </div>
 
             <div className="name-search-container">
-              {/* 1. SEARCH INPUT BASED ON ACTIVE TAB */}
-              {manualLookupMode === 'reg_number' && (
-                <div className="name-search-input-wrapper">
-                  <div className="manual-reg-input-group" style={{ width: '100%' }}>
-                    <span className="manual-reg-prefix">REG-</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder="e.g. 39 or 00039"
-                      maxLength={5}
-                      value={manualRegNumber}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
-                        setManualRegNumber(cleaned);
-                        if (selectedAttendee) setSelectedAttendee(null);
-                      }}
-                      className="manual-reg-field"
-                      autoFocus
-                    />
-                    {manualRegNumber && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setManualRegNumber('');
-                          setSelectedAttendee(null);
-                        }}
-                        className="name-search-clear-btn"
-                        style={{ position: 'relative', right: '12px' }}
-                        title="Clear search"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              {verifiedAttendee ? (
+                renderAttendeeIdCardWithActions(verifiedAttendee)
+              ) : (
+                <>
+                  {manualLookupMode === 'reg_number' && (
+                    <div className="gate-search-flow-box">
+                      <form onSubmit={handleSearchByRegNumber} className="gate-search-input-group">
+                        <div className="manual-reg-input-group">
+                          <span className="manual-reg-prefix">REG-</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="e.g. 39"
+                            maxLength={5}
+                            value={manualRegNumber}
+                            onChange={(e) => {
+                              const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
+                              setManualRegNumber(cleaned);
+                              if (lookupNotFoundMsg) setLookupNotFoundMsg(null);
+                            }}
+                            className="manual-reg-field"
+                            autoFocus
+                          />
+                          {manualRegNumber && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualRegNumber('');
+                                setLookupNotFoundMsg(null);
+                              }}
+                              className="name-search-clear-btn"
+                              style={{ position: 'relative', right: '4px' }}
+                              title="Clear input"
+                            >
+                              ✕
+                            </button>
+                          )}
+                          <button
+                            type="submit"
+                            className="gate-search-btn"
+                            disabled={isSearchingLookup || !manualRegNumber.trim()}
+                          >
+                            {isSearchingLookup ? 'Searching...' : '🔍 Search'}
+                          </button>
+                        </div>
+                      </form>
 
-              {manualLookupMode === 'phone' && (
-                <div className="name-search-input-wrapper">
-                  <div className="manual-phone-input-group" style={{ width: '100%' }}>
-                    <span className="manual-phone-prefix">+91</span>
-                    <input
-                      type="tel"
-                      placeholder="10-digit number"
-                      value={manualPhone}
-                      maxLength={10}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, '');
-                        const clean =
-                          raw.length > 10 && raw.startsWith('91')
-                            ? raw.slice(2, 12)
-                            : raw.slice(0, 10);
-                        setManualPhone(clean);
-                        if (selectedAttendee) setSelectedAttendee(null);
-                      }}
-                      className="manual-phone-field"
-                      autoFocus
-                    />
-                    {manualPhone && (
+                      {lookupNotFoundMsg && (
+                        <div className="gate-search-not-found">
+                          <p>⚠️ {lookupNotFoundMsg}</p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRedirectToSpot({
+                                name: undefined,
+                                mobile: undefined,
+                              })
+                            }
+                            className="btn-spot-create-new"
+                          >
+                            ⚡ Register at Spot Walk-in Desk →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {manualLookupMode === 'phone' && (
+                    <div className="gate-search-flow-box">
+                      <form onSubmit={handleSearchByPhone} className="gate-search-input-group">
+                        <div className="manual-phone-input-group">
+                          <span className="manual-phone-prefix">+91</span>
+                          <input
+                            type="tel"
+                            placeholder="10-digit mobile"
+                            value={manualPhone}
+                            maxLength={10}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/\D/g, '');
+                              const clean =
+                                raw.length > 10 && raw.startsWith('91')
+                                  ? raw.slice(2, 12)
+                                  : raw.slice(0, 10);
+                              setManualPhone(clean);
+                              if (lookupNotFoundMsg) setLookupNotFoundMsg(null);
+                            }}
+                            className="manual-phone-field"
+                            autoFocus
+                          />
+                          {manualPhone && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualPhone('');
+                                setLookupNotFoundMsg(null);
+                              }}
+                              className="name-search-clear-btn"
+                              style={{ position: 'relative', right: '4px' }}
+                              title="Clear input"
+                            >
+                              ✕
+                            </button>
+                          )}
+                          <button
+                            type="submit"
+                            className="gate-search-btn"
+                            disabled={isSearchingLookup || manualPhone.trim().length < 10}
+                          >
+                            {isSearchingLookup ? 'Searching...' : '🔍 Search'}
+                          </button>
+                        </div>
+                      </form>
+
+                  {lookupNotFoundMsg && (
+                    <div className="gate-search-not-found">
+                      <p>⚠️ {lookupNotFoundMsg}</p>
                       <button
                         type="button"
-                        onClick={() => {
-                          setManualPhone('');
-                          setSelectedAttendee(null);
-                        }}
-                        className="name-search-clear-btn"
-                        style={{ position: 'relative', right: '12px' }}
-                        title="Clear search"
+                        onClick={() =>
+                          handleRedirectToSpot({
+                            mobile: manualPhone.trim(),
+                          })
+                        }
+                        className="btn-spot-create-new"
                       >
-                        ✕
+                        ⚡ Register at Spot Walk-in Desk →
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1544,54 +1843,30 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 </div>
               )}
 
-              {/* 2. SEARCH RESULTS LIST (Inline expandable cards with direct action button) */}
-              {(() => {
-                const activeList =
-                  manualLookupMode === 'phone'
-                    ? filteredPhoneRegistrations
-                    : manualLookupMode === 'reg_number'
-                    ? filteredRegRegistrations
-                    : filteredNameRegistrations;
+              {/* 2. NAME SEARCH PREDICTIVE RESULTS (Only shown when manualLookupMode === 'name') */}
+              {manualLookupMode === 'name' && (() => {
+                const queryActive = nameSearchQuery.trim();
 
-                const queryActive =
-                  manualLookupMode === 'phone'
-                    ? manualPhone.trim()
-                    : manualLookupMode === 'reg_number'
-                    ? manualRegNumber.trim()
-                    : nameSearchQuery.trim();
-
-                const minLen = manualLookupMode === 'phone' ? 3 : manualLookupMode === 'reg_number' ? 1 : 2;
-
-                if (queryActive.length < minLen) {
+                if (queryActive.length < 2) {
                   return (
                     <div className="name-search-hint-box">
-                      {manualLookupMode === 'phone' && (
-                        <p>⚡ <strong>Phone Search:</strong> Type at least 3 digits of attendee's mobile number.</p>
-                      )}
-                      {manualLookupMode === 'reg_number' && (
-                        <p>⚡ <strong>Reg ID Search:</strong> Enter registration number digits (e.g. <em>39</em> or <em>00039</em>).</p>
-                      )}
-                      {manualLookupMode === 'name' && (
-                        <>
-                          <p>
-                            ⚡ <strong>Predictive Attendee Search:</strong> Type at least 2 letters of an
-                            attendee's name, passing year (e.g. <em>2015</em>), or branch.
-                          </p>
-                          <div className="name-search-chips">
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2018')}>🎓 2018</span>
-                          </div>
-                        </>
-                      )}
+                      <p>
+                        ⚡ <strong>Predictive Attendee Search:</strong> Type at least 2 letters of an
+                        attendee's name, passing year (e.g. <em>2015</em>), or branch.
+                      </p>
+                      <div className="name-search-chips">
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2018')}>🎓 2018</span>
+                      </div>
                     </div>
                   );
                 }
 
-                if (activeList.length === 0) {
+                if (filteredNameRegistrations.length === 0) {
                   return (
                     <div className="name-search-hint-box">
                       <p>
@@ -1604,8 +1879,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         type="button"
                         onClick={() =>
                           handleRedirectToSpot({
-                            name: manualLookupMode === 'name' ? queryActive : undefined,
-                            mobile: manualLookupMode === 'phone' ? queryActive : undefined,
+                            name: queryActive,
                           })
                         }
                         className="btn-spot-create-new"
@@ -1619,26 +1893,22 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 return (
                   <>
                     <div className="name-search-header-meta">
-                      <span>Found {activeList.length} matching {activeList.length === 1 ? 'attendee' : 'attendees'}</span>
-                      <span>Click to verify &amp; admit</span>
+                      <span>Found {filteredNameRegistrations.length} matching {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
+                      <span>Tap name to view ID Card &amp; admit</span>
                     </div>
 
                     <div className="name-search-results-list">
-                      {activeList.map((reg) => {
+                      {filteredNameRegistrations.map((reg) => {
                         const alumni = reg.alumni;
                         if (!alumni) return null;
                         const gateStatus = getAttendeeGateStatus(reg);
-                        const isSelected = selectedAttendee?.id === reg.id;
                         const participantCount = reg.number_of_attendees || 1;
 
                         return (
                           <div
                             key={reg.id}
-                            className={`name-search-result-card ${isSelected ? 'selected' : ''}`}
-                            onClick={() => {
-                              setSelectedAttendee(isSelected ? null : reg);
-                              setScanResult(null);
-                            }}
+                            className="name-search-result-card"
+                            onClick={() => handleSelectNameAttendee(reg)}
                             role="button"
                             tabIndex={0}
                           >
@@ -1692,120 +1962,6 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                               </div>
                             </div>
 
-                            {/* Direct action button right below the card ONLY when clicked/selected */}
-                            {isSelected && (
-                              <div
-                                className="name-result-action-drawer"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {gateStatus.status === 'READY' && (
-                                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%' }}>
-                                    <button
-                                      type="button"
-                                      disabled={isVerifying}
-                                      onClick={() => handleVerifySelectedAttendee(reg)}
-                                      className="btn-verify-selected"
-                                      style={{ flex: '1 1 auto' }}
-                                    >
-                                      <span>✅</span>
-                                      <span>{isVerifying ? 'Verifying...' : 'Allow Entry'}</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleRedirectToSpot({
-                                          name: alumni.name,
-                                          mobile: alumni.mobile,
-                                          branch: alumni.engineering_discipline,
-                                          batch: alumni.year_of_passing,
-                                          adults: reg.adults_count || reg.number_of_attendees || 1,
-                                          kidsAbove10: reg.children_above_7_count || 0,
-                                          kidsUnder10: reg.children_under_7_count || 0,
-                                          amount: reg.amount,
-                                          reg,
-                                        })
-                                      }
-                                      className="btn-redirect-spot"
-                                      style={{ flex: '1 1 auto', background: 'rgba(255, 255, 255, 0.08)', borderColor: 'rgba(255, 255, 255, 0.2)', color: '#f8fafc' }}
-                                      title="Increase attendees or children and collect difference at spot desk"
-                                    >
-                                      <span>👥</span>
-                                      <span>Add Guests (Pay Diff) →</span>
-                                    </button>
-                                  </div>
-                                )}
-
-                                {(gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
-                                  <>
-                                    <div className="attendee-selected-alert pending">
-                                      💳 {gateStatus.status === 'MAYBE' ? 'Registered as MAYBE (Unpaid)' : `Payment Pending (₹${reg.amount || 0})`}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleRedirectToSpot({
-                                          name: alumni.name,
-                                          mobile: alumni.mobile,
-                                          branch: alumni.engineering_discipline,
-                                          batch: alumni.year_of_passing,
-                                          adults: reg.adults_count || reg.number_of_attendees || 1,
-                                          kidsAbove10: reg.children_above_7_count || 0,
-                                          kidsUnder10: reg.children_under_7_count || 0,
-                                          amount: reg.amount,
-                                          reg,
-                                        })
-                                      }
-                                      className="btn-redirect-spot"
-                                    >
-                                      <span>⚡</span>
-                                      <span>Spot Entry &amp; Collect Fee</span>
-                                    </button>
-                                  </>
-                                )}
-
-                                {gateStatus.status === 'ALREADY_ENTERED' && (
-                                  <>
-                                    <div className="attendee-selected-alert entered">
-                                      ⚠️ {gateStatus.badgeText}
-                                      {gateStatus.entry?.verified_by ? ` (by ${gateStatus.entry.verified_by.split('(')[0].trim() || 'Gate Staff'})` : ''}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleRedirectToSpot({
-                                            name: alumni.name,
-                                            mobile: alumni.mobile,
-                                            branch: alumni.engineering_discipline,
-                                            batch: alumni.year_of_passing,
-                                            adults: reg.adults_count || reg.number_of_attendees || 1,
-                                            kidsAbove10: reg.children_above_7_count || 0,
-                                            kidsUnder10: reg.children_under_7_count || 0,
-                                            amount: reg.amount,
-                                            reg,
-                                          })
-                                        }
-                                        className="btn-redirect-spot"
-                                        style={{ flex: '1 1 auto', background: 'rgba(255, 255, 255, 0.08)', borderColor: 'rgba(255, 255, 255, 0.2)', color: '#f8fafc' }}
-                                        title="Add more attendees and collect difference at spot desk"
-                                      >
-                                        <span>👥</span>
-                                        <span>Add More Guests (Pay Diff) →</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setActiveSubTab('log')}
-                                        className="btn-scan-next btn-secondary-outline"
-                                        style={{ flex: '1 1 auto' }}
-                                      >
-                                        <span>📋</span>
-                                        <span>View in Gate Log</span>
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            )}
                           </div>
                         );
                       })}
@@ -1813,188 +1969,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </>
                 );
               })()}
-            </div>
+            </>
+          )}
+        </div>
 
-            {/* Same rich QR Code scan result response experience */}
-            {scanResult && (
-              <div
-                ref={statusResultRef}
-                className={`gate-scan-result-card ${scanResult.status.toLowerCase()}`}
-                style={{ marginTop: '1.25rem', width: '100%', maxWidth: '100%' }}
-              >
-                {scanResult.status === 'ENTERED' && (
-                  <>
-                    <div className="result-content success">
-                      <div className="result-icon">✅</div>
-                      <div className="result-text">
-                        <h3 className="result-title">VERIFIED SUCCESSFULLY</h3>
-                        <p className="result-name">
-                          {scanResult.attendee_name || selectedAttendee?.alumni?.name}
-                        </p>
-                        <div className="result-badges">
-                          {(scanResult.registration_number || selectedAttendee?.registration_number) && (
-                            <span className="result-pill">
-                              {scanResult.registration_number || selectedAttendee?.registration_number}
-                            </span>
-                          )}
-                          <span className="result-pill">
-                            {scanResult.branch || selectedAttendee?.alumni?.engineering_discipline || 'Alumni'}
-                            {scanResult.year_of_passing || selectedAttendee?.alumni?.year_of_passing
-                              ? ` (${scanResult.year_of_passing || selectedAttendee?.alumni?.year_of_passing})`
-                              : ''}
-                          </span>
-                          <span className="result-pill count-pill">
-                            👥 {scanResult.number_of_attendees || selectedAttendee?.number_of_attendees || 1} Attendees Allowed
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="result-actions">
-                      <button
-                        type="button"
-                        onClick={handleResetLookup}
-                        className="btn-scan-next btn-success"
-                      >
-                        <span>🔍</span>
-                        <span>Verify Next Attendee →</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {scanResult.status === 'ALREADY_ENTERED' && (
-                  <>
-                    <div className="result-content warning">
-                      <div className="result-icon">⚠️</div>
-                      <div className="result-text">
-                        <h3 className="result-title">ALREADY ENTERED (DUPLICATE PASS)</h3>
-                        <p className="result-detail">{scanResult.message}</p>
-                        <p className="result-sub">
-                          Attendee: <strong>{scanResult.attendee_name || selectedAttendee?.alumni?.name}</strong>{' '}
-                          ({scanResult.registration_number || selectedAttendee?.registration_number})
-                        </p>
-                      </div>
-                    </div>
-                    <div className="result-actions">
-                      <button
-                        type="button"
-                        onClick={handleResetLookup}
-                        className="btn-scan-next btn-warning"
-                      >
-                        <span>🔍</span>
-                        <span>Verify Next Attendee →</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveSubTab('log')}
-                        className="btn-scan-next btn-secondary-outline"
-                      >
-                        <span>📋</span>
-                        <span>View in Gate Entry Log →</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {scanResult.status === 'PAYMENT_PENDING' && (
-                  <>
-                    <div className="result-content error">
-                      <div className="result-icon">❌</div>
-                      <div className="result-text">
-                        <h3 className="result-title">PAYMENT NOT APPROVED</h3>
-                        <p className="result-detail">{scanResult.message}</p>
-                        <p className="result-sub">
-                          Attendee: <strong>{scanResult.attendee_name || selectedAttendee?.alumni?.name}</strong> • Amount Due: ₹{scanResult.amount ?? selectedAttendee?.amount ?? 0}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="result-actions">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRedirectToSpot({
-                            name: scanResult.attendee_name || selectedAttendee?.alumni?.name || '',
-                            mobile: scanResult.phone_number || manualPhone || selectedAttendee?.alumni?.mobile || '',
-                            branch: scanResult.branch || selectedAttendee?.alumni?.engineering_discipline || '',
-                            batch: scanResult.year_of_passing || selectedAttendee?.alumni?.year_of_passing || '',
-                            adults: scanResult.number_of_attendees || selectedAttendee?.number_of_attendees || 1,
-                            amount: scanResult.amount ?? selectedAttendee?.amount ?? 0,
-                          })
-                        }
-                        className="btn-redirect-spot"
-                      >
-                        <span>⚡</span>
-                        <span>Collect Fee &amp; Admit at Spot Desk →</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleResetLookup}
-                        className="btn-scan-next btn-error"
-                      >
-                        <span>🔍</span>
-                        <span>Verify Another Attendee</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {scanResult.status === 'NOT_FOUND' && (
-                  <>
-                    <div className="result-content error">
-                      <div className="result-icon">❓</div>
-                      <div className="result-text">
-                        <h3 className="result-title">NOT REGISTERED</h3>
-                        <p className="result-detail">{scanResult.message}</p>
-                      </div>
-                    </div>
-                    <div className="result-actions">
-                      <button
-                        type="button"
-                        className="btn-quick-spot-link"
-                        onClick={() =>
-                          handleRedirectToSpot({
-                            name: selectedAttendee?.alumni?.name || (manualLookupMode === 'name' ? nameSearchQuery : undefined),
-                            mobile: selectedAttendee?.alumni?.mobile || (manualLookupMode === 'phone' ? manualPhone : undefined),
-                          })
-                        }
-                      >
-                        <span>⚡ Spot Register this Attendee →</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-scan-next btn-secondary-outline"
-                        onClick={handleResetLookup}
-                      >
-                        <span>🔍</span>
-                        <span>Try Another Attendee</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {scanResult.status === 'ERROR' && (
-                  <>
-                    <div className="result-content error">
-                      <div className="result-icon">⚠️</div>
-                      <div className="result-text">
-                        <h3 className="result-title">VERIFICATION ERROR</h3>
-                        <p className="result-detail">{scanResult.message || 'Verification failed. Please retry.'}</p>
-                      </div>
-                    </div>
-                    <div className="result-actions">
-                      <button
-                        type="button"
-                        className="btn-scan-next btn-error"
-                        onClick={handleResetLookup}
-                      >
-                        <span>✕</span>
-                        <span>Dismiss &amp; Try Again</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}

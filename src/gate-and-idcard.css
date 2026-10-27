@@ -1173,6 +1173,71 @@
   display: block;
 }
 
+/* Premium Attendee Avatar when no photo is provided or image fails to load */
+.ticket-v-avatar-box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: radial-gradient(circle at 50% 36%, #16244f 0%, #071026 100%);
+  padding: 6px 4px;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.ticket-v-avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(201, 160, 56, 0.22) 0%, rgba(15, 23, 42, 0.85) 100%);
+  border: 1.5px solid #d4af37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 10px rgba(212, 175, 55, 0.28),
+    inset 0 0 6px rgba(0, 0, 0, 0.6);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ticket-v-avatar-initials {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #fffbeb 0%, #fcd34d 45%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+
+.ticket-v-avatar-icon {
+  width: 24px;
+  height: 24px;
+  color: #fbbf24;
+  opacity: 0.9;
+}
+
+.ticket-v-avatar-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fcd34d;
+  background: rgba(201, 160, 56, 0.15);
+  border: 1px solid rgba(201, 160, 56, 0.35);
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .ticket-v-photo-placeholder {
   display: flex;
   flex-direction: column;
@@ -7233,3 +7298,276 @@
   color: #e2e8f0;
   line-height: 1.4;
 }
+
+/* ============================================================
+   GATE HORIZONTAL ATTENDEE ID CARD & APPROVAL FLOW
+   ============================================================ */
+
+.gate-id-card-wrapper {
+  width: 100%;
+  max-width: 440px;
+  margin: 0.75rem auto 1rem auto;
+  container-type: inline-size;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Inline Search Group with dedicated Search button inside field */
+.gate-search-input-group {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gate-search-input-group .manual-reg-input-group,
+.gate-search-input-group .manual-phone-input-group {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 12px;
+  padding: 4px 5px 4px 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.gate-search-input-group .manual-reg-input-group:focus-within,
+.gate-search-input-group .manual-phone-input-group:focus-within {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2), 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.gate-search-input-group .manual-reg-prefix,
+.gate-search-input-group .manual-phone-prefix {
+  background: #1e293b;
+  color: #f59e0b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 0.95rem;
+  border-right: 1px solid #334155;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+.gate-search-input-group .manual-reg-field,
+.gate-search-input-group .manual-phone-field {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  padding: 0.65rem 0.75rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.gate-search-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0f172a;
+  border: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 0 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+  margin-left: 4px;
+}
+
+.gate-search-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #b45309 100%);
+  transform: translateY(-1px);
+}
+
+.gate-search-btn:active {
+  transform: translateY(0);
+}
+
+.gate-search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Lookup Not Found Card */
+.gate-search-not-found {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px dashed rgba(239, 68, 68, 0.45);
+  border-radius: 0.75rem;
+  padding: 1.15rem;
+  margin: 0.75rem 0;
+  text-align: center;
+  color: #fca5a5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.gate-search-not-found p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #f1f5f9;
+}
+
+.gate-search-not-found .not-found-sub {
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+/* Gate Approval Actions Row Below Card */
+.gate-card-actions-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 440px;
+  margin: 14px auto 0 auto;
+}
+
+.gate-entry-alert-line {
+  padding: 0.65rem 0.95rem;
+  border-radius: 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  line-height: 1.35;
+}
+
+.gate-entry-alert-line.warning {
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.gate-entry-alert-line.pending {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.gate-allow-entry-btn {
+  width: 100%;
+  min-height: 48px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 0.65rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+}
+
+.gate-allow-entry-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.gate-allow-entry-btn:active {
+  transform: translateY(0);
+}
+
+.gate-allow-entry-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 1-Line Entry Allowed Message */
+.gate-entry-allowed-line {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1.5px solid #10b981;
+  color: #34d399;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.2);
+  line-height: 1.35;
+}
+
+.btn-gate-next-card {
+  width: 100%;
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-gate-next-card:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.gate-card-clear-link {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 6px;
+  align-self: center;
+}
+
+.gate-card-clear-link:hover {
+  color: #ffffff;
+}
+
+@media (max-width: 480px) {
+  .gate-search-input-group {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .gate-search-btn {
+    min-width: 80px;
+    padding: 0 0.75rem;
+    font-size: 0.88rem;
+  }
+}
