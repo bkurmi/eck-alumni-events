@@ -188,6 +188,10 @@ export const IdCardPage: React.FC = () => {
 
       const existingPhoto = await resolvePhotoWithStorageFallback(res);
       const enrichedRes = { ...res, photo_url: existingPhoto || res.photo_url };
+      cachedEntryBlobRef.current = null;
+      cachedEntryDataUrlRef.current = null;
+      cachedSocialBlobRef.current = null;
+      cachedSocialDataUrlRef.current = null;
       setRegistration(enrichedRes);
       setIsPhoneVerified(true);
       setPassViewMode(IS_GATE_PASS_RELEASED ? 'entry' : 'social');
@@ -233,6 +237,10 @@ export const IdCardPage: React.FC = () => {
 
       const existingPhoto = await resolvePhotoWithStorageFallback(res);
       const enrichedRes = { ...res, photo_url: existingPhoto || res.photo_url };
+      cachedEntryBlobRef.current = null;
+      cachedEntryDataUrlRef.current = null;
+      cachedSocialBlobRef.current = null;
+      cachedSocialDataUrlRef.current = null;
       setRegistration(enrichedRes);
       setIsPhoneVerified(false);
       setPassViewMode('social');
@@ -334,6 +342,10 @@ export const IdCardPage: React.FC = () => {
 
     const existingPhoto = await resolvePhotoWithStorageFallback(reg);
     const enrichedReg = { ...reg, photo_url: existingPhoto || reg.photo_url };
+    cachedEntryBlobRef.current = null;
+    cachedEntryDataUrlRef.current = null;
+    cachedSocialBlobRef.current = null;
+    cachedSocialDataUrlRef.current = null;
     setRegistration(enrichedReg);
     setIsPhoneVerified(false);
     setPassViewMode('social');
@@ -362,6 +374,8 @@ export const IdCardPage: React.FC = () => {
     }
 
     if (inputClean === actualClean) {
+      cachedEntryBlobRef.current = null;
+      cachedEntryDataUrlRef.current = null;
       setIsPhoneVerified(true);
       setVerifyPhoneError(null);
       setShowPhoneVerifyModal(false);
@@ -418,6 +432,12 @@ export const IdCardPage: React.FC = () => {
       return;
     }
 
+    // Invalidate cached entry pass if phone is not verified yet
+    if (!isPhoneVerified) {
+      cachedEntryBlobRef.current = null;
+      cachedEntryDataUrlRef.current = null;
+    }
+
     let active = true;
     const timer = setTimeout(async () => {
       try {
@@ -436,8 +456,8 @@ export const IdCardPage: React.FC = () => {
           }
         }
 
-        // 2. Pre-generate Official Entry Pass (with QR Code) for instant high-res download
-        if (entryCardRef.current && active) {
+        // 2. Pre-generate Official Entry Pass (with QR Code) strictly when user is phone-verified!
+        if (isPhoneVerified && entryCardRef.current && active) {
           const entryUrl = await toPng(entryCardRef.current, {
             quality: 0.95,
             pixelRatio: 2.5,
@@ -459,12 +479,17 @@ export const IdCardPage: React.FC = () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [registration, photoPreview, selfieSkipped]);
+  }, [registration, photoPreview, selfieSkipped, isPhoneVerified, passViewMode]);
 
   // Handle Photo / Selfie Upload
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !registration?.registration_id) return;
+
+    cachedEntryBlobRef.current = null;
+    cachedEntryDataUrlRef.current = null;
+    cachedSocialBlobRef.current = null;
+    cachedSocialDataUrlRef.current = null;
 
     setUploadingPhoto(true);
     setErrorMsg(null);
@@ -1157,26 +1182,28 @@ export const IdCardPage: React.FC = () => {
                 hideQr={passViewMode === 'social' || !isPhoneVerified}
               />
 
-              {/* Offscreen Pass so both versions are always rendered in DOM & pre-cached for 0ms lag */}
-              <div
-                style={{
-                  position: 'fixed',
-                  left: '-9999px',
-                  top: '0',
-                  opacity: 0,
-                  pointerEvents: 'none',
-                  zIndex: -1,
-                }}
-                aria-hidden="true"
-              >
-                <IdCardPass
-                  registration={registration}
-                  event={defaultEvent}
-                  photoUrl={photoPreview}
-                  cardRef={passViewMode === 'social' || !isPhoneVerified ? entryCardRef : socialCardRef}
-                  hideQr={isPhoneVerified ? passViewMode !== 'social' : true}
-                />
-              </div>
+              {/* Offscreen Pass so both versions are always rendered in DOM & pre-cached for 0ms lag (rendered once verified) */}
+              {isPhoneVerified && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    left: '-9999px',
+                    top: '0',
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                  }}
+                  aria-hidden="true"
+                >
+                  <IdCardPass
+                    registration={registration}
+                    event={defaultEvent}
+                    photoUrl={photoPreview}
+                    cardRef={passViewMode === 'social' ? entryCardRef : socialCardRef}
+                    hideQr={passViewMode === 'social' ? false : true}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Action Buttons to Save / Download */}
