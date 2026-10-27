@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ECKEvent } from '../types';
+import { getRegistrationDeadline } from '../lib/eventStatus';
 
 interface EventCardProps {
   event: ECKEvent;
@@ -12,6 +13,67 @@ export const EventCard: React.FC<EventCardProps> = ({
   onRegisterClick,
   onManageRegistrationClick,
 }) => {
+  const [timeLeft, setTimeLeft] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isClosed: boolean;
+    totalHours: number;
+    formattedDeadline: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const calculate = () => {
+      const deadline = getRegistrationDeadline(event);
+      const now = new Date();
+      const diff = deadline.getTime() - now.getTime();
+
+      const formattedDeadline = deadline.toLocaleString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata',
+      });
+
+      if (diff <= 0) {
+        setTimeLeft({
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+          isClosed: true,
+          totalHours: 0,
+          formattedDeadline,
+        });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      const totalHours = Math.floor(diff / (1000 * 60 * 60));
+
+      setTimeLeft({
+        days,
+        hours,
+        minutes,
+        seconds,
+        isClosed: false,
+        totalHours,
+        formattedDeadline,
+      });
+    };
+
+    calculate();
+    const timer = setInterval(calculate, 1000);
+    return () => clearInterval(timer);
+  }, [event?.registration_closes_at]);
+
   const formattedDate = new Date(event.event_date).toLocaleDateString('en-IN', {
     weekday: 'long',
     year: 'numeric',
@@ -42,6 +104,36 @@ export const EventCard: React.FC<EventCardProps> = ({
           <span className={`badge ${event.status === 'OPEN' ? 'badge-open' : 'badge-closed'}`}>
             {event.status === 'OPEN' ? 'Registrations Open' : event.status === 'CLOSED' ? 'Registrations Closed' : event.status}
           </span>
+
+          {event.status === 'OPEN' && timeLeft && !timeLeft.isClosed && (
+            <span
+              className={`badge badge-countdown ${timeLeft.totalHours < 24 ? 'badge-countdown-urgent' : ''}`}
+              title={`Online registration closes on ${timeLeft.formattedDeadline} IST`}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="countdown-clock-icon"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span className="countdown-label">
+                {timeLeft.totalHours < 24 ? 'Ends in' : 'Closes in'}
+              </span>
+              <span className="countdown-time-digits">
+                {timeLeft.days > 0 && <span className="time-unit">{timeLeft.days}d</span>}
+                <span className="time-unit">{String(timeLeft.hours).padStart(2, '0')}h</span>
+                <span className="time-unit">{String(timeLeft.minutes).padStart(2, '0')}m</span>
+                <span className="time-unit time-unit-sec">{String(timeLeft.seconds).padStart(2, '0')}s</span>
+              </span>
+            </span>
+          )}
         </div>
 
         <h1 className="event-title">{event.event_name}</h1>
