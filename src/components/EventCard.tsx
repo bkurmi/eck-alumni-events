@@ -40,7 +40,7 @@ export const EventCard: React.FC<EventCardProps> = ({
             <span className="badge-dot pulse-gold">●</span> Annual Alumni Meet
           </span>
           <span className={`badge ${event.status === 'OPEN' ? 'badge-open' : 'badge-closed'}`}>
-            {event.status === 'OPEN' ? 'Registrations Open' : event.status}
+            {event.status === 'OPEN' ? 'Registrations Open' : event.status === 'CLOSED' ? 'Registrations Closed' : event.status}
           </span>
         </div>
 
@@ -109,7 +109,11 @@ export const EventCard: React.FC<EventCardProps> = ({
             <div className="meta-text-col">
               <span className="meta-label">Contribution</span>
               <span className="meta-value fee-highlight">
-                ₹800 <span className="fee-sub">Single / ₹1,500 Couple</span>
+                {event.status === 'CLOSED' ? (
+                  <>₹1,000 <span className="fee-sub">Spot Entry / Adult</span></>
+                ) : (
+                  <>₹800 <span className="fee-sub">Single / ₹1,500 Couple</span></>
+                )}
               </span>
             </div>
           </div>
@@ -121,7 +125,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           </div>
         )}
 
-        {event.status === 'OPEN' && (
+        {event.status === 'OPEN' ? (
           <div className="event-action-bar">
             {onRegisterClick && (
               <button
@@ -149,6 +153,45 @@ export const EventCard: React.FC<EventCardProps> = ({
             )}
 
             <p className="cta-subtext">✨ Limited capacity • Family &amp; batchmates welcome ✨</p>
+          </div>
+        ) : (
+          <div className="event-action-bar event-closed-bar">
+            <div className="registration-closed-card">
+              <div className="closed-card-header">
+                <span className="closed-icon">🔒</span>
+                <div>
+                  <h3 className="closed-title">Online Registrations Closed</h3>
+                  <p className="closed-subtitle">
+                    Online registration closed post deadline. Spot walk-in entries are open at the gate!
+                  </p>
+                </div>
+              </div>
+              <div className="closed-card-body">
+                <p>
+                  <strong>Spot Walk-in Registration Desk:</strong>
+                  <br />
+                  Missed online registration? No worries! Visit the Spot Registration Desk at the ECK Campus Gate on the event day.
+                </p>
+                <div className="spot-summary-pills">
+                  <span className="spot-rate-chip">Adults: ₹1,000 / person</span>
+                  <span className="spot-rate-chip">Kids (10+ yrs): ₹500</span>
+                  <span className="spot-rate-chip chip-free">Kids (&lt;10 yrs): Free</span>
+                </div>
+              </div>
+            </div>
+
+            {onManageRegistrationClick && (
+              <button
+                type="button"
+                onClick={onManageRegistrationClick}
+                className="btn btn-lookup-trigger btn-block"
+                id="btn-lookup-registration"
+              >
+                <span>🔍 Already Registered? View / Update Details &amp; Pass</span>
+              </button>
+            )}
+
+            <p className="cta-subtext">✨ We look forward to welcoming you at ECK-RTU Campus Kota! ✨</p>
           </div>
         )}
       </div>

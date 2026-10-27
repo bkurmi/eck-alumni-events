@@ -22,6 +22,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { isAdminGatePortalEnabled } from '../lib/gate';
+import { getRegistrationStatusInfo, syncEventRegistrationStatus } from '../lib/eventStatus';
 import type { EventRegistration, ECKEvent, PaymentVerification, Sponsorship, EventExpense } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
@@ -130,9 +131,17 @@ export const AdminPage: React.FC = () => {
       setRegistrations(list);
       setVerifications(verifList);
       if (list.length > 0 && list[0]?.events) {
-        setActiveEvent(list[0].events);
+        const ev = { ...list[0].events };
+        const deadlineInfo = getRegistrationStatusInfo(ev);
+        if (deadlineInfo.isClosed) ev.status = 'CLOSED';
+        setActiveEvent(ev);
+        syncEventRegistrationStatus(ev.event_slug, ev.status, ev.registration_closes_at).catch(() => { });
       } else if (eventRes.data) {
-        setActiveEvent(eventRes.data as ECKEvent);
+        const ev = { ...(eventRes.data as ECKEvent) };
+        const deadlineInfo = getRegistrationStatusInfo(ev);
+        if (deadlineInfo.isClosed) ev.status = 'CLOSED';
+        setActiveEvent(ev);
+        syncEventRegistrationStatus(ev.event_slug, ev.status, ev.registration_closes_at).catch(() => { });
       }
     } catch (err) {
       console.warn('Registrations fetch note:', err);
@@ -571,7 +580,7 @@ export const AdminPage: React.FC = () => {
                 <div>
                   <h1 className="admin-title">
                     {activeTab === 'gate_portal'
-                      ? 'Gate Verification & Live Turnout'
+                      ? 'Gate Verification & Turnout'
                       : activeTab === 'upi_report'
                         ? 'UPI Reconciliation Ledger'
                         : activeTab === 'sponsorships'
@@ -584,13 +593,21 @@ export const AdminPage: React.FC = () => {
                     {activeTab === 'gate_portal'
                       ? 'QR scanning, attendance & walk-ins.'
                       : activeTab === 'upi_report'
-                        ? 'Track & verify payments across receiving UPI accounts.'
+                        ? 'Track & verify payments.'
                         : activeTab === 'sponsorships'
                           ? 'Track Alumni sponsors'
                           : activeTab === 'expenses'
-                            ? 'Track expected budget vs real expenses & net financial balance.'
+                            ? 'Track expected budget vs real expenses.'
                             : 'Verify screenshots and alumni submissions.'}
                   </p>
+                  <div className="admin-status-badge-row" style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className={`badge ${getRegistrationStatusInfo(activeEvent).isClosed ? 'badge-closed' : 'badge-open'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                      {getRegistrationStatusInfo(activeEvent).isClosed ? '🔴 Online Registration: CLOSED' : '🟢 Online Registration: ACTIVE'}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                      Deadline: {getRegistrationStatusInfo(activeEvent).formattedDeadline} ({getRegistrationStatusInfo(activeEvent).timeRemainingText})
+                    </span>
+                  </div>
                 </div>
                 <div className="admin-actions">
                   <button
@@ -619,18 +636,24 @@ export const AdminPage: React.FC = () => {
                       fetchExpensesData();
                     }}
                     disabled={loadingData}
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm admin-refresh-btn"
                     title="Refresh Data"
                   >
-                    🔄 Refresh
+                    <span>🔄</span>
+                    <span>Refresh</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleSignOut}
-                    className="btn btn-ghost btn-sm text-error"
-                    title="Sign Out"
+                    className="btn btn-signout btn-sm"
+                    title="Sign Out of Admin Portal"
                   >
-                    Sign Out
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>

@@ -22,6 +22,7 @@ export interface ECKEvent {
   theme_accent_color: string;
   qr_image_url: string | null;
   upi_rotation_configs?: UpiPaymentConfig[] | null;
+  registration_closes_at?: string | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'COMPLETED';
   created_at: string;
   updated_at: string;
