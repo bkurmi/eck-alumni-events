@@ -51,8 +51,8 @@ const RECONCILIATION_ACCOUNTS: {
       let bank = 'UPI';
       const upi = c.upi_id.toLowerCase().trim();
       if (upi.includes('sbi')) bank = 'SBI';
-      else if (upi.includes('axis')) bank = 'Axis';
-      else if (upi.includes('ybl')) bank = 'Yes Bank';
+      else if (upi.includes('axis')) bank = 'AXIS';
+      else if (upi.includes('ybl')) bank = 'YES';
       else if (upi.includes('ibl') || upi.includes('icici')) bank = 'ICICI';
       return {
         upi_id: upi,
@@ -166,30 +166,30 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         ? matchedAccount.label
         : '⚠️ Not Tagged';
 
-        return {
-          registration: reg,
-          verification: verif,
-          assignedUpi,
-          qrLabel,
-          paymentDate,
-          amount,
-          verifiedBy: verif?.verified_by || null,
-          screenshotUrl: getPublicScreenshotUrl(
-            reg.payment_screenshot_path ? reg.payment_screenshot_path.split(',')[0] : null
-          ),
-          isVerified: !!verif && verif.verified_status === 'VERIFIED',
-        };
-      }).sort((a, b) => {
-        const regA = a.registration.registration_number || '';
-        const regB = b.registration.registration_number || '';
-        if (regA && regB) {
-          const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
-          if (cmp !== 0) return cmp;
-        }
-        const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
-        const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
-        return timeB - timeA;
-      });
+      return {
+        registration: reg,
+        verification: verif,
+        assignedUpi,
+        qrLabel,
+        paymentDate,
+        amount,
+        verifiedBy: verif?.verified_by || null,
+        screenshotUrl: getPublicScreenshotUrl(
+          reg.payment_screenshot_path ? reg.payment_screenshot_path.split(',')[0] : null
+        ),
+        isVerified: !!verif && verif.verified_status === 'VERIFIED',
+      };
+    }).sort((a, b) => {
+      const regA = a.registration.registration_number || '';
+      const regB = b.registration.registration_number || '';
+      if (regA && regB) {
+        const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+      }
+      const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
+      const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
+      return timeB - timeA;
+    });
   }, [registrations, verifByRegId, knownAccounts]);
 
   // Attendance Counts for the filter chips
