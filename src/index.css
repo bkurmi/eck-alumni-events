@@ -2937,7 +2937,7 @@ h6 {
 .admin-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .admin-header-row {
@@ -3046,7 +3046,7 @@ h6 {
 
 @media (min-width: 900px) {
   .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 14px;
   }
 }
@@ -4499,12 +4499,12 @@ h6 {
   background: linear-gradient(135deg, rgba(2, 89, 7, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
   border: 1px solid rgba(13, 150, 22, 0.4);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .admin-mobile-share-info {
@@ -4581,7 +4581,7 @@ h6 {
 .admin-view-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
   background: var(--bg-surface);
   padding: 6px;
   border-radius: var(--radius-lg);
@@ -4712,7 +4712,7 @@ h6 {
   .admin-view-tabs {
     padding: 4px;
     gap: 6px;
-    margin-bottom: 16px;
+    margin-bottom: 0;
     overflow-x: auto;
   }
 
@@ -4729,13 +4729,6 @@ h6 {
     padding: 2px 7px;
     min-width: 20px;
   }
-}
-
-/* ── UPI Report Container & Header ── */
-.upi-report-container {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
 }
 
 /* ── Per-Account KPI Tabs / Grid ── */
@@ -4843,11 +4836,17 @@ h6 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  padding: 14px 18px;
+  padding: 8px 12px;
   border-radius: var(--radius-md);
+}
+
+.upi-search .search-input {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 0.88rem;
 }
 
 .upi-search {
@@ -5238,11 +5237,12 @@ h6 {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   background: var(--bg-surface);
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: 8px 12px;
+  margin: 0;
 }
 
 .view-mode-toggle-label {
@@ -5285,11 +5285,72 @@ h6 {
   box-shadow: 0 2px 10px var(--primary-glow);
 }
 
+/* ── Dedicated View Toggle (Registrations vs Sponsorships) ── */
+.ledger-category-toggle-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.ledger-toggle-buttons {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.ledger-tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.ledger-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.ledger-tab-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #111827;
+  border-color: var(--primary-light);
+  font-weight: 700;
+  box-shadow: 0 2px 10px var(--primary-glow);
+}
+
+.ledger-tab-btn.sponsor-tab.active {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #111827;
+  border-color: #fbbf24;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+}
+
 /* ── Multi-Select QR Code Checkbox Section ── */
 .qr-checkbox-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  margin: 0;
 }
 
 .qr-checkbox-header {
@@ -5337,8 +5398,8 @@ h6 {
 
 .qr-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
   align-items: stretch;
 }
 
@@ -5449,12 +5510,13 @@ h6 {
 .live-selection-banner {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(17, 20, 37, 0.95) 100%);
   border: 1px solid var(--border-gold);
   border-radius: var(--radius-lg);
-  padding: 14px 20px;
+  padding: 10px 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  margin: 0;
 }
 
 .live-banner-top-row {
@@ -6214,13 +6276,43 @@ h6 {
   }
 }
 
-/* ── UPI Ledger Attendance Chips & Verified By Styles ── */
+/* ── UPI Ledger Container & Spacing Consistency ── */
+.upi-report-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .upi-filter-section {
-  margin-bottom: 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .upi-attendance-chips {
-  margin-bottom: 10px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .upi-report-container {
+    gap: 14px;
+  }
+
+  .upi-filter-section {
+    gap: 10px;
+  }
+
+  .ledger-category-toggle-card {
+    padding: 5px;
+    margin: 0;
+  }
+
+  .ledger-tab-btn {
+    padding: 8px 8px;
+    font-size: 0.82rem;
+    min-height: 44px;
+  }
 }
 
 .verified-by-tag {

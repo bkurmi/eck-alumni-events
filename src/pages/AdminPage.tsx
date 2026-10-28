@@ -46,6 +46,19 @@ const DEFAULT_EVENT: ECKEvent = {
   updated_at: new Date().toISOString(),
 };
 
+export const getEffectiveRegAmount = (
+  reg: EventRegistration,
+  verifList?: PaymentVerification[]
+): number => {
+  const verif =
+    reg.payment_verifications?.[0] ||
+    (verifList ? verifList.find((v) => v.registration_id === reg.id) : undefined);
+  if (verif && verif.amount !== undefined && verif.amount !== null && !isNaN(Number(verif.amount))) {
+    return Number(verif.amount);
+  }
+  return Number(reg.amount || 0);
+};
+
 export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -242,6 +255,14 @@ export const AdminPage: React.FC = () => {
         return false;
       }
 
+      // Also sync verified amount directly to the event_registrations record if possible
+      try {
+        await supabase
+          .from('event_registrations')
+          .update({ amount: amount })
+          .eq('id', registrationId);
+      } catch (_) { }
+
       await fetchRegistrations();
       return true;
     } catch (err: any) {
@@ -338,7 +359,7 @@ export const AdminPage: React.FC = () => {
   // Re-fetch sponsorships or expenses if activeEvent changes or when switching tabs
   useEffect(() => {
     if (session) {
-      if (activeTab === 'sponsorships') {
+      if (activeTab === 'sponsorships' || activeTab === 'upi_report') {
         fetchSponsorshipsData();
       } else if (activeTab === 'expenses') {
         fetchExpensesData();
@@ -391,7 +412,7 @@ export const AdminPage: React.FC = () => {
       city ? `📍 *Location:* ${city}` : '',
       `👥 *Attendees:* ${count} ${count === 1 ? 'Person' : 'People'}${count > 1 ? ` (Self + ${count - 1} accompanying)` : ''}`,
       `✨ *Attendance Status:* ${status.toUpperCase()}`,
-      reg.attendance_status === 'yes' ? `💰 *Contribution:* ₹${reg.amount}` : '',
+      reg.attendance_status === 'yes' ? `💰 *Contribution:* ₹${getEffectiveRegAmount(reg, verifications)}` : '',
       (() => {
         const verif = verifications.find((v) => v.registration_id === reg.id) || reg.payment_verifications?.[0];
         const n = verif?.notes || (reg as any).notes;
@@ -518,8 +539,8 @@ export const AdminPage: React.FC = () => {
       (sum, r) => sum + (r.number_of_attendees || 1),
       0
     );
-    const totalAmount = attendingRegs.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-    const pendingAmount = paymentPendingRegs.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const totalAmount = attendingRegs.reduce((sum, r) => sum + getEffectiveRegAmount(r, verifications), 0);
+    const pendingAmount = paymentPendingRegs.reduce((sum, r) => sum + getEffectiveRegAmount(r, verifications), 0);
     const maybeCount = registrations.filter((r) => r.attendance_status === 'maybe').length;
 
     const confirmedSponsorshipAmount = sponsorships.reduce(
@@ -541,7 +562,7 @@ export const AdminPage: React.FC = () => {
       grandTotalFunds,
       sponsorshipsCount: sponsorships.length,
     };
-  }, [registrations, sponsorships]);
+  }, [registrations, verifications, sponsorships]);
 
   const getPublicScreenshotUrl = (path: string | null) => {
     if (!path) return null;
@@ -818,8 +839,16 @@ export const AdminPage: React.FC = () => {
                 <UpiReconciliationReport
                   registrations={registrations}
                   verifications={verifications}
+                  sponsorships={sponsorships}
                   onSaveVerification={handleSaveVerification}
-                  onRefresh={fetchRegistrations}
+                  onEditSponsorship={(sp) => {
+                    setSelectedSponsorship(sp);
+                    setIsSponsorshipModalOpen(true);
+                  }}
+                  onRefresh={() => {
+                    fetchRegistrations();
+                    fetchSponsorshipsData();
+                  }}
                   loading={loadingData}
                   currentUserEmail={session?.user?.email}
                 />
@@ -979,7 +1008,7 @@ export const AdminPage: React.FC = () => {
                             </div>
                             <span className="reg-amount">
                               {reg.attendance_status === 'yes' || reg.attendance_status === 'payment_pending'
-                                ? `₹${reg.amount}`
+                                ? `₹${getEffectiveRegAmount(reg, verifications)}`
                                 : '—'}
                             </span>
                           </div>
@@ -1169,7 +1198,7 @@ export const AdminPage: React.FC = () => {
                 <div className="modal-detail-item">
                   <span className="modal-label">Contribution Amount</span>
                   <span className="modal-val font-accent font-bold">
-                    ₹{selectedReg.amount}
+                    ₹{getEffectiveRegAmount(selectedReg, verifications)}
                   </span>
                 </div>
 
