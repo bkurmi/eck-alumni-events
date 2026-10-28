@@ -10,6 +10,7 @@ export const UPI_ACCOUNT_NAMES: Record<string, string> = {
   '9414936876@ibl': 'Rajeev',
   '9001017275@ybl': 'Mukesh',
   '9799951857@upi': 'Chetan',
+  'gautam.lucky-1@okicici': 'Lokesh',
 };
 
 export function getUpiAccountName(upiId?: string | null): string {

@@ -41,6 +41,7 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
 
   // Available receiving UPI account options
   const knownUpiOptions = [
+    { upi: 'gautam.lucky-1@okicici', label: `Lokesh (gautam.lucky-1@okicici)` },
     { upi: '9799951857@upi', label: `Chetan (9799951857@upi)` },
     ...DEFAULT_UPI_CONFIGS.map((c) => ({
       upi: c.upi_id.toLowerCase().trim(),
@@ -76,10 +77,10 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
         setScreenshotFile(null);
         setScreenshotPreview(getPublicSponsorshipScreenshotUrl(initialData.payment_screenshot_path));
       } else {
-        // New entry defaults (No pre-selected values)
+        // New entry defaults (Lokesh is the primary recipient for Sponsorships)
         setSponsorName('');
         setAmount('');
-        setReceivingUpiId('');
+        setReceivingUpiId('gautam.lucky-1@okicici');
         setCustomUpi('');
         setContactPerson('');
         setContactPhone('');

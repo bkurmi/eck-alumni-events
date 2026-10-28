@@ -101,7 +101,7 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* ── STREAMLINED COMPACT HEADER TOOLBAR (No Unused Spacing) ── */}
       <div
         style={{

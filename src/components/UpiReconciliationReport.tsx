@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { EventRegistration, PaymentVerification } from '../types';
+import type { EventRegistration, PaymentVerification, Sponsorship } from '../types';
 import { DEFAULT_UPI_CONFIGS, UPI_ACCOUNT_NAMES } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
@@ -7,12 +7,14 @@ import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 interface UpiReconciliationReportProps {
   registrations: EventRegistration[];
   verifications: PaymentVerification[];
+  sponsorships?: Sponsorship[];
   onSaveVerification: (
     registrationId: string,
     upiId: string,
     amount: number,
     notes?: string
   ) => Promise<boolean>;
+  onEditSponsorship?: (sponsorship: Sponsorship) => void;
   onRefresh?: () => void;
   loading?: boolean;
   currentUserEmail?: string;
@@ -24,6 +26,7 @@ interface KnownAccount {
   badge: string;
   bankName: string;
   accountName: string;
+  isSponsorAccount?: boolean;
 }
 
 const getPublicScreenshotUrl = (path: string | null | undefined) => {
@@ -36,67 +39,61 @@ const getPublicScreenshotUrl = (path: string | null | undefined) => {
 };
 
 
+
 // Receiving accounts tracked specifically for UPI Reconciliation Reporting
-const RECONCILIATION_ACCOUNTS: { upi_id: string; bankName: string; accountName: string }[] = [
-  ...DEFAULT_UPI_CONFIGS.map((c, idx) => {
-    let bank = 'UPI';
-    const upi = c.upi_id.toLowerCase().trim();
-    if (upi.includes('sbi')) bank = 'SBI';
-    else if (upi.includes('axis')) bank = 'Axis';
-    else if (upi.includes('ybl')) bank = 'Yes Bank';
-    else if (upi.includes('ibl')) bank = 'ICICI';
-    return {
-      upi_id: upi,
-      bankName: bank,
-      accountName: c.account_name || UPI_ACCOUNT_NAMES[upi] || `Account ${idx + 1}`,
-    };
-  }),
-  {
-    upi_id: '9799951857@upi',
-    bankName: 'UPI',
-    accountName: UPI_ACCOUNT_NAMES['9799951857@upi'] || 'Chetan',
-  },
-];
+const RECONCILIATION_ACCOUNTS: {
+  upi_id: string;
+  bankName: string;
+  accountName: string;
+  isSponsorAccount?: boolean;
+}[] = [
+    ...DEFAULT_UPI_CONFIGS.map((c, idx) => {
+      let bank = 'UPI';
+      const upi = c.upi_id.toLowerCase().trim();
+      if (upi.includes('sbi')) bank = 'SBI';
+      else if (upi.includes('axis')) bank = 'Axis';
+      else if (upi.includes('ybl')) bank = 'Yes Bank';
+      else if (upi.includes('ibl') || upi.includes('icici')) bank = 'ICICI';
+      return {
+        upi_id: upi,
+        bankName: bank,
+        accountName: c.account_name || UPI_ACCOUNT_NAMES[upi] || `Account ${idx + 1}`,
+        isSponsorAccount: false,
+      };
+    }),
+    {
+      upi_id: '9799951857@upi',
+      bankName: 'UPI',
+      accountName: UPI_ACCOUNT_NAMES['9799951857@upi'] || 'Chetan',
+      isSponsorAccount: false,
+    },
+    {
+      upi_id: 'gautam.lucky-1@okicici',
+      bankName: 'ICICI',
+      accountName: UPI_ACCOUNT_NAMES['gautam.lucky-1@okicici'] || 'Lokesh',
+      isSponsorAccount: false,
+    },
+  ];
 
 export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = ({
   registrations,
   verifications,
+  sponsorships = [],
   onSaveVerification,
+  onEditSponsorship,
   currentUserEmail,
 }) => {
   // Known accounts list specifically for reconciliation reporting
   const knownAccounts: KnownAccount[] = useMemo(() => {
-    const list: KnownAccount[] = RECONCILIATION_ACCOUNTS.map((c) => ({
+    return RECONCILIATION_ACCOUNTS.map((c) => ({
       upi_id: c.upi_id.toLowerCase().trim(),
       label: `${c.accountName} (${c.bankName})`,
       badge: c.accountName,
       bankName: c.bankName,
       accountName: c.accountName,
+      isSponsorAccount: c.isSponsorAccount,
     }));
-
-    // Include any verified UPI IDs from database not already in default list
-    verifications.forEach((v) => {
-      if (!v.upi_id) return;
-      const upi = v.upi_id.toLowerCase().trim();
-      if (!list.some((a) => a.upi_id === upi)) {
-        let bank = 'UPI';
-        if (upi.includes('sbi')) bank = 'SBI';
-        else if (upi.includes('axis')) bank = 'Axis';
-        else if (upi.includes('ybl')) bank = 'Yes Bank';
-        else if (upi.includes('ibl')) bank = 'ICICI';
-        const name = UPI_ACCOUNT_NAMES[upi] || upi;
-        list.push({
-          upi_id: upi,
-          label: `${name} (${bank})`,
-          badge: name,
-          bankName: bank,
-          accountName: name,
-        });
-      }
-    });
-
-    return list;
-  }, [verifications]);
+  }, []);
 
   // All filterable account keys: known accounts + 'unassigned'
   const allAccountKeys = useMemo(() => {
@@ -105,6 +102,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
   // Selected QR Checkbox accounts (Multi-select)
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>(allAccountKeys);
+
+  // Dedicated Ledger View: 'registrations' (default) vs 'sponsorships'
+  const [activeLedgerTab, setActiveLedgerTab] = useState<'registrations' | 'sponsorships'>('registrations');
 
   // View Mode: 'overall' vs 'daywise' (Overall Flat View is default)
   const [viewMode, setViewMode] = useState<'daywise' | 'overall'>('overall');
@@ -153,7 +153,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   const enrichedList = useMemo(() => {
     return registrations.map((reg) => {
       const verif = verifByRegId.get(reg.id) || reg.payment_verifications?.[0];
-      const assignedUpi = verif?.upi_id ? verif.upi_id.toLowerCase().trim() : null;
+      const rawUpi = verif?.upi_id ? verif.upi_id.toLowerCase().trim() : null;
+      // If mapped to an official receiving UPI account, assign it; otherwise it's unassigned
+      const isKnown = rawUpi ? knownAccounts.some((a) => a.upi_id === rawUpi) : false;
+      const assignedUpi = isKnown ? rawUpi : null;
       const paymentDate = reg.created_at.slice(0, 10);
       const amount = verif ? Number(verif.amount) : Number(reg.amount || 0);
 
@@ -161,34 +164,32 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       const matchedAccount = knownAccounts.find((a) => a.upi_id === assignedUpi);
       const qrLabel = matchedAccount
         ? matchedAccount.label
-        : assignedUpi
-          ? `Custom (${assignedUpi})`
-          : '⚠️ Not Tagged';
+        : '⚠️ Not Tagged';
 
-      return {
-        registration: reg,
-        verification: verif,
-        assignedUpi,
-        qrLabel,
-        paymentDate,
-        amount,
-        verifiedBy: verif?.verified_by || null,
-        screenshotUrl: getPublicScreenshotUrl(
-          reg.payment_screenshot_path ? reg.payment_screenshot_path.split(',')[0] : null
-        ),
-        isVerified: !!verif && verif.verified_status === 'VERIFIED',
-      };
-    }).sort((a, b) => {
-      const regA = a.registration.registration_number || '';
-      const regB = b.registration.registration_number || '';
-      if (regA && regB) {
-        const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
-        if (cmp !== 0) return cmp;
-      }
-      const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
-      const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
-      return timeB - timeA;
-    });
+        return {
+          registration: reg,
+          verification: verif,
+          assignedUpi,
+          qrLabel,
+          paymentDate,
+          amount,
+          verifiedBy: verif?.verified_by || null,
+          screenshotUrl: getPublicScreenshotUrl(
+            reg.payment_screenshot_path ? reg.payment_screenshot_path.split(',')[0] : null
+          ),
+          isVerified: !!verif && verif.verified_status === 'VERIFIED',
+        };
+      }).sort((a, b) => {
+        const regA = a.registration.registration_number || '';
+        const regB = b.registration.registration_number || '';
+        if (regA && regB) {
+          const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
+          if (cmp !== 0) return cmp;
+        }
+        const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
+        const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
+        return timeB - timeA;
+      });
   }, [registrations, verifByRegId, knownAccounts]);
 
   // Attendance Counts for the filter chips
@@ -210,13 +211,16 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     return Array.from(set).sort().reverse();
   }, [enrichedList]);
 
-  // Individual Account Tallies (Reflects active attendance filter)
+  // Individual Account Tallies (Reflects active attendance filter + sponsorships)
   const accountStats = useMemo(() => {
-    const stats: Record<string, { count: number; totalAmount: number }> = {};
+    const stats: Record<
+      string,
+      { count: number; totalAmount: number; sponsorCount: number; sponsorAmount: number }
+    > = {};
     knownAccounts.forEach((acc) => {
-      stats[acc.upi_id] = { count: 0, totalAmount: 0 };
+      stats[acc.upi_id] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
     });
-    stats['unassigned'] = { count: 0, totalAmount: 0 };
+    stats['unassigned'] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
 
     enrichedList.forEach((item) => {
       if (attendanceFilter !== 'all' && item.registration.attendance_status !== attendanceFilter) {
@@ -224,14 +228,25 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       }
       const key = item.assignedUpi || 'unassigned';
       if (!stats[key]) {
-        stats[key] = { count: 0, totalAmount: 0 };
+        stats[key] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
       }
       stats[key].count++;
       stats[key].totalAmount += item.amount;
     });
 
+    sponsorships.forEach((s) => {
+      const key = (s.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
+      if (!stats[key]) {
+        stats[key] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
+      }
+      const amt = Number(s.amount || 0);
+      stats[key].sponsorCount = (stats[key].sponsorCount || 0) + 1;
+      stats[key].sponsorAmount = (stats[key].sponsorAmount || 0) + amt;
+      stats[key].totalAmount += amt;
+    });
+
     return stats;
-  }, [enrichedList, knownAccounts, attendanceFilter]);
+  }, [enrichedList, knownAccounts, attendanceFilter, sponsorships]);
 
   // Checkbox Toggle Handlers
   const toggleAccount = (accountKey: string) => {
@@ -298,12 +313,53 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     });
   }, [enrichedList, attendanceFilter, selectedAccounts, selectedDateFilter, searchQuery]);
 
-  // Totals for the currently active filtered view
+  // Filtered sponsorships based on selected UPI accounts, search, and date
+  const filteredSponsorships = useMemo(() => {
+    return (sponsorships || []).filter((s) => {
+      const rawUpi = (s.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
+      const isKnown = knownAccounts.some((a) => a.upi_id === rawUpi);
+      const upi = isKnown ? rawUpi : 'unassigned';
+      if (!selectedAccounts.includes(upi)) {
+        return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = s.sponsor_name?.toLowerCase().includes(q);
+        const matchesPerson = s.contact_person?.toLowerCase().includes(q);
+        const matchesPhone = s.contact_phone?.includes(q);
+        const matchesUpi = upi.includes(q);
+        if (!matchesName && !matchesPerson && !matchesPhone && !matchesUpi) {
+          return false;
+        }
+      }
+
+      if (selectedDateFilter !== 'all') {
+        const d = (s.created_at || '').slice(0, 10);
+        if (d !== selectedDateFilter) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [sponsorships, selectedAccounts, searchQuery, selectedDateFilter]);
+
+  // Totals for the currently active filtered view (Registrations + Sponsorships)
   const currentTotals = useMemo(() => {
-    const totalCount = filteredList.length;
-    const totalAmount = filteredList.reduce((sum, item) => sum + item.amount, 0);
-    return { totalCount, totalAmount };
-  }, [filteredList]);
+    const totalRegCount = filteredList.length;
+    const regAmount = filteredList.reduce((sum, item) => sum + item.amount, 0);
+    const totalSponsorCount = filteredSponsorships.length;
+    const sponsorAmount = filteredSponsorships.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+    return {
+      totalCount: totalRegCount + totalSponsorCount,
+      totalRegCount,
+      totalSponsorCount,
+      regAmount,
+      sponsorAmount,
+      totalAmount: regAmount + sponsorAmount,
+    };
+  }, [filteredList, filteredSponsorships]);
 
   // Grouped by Date (Used when viewMode === 'daywise')
   const groupedByDate = useMemo(() => {
@@ -413,10 +469,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         item.registration.attendance_status === 'yes'
           ? 'Attending'
           : item.registration.attendance_status === 'payment_pending'
-          ? 'Payment Pending'
-          : item.registration.attendance_status === 'maybe'
-          ? 'Maybe'
-          : 'No';
+            ? 'Payment Pending'
+            : item.registration.attendance_status === 'maybe'
+              ? 'Maybe'
+              : 'No';
       return [
         `"${alumni?.name || ''}"`,
         `"${attStatus}"`,
@@ -451,7 +507,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     text += `📊 *View:* ${viewMode === 'daywise' ? 'Day-wise Breakdown' : 'Overall Consolidated'}\n`;
     text += `🎟️ *Attendance Filter:* ${attendanceFilter.toUpperCase()}\n`;
     text += `💰 *Selected Total:* ₹${currentTotals.totalAmount.toLocaleString('en-IN')}\n`;
-    text += `👥 *Total Registrations:* ${currentTotals.totalCount}\n`;
+    text += `👥 *Total Registrations:* ${currentTotals.totalRegCount} (₹${currentTotals.regAmount.toLocaleString('en-IN')})\n`;
+    if (currentTotals.totalSponsorCount > 0) {
+      text += `🤝 *Total Sponsorships:* ${currentTotals.totalSponsorCount} (₹${currentTotals.sponsorAmount.toLocaleString('en-IN')})\n`;
+    }
     text += `📅 *Generated On:* ${new Date().toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -471,6 +530,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     } else {
       filteredList.forEach((item, idx) => {
         text += `${idx + 1}. [${item.registration.registration_number}] ${item.registration.alumni?.name || 'Alumnus'} — ₹${item.amount} [${item.assignedUpi || 'Unassigned'}] (Date: ${formatDDMMYYYY(item.paymentDate)})\n`;
+      });
+    }
+
+    if (filteredSponsorships.length > 0) {
+      text += `\n🤝 *Sponsorship Contributions (${filteredSponsorships.length}):*\n`;
+      filteredSponsorships.forEach((sp, idx) => {
+        text += `  ${idx + 1}. ${sp.sponsor_name} — ₹${Number(sp.amount || 0).toLocaleString('en-IN')} [${sp.receiving_upi_id || 'gautam.lucky-1@okicici'}]\n`;
       });
     }
 
@@ -576,10 +642,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               {item.registration.attendance_status === 'yes'
                 ? `Attending${hasMultipleGuests ? ` (${item.registration.number_of_attendees})` : ''}`
                 : item.registration.attendance_status === 'payment_pending'
-                ? '⚠️ Payment Pending'
-                : item.registration.attendance_status === 'maybe'
-                ? 'Maybe'
-                : 'No'}
+                  ? '⚠️ Payment Pending'
+                  : item.registration.attendance_status === 'maybe'
+                    ? 'Maybe'
+                    : 'No'}
             </span>
           </div>
           <div className="upi-m-alumni-meta">
@@ -721,7 +787,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         <div className="qr-checkbox-grid">
           {knownAccounts.map((acc) => {
             const isChecked = selectedAccounts.includes(acc.upi_id);
-            const stats = accountStats[acc.upi_id] || { count: 0, totalAmount: 0 };
+            const stats = accountStats[acc.upi_id] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
 
             return (
               <label
@@ -736,8 +802,16 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 />
                 <div className="qr-checkbox-info">
                   <div className="qr-checkbox-top">
-                    <span className="qr-checkbox-badge">{acc.bankName}</span>
-                    <span className="qr-checkbox-count">{stats.count} Regs</span>
+                    <span className="qr-checkbox-badge">
+                      {acc.bankName}
+                    </span>
+                    <span className="qr-checkbox-count">
+                      {stats.sponsorCount > 0 && stats.count > 0
+                        ? `${stats.count} Reg + ${stats.sponsorCount} Spons`
+                        : stats.sponsorCount > 0
+                          ? `${stats.sponsorCount} Spons`
+                          : `${stats.count} Regs`}
+                    </span>
                   </div>
                   <div className="qr-checkbox-account-label">
                     <strong className="qr-checkbox-name">{acc.accountName}</strong>
@@ -790,7 +864,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   : `${selectedAccounts.length} UPI Account${selectedAccounts.length === 1 ? '' : 's'} Selected`}
               </span>
               <span className="live-banner-sub">
-                {currentTotals.totalCount} matching registrations
+                {currentTotals.totalRegCount} matching registrations
+                {currentTotals.totalSponsorCount > 0 ? ` + ${currentTotals.totalSponsorCount} sponsorships` : ''}
               </span>
             </div>
           </div>
@@ -801,7 +876,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
         <div className="live-banner-chips-row">
           {selectedAccounts.length === allAccountKeys.length ? (
-            <span className="live-chip-all">✓ Showing all 6 receiving accounts</span>
+            <span className="live-chip-all">✓ Showing all {allAccountKeys.length} receiving accounts (including Sponsorships)</span>
           ) : selectedAccounts.length === 0 ? (
             <span className="live-chip-none">⚠️ No accounts selected (showing 0)</span>
           ) : (
@@ -820,38 +895,60 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
       </div>
 
-      {/* ── ATTENDANCE STATUS FILTER CHIPS & TOOLBAR ── */}
-      <div className="upi-filter-section">
-        <div className="filter-chips upi-attendance-chips">
+      {/* ── DEDICATED VIEW TOGGLE (REGISTRATIONS vs SPONSORSHIPS) ── */}
+      <div className="ledger-category-toggle-card">
+        <div className="ledger-toggle-buttons">
           <button
             type="button"
-            className={`filter-chip ${attendanceFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setAttendanceFilter('all')}
+            className={`ledger-tab-btn ${activeLedgerTab === 'registrations' ? 'active' : ''}`}
+            onClick={() => setActiveLedgerTab('registrations')}
           >
-            All ({attendanceCounts.all})
+            🎟️ Alumni Registrations ({filteredList.length})
           </button>
           <button
             type="button"
-            className={`filter-chip ${attendanceFilter === 'yes' ? 'active' : ''}`}
-            onClick={() => setAttendanceFilter('yes')}
+            className={`ledger-tab-btn sponsor-tab ${activeLedgerTab === 'sponsorships' ? 'active' : ''}`}
+            onClick={() => setActiveLedgerTab('sponsorships')}
           >
-            Attending ({attendanceCounts.yes})
-          </button>
-          <button
-            type="button"
-            className={`filter-chip ${attendanceFilter === 'maybe' ? 'active' : ''}`}
-            onClick={() => setAttendanceFilter('maybe')}
-          >
-            Maybe ({attendanceCounts.maybe})
-          </button>
-          <button
-            type="button"
-            className={`filter-chip ${attendanceFilter === 'no' ? 'active' : ''}`}
-            onClick={() => setAttendanceFilter('no')}
-          >
-            No ({attendanceCounts.no})
+            🤝 Sponsorships ({filteredSponsorships.length})
           </button>
         </div>
+      </div>
+
+      {/* ── ATTENDANCE STATUS FILTER CHIPS & TOOLBAR ── */}
+      <div className="upi-filter-section">
+        {activeLedgerTab === 'registrations' && (
+          <div className="filter-chips upi-attendance-chips">
+            <button
+              type="button"
+              className={`filter-chip ${attendanceFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setAttendanceFilter('all')}
+            >
+              All ({attendanceCounts.all})
+            </button>
+            <button
+              type="button"
+              className={`filter-chip ${attendanceFilter === 'yes' ? 'active' : ''}`}
+              onClick={() => setAttendanceFilter('yes')}
+            >
+              Attending ({attendanceCounts.yes})
+            </button>
+            <button
+              type="button"
+              className={`filter-chip ${attendanceFilter === 'maybe' ? 'active' : ''}`}
+              onClick={() => setAttendanceFilter('maybe')}
+            >
+              Maybe ({attendanceCounts.maybe})
+            </button>
+            <button
+              type="button"
+              className={`filter-chip ${attendanceFilter === 'no' ? 'active' : ''}`}
+              onClick={() => setAttendanceFilter('no')}
+            >
+              No ({attendanceCounts.no})
+            </button>
+          </div>
+        )}
 
         <div className="upi-toolbar">
           <div className="search-box upi-search">
@@ -861,7 +958,11 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             </svg>
             <input
               type="text"
-              placeholder="Search by Name, mobile, reg ID..."
+              placeholder={
+                activeLedgerTab === 'registrations'
+                  ? 'Search by Name, mobile, reg ID...'
+                  : 'Search by Sponsor name, UPI...'
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
@@ -891,12 +992,199 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
       </div>
 
-      {/* ── REPORT CONTENT (DAY-WISE vs OVERALL FLAT VIEW) ── */}
-      {filteredList.length === 0 ? (
-        <div className="empty-state-card" style={{ marginTop: '20px' }}>
+      {/* ── REPORT CONTENT (REGISTRATIONS vs SPONSORSHIPS) ── */}
+      {activeLedgerTab === 'sponsorships' ? (
+        filteredSponsorships.length === 0 ? (
+          <div className="empty-state-card" style={{ marginTop: '20px' }}>
+            <p className="empty-title">No sponsorship contributions found</p>
+            <p className="empty-desc">
+              Try checking Lokesh's UPI account above or clearing your search / date filters.
+            </p>
+          </div>
+        ) : (
+          <div className="upi-sponsorships-section">
+            <div
+              className="upi-date-header"
+              style={{
+                borderLeft: '4px solid #f59e0b',
+                background: 'rgba(245, 158, 11, 0.08)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
+              <div className="upi-date-title-wrap" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="upi-calendar-icon" style={{ fontSize: '1.4rem' }}>🤝</span>
+                <div>
+                  <h3 className="upi-date-title" style={{ margin: 0, color: '#f59e0b', fontSize: '1.05rem', fontWeight: 700 }}>
+                    Sponsorship Contributions ({filteredSponsorships.length})
+                  </h3>
+                </div>
+              </div>
+              <div
+                className="upi-date-subtotal-badge"
+                style={{
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                }}
+              >
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  <strong>{filteredSponsorships.length}</strong> {filteredSponsorships.length === 1 ? 'Sponsor' : 'Sponsors'}
+                </span>
+                <span className="divider" style={{ margin: '0 8px', opacity: 0.4 }}>•</span>
+                <span className="font-accent" style={{ color: '#f59e0b', fontWeight: 800 }}>
+                  ₹{currentTotals.sponsorAmount.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            {/* Desktop Table for Sponsorships */}
+            <div className="upi-table-responsive upi-desktop-only" style={{ marginTop: '4px' }}>
+              <table className="upi-report-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '26px', textAlign: 'center', padding: '8px 2px' }}>#</th>
+                    <th style={{ width: '150px', textAlign: 'center' }}>Sponsor</th>
+                    <th style={{ width: '84px', textAlign: 'right', padding: '8px 4px' }}>Amount</th>
+                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>UPI ID</th>
+                    <th style={{ width: '90px', padding: '8px 4px', textAlign: 'center' }}>Date</th>
+                    <th style={{ width: '28px', textAlign: 'center', padding: '8px 2px' }} title="Edit Record">✏️</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSponsorships.map((sp, idx) => {
+                    return (
+                      <tr
+                        key={sp.id}
+                        onClick={() => onEditSponsorship?.(sp)}
+                        style={{ cursor: 'pointer' }}
+                        title="Click to view & edit details"
+                      >
+                        <td className="cell-muted font-mono" style={{ textAlign: 'center', padding: '6px 2px' }}>
+                          {idx + 1}
+                        </td>
+                        <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
+                          <strong className="alumni-name-text" style={{ color: '#f59e0b' }}>
+                            {sp.sponsor_name}
+                          </strong>
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '6px 4px' }}>
+                          <span className="amount-cell" style={{ color: '#f59e0b' }}>
+                            ₹{Number(sp.amount || 0).toLocaleString('en-IN')}
+                          </span>
+                        </td>
+                        <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
+                          <span className="assigned-upi-pill" title={sp.receiving_upi_id || 'gautam.lucky-1@okicici'}>
+                            {sp.receiving_upi_id || 'gautam.lucky-1@okicici'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '6px 4px', textAlign: 'center', fontSize: '0.82rem' }} className="font-mono">
+                          {formatDDMMYYYY(sp.created_at)}
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '6px 2px' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditSponsorship?.(sp);
+                            }}
+                            className="btn-edit-compact"
+                            title="Edit Sponsorship details"
+                            aria-label="Edit Sponsorship"
+                          >
+                            ✏️
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards for Sponsorships */}
+            <div className="upi-mobile-card-list upi-mobile-only" style={{ marginTop: '6px' }}>
+              {filteredSponsorships.map((sp, idx) => {
+                return (
+                  <div
+                    key={sp.id}
+                    className="upi-m-card upi-m-card-tagged"
+                    style={{ borderLeft: '3px solid #f59e0b', cursor: 'pointer' }}
+                    onClick={() => onEditSponsorship?.(sp)}
+                    title="Tap to view & edit details"
+                  >
+                    <div className="upi-m-card-header">
+                      <div className="upi-m-card-meta">
+                        <span className="upi-m-card-idx font-mono">#{idx + 1}</span>
+                        <span className="reg-id-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                          SPONSOR
+                        </span>
+                        <span className="upi-m-card-date font-mono">{formatDDMMYYYY(sp.created_at)}</span>
+                      </div>
+                      <div className="upi-m-card-amount font-accent" style={{ color: '#f59e0b' }}>
+                        ₹{Number(sp.amount || 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div className="upi-m-card-body">
+                      <div className="upi-m-name-row">
+                        <h4 className="upi-m-name" style={{ color: '#f59e0b' }}>{sp.sponsor_name}</h4>
+                      </div>
+                    </div>
+                    <div className="upi-m-card-footer">
+                      <div className="upi-m-account-wrap">
+                        <span className="upi-m-account-label">UPI ID:</span>
+                        <span className="assigned-upi-pill">
+                          <span className="upi-pill-raw font-mono">{sp.receiving_upi_id || 'gautam.lucky-1@okicici'}</span>
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditSponsorship?.(sp);
+                        }}
+                        className="upi-m-edit-btn"
+                        title="Edit Sponsorship"
+                        aria-label="Edit Sponsorship"
+                      >
+                        ✏️ Edit
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Mobile Sponsorship Total Summary Card */}
+              <div className="upi-grand-total-card upi-mobile-grand-total">
+                <div className="grand-total-left">
+                  <span className="grand-total-icon">🤝</span>
+                  <div>
+                    <h4 className="grand-total-title">Total Sponsorships</h4>
+                    <p className="grand-total-sub">
+                      {filteredSponsorships.length} {filteredSponsorships.length === 1 ? 'Sponsor' : 'Sponsors'}
+                    </p>
+                  </div>
+                </div>
+                <div className="grand-total-right">
+                  <span className="grand-total-amount" style={{ color: '#f59e0b' }}>
+                    ₹{currentTotals.sponsorAmount.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      ) : filteredList.length === 0 ? (
+        <div className="empty-state-card" style={{ marginTop: '8px' }}>
           <p className="empty-title">No registrations found for current selection</p>
           <p className="empty-desc">
-            Try checking more QR Code accounts above or clearing your search filters.
+            Try checking more UPI accounts above or clearing your search / attendance filters.
           </p>
         </div>
       ) : viewMode === 'daywise' ? (
@@ -1024,7 +1312,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               <div>
                 <h4 className="grand-total-title">Total for Selected Accounts</h4>
                 <p className="grand-total-sub">
-                  {currentTotals.totalCount} Alumni across {selectedAccounts.length} selected UPI account{selectedAccounts.length === 1 ? '' : 's'}
+                  {currentTotals.totalRegCount} Alumni
+                  {currentTotals.totalSponsorCount > 0 ? ` + ${currentTotals.totalSponsorCount} Sponsors` : ''} across {selectedAccounts.length} selected UPI account{selectedAccounts.length === 1 ? '' : 's'}
                 </p>
               </div>
             </div>
@@ -1121,7 +1410,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                     ₹{currentTotals.totalAmount.toLocaleString('en-IN')}
                   </td>
                   <td colSpan={4} style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap', padding: '8px 4px' }}>
-                    {currentTotals.totalCount} Alumni
+                    {currentTotals.totalRegCount} Alumni{currentTotals.totalSponsorCount > 0 ? ` + ${currentTotals.totalSponsorCount} Sponsors` : ''}
                   </td>
                 </tr>
               </tfoot>
@@ -1139,7 +1428,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 <div>
                   <h4 className="grand-total-title">Total for Selected Accounts</h4>
                   <p className="grand-total-sub">
-                    {currentTotals.totalCount} Alumni • {selectedAccounts.length} Accounts
+                    {currentTotals.totalRegCount} Alumni{currentTotals.totalSponsorCount > 0 ? ` • ${currentTotals.totalSponsorCount} Sponsors` : ''} • {selectedAccounts.length} Accounts
                   </p>
                 </div>
               </div>
@@ -1179,10 +1468,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       {editingReg.registration.attendance_status === 'yes'
                         ? 'Attending'
                         : editingReg.registration.attendance_status === 'payment_pending'
-                        ? '⚠️ Payment Pending'
-                        : editingReg.registration.attendance_status === 'maybe'
-                        ? 'Maybe'
-                        : 'No'}
+                          ? '⚠️ Payment Pending'
+                          : editingReg.registration.attendance_status === 'maybe'
+                            ? 'Maybe'
+                            : 'No'}
                     </span>
                   </div>
                   <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
