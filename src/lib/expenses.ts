@@ -254,7 +254,13 @@ export function buildExpensesWhatsAppMessage(
           : item.status === 'partially_paid'
           ? '🟡'
           : '📝';
-      const vendorInfo = item.vendor_name ? ` [${item.vendor_name}]` : '';
+      const formattedPhone = item.vendor_phone
+        ? (item.vendor_phone.startsWith('+91')
+            ? item.vendor_phone
+            : `+91 ${item.vendor_phone.replace(/\D/g, '').slice(-10)}`)
+        : '';
+      const vendorDetails = [item.vendor_name, formattedPhone].filter(Boolean).join(' - ');
+      const vendorInfo = vendorDetails ? ` [${vendorDetails}]` : '';
 
       return `${idx + 1}. ${icon} *${item.item_name}*${vendorInfo}\n   Expected: ₹${formatINR(item.expected_amount)} | Actual: ₹${formatINR(item.actual_amount)} ${diffLabel} ${statusEmoji}`;
     })

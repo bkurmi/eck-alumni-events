@@ -61,7 +61,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         setActualAmount(initialData.actual_amount ? String(Math.round(Number(initialData.actual_amount))) : '');
         setStatus(initialData.status || 'planned');
         setVendorName(initialData.vendor_name || '');
-        setVendorPhone(initialData.vendor_phone || '');
+        const rawPhone = (initialData.vendor_phone || '').replace(/\D/g, '');
+        setVendorPhone(rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone);
         setPaymentMode(initialData.payment_mode || 'UPI');
         setPaymentDate(initialData.payment_date || '');
         setNotes(initialData.notes || '');
@@ -137,6 +138,14 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       return;
     }
 
+    const cleanPhone = vendorPhone.trim().replace(/\D/g, '');
+    if (cleanPhone && cleanPhone.length !== 10) {
+      setErrorMsg(
+        `Vendor contact number must be exactly 10 digits (currently ${cleanPhone.length} ${cleanPhone.length === 1 ? 'digit' : 'digits'}).`
+      );
+      return;
+    }
+
     try {
       setSaving(true);
       const payload: Partial<EventExpense> = {
@@ -148,7 +157,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         actual_amount: numActual,
         status,
         vendor_name: vendorName.trim() || null,
-        vendor_phone: vendorPhone.trim() || null,
+        vendor_phone: cleanPhone || null,
         payment_mode: paymentMode,
         payment_date: paymentDate || null,
         payment_screenshot_path: existingReceiptPath,
@@ -197,7 +206,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
   return (
     <div
-      className="modal-overlay"
+      className="modal-overlay expense-modal-overlay"
       style={{
         position: 'fixed',
         inset: 0,
@@ -207,60 +216,47 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '12px',
+        padding: '16px',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving && !deleting) onClose();
       }}
     >
-      <div
-        className="modal-content"
-        style={{
-          width: '100%',
-          maxWidth: '580px',
-          maxHeight: '92vh',
-          backgroundColor: '#1e293b',
-          borderRadius: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          animation: 'fadeIn 0.2s ease-out',
-        }}
-      >
+      <div className="expense-modal-card">
         {/* Modal Header */}
         <div
           style={{
-            padding: '16px 20px',
+            padding: '16px 24px',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             background: 'linear-gradient(to right, #1e293b, #0f172a)',
+            flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '38px',
-                height: '38px',
+                width: '42px',
+                height: '42px',
                 borderRadius: '10px',
                 background: 'linear-gradient(135deg, #10b981, #059669)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '20px',
+                fontSize: '22px',
                 boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                flexShrink: 0,
               }}
             >
               💰
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#f8fafc' }}>
+              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#f8fafc' }}>
                 {initialData ? 'Edit Expense Item' : 'Add Expected / Real Expense'}
               </h2>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
+              <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
                 Track budget estimates, actual payments &amp; vendor bills
               </p>
             </div>
@@ -269,6 +265,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={saving || deleting}
+            aria-label="Close"
             style={{
               background: 'transparent',
               border: 'none',
@@ -281,6 +278,15 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: '8px',
+              transition: 'color 0.15s, background-color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#94a3b8';
+              e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             ✕
@@ -290,13 +296,15 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         {/* Modal Scrollable Body */}
         <form
           onSubmit={handleSubmit}
+          className="expense-modal-body"
           style={{
-            padding: '20px',
+            padding: '20px 24px',
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
             flex: 1,
+            boxSizing: 'border-box',
           }}
         >
           {errorMsg && (
@@ -321,10 +329,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           {/* Quick Suggestions (Only when adding new) */}
           {!initialData && (
             <div>
-              <label style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
-                Quick Preset Items:
+              <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                Quick Presets:
               </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {COMMON_ITEM_SUGGESTIONS.map((preset) => (
                   <button
                     key={preset}
@@ -341,13 +349,16 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                       else setCategory('Venue, Electricity & Logistics');
                     }}
                     style={{
-                      backgroundColor: itemName === preset ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.05)',
+                      backgroundColor: itemName === preset ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.05)',
                       border: itemName === preset ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.1)',
                       color: itemName === preset ? '#a5b4fc' : '#cbd5e1',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 500,
                       cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      minHeight: '36px',
                     }}
                   >
                     + {preset}
@@ -358,7 +369,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           )}
 
           {/* Item Name & Category */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+          <div className="expense-grid-2">
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
                 Item Name / Description <span style={{ color: '#ef4444' }}>*</span>
@@ -370,6 +381,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 placeholder="e.g. Caterers (Dinner & Snacks)"
                 style={{
                   width: '100%',
+                  minHeight: '44px',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   backgroundColor: '#0f172a',
@@ -392,6 +404,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 onChange={(e) => setCategory(e.target.value)}
                 style={{
                   width: '100%',
+                  minHeight: '44px',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   backgroundColor: '#0f172a',
@@ -414,23 +427,23 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           {/* Financial Amounts (Expected vs Actual) */}
           <div
             style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
               borderRadius: '12px',
               border: '1px solid rgba(255, 255, 255, 0.08)',
-              padding: '14px',
+              padding: '16px',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+            <div className="expense-grid-2">
               <div>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                   <span>📌 Expected Amount (₹)</span>
                   <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Estimated)</small>
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8', fontSize: '1rem' }}>₹</span>
+                  <span style={{ position: 'absolute', left: '14px', top: '12px', color: '#94a3b8', fontSize: '1rem', pointerEvents: 'none' }}>₹</span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -440,7 +453,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                     placeholder="e.g. 50000"
                     style={{
                       width: '100%',
-                      padding: '10px 14px 10px 30px',
+                      minHeight: '44px',
+                      padding: '10px 14px 10px 32px',
                       borderRadius: '8px',
                       backgroundColor: '#1e293b',
                       border: '1px solid rgba(147, 197, 253, 0.3)',
@@ -460,7 +474,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Real Paid)</small>
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8', fontSize: '1rem' }}>₹</span>
+                  <span style={{ position: 'absolute', left: '14px', top: '12px', color: '#94a3b8', fontSize: '1rem', pointerEvents: 'none' }}>₹</span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -476,7 +490,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                     placeholder="0"
                     style={{
                       width: '100%',
-                      padding: '10px 14px 10px 30px',
+                      minHeight: '44px',
+                      padding: '10px 14px 10px 32px',
                       borderRadius: '8px',
                       backgroundColor: '#1e293b',
                       border: '1px solid rgba(134, 239, 172, 0.3)',
@@ -498,8 +513,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
                   backgroundColor: numActual === 0
                     ? 'rgba(148, 163, 184, 0.1)'
                     : diff >= 0
@@ -510,7 +525,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                     : diff >= 0
                     ? '1px solid rgba(16, 185, 129, 0.3)'
                     : '1px solid rgba(239, 68, 68, 0.3)',
-                  fontSize: '0.82rem',
+                  fontSize: '0.85rem',
                 }}
               >
                 <span style={{ color: '#cbd5e1' }}>
@@ -532,8 +547,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             )}
           </div>
 
-          {/* Status & Payment Mode */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+          {/* Status, Payment Mode & Payment Date */}
+          <div className="expense-grid-3">
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
                 Expense Status
@@ -543,6 +558,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 onChange={(e) => setStatus(e.target.value as ExpenseStatus)}
                 style={{
                   width: '100%',
+                  minHeight: '44px',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   backgroundColor: '#0f172a',
@@ -553,10 +569,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   boxSizing: 'border-box',
                 }}
               >
-                <option value="planned">📝 Planned (Estimated only)</option>
-                <option value="partially_paid">🟡 Partially Paid (Advance)</option>
-                <option value="paid">✅ Paid (Fully paid)</option>
-                <option value="settled">🎉 Settled (Finalized)</option>
+                <option value="planned">📝 Planned (Estimate)</option>
+                <option value="partially_paid">🟡 Advance Paid</option>
+                <option value="paid">✅ Fully Paid</option>
+                <option value="settled">🎉 Settled</option>
                 <option value="cancelled">❌ Cancelled</option>
               </select>
             </div>
@@ -570,6 +586,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 onChange={(e) => setPaymentMode(e.target.value)}
                 style={{
                   width: '100%',
+                  minHeight: '44px',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   backgroundColor: '#0f172a',
@@ -587,13 +604,36 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 ))}
               </select>
             </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
+                Payment Date <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+              </label>
+              <input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: '#0f172a',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#f8fafc',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
           </div>
 
           {/* Vendor Details */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+          <div className="expense-grid-2">
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Vendor / Payee Name
+                Vendor / Payee Name <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
               </label>
               <input
                 type="text"
@@ -602,6 +642,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 placeholder="e.g. Royal Caterers / Sharma Tent"
                 style={{
                   width: '100%',
+                  minHeight: '44px',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   backgroundColor: '#0f172a',
@@ -615,131 +656,232 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             </div>
 
             <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Payment Date <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional - when paid)</small>
+              <label
+                htmlFor="field-vendor-phone"
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#f1f5f9',
+                  display: 'block',
+                  marginBottom: '6px',
+                }}
+              >
+                Vendor Contact / Phone <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
               </label>
-              <input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
+              <div
+                className="input-prefix-wrap"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  backgroundColor: '#0f172a',
+                  minHeight: '44px',
+                }}
+              >
+                <span
+                  className="input-prefix"
+                  style={{
+                    minWidth: '48px',
+                    alignSelf: 'stretch',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#38bdf8',
+                    fontWeight: 700,
+                    fontSize: '0.92rem',
+                    userSelect: 'none',
+                    padding: '0 12px',
+                  }}
+                >
+                  +91
+                </span>
+                <input
+                  id="field-vendor-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={10}
+                  value={vendorPhone}
+                  onChange={(e) => {
+                    let digits = e.target.value.replace(/\D/g, '');
+                    if (digits.length > 10) {
+                      digits = digits.slice(-10);
+                    }
+                    setVendorPhone(digits);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                  placeholder="10-digit mobile number"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    minHeight: '44px',
+                    padding: '10px 12px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#f8fafc',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                {vendorPhone.length > 0 && (
+                  <div style={{ padding: '0 10px', flexShrink: 0 }}>
+                    {vendorPhone.length === 10 ? (
+                      <span
+                        style={{
+                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          color: '#34d399',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ✓ 10 digits
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                          border: '1px solid rgba(245, 158, 11, 0.4)',
+                          color: '#fbbf24',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {vendorPhone.length}/10
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Bill / Receipt Upload & Notes */}
+          <div className="expense-grid-bottom">
+            <div>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
+                Bill / Receipt / Screenshot <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+              </label>
+
+              {receiptPreview ? (
+                <div
+                  style={{
+                    position: 'relative',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backgroundColor: '#0f172a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '110px',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <img
+                    src={receiptPreview}
+                    alt="Receipt Preview"
+                    style={{
+                      maxHeight: '100px',
+                      width: 'auto',
+                      maxWidth: '90%',
+                      objectFit: 'contain',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveReceipt}
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                      border: 'none',
+                      color: '#ffffff',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      minHeight: '28px',
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: '2px dashed rgba(255, 255, 255, 0.2)',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+                    transition: 'border-color 0.2s',
+                    height: '110px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <span style={{ fontSize: '22px', display: 'block', marginBottom: '2px' }}>📄</span>
+                  <span style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 500 }}>
+                    Upload Bill / Receipt / UPI Screenshot
+                  </span>
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                    PNG, JPG, WebP up to 8MB
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
+                Notes / Line Item Details <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Rate: ₹320/plate for 300 alumni, ₹10k advance paid on 15 Oct"
                 style={{
                   width: '100%',
+                  height: '110px',
                   padding: '10px 14px',
                   borderRadius: '8px',
                   backgroundColor: '#0f172a',
                   border: '1px solid rgba(255, 255, 255, 0.15)',
                   color: '#f8fafc',
-                  fontSize: '1rem',
+                  fontSize: '0.92rem',
                   outline: 'none',
                   boxSizing: 'border-box',
+                  resize: 'none',
                 }}
               />
             </div>
-          </div>
-
-          {/* Receipt / Bill Photo Upload */}
-          <div>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-              Bill / Receipt / Payment Screenshot <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</small>
-            </label>
-
-            {receiptPreview ? (
-              <div
-                style={{
-                  position: 'relative',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  backgroundColor: '#0f172a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  maxHeight: '160px',
-                }}
-              >
-                <img
-                  src={receiptPreview}
-                  alt="Receipt Preview"
-                  style={{
-                    maxHeight: '160px',
-                    width: 'auto',
-                    objectFit: 'contain',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleRemoveReceipt}
-                  style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                    border: 'none',
-                    color: '#ffffff',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    minHeight: '32px',
-                  }}
-                >
-                  Remove Receipt
-                </button>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  border: '2px dashed rgba(255, 255, 255, 0.2)',
-                  borderRadius: '10px',
-                  padding: '16px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                  transition: 'border-color 0.2s',
-                }}
-              >
-                <span style={{ fontSize: '24px', display: 'block', marginBottom: '4px' }}>📄</span>
-                <span style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 500 }}>
-                  Tap to upload Bill / Cash Receipt / UPI Screenshot
-                </span>
-                <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                  PNG, JPG, or WebP up to 8MB
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  style={{ display: 'none' }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-              Notes / Line Item Details <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</small>
-            </label>
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Rate: ₹320/plate for 300 alumni, ₹10k advance paid on 15 Oct"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                backgroundColor: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                color: '#f8fafc',
-                fontSize: '0.95rem',
-                outline: 'none',
-                boxSizing: 'border-box',
-                resize: 'vertical',
-              }}
-            />
           </div>
 
           {/* Modal Actions */}
@@ -749,7 +891,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               alignItems: 'center',
               justifyContent: initialData?.id && onDelete ? 'space-between' : 'flex-end',
               gap: '12px',
-              paddingTop: '8px',
+              paddingTop: '12px',
               borderTop: '1px solid rgba(255, 255, 255, 0.08)',
               marginTop: '4px',
               flexWrap: 'wrap',
@@ -764,15 +906,16 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   backgroundColor: 'transparent',
                   border: '1px solid rgba(239, 68, 68, 0.4)',
                   color: '#f87171',
-                  padding: '10px 16px',
+                  padding: '10px 18px',
                   borderRadius: '8px',
                   fontSize: '0.9rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   minHeight: '44px',
+                  transition: 'background-color 0.15s',
                 }}
               >
-                {deleting ? 'Deleting...' : '🗑️ Delete'}
+                {deleting ? 'Deleting...' : '🗑️ Delete Item'}
               </button>
             )}
 
@@ -785,12 +928,13 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   border: 'none',
                   color: '#cbd5e1',
-                  padding: '10px 16px',
+                  padding: '10px 18px',
                   borderRadius: '8px',
                   fontSize: '0.9rem',
                   fontWeight: 500,
                   cursor: 'pointer',
                   minHeight: '44px',
+                  transition: 'background-color 0.15s',
                 }}
               >
                 Cancel
@@ -803,7 +947,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   background: 'linear-gradient(135deg, #10b981, #059669)',
                   border: 'none',
                   color: '#ffffff',
-                  padding: '10px 20px',
+                  padding: '10px 22px',
                   borderRadius: '8px',
                   fontSize: '0.95rem',
                   fontWeight: 600,
@@ -813,6 +957,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
+                  transition: 'transform 0.1s, box-shadow 0.15s',
                 }}
               >
                 {saving ? 'Saving...' : initialData ? 'Update Expense' : 'Save Expense'}
