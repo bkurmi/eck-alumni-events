@@ -5398,7 +5398,7 @@ h6 {
 
 .qr-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   align-items: stretch;
 }
@@ -5458,6 +5458,7 @@ h6 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
 }
 
 .qr-checkbox-badge {
@@ -5483,6 +5484,7 @@ h6 {
   font-weight: 600;
   color: var(--text-muted);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .qr-checkbox-upi {
