@@ -87,6 +87,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         !q ||
         (e.item_name || '').toLowerCase().includes(q) ||
         (e.vendor_name || '').toLowerCase().includes(q) ||
+        (e.vendor_phone || '').toLowerCase().includes(q) ||
         (e.notes || '').toLowerCase().includes(q) ||
         (e.category || '').toLowerCase().includes(q);
 
@@ -441,7 +442,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search expenses, vendor..."
+            placeholder="Search expenses, vendor, contact..."
             style={{
               width: '100%',
               padding: '8px 28px 8px 30px',
@@ -604,9 +605,40 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                           ({budgetSharePct}% of budget)
                         </span>
                       )}
-                      {expense.vendor_name && (
+                      {(expense.vendor_name || expense.vendor_phone) && (
                         <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
-                          • Vendor: <strong>{expense.vendor_name}</strong>
+                          • Vendor:{' '}
+                          {expense.vendor_name ? (
+                            <strong>{expense.vendor_name}</strong>
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>Contact</span>
+                          )}
+                          {expense.vendor_phone && (() => {
+                            const clean = expense.vendor_phone.replace(/\D/g, '').slice(-10);
+                            const display = expense.vendor_phone.startsWith('+91')
+                              ? expense.vendor_phone
+                              : clean.length === 10
+                              ? `+91 ${clean}`
+                              : expense.vendor_phone;
+                            const tel = clean.length === 10 ? `+91${clean}` : expense.vendor_phone;
+                            return (
+                              <a
+                                href={`tel:${tel}`}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  marginLeft: '6px',
+                                  color: '#38bdf8',
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '2px',
+                                }}
+                                title={`Call ${display}`}
+                              >
+                                📞 {display}
+                              </a>
+                            );
+                          })()}
                         </span>
                       )}
                       {hasActual && expense.payment_date && (

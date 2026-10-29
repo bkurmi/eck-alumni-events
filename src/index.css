@@ -6765,3 +6765,73 @@ h6 {
     padding: 16px 14px;
   }
 }
+
+
+/* ============================================================
+   EXPENSE & BUDGET MODAL (Responsive Desktop & Mobile)
+   ============================================================ */
+.expense-modal-card {
+  width: 100%;
+  max-width: 840px;
+  max-height: 92vh;
+  background-color: #1e293b;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.expense-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.expense-grid-3 {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 14px;
+}
+
+.expense-grid-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .expense-modal-card {
+    max-width: 100% !important;
+    max-height: 94vh;
+    border-radius: 14px;
+  }
+  .expense-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .expense-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .expense-grid-bottom {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .expense-modal-overlay {
+    padding: 8px !important;
+  }
+  .expense-modal-card {
+    max-height: 96vh;
+    border-radius: 14px;
+  }
+  .expense-modal-body {
+    padding: 14px !important;
+    gap: 12px !important;
+  }
+}
