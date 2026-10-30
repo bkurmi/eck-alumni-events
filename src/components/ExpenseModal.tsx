@@ -42,6 +42,14 @@ const COMMON_ITEM_SUGGESTIONS = [
   'Generator & Fuel',
 ];
 
+export const PAYMENT_TRANSACTION_TYPES = [
+  'Advance Payment',
+  'Part Payment',
+  'Final Settlement',
+  'Full Payment',
+  'Other / Misc',
+];
+
 export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   isOpen,
   onClose,
@@ -58,12 +66,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [itemName, setItemName] = useState('');
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
   const [expectedAmount, setExpectedAmount] = useState<string>('');
-  const [actualAmount, setActualAmount] = useState<string>('');
-  const [status, setStatus] = useState<ExpenseStatus>('planned');
   const [vendorName, setVendorName] = useState('');
   const [vendorPhone, setVendorPhone] = useState('');
-  const [paymentMode, setPaymentMode] = useState<string>('UPI');
-  const [paymentDate, setPaymentDate] = useState<string>('');
   const [notes, setNotes] = useState('');
 
   // Multiple Receipts State
@@ -76,15 +80,19 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Payment account & split states
-  const [isSplitMode, setIsSplitMode] = useState<boolean>(false);
-  const [singleAccount, setSingleAccount] = useState<string>('');
-  const [customAccountName, setCustomAccountName] = useState<string>('');
+  // Payment transactions rows
   const [splits, setSplits] = useState<
-    Array<{ account: string; customAccount?: string; amount: string }>
+    Array<{
+      account: string;
+      customAccount?: string;
+      amount: string;
+      date?: string;
+      mode?: string;
+      note?: string;
+    }>
   >([
-    { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '' },
-    { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '' },
+    { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
+    { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
   ]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -127,13 +135,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         setItemName(initialData.item_name || '');
         setCategory(initialData.category || EXPENSE_CATEGORIES[0]);
         setExpectedAmount(initialData.expected_amount ? String(Math.round(Number(initialData.expected_amount))) : '');
-        setActualAmount(initialData.actual_amount ? String(Math.round(Number(initialData.actual_amount))) : '');
-        setStatus(initialData.status || 'planned');
         setVendorName(initialData.vendor_name || '');
         const rawPhone = (initialData.vendor_phone || '').replace(/\D/g, '');
         setVendorPhone(rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone);
-        setPaymentMode(initialData.payment_mode || 'UPI');
-        setPaymentDate(initialData.payment_date || '');
         setNotes(initialData.notes || '');
 
         // Restore Multiple Receipts from comma-separated string
@@ -149,7 +153,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         // Restore Account Disbursal & Splits
         const existingSplits = getExpenseSplits(initialData);
         if (existingSplits.length > 1) {
-          setIsSplitMode(true);
           setSplits(
             existingSplits.map((s) => {
               const matched = KNOWN_EXPENSE_ACCOUNTS.find(
@@ -159,60 +162,53 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 account: matched ? matched.label : 'Other',
                 customAccount: matched ? '' : s.account,
                 amount: String(Math.round(Number(s.amount) || 0)),
+                date: s.date || initialData.payment_date || '',
+                mode: s.mode || initialData.payment_mode || 'UPI',
+                note: s.note || '',
               };
             })
           );
-          setSingleAccount('');
-          setCustomAccountName('');
         } else if (existingSplits.length === 1) {
-          setIsSplitMode(false);
           const single = existingSplits[0];
           const matched = KNOWN_EXPENSE_ACCOUNTS.find(
             (a) => a.label === single.account || a.accountName === single.account || a.id === single.account
           );
-          if (matched) {
-            setSingleAccount(matched.label);
-            setCustomAccountName('');
-          } else {
-            setSingleAccount('Other');
-            setCustomAccountName(single.account || '');
-          }
           setSplits([
             {
               account: matched ? matched.label : 'Other',
               customAccount: matched ? '' : single.account,
               amount: String(Math.round(Number(single.amount) || 0)),
+              date: single.date || initialData.payment_date || '',
+              mode: single.mode || initialData.payment_mode || 'UPI',
+              note: single.note || (initialData.status === 'partially_paid' ? 'Advance Payment' : ''),
             },
-            { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '' },
+            {
+              account: KNOWN_EXPENSE_ACCOUNTS[1].label,
+              customAccount: '',
+              amount: '',
+              date: new Date().toISOString().slice(0, 10),
+              mode: initialData.payment_mode || 'UPI',
+              note: '',
+            },
           ]);
         } else {
           // Unassigned / no splits
-          setIsSplitMode(false);
-          setSingleAccount('');
-          setCustomAccountName('');
           setSplits([
-            { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '' },
-            { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '' },
+            { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
+            { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
           ]);
         }
       } else {
         setItemName('');
         setCategory(EXPENSE_CATEGORIES[0]);
         setExpectedAmount('');
-        setActualAmount('');
-        setStatus('planned');
         setVendorName('');
         setVendorPhone('');
-        setPaymentMode('UPI');
-        setPaymentDate('');
         setNotes('');
         setExistingReceiptPaths([]);
         setNewReceiptFiles([]);
         setNewReceiptPreviews([]);
         setLightboxUrl(null);
-        setIsSplitMode(false);
-        setSingleAccount('');
-        setCustomAccountName('');
         setSplits([
           { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '' },
           { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '' },
@@ -269,35 +265,74 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   };
 
   const numExpected = parseInt(expectedAmount, 10) || 0;
-  const numActual = parseInt(actualAmount, 10) || 0;
+  const totalAllocatedSplits = splits.reduce(
+    (sum, s) => sum + (parseInt(s.amount, 10) || 0),
+    0
+  );
+  const numActual = totalAllocatedSplits;
   const diff = numExpected - numActual;
+
+  const computedStatus = useMemo(() => {
+    if (totalAllocatedSplits === 0) {
+      return {
+        status: 'planned' as ExpenseStatus,
+        label: 'Planned (Estimate)',
+        bg: 'rgba(148, 163, 184, 0.1)',
+        color: '#cbd5e1',
+        border: 'rgba(148, 163, 184, 0.25)',
+        icon: '📝',
+      };
+    }
+    const hasFinalSettlement = splits.some(
+      (s) => s.note === 'Final Settlement' || s.note === 'Full Payment'
+    );
+    if (numExpected > 0 && totalAllocatedSplits < numExpected && !hasFinalSettlement) {
+      return {
+        status: 'partially_paid' as ExpenseStatus,
+        label: 'Advance Paid (Partial)',
+        bg: 'rgba(245, 158, 11, 0.15)',
+        color: '#fbbf24',
+        border: 'rgba(245, 158, 11, 0.35)',
+        icon: '🟡',
+      };
+    }
+    return {
+      status: 'paid' as ExpenseStatus,
+      label: totalAllocatedSplits >= numExpected && numExpected > 0 ? 'Fully Paid' : 'Paid',
+      bg: 'rgba(16, 185, 129, 0.15)',
+      color: '#34d399',
+      border: 'rgba(16, 185, 129, 0.35)',
+      icon: '✅',
+    };
+  }, [totalAllocatedSplits, numExpected, splits]);
 
   const handleAddSplitRow = () => {
     const nextAcc = KNOWN_EXPENSE_ACCOUNTS[splits.length % KNOWN_EXPENSE_ACCOUNTS.length];
+    const remainingBudget = Math.max(0, numExpected - totalAllocatedSplits);
     setSplits((prev) => [
       ...prev,
-      { account: nextAcc.label, customAccount: '', amount: '' },
+      {
+        account: nextAcc.label,
+        customAccount: '',
+        amount: remainingBudget > 0 ? String(remainingBudget) : '',
+        date: new Date().toISOString().slice(0, 10),
+        mode: 'UPI',
+        note: prev.length === 0 ? 'Advance Payment' : 'Part Payment',
+      },
     ]);
   };
 
   const handleRemoveSplitRow = (index: number) => {
-    if (splits.length <= 1) {
-      // If only 1 row remains and user crosses it, switch back to single unassigned mode
-      setIsSplitMode(false);
-      setSingleAccount('');
-      setCustomAccountName('');
-      setSplits([
-        { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '' },
-        { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '' },
-      ]);
-      return;
-    }
     setSplits((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearAllSplits = () => {
+    setSplits([]);
   };
 
   const handleSplitChange = (
     index: number,
-    field: 'account' | 'customAccount' | 'amount',
+    field: 'account' | 'customAccount' | 'amount' | 'date' | 'mode' | 'note',
     val: string
   ) => {
     setSplits((prev) => {
@@ -305,23 +340,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       copy[index] = { ...copy[index], [field]: val };
       return copy;
     });
-  };
-
-  const totalAllocatedSplits = splits.reduce(
-    (sum, s) => sum + (parseInt(s.amount, 10) || 0),
-    0
-  );
-  const remainingToAllocate = numActual - totalAllocatedSplits;
-
-  const handleAutoFillRemaining = (index: number) => {
-    const otherAllocated = splits.reduce(
-      (sum, s, i) => (i === index ? sum : sum + (parseInt(s.amount, 10) || 0)),
-      0
-    );
-    const needed = Math.max(0, numActual - otherAllocated);
-    if (needed > 0) {
-      handleSplitChange(index, 'amount', String(needed));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -347,59 +365,62 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       return;
     }
 
+    // Build payment transactions from rows
+    const validSplits = splits.filter((s) => (parseInt(s.amount, 10) || 0) > 0);
     let finalPaidFromAccount: string | null = null;
     let finalPaymentSplits: ExpensePaymentSplit[] = [];
+    let totalDisbursedAmt = 0;
 
-    if (numActual > 0) {
-      if (isSplitMode) {
-        let totalSplitAmt = 0;
-        for (let i = 0; i < splits.length; i++) {
-          const s = splits[i];
-          const amt = parseInt(s.amount, 10) || 0;
-          if (amt <= 0) {
-            setErrorMsg(`Please enter a valid amount for Split #${i + 1}.`);
-            return;
-          }
-          const accLabel =
-            s.account === 'Other'
-              ? (s.customAccount || '').trim()
-              : s.account;
-          if (!accLabel) {
-            setErrorMsg(`Please specify the coordinator or account name for Split #${i + 1}.`);
-            return;
-          }
-          totalSplitAmt += amt;
-          finalPaymentSplits.push({ account: accLabel, amount: amt });
-        }
-
-        if (totalSplitAmt !== numActual) {
-          setErrorMsg(
-            `Total split allocations (₹${formatINR(totalSplitAmt)}) must exactly match the Actual Amount (₹${formatINR(numActual)}). Difference: ₹${formatINR(Math.abs(numActual - totalSplitAmt))}`
-          );
+    if (validSplits.length > 0) {
+      for (let i = 0; i < validSplits.length; i++) {
+        const s = validSplits[i];
+        const amt = parseInt(s.amount, 10) || 0;
+        const accLabel = s.account === 'Other' ? (s.customAccount || '').trim() : s.account;
+        if (!accLabel) {
+          setErrorMsg(`Please specify the coordinator or account name for Transaction #${i + 1}.`);
           return;
         }
+        totalDisbursedAmt += amt;
+        finalPaymentSplits.push({
+          account: accLabel,
+          amount: amt,
+          date: s.date || null,
+          mode: s.mode || 'UPI',
+          note: s.note?.trim() || null,
+        });
+      }
 
+      if (finalPaymentSplits.length === 1) {
+        finalPaidFromAccount = finalPaymentSplits[0].account;
+      } else {
         finalPaidFromAccount = `Split: ${finalPaymentSplits
           .map((s) => `${s.account.split('(')[0].replace(/💵|👤/g, '').trim()} ₹${formatINR(s.amount)}`)
           .join(', ')}`;
-      } else {
-        // Single Account Mode
-        if (singleAccount === 'Other') {
-          const customName = customAccountName.trim();
-          if (!customName) {
-            setErrorMsg('Please specify the custom coordinator/payer name or select Unassigned.');
-            return;
-          }
-          finalPaidFromAccount = customName;
-          finalPaymentSplits = [{ account: customName, amount: numActual }];
-        } else if (singleAccount) {
-          finalPaidFromAccount = singleAccount;
-          finalPaymentSplits = [{ account: singleAccount, amount: numActual }];
-        } else {
-          // Explicitly Unassigned
-          finalPaidFromAccount = null;
-          finalPaymentSplits = [];
-        }
+      }
+    } else {
+      finalPaidFromAccount = null;
+      finalPaymentSplits = [];
+    }
+
+    // Actual amount is whatever was disbursed in transactions
+    const finalActual = totalDisbursedAmt;
+    const finalStatus = computedStatus.status;
+
+    // Resolve summary payment date and mode (uses latest split date & combined modes)
+    let resolvedPaymentDate: string | null = null;
+    let resolvedPaymentMode = 'UPI';
+
+    if (finalPaymentSplits.length > 0) {
+      const dates = finalPaymentSplits.map((s) => s.date).filter(Boolean) as string[];
+      if (dates.length > 0) {
+        dates.sort();
+        resolvedPaymentDate = dates[dates.length - 1]; // latest
+      }
+      const modes = Array.from(new Set(finalPaymentSplits.map((s) => s.mode).filter(Boolean)));
+      if (modes.length === 1) {
+        resolvedPaymentMode = modes[0] as string;
+      } else if (modes.length > 1) {
+        resolvedPaymentMode = modes.join(' / ');
       }
     }
 
@@ -411,12 +432,12 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         item_name: cleanItemName,
         category,
         expected_amount: numExpected,
-        actual_amount: numActual,
-        status,
+        actual_amount: finalActual,
+        status: finalStatus,
         vendor_name: vendorName.trim() || null,
         vendor_phone: cleanPhone || null,
-        payment_mode: paymentMode,
-        payment_date: paymentDate || null,
+        payment_mode: resolvedPaymentMode,
+        payment_date: resolvedPaymentDate,
         paid_from_account: finalPaidFromAccount,
         payment_splits: finalPaymentSplits,
         payment_screenshot_path: existingReceiptPaths.join(',') || null,
@@ -683,7 +704,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             </div>
           </div>
 
-          {/* Financial Amounts (Expected vs Actual) */}
+          {/* Financial Amounts & Status */}
           <div
             style={{
               backgroundColor: 'rgba(15, 23, 42, 0.65)',
@@ -695,10 +716,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               gap: '12px',
             }}
           >
-            <div className="expense-grid-2">
+            <div className="expense-grid-3">
               <div>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                  <span>📌 Expected Amount (₹)</span>
+                  <span>📌 Expected Budget (₹)</span>
                   <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Estimated)</small>
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -729,39 +750,34 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
               <div>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#86efac', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                  <span>💳 Actual Amount (₹)</span>
-                  <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Real Paid)</small>
+                  <span>💳 Total Disbursed (₹)</span>
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '14px', top: '12px', color: '#94a3b8', fontSize: '1rem', pointerEvents: 'none' }}>₹</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={actualAmount}
-                    onChange={(e) => {
-                      const intOnly = e.target.value.replace(/\D/g, '');
-                      setActualAmount(intOnly);
-                      if (Number(intOnly) > 0 && status === 'planned') {
-                        setStatus('paid');
-                      }
-                    }}
-                    placeholder="0"
-                    style={{
-                      width: '100%',
-                      minHeight: '44px',
-                      padding: '10px 14px 10px 32px',
-                      borderRadius: '8px',
-                      backgroundColor: '#1e293b',
-                      border: '1px solid rgba(134, 239, 172, 0.3)',
-                      color: '#f8fafc',
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
+                <span style={{ color: totalAllocatedSplits > 0 ? '#86efac' : '#64748b', fontSize: '1.15rem', fontWeight: 700 }}>
+                  ₹{formatINR(totalAllocatedSplits)}
+                </span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
+                  Expense Status
+                </label>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '4px 12px',
+                    borderRadius: '9999px',
+                    backgroundColor: computedStatus.bg,
+                    border: `1px solid ${computedStatus.border}`,
+                    color: computedStatus.color,
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  <span>{computedStatus.icon}</span>
+                  <span>{computedStatus.label}</span>
+                </span>
               </div>
             </div>
 
@@ -788,7 +804,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 }}
               >
                 <span style={{ color: '#cbd5e1' }}>
-                  {numActual === 0 ? 'Budget Allocation (Not yet spent)' : 'Variance / Comparison:'}
+                  {numActual === 0
+                    ? 'Budget Allocation (Not yet spent)'
+                    : numActual < numExpected
+                    ? `Advance Paid: ₹${formatINR(numActual)} of ₹${formatINR(numExpected)}`
+                    : 'Budget Variance:'}
                 </span>
                 <span
                   style={{
@@ -798,112 +818,29 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 >
                   {numActual === 0
                     ? `₹${formatINR(numExpected)} Budgeted`
-                    : diff >= 0
-                    ? `+₹${formatINR(diff)} Under Budget (Savings)`
+                    : diff > 0
+                    ? `₹${formatINR(diff)} Pending to Pay (Under Budget)`
+                    : diff === 0
+                    ? '✓ 100% Reconciled (Exact Budget)'
                     : `-₹${formatINR(Math.abs(diff))} Over Budget (Deficit)`}
                 </span>
               </div>
             )}
           </div>
 
-          {/* Status, Payment Mode & Payment Date */}
-          <div className="expense-grid-3">
-            <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Expense Status
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as ExpenseStatus)}
-                style={{
-                  width: '100%',
-                  minHeight: '44px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <option value="planned">📝 Planned (Estimate)</option>
-                <option value="partially_paid">🟡 Advance Paid</option>
-                <option value="paid">✅ Fully Paid</option>
-                <option value="settled">🎉 Settled</option>
-                <option value="cancelled">❌ Cancelled</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Payment Mode
-              </label>
-              <select
-                value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value)}
-                style={{
-                  width: '100%',
-                  minHeight: '44px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {EXPENSE_PAYMENT_MODES.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {mode}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Payment Date <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
-              </label>
-              <input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  minHeight: '44px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Disbursal Account & Multi-Account Split */}
+          {/* ── PAYMENT TRANSACTIONS (SINGLE ROW PER TRANSACTION) ── */}
           <div
             style={{
               backgroundColor: '#1e293b',
               borderRadius: '10px',
               padding: '14px',
-              border:
-                numActual > 0
-                  ? '1px solid rgba(99, 102, 241, 0.35)'
-                  : '1px solid rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
+              gap: '10px',
             }}
           >
-            {/* Header: Title and Mode Switch */}
+            {/* Header: Title and Quick Clear */}
             <div
               style={{
                 display: 'flex',
@@ -916,7 +853,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               <div>
                 <label
                   style={{
-                    fontSize: '0.88rem',
+                    fontSize: '0.9rem',
                     fontWeight: 700,
                     color: '#f8fafc',
                     display: 'flex',
@@ -925,349 +862,181 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                     margin: 0,
                   }}
                 >
-                  <span>💳 Disbursed From / Paid By</span>
-                  {numActual > 0 && (
-                    <span style={{ fontSize: '0.72rem', color: '#86efac', fontWeight: 600 }}>
-                      (Real Outflow)
+                  <span>💳 Payment Transactions &amp; Disbursements</span>
+                  {totalAllocatedSplits > 0 && (
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                        color: '#6ee7b7',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      ₹{formatINR(totalAllocatedSplits)} Paid ({splits.filter((s) => (parseInt(s.amount, 10) || 0) > 0).length} tranches)
                     </span>
                   )}
                 </label>
-                <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                  Track which organizer account or cash pool was debited
+                <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
+                  Log each transaction made to the vendor (advance, part payment, or final settlement)
                 </p>
               </div>
 
-              {/* Mode Toggle Pills (min 44px touch target) */}
-              <div
-                style={{
-                  display: 'inline-flex',
-                  backgroundColor: '#0f172a',
-                  borderRadius: '8px',
-                  padding: '3px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-              >
+              {splits.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setIsSplitMode(false)}
+                  onClick={handleClearAllSplits}
                   style={{
-                    padding: '6px 12px',
-                    minHeight: '36px',
+                    padding: '4px 10px',
                     borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '0.8rem',
-                    fontWeight: !isSplitMode ? 700 : 500,
-                    backgroundColor: !isSplitMode ? '#4f46e5' : 'transparent',
-                    color: !isSplitMode ? '#ffffff' : '#94a3b8',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: '#fca5a5',
+                    fontSize: '0.74rem',
+                    fontWeight: 600,
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease',
                   }}
                 >
-                  Single Account
+                  ✕ Clear All
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSplitMode(true);
-                    if (numActual > 0 && splits.every((s) => !s.amount)) {
-                      setSplits([
-                        { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: String(numActual) },
-                        { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '' },
-                      ]);
-                    }
-                  }}
-                  style={{
-                    padding: '6px 12px',
-                    minHeight: '36px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '0.8rem',
-                    fontWeight: isSplitMode ? 700 : 500,
-                    backgroundColor: isSplitMode ? '#059669' : 'transparent',
-                    color: isSplitMode ? '#ffffff' : '#94a3b8',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span>🔀 Split Across Accounts</span>
-                </button>
-              </div>
+              )}
             </div>
 
-            {/* Single Account Selector */}
-            {!isSplitMode ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <select
-                    value={singleAccount}
-                    onChange={(e) => setSingleAccount(e.target.value)}
-                    style={{
-                      flex: 1,
-                      minHeight: '44px',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      backgroundColor: '#0f172a',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: singleAccount ? '#f8fafc' : '#94a3b8',
-                      fontSize: '1rem',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <option value="">⚠️ Not Assigned / Unassigned</option>
-                    {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
-                      <option key={acc.id} value={acc.label}>
-                        {acc.label}
-                      </option>
-                    ))}
-                    <option value="Other">👤 Other / Custom Coordinator...</option>
-                  </select>
-
-                  {singleAccount && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSingleAccount('');
-                        setCustomAccountName('');
-                      }}
-                      style={{
-                        padding: '10px 14px',
-                        minHeight: '44px',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                        color: '#fca5a5',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                      title="Clear / Unassign account"
-                    >
-                      ✕ Unassign
-                    </button>
-                  )}
+            {/* Transactions Table / List */}
+            <div className="expense-tx-table">
+              {/* Desktop Table Header */}
+              {splits.length > 0 && (
+                <div className="expense-tx-header">
+                  <span>Expense Type</span>
+                  <span>Mode</span>
+                  <span>Payment Date</span>
+                  <span>By (Paid By)</span>
+                  <span>In-Hand Status</span>
+                  <span>Amount Spent</span>
+                  <span style={{ textAlign: 'center' }}>✕</span>
                 </div>
+              )}
 
-                {/* Account In-Hand Balance Indicator for Single Account */}
-                {singleAccount && singleAccount !== 'Other' && (() => {
-                  const bal = getAccountInHandBalance(singleAccount, liveSettlementData.accounts);
-                  const prevSaved = getPreviouslySavedAmountForAccount(singleAccount);
-                  const delta = numActual - prevSaved;
-                  const projectedBalance = bal.netBalance - delta;
+              {/* Transaction Rows */}
+              {splits.map((s, idx) => {
+                const targetAccount = s.account === 'Other' ? (s.customAccount || 'Other') : s.account;
+                const bal = getAccountInHandBalance(targetAccount, liveSettlementData.accounts);
+                const prevSaved = getPreviouslySavedAmountForAccount(targetAccount);
+                const enteredAmt = parseInt(s.amount, 10) || 0;
+                const delta = enteredAmt - prevSaved;
+                const projectedBalance = bal.netBalance - delta;
 
-                  return (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '6px',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        backgroundColor:
-                          bal.netBalance > 0
-                            ? projectedBalance >= 0
-                              ? 'rgba(16, 185, 129, 0.1)'
-                              : 'rgba(245, 158, 11, 0.12)'
-                            : 'rgba(148, 163, 184, 0.08)',
-                        border: `1px solid ${
-                          bal.netBalance > 0
-                            ? projectedBalance >= 0
-                              ? 'rgba(16, 185, 129, 0.25)'
-                              : 'rgba(245, 158, 11, 0.35)'
-                            : 'rgba(148, 163, 184, 0.18)'
-                        }`,
-                        fontSize: '0.8rem',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ color: '#94a3b8' }}>💰 Account Balance ({singleAccount.split('(')[0].trim()}):</span>
-                        <strong style={{ color: bal.netBalance > 0 ? '#86efac' : bal.netBalance < 0 ? '#fca5a5' : '#cbd5e1' }}>
-                          ₹{formatINR(bal.netBalance)} in hand
-                        </strong>
+                const compactSelect = {
+                  width: '100%',
+                  minHeight: '36px',
+                  padding: '4px 6px',
+                  borderRadius: '5px',
+                  backgroundColor: '#1e293b',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#f8fafc',
+                  fontSize: '0.8rem',
+                  outline: 'none',
+                  boxSizing: 'border-box' as const,
+                };
+
+                return (
+                  <div key={idx} className="expense-tx-row">
+                    <div className="expense-tx-fields">
+                      {/* 1. Expense Type */}
+                      <div>
+                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
+                          Type
+                        </span>
+                        <select
+                          value={s.note || PAYMENT_TRANSACTION_TYPES[0]}
+                          onChange={(e) => handleSplitChange(idx, 'note', e.target.value)}
+                          style={compactSelect}
+                        >
+                          {PAYMENT_TRANSACTION_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      {numActual > 0 && (
-                        <div style={{ fontWeight: 600 }}>
-                          {projectedBalance > 0 ? (
-                            <span style={{ color: '#34d399' }}>
-                              ✓ ₹{formatINR(projectedBalance)} will remain in hand
-                            </span>
-                          ) : projectedBalance === 0 ? (
-                            <span style={{ color: '#cbd5e1' }}>
-                              ✓ ₹0 (All funds utilized)
-                            </span>
-                          ) : (
-                            <span style={{ color: '#fbbf24' }}>
-                              ⚠️ Exceeds in hand by ₹{formatINR(Math.abs(projectedBalance))} (will be due for reimbursement)
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
 
-                {singleAccount === 'Other' && (
-                  <input
-                    type="text"
-                    value={customAccountName}
-                    onChange={(e) => setCustomAccountName(e.target.value)}
-                    placeholder="Enter coordinator / payer name (e.g. Vikram or College Cash)"
-                    style={{
-                      width: '100%',
-                      minHeight: '44px',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      backgroundColor: '#0f172a',
-                      border: '1px solid rgba(245, 158, 11, 0.4)',
-                      color: '#f8fafc',
-                      fontSize: '1rem',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                )}
-              </div>
-            ) : (
-              /* Multi-Account Split Builder */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                    borderRadius: '8px',
-                    border: '1px dashed rgba(255, 255, 255, 0.12)',
-                    fontSize: '0.78rem',
-                    color: '#cbd5e1',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '6px',
-                  }}
-                >
-                  <span>
-                    Total Actual Expense to Allocate: <strong>₹{formatINR(numActual)}</strong>
-                  </span>
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      color:
-                        remainingToAllocate === 0
-                          ? '#86efac'
-                          : remainingToAllocate > 0
-                          ? '#fde68a'
-                          : '#fca5a5',
-                    }}
-                  >
-                    {remainingToAllocate === 0
-                      ? '✅ Fully Allocated'
-                      : remainingToAllocate > 0
-                      ? `⏳ ₹${formatINR(remainingToAllocate)} remaining`
-                      : `🚨 Exceeds by ₹${formatINR(Math.abs(remainingToAllocate))}`}
-                  </span>
-                </div>
+                      {/* 2. Payment Mode */}
+                      <div>
+                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
+                          Mode
+                        </span>
+                        <select
+                          value={s.mode || 'UPI'}
+                          onChange={(e) => handleSplitChange(idx, 'mode', e.target.value)}
+                          style={compactSelect}
+                        >
+                          {EXPENSE_PAYMENT_MODES.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                {/* Split Rows */}
-                {splits.map((s, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      gap: '8px',
-                      backgroundColor: '#0f172a',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        color: '#94a3b8',
-                        width: '20px',
-                      }}
-                    >
-                      #{idx + 1}
-                    </span>
-
-                    {/* Account Selector */}
-                    <div style={{ flex: '1 1 180px', minWidth: '150px' }}>
-                      <select
-                        value={s.account}
-                        onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
-                        style={{
-                          width: '100%',
-                          minHeight: '44px',
-                          padding: '8px 10px',
-                          borderRadius: '6px',
-                          backgroundColor: '#1e293b',
-                          border: '1px solid rgba(255, 255, 255, 0.12)',
-                          color: '#f8fafc',
-                          fontSize: '0.92rem',
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                        }}
-                      >
-                        {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
-                          <option key={acc.id} value={acc.label}>
-                            {acc.label}
-                          </option>
-                        ))}
-                        <option value="Other">👤 Other Coordinator...</option>
-                      </select>
-                    </div>
-
-                    {s.account === 'Other' && (
-                      <div style={{ flex: '1 1 140px', minWidth: '130px' }}>
+                      {/* 3. Payment Date */}
+                      <div>
+                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
+                          Date
+                        </span>
                         <input
-                          type="text"
-                          value={s.customAccount || ''}
-                          onChange={(e) => handleSplitChange(idx, 'customAccount', e.target.value)}
-                          placeholder="Payer name"
-                          style={{
-                            width: '100%',
-                            minHeight: '44px',
-                            padding: '8px 10px',
-                            borderRadius: '6px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(245, 158, 11, 0.4)',
-                            color: '#f8fafc',
-                            fontSize: '0.92rem',
-                            outline: 'none',
-                            boxSizing: 'border-box',
-                          }}
+                          type="date"
+                          value={s.date || ''}
+                          onChange={(e) => handleSplitChange(idx, 'date', e.target.value)}
+                          style={compactSelect}
                         />
                       </div>
-                    )}
 
-                    {/* In-Hand Available Money Indicator (Circled in UI) */}
-                    {(() => {
-                      const targetAccount = s.account === 'Other' ? (s.customAccount || 'Other') : s.account;
-                      const bal = getAccountInHandBalance(targetAccount, liveSettlementData.accounts);
-                      const prevSaved = getPreviouslySavedAmountForAccount(targetAccount);
-                      const enteredAmt = parseInt(s.amount, 10) || 0;
-                      const delta = enteredAmt - prevSaved;
-                      const projectedBalance = bal.netBalance - delta;
+                      {/* 4. By (Paid By Coordinator) */}
+                      <div>
+                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
+                          Paid By
+                        </span>
+                        <select
+                          value={s.account}
+                          onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
+                          style={compactSelect}
+                        >
+                          {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
+                            <option key={acc.id} value={acc.label}>
+                              {acc.label}
+                            </option>
+                          ))}
+                          <option value="Other">👤 Other...</option>
+                        </select>
+                        {s.account === 'Other' && (
+                          <input
+                            type="text"
+                            value={s.customAccount || ''}
+                            onChange={(e) => handleSplitChange(idx, 'customAccount', e.target.value)}
+                            placeholder="Name"
+                            style={{
+                              ...compactSelect,
+                              marginTop: '3px',
+                              minHeight: '30px',
+                              backgroundColor: '#0f172a',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                            }}
+                          />
+                        )}
+                      </div>
 
-                      return (
+                      {/* 5. In-Hand Balance & Remaining Status */}
+                      <div>
+                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
+                          Balance
+                        </span>
                         <div
                           style={{
-                            flex: '1 1 180px',
-                            minWidth: '140px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '6px 10px',
-                            borderRadius: '6px',
+                            minHeight: '36px',
+                            padding: '3px 6px',
+                            borderRadius: '5px',
                             backgroundColor:
                               bal.netBalance > 0
                                 ? projectedBalance >= 0
@@ -1285,195 +1054,177 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                                 ? 'rgba(239, 68, 68, 0.3)'
                                 : 'rgba(148, 163, 184, 0.18)'
                             }`,
-                            fontSize: '0.75rem',
-                            minHeight: '44px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            fontSize: '0.7rem',
                             boxSizing: 'border-box',
                           }}
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
-                              <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>
-                                💰 In Hand:
-                              </span>
-                              <strong
-                                style={{
-                                  color: bal.netBalance > 0 ? '#86efac' : bal.netBalance < 0 ? '#fca5a5' : '#cbd5e1',
-                                  fontSize: '0.8rem',
-                                }}
-                              >
-                                ₹{formatINR(bal.netBalance)}
-                              </strong>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', fontSize: '0.7rem' }}>
-                              <span style={{ color: '#64748b' }}>Remaining:</span>
-                              <span
-                                style={{
-                                  fontWeight: 700,
-                                  color:
-                                    projectedBalance > 0
-                                      ? '#34d399'
-                                      : projectedBalance === 0
-                                      ? '#cbd5e1'
-                                      : '#fbbf24',
-                                }}
-                              >
-                                {projectedBalance > 0
-                                  ? `₹${formatINR(projectedBalance)} left`
-                                  : projectedBalance === 0
-                                  ? (bal.inflow > 0 ? '₹0 (All Spent)' : '₹0')
-                                  : `⚠️ Over by ₹${formatINR(Math.abs(projectedBalance))}`}
-                              </span>
-                            </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#94a3b8' }}>In Hand:</span>
+                            <strong style={{ color: bal.netBalance > 0 ? '#86efac' : bal.netBalance < 0 ? '#fca5a5' : '#cbd5e1' }}>
+                              ₹{formatINR(bal.netBalance)}
+                            </strong>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#64748b' }}>After:</span>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                color: projectedBalance > 0 ? '#34d399' : projectedBalance === 0 ? '#cbd5e1' : '#fbbf24',
+                                fontSize: '0.68rem',
+                              }}
+                            >
+                              {projectedBalance >= 0 ? `₹${formatINR(projectedBalance)}` : `⚠ -₹${formatINR(Math.abs(projectedBalance))}`}
+                            </span>
                           </div>
                         </div>
-                      );
-                    })()}
+                      </div>
 
-                    {/* Amount Input */}
-                    <div
-                      style={{
-                        position: 'relative',
-                        flex: '0 1 120px',
-                        minWidth: '105px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: '10px',
-                          top: '12px',
-                          color: '#94a3b8',
-                          fontSize: '0.9rem',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        ₹
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={s.amount}
-                        onChange={(e) =>
-                          handleSplitChange(idx, 'amount', e.target.value.replace(/\D/g, ''))
-                        }
-                        placeholder="0"
-                        style={{
-                          width: '100%',
-                          minHeight: '44px',
-                          padding: '8px 8px 8px 24px',
-                          borderRadius: '6px',
-                          backgroundColor: '#1e293b',
-                          border: '1px solid rgba(134, 239, 172, 0.3)',
-                          color: '#f8fafc',
-                          fontSize: '0.95rem',
-                          fontWeight: 700,
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
+                      {/* 6. Amount Spent */}
+                      <div>
+                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
+                          Amount
+                        </span>
+                        <div style={{ position: 'relative' }}>
+                          <span
+                            style={{
+                              position: 'absolute',
+                              left: '6px',
+                              top: '9px',
+                              color: '#94a3b8',
+                              fontSize: '0.8rem',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            ₹
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={s.amount}
+                            onChange={(e) =>
+                              handleSplitChange(idx, 'amount', e.target.value.replace(/\D/g, ''))
+                            }
+                            placeholder="0"
+                            style={{
+                              width: '100%',
+                              minHeight: '36px',
+                              padding: '4px 6px 4px 18px',
+                              borderRadius: '5px',
+                              backgroundColor: '#1e293b',
+                              border: '1px solid rgba(134, 239, 172, 0.3)',
+                              color: '#f8fafc',
+                              fontSize: '0.88rem',
+                              fontWeight: 700,
+                              outline: 'none',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                        </div>
+                      </div>
 
-                    {/* Auto-fill or Delete Button */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {remainingToAllocate > 0 && !s.amount && (
+                      {/* 7. Action Button (✕) */}
+                      <div>
+                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
+                          &nbsp;
+                        </span>
                         <button
                           type="button"
-                          onClick={() => handleAutoFillRemaining(idx)}
+                          onClick={() => handleRemoveSplitRow(idx)}
                           style={{
-                            minHeight: '44px',
-                            padding: '0 8px',
-                            borderRadius: '6px',
-                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            color: '#6ee7b7',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
+                            width: '36px',
+                            minHeight: '36px',
+                            borderRadius: '5px',
+                            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: '#fca5a5',
+                            fontSize: '13px',
                             cursor: 'pointer',
-                            whiteSpace: 'nowrap',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
-                          title={`Auto-fill remaining ₹${remainingToAllocate}`}
+                          title="Remove this transaction row"
                         >
-                          Fill ₹{remainingToAllocate}
+                          ✕
                         </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSplitRow(idx)}
-                        style={{
-                          minHeight: '44px',
-                          minWidth: '44px',
-                          borderRadius: '6px',
-                          backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          color: '#fca5a5',
-                          fontSize: '15px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'background-color 0.15s',
-                        }}
-                        title="Remove this split row"
-                      >
-                        ✕
-                      </button>
+                      </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
 
-                {/* Actions: Add Row & Clear Splits */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={handleAddSplitRow}
-                    style={{
-                      minHeight: '40px',
-                      padding: '8px 14px',
-                      borderRadius: '6px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px dashed rgba(255, 255, 255, 0.2)',
-                      color: '#93c5fd',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      width: 'fit-content',
-                    }}
-                  >
-                    <span>➕ Add Another Account</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSplitMode(false);
-                      setSingleAccount('');
-                      setCustomAccountName('');
-                    }}
-                    style={{
-                      minHeight: '40px',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                      color: '#fca5a5',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                    title="Clear all splits and return to unassigned"
-                  >
-                    ✕ Clear Splits (Unassign)
-                  </button>
+              {splits.length === 0 && (
+                <div
+                  style={{
+                    padding: '20px 14px',
+                    textAlign: 'center',
+                    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+                    borderRadius: '8px',
+                    border: '1px dashed rgba(255, 255, 255, 0.1)',
+                    color: '#94a3b8',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  No payment transactions logged yet. Click below to add an advance or full payment.
                 </div>
+              )}
+            </div>
+
+            {/* Bottom Controls */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '8px',
+                paddingTop: '4px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleAddSplitRow}
+                style={{
+                  minHeight: '42px',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px dashed rgba(99, 102, 241, 0.4)',
+                  color: '#a5b4fc',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>➕</span>
+                <span>Add Payment Transaction Row</span>
+              </button>
+
+              <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                Total Disbursed:{' '}
+                <strong style={{ color: totalAllocatedSplits > 0 ? '#86efac' : '#cbd5e1' }}>
+                  ₹{formatINR(totalAllocatedSplits)}
+                </strong>
+                {numExpected > 0 && (
+                  <span style={{ marginLeft: '6px' }}>
+                    ({totalAllocatedSplits >= numExpected ? (
+                      <span style={{ color: '#34d399' }}>✓ 100% Paid</span>
+                    ) : (
+                      <span style={{ color: '#fbbf24' }}>
+                        ₹{formatINR(numExpected - totalAllocatedSplits)} pending
+                      </span>
+                    )})
+                  </span>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Vendor Details */}

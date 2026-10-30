@@ -3091,6 +3091,67 @@ h6 {
   }
 }
 
+/* Expense Payment Transactions Row: Responsive Single-Row Table */
+.expense-tx-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.expense-tx-header {
+  display: none;
+}
+
+.expense-tx-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #0f172a;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.expense-tx-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .expense-tx-header {
+    display: grid;
+    grid-template-columns: 120px 80px 120px minmax(110px, 1.2fr) minmax(110px, 1fr) 100px 36px;
+    gap: 6px;
+    padding: 0 8px 4px 8px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    align-items: center;
+  }
+
+  .expense-tx-row {
+    padding: 6px 8px;
+  }
+
+  .expense-tx-fields {
+    display: grid;
+    grid-template-columns: 120px 80px 120px minmax(110px, 1.2fr) minmax(110px, 1fr) 100px 36px;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .expense-tx-field-label {
+    display: none;
+  }
+}
+
 
 .stat-card {
   background: var(--bg-card);
@@ -6789,7 +6850,7 @@ h6 {
    ============================================================ */
 .expense-modal-card {
   width: 100%;
-  max-width: 840px;
+  max-width: 860px;
   max-height: 92vh;
   background-color: #1e293b;
   border-radius: 16px;
@@ -6799,6 +6860,12 @@ h6 {
   flex-direction: column;
   overflow: hidden;
   animation: fadeIn 0.2s ease-out;
+}
+
+@media (min-width: 1024px) {
+  .expense-modal-card {
+    max-width: 960px;
+  }
 }
 
 .expense-grid-2 {
