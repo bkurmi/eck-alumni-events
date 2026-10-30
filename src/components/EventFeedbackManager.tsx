@@ -26,7 +26,7 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
     if (feedbackList.length === 0) return;
     const digest = buildFeedbackCommitteeDigestMessage(feedbackList, stats, eventName);
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(digest).catch(() => {});
+      navigator.clipboard.writeText(digest).catch(() => { });
     }
     setShareStatus('Opening WhatsApp & copied report to clipboard!');
     setTimeout(() => setShareStatus(null), 3500);
@@ -610,7 +610,7 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
                           fontWeight: 600,
                         }}
                       >
-                        Reg #{item.registration_number}
+                        {item.registration_number}
                       </span>
                     )}
                   </div>
