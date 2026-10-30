@@ -267,7 +267,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 : `Actual Deficit: -₹${formatINR(Math.abs(stats.liveCashBalance))}`}
             </span>
             <span>
-              Live Cash in Hand • {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'under plan' : 'over plan'}` : ''}
+              {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'saved vs budget' : 'over budget'}` : ''}
             </span>
           </div>
         </div>
