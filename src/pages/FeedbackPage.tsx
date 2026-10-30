@@ -11,6 +11,30 @@ import {
 import type { FeedbackQuestion } from '../types';
 import '../feedback.css';
 
+const STEP_CONTEXT = {
+  1: {
+    emoji: '🎉',
+    kicker: 'Step 1 of 3',
+    time: '~45s',
+    title: 'The Event Experience',
+    description: 'Venue atmosphere, meeting batchmates, food, and your favorite moments.',
+  },
+  2: {
+    emoji: '💻',
+    kicker: 'Step 2 of 3',
+    time: '~30s',
+    title: 'The Digital Experience',
+    description: 'Online registration, UPI QR payments, and digital gate pass on mobile.',
+  },
+  3: {
+    emoji: '❤️',
+    kicker: 'Step 3 of 3',
+    time: '~40s',
+    title: 'Nostalgia & Next Reunion',
+    description: 'Reflections after DeepAura, emotions, and ideas for our next gathering.',
+  },
+} as const;
+
 export const FeedbackPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -473,24 +497,31 @@ export const FeedbackPage: React.FC = () => {
           <div className="feedback-card-shell">
             {/* Progress Stepper Bar */}
             <div className="feedback-stepper-header">
-              <div className="stepper-meta">
-                <span className="stepper-step-text">
-                  Step {currentStep} of 3:
-                  <strong>
-                    {currentStep === 1
-                      ? ' 🎉 Event Experience'
-                      : currentStep === 2
-                        ? ' 💻 Digital Experience'
-                        : ' ❤️ Nostalgia & Future'}
-                  </strong>
-                </span>
-                <span className="stepper-time-pill">⏱ ~40s</span>
-              </div>
               <div className="stepper-track">
                 <div
                   className="stepper-progress-bar"
                   style={{ width: `${(currentStep / 3) * 100}%` }}
                 />
+              </div>
+            </div>
+
+            {/* Prominently Highlighted Step Section Context Banner */}
+            <div className="feedback-step-title-banner">
+              <div className="step-title-icon-badge">
+                <span>{STEP_CONTEXT[currentStep].emoji}</span>
+              </div>
+              <div className="step-title-content">
+                <div className="step-title-kicker">
+                  <span>{STEP_CONTEXT[currentStep].kicker}</span>
+                  <span className="step-time-dot">•</span>
+                  <span>⏱ {STEP_CONTEXT[currentStep].time}</span>
+                </div>
+                <h2 className="step-title-heading">
+                  {STEP_CONTEXT[currentStep].title}
+                </h2>
+                <p className="step-title-description">
+                  {STEP_CONTEXT[currentStep].description}
+                </p>
               </div>
             </div>
 
