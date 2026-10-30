@@ -13,8 +13,6 @@ import {
   formatINR,
   KNOWN_EXPENSE_ACCOUNTS,
   getExpenseSplits,
-  computeAccountSettlements,
-  getAccountInHandBalance,
 } from '../lib/expenses';
 
 interface ExpenseModalProps {
@@ -58,10 +56,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   initialData,
   currentUserEmail,
   eventId,
-  expenses = [],
-  registrations = [],
-  verifications = [],
-  sponsorships = [],
 }) => {
   const [itemName, setItemName] = useState('');
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
@@ -96,38 +90,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   ]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Live in-hand balance per account across all expenses (matches the main Settlements card)
-  const liveSettlementData = useMemo(() => {
-    return computeAccountSettlements(
-      expenses,
-      registrations,
-      verifications,
-      sponsorships
-    );
-  }, [expenses, registrations, verifications, sponsorships]);
-
-  // Splits recorded in initialData when editing
-  const initialSplits = useMemo(() => {
-    if (!initialData) return [];
-    return getExpenseSplits(initialData);
-  }, [initialData]);
-
-  // Helper to get what was previously saved in this expense item for an account
-  const getPreviouslySavedAmountForAccount = (targetAccount: string): number => {
-    if (!initialSplits || initialSplits.length === 0) return 0;
-    const cleanTarget = (targetAccount || '').toLowerCase().trim();
-    if (!cleanTarget || cleanTarget === 'other') return 0;
-    const found = initialSplits.find((s) => {
-      const cleanSplit = (s.account || '').toLowerCase().trim();
-      return (
-        cleanSplit === cleanTarget ||
-        cleanSplit.includes(cleanTarget) ||
-        cleanTarget.includes(cleanSplit)
-      );
-    });
-    return Number(found?.amount || 0);
-  };
 
   useEffect(() => {
     if (isOpen) {
@@ -910,13 +872,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
               {/* Transaction Rows */}
               {splits.map((s, idx) => {
-                const targetAccount = s.account === 'Other' ? (s.customAccount || 'Other') : s.account;
-                const bal = getAccountInHandBalance(targetAccount, liveSettlementData.accounts);
-                const prevSaved = getPreviouslySavedAmountForAccount(targetAccount);
-                const enteredAmt = parseInt(s.amount, 10) || 0;
-                const delta = enteredAmt - prevSaved;
-                const projectedBalance = bal.netBalance - delta;
-
                 const compactSelect = {
                   width: '100%',
                   minHeight: '32px',
@@ -959,14 +914,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                           onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
                           style={compactSelect}
                         >
-                          {KNOWN_EXPENSE_ACCOUNTS.map((acc) => {
-                            const accBal = getAccountInHandBalance(acc.label, liveSettlementData.accounts);
-                            return (
-                              <option key={acc.id} value={acc.label}>
-                                {acc.label} {accBal.netBalance > 0 ? `(₹${formatINR(accBal.netBalance)} in hand)` : ''}
-                              </option>
-                            );
-                          })}
+                          {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
+                            <option key={acc.id} value={acc.label}>
+                              {acc.label}
+                            </option>
+                          ))}
                           <option value="Other">👤 Other...</option>
                         </select>
                         {s.account === 'Other' && (
@@ -983,17 +935,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                             }}
                           />
                         )}
-                        {/* Compact In-Hand Balance & Remaining Hint */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.67rem', marginTop: '2px', padding: '0 1px' }}>
-                          <span style={{ color: '#94a3b8' }}>
-                            In Hand: <strong style={{ color: bal.netBalance > 0 ? '#34d399' : bal.netBalance < 0 ? '#f87171' : '#cbd5e1' }}>₹{formatINR(bal.netBalance)}</strong>
-                          </span>
-                          {enteredAmt > 0 && (
-                            <span style={{ color: projectedBalance >= 0 ? '#38bdf8' : '#fbbf24', fontWeight: 600 }}>
-                              {projectedBalance >= 0 ? `₹${formatINR(projectedBalance)} left` : `⚠️ Over ₹${formatINR(Math.abs(projectedBalance))}`}
-                            </span>
-                          )}
-                        </div>
                       </div>
 
                       {/* 2. Expense Type */}
