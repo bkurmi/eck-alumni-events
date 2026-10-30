@@ -1091,37 +1091,6 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
                   {/* Actions & Status Badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    {receiptUrls.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewImageUrl(receiptUrls[0]);
-                        }}
-                        style={{
-                          background: 'rgba(99, 102, 241, 0.15)',
-                          border: '1px solid rgba(99, 102, 241, 0.35)',
-                          color: '#a5b4fc',
-                          borderRadius: '6px',
-                          padding: '3px 8px',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          minHeight: '28px',
-                        }}
-                        title={
-                          receiptUrls.length > 1
-                            ? `View ${receiptUrls.length} attached receipts`
-                            : 'View attached receipt'
-                        }
-                      >
-                        📄 {receiptUrls.length > 1 ? `${receiptUrls.length} Bills 👁️` : 'Bill 👁️'}
-                      </button>
-                    )}
-
                     <span
                       style={{
                         backgroundColor: badge.bg,
