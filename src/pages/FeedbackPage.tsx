@@ -67,8 +67,11 @@ export const FeedbackPage: React.FC = () => {
   const [eventName, setEventName] = useState<string>('DeepAura 2K26');
   const [loadingEvent, setLoadingEvent] = useState(true);
 
-  // Step state: 1 (Event), 2 (Digital), 3 (Heart), 4 (Submitted / Thank You)
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  // Can start survey: requires either verified registration or anonymous mode
+  const canStartSurvey = isAnonymous || (lookupSuccess && Boolean(attendeeName));
+
+  // Step state: 0 (Welcome / Identity), 1 (Event), 2 (Digital), 3 (Heart), 4 (Submitted / Thank You)
+  const [currentStep, setCurrentStep] = useState<0 | 1 | 2 | 3 | 4>(0);
 
   // Responses dictionary
   const [responses, setResponses] = useState<Record<string, any>>({
@@ -468,8 +471,34 @@ export const FeedbackPage: React.FC = () => {
       <main className="feedback-main-container">
         {/* Campaign Banner Header */}
         <header className="feedback-hero-banner">
-          <div className="feedback-badge-pill">
-            <span className="badge-dot" /> 2-Minute Alumni Survey
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div className="feedback-badge-pill">
+              <span className="badge-dot" /> 2-Minute Alumni Survey
+            </div>
+            {currentStep >= 1 && currentStep <= 3 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentStep(0);
+                  window.scrollTo({ top: 100, behavior: 'smooth' });
+                }}
+                className="feedback-badge-pill"
+                style={{
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  borderColor: 'rgba(245, 158, 11, 0.35)',
+                  color: '#fbbf24',
+                  cursor: 'pointer',
+                }}
+                title="Click to edit identity or switch to anonymous"
+              >
+                {isAnonymous ? (
+                  <span>🛡️ Anonymous</span>
+                ) : (
+                  <span>👤 {attendeeName ? stripSalutation(attendeeName) : 'Participant'} {regDigits ? `(REG-${regDigits.padStart(5, '0')})` : ''}</span>
+                )}
+                <span style={{ opacity: 0.7, textDecoration: 'underline', marginLeft: '3px' }}>✎</span>
+              </button>
+            )}
           </div>
           <h1 className="feedback-hero-title">{FEEDBACK_CAMPAIGN.title}</h1>
           <p className="feedback-hero-tagline">{FEEDBACK_CAMPAIGN.tagline}</p>
@@ -492,8 +521,179 @@ export const FeedbackPage: React.FC = () => {
               </Link>
             </div>
           </div>
+        ) : currentStep === 0 ? (
+          /* ── STEP 0: WELCOME & IDENTITY LANDING ───────────────────── */
+          <div className="feedback-card-shell feedback-welcome-shell">
+            {/* 3 Pillars Overview */}
+            <div className="welcome-pillars-grid">
+              <div className="welcome-pillar-card">
+                <span className="pillar-icon">🎉</span>
+                <div className="pillar-text">
+                  <strong>1. Event Experience</strong>
+                  <span>Venue, food & buddies</span>
+                </div>
+              </div>
+              <div className="welcome-pillar-card">
+                <span className="pillar-icon">💻</span>
+                <div className="pillar-text">
+                  <strong>2. Digital Experience</strong>
+                  <span>Pass, portal & entry</span>
+                </div>
+              </div>
+              <div className="welcome-pillar-card">
+                <span className="pillar-icon">❤️</span>
+                <div className="pillar-text">
+                  <strong>3. Future Reunions</strong>
+                  <span>Memories & wishes</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Registration Details & Anonymous Checkbox */}
+            <div className="feedback-identity-box" style={{ marginBottom: '1.5rem' }}>
+              <div className="identity-header-row">
+                <span className="identity-label">
+                  <span>🪪</span>
+                  <span>Registration Details</span>
+                </span>
+
+                {/* Direct Checkbox for being anonymous */}
+                <label className={`identity-anon-badge-toggle ${isAnonymous ? 'active' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={isAnonymous}
+                    onChange={(e) => {
+                      setIsAnonymous(e.target.checked);
+                      if (e.target.checked) {
+                        setLookupSuccess(false);
+                      }
+                    }}
+                  />
+                  <span className="toggle-text">
+                    {isAnonymous ? '🕵️ Keep Me Anonymous (Active)' : '🕵️ Keep Me Anonymous'}
+                  </span>
+                </label>
+              </div>
+
+              {isAnonymous ? (
+                <div className="identity-anon-confirmed-box">
+                  <span style={{ fontSize: '1.25rem' }}>🛡️</span>
+                  <div>
+                    <strong>100% Anonymous Mode Active:</strong> No name, registration number, or contact details will be recorded with your submission. Express yourself completely freely!
+                  </div>
+                </div>
+              ) : (
+                <div className="identity-reg-wrapper">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleManualLookup();
+                    }}
+                    className="identity-reg-input-row"
+                  >
+                    <div className="feedback-reg-input-group" title="Registration prefix REG- is fixed">
+                      <span className="feedback-reg-prefix">REG-</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={5}
+                        placeholder="e.g. 212"
+                        className="feedback-reg-digits-input"
+                        value={regDigits}
+                        onChange={(e) => {
+                          const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 5);
+                          setRegDigits(digitsOnly);
+                          setLookupAttempted(false);
+                          if (lookupSuccess) setLookupSuccess(false);
+                        }}
+                        autoFocus={!initialName}
+                      />
+                      <button
+                        type="submit"
+                        disabled={lookingUp || !regDigits.trim()}
+                        className="feedback-reg-submit-btn"
+                      >
+                        {lookingUp ? 'Finding...' : 'Find →'}
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Verified Alumnus Welcome Card */}
+                  {lookupSuccess && attendeeName && (
+                    <div className="feedback-welcome-card">
+                      <div className="feedback-welcome-avatar">👋</div>
+                      <div className="feedback-welcome-body">
+                        <div className="feedback-welcome-title">
+                          Hey <strong>{stripSalutation(attendeeName)}</strong>, welcome! 🎉
+                        </div>
+                        <div className="feedback-welcome-subtitle">
+                          Great to have you share your DeepAura experience!
+                        </div>
+                        <div className="feedback-welcome-meta">
+                          <span className="welcome-reg-pill">
+                            {regDigits ? `REG-${regDigits.padStart(5, '0')}` : 'REG-PASS'}
+                          </span>
+                          <span className="welcome-verified-badge">
+                            ✅ Verified Alumnus
+                          </span>
+                          {batch && (
+                            <span className="welcome-batch-pill">
+                              🎓 Batch of {batch}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {lookupAttempted && !lookupSuccess && !lookingUp && (
+                    <p className="identity-reg-hint" style={{ color: '#f87171' }}>
+                      ⚠️ No registration found for REG-{regDigits ? regDigits.padStart(5, '0') : ''}. Please re-check or choose &ldquo;Keep Me Anonymous&rdquo;.
+                    </p>
+                  )}
+
+                  {!lookupAttempted && !lookupSuccess && !lookingUp && (
+                    <p className="identity-reg-hint">
+                      💡 Enter your number (e.g. <strong>3</strong> or <strong>212</strong>) &amp; tap <strong>Find →</strong> to personalize!
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Start Survey CTA */}
+            <div className="welcome-start-action">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canStartSurvey) return;
+                  setCurrentStep(1);
+                  window.scrollTo({ top: 120, behavior: 'smooth' });
+                }}
+                disabled={!canStartSurvey}
+                className="btn-festive-primary welcome-start-btn"
+                title={
+                  !canStartSurvey
+                    ? 'Please enter your REG number & tap Find → or select Keep Me Anonymous'
+                    : 'Start the 2-minute survey'
+                }
+              >
+                <span>Start 2-Minute Survey →</span>
+              </button>
+              <p className="welcome-time-note">
+                {!canStartSurvey ? (
+                  <span style={{ color: '#fbbf24' }}>
+                    👉 Enter your REG number &amp; tap <strong>Find →</strong>, or select <strong>Keep Me Anonymous</strong> to proceed
+                  </span>
+                ) : (
+                  <span>⏱ 3 quick sections • ~2 minutes • Shape future ECK-RTU reunions</span>
+                )}
+              </p>
+            </div>
+          </div>
         ) : (
-          /* ── STEPS 1, 2, 3 CARD CONTAINER ────────────────────── */
+          /* ── STEPS 1, 2, 3: PURE QUESTIONS ────────────────────── */
           <div className="feedback-card-shell">
             {/* Progress Stepper Bar */}
             <div className="feedback-stepper-header">
@@ -506,128 +706,24 @@ export const FeedbackPage: React.FC = () => {
             </div>
 
             {/* Prominently Highlighted Step Section Context Banner */}
-            <div className="feedback-step-title-banner">
-              <div className="step-title-icon-badge">
-                <span>{STEP_CONTEXT[currentStep].emoji}</span>
-              </div>
-              <div className="step-title-content">
-                <div className="step-title-kicker">
-                  <span>{STEP_CONTEXT[currentStep].kicker}</span>
-                  <span className="step-time-dot">•</span>
-                  <span>⏱ {STEP_CONTEXT[currentStep].time}</span>
+            {currentStep >= 1 && currentStep <= 3 && (
+              <div className="feedback-step-title-banner">
+                <div className="step-title-icon-badge">
+                  <span>{STEP_CONTEXT[currentStep as 1 | 2 | 3].emoji}</span>
                 </div>
-                <h2 className="step-title-heading">
-                  {STEP_CONTEXT[currentStep].title}
-                </h2>
-                <p className="step-title-description">
-                  {STEP_CONTEXT[currentStep].description}
-                </p>
-              </div>
-            </div>
-
-            {/* Prominently Highlighted Identity Box (on Step 1) */}
-            {currentStep === 1 && (
-              <div className="feedback-identity-box">
-                <div className="identity-header-row">
-                  <span className="identity-label">
-                    <span>🪪</span>
-                    <span>Registration Details</span>
-                  </span>
-
-                  {/* Theme-Highlighted Anonymous Toggle */}
-                  <label className={`identity-anon-badge-toggle ${isAnonymous ? 'active' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={isAnonymous}
-                      onChange={(e) => setIsAnonymous(e.target.checked)}
-                    />
-                    <span className="toggle-text">
-                      {isAnonymous ? '🕵️ Keep Me Anonymous (Active)' : '🕵️ Keep Me Anonymous'}
-                    </span>
-                  </label>
+                <div className="step-title-content">
+                  <div className="step-title-kicker">
+                    <span>{STEP_CONTEXT[currentStep as 1 | 2 | 3].kicker}</span>
+                    <span className="step-time-dot">•</span>
+                    <span>⏱ {STEP_CONTEXT[currentStep as 1 | 2 | 3].time}</span>
+                  </div>
+                  <h2 className="step-title-heading">
+                    {STEP_CONTEXT[currentStep as 1 | 2 | 3].title}
+                  </h2>
+                  <p className="step-title-description">
+                    {STEP_CONTEXT[currentStep as 1 | 2 | 3].description}
+                  </p>
                 </div>
-
-                {isAnonymous ? (
-                  <div className="identity-anon-confirmed-box">
-                    <span style={{ fontSize: '1.25rem' }}>🛡️</span>
-                    <div>
-                      <strong>100% Anonymous Mode Active:</strong> No name, registration number, or contact details will be recorded with your submission. Express yourself completely freely!
-                    </div>
-                  </div>
-                ) : (
-                  <div className="identity-reg-wrapper">
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleManualLookup();
-                      }}
-                      className="identity-reg-input-row"
-                    >
-                      {/* Compact input matching Download Pass form with REG- prefix and Find button */}
-                      <div className="feedback-reg-input-group" title="Registration prefix REG- is fixed">
-                        <span className="feedback-reg-prefix">REG-</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={5}
-                          placeholder="e.g. 212"
-                          className="feedback-reg-digits-input"
-                          value={regDigits}
-                          onChange={(e) => {
-                            const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 5);
-                            setRegDigits(digitsOnly);
-                            setLookupAttempted(false);
-                            if (lookupSuccess) setLookupSuccess(false);
-                          }}
-                          autoFocus={!initialName}
-                        />
-                        <button
-                          type="submit"
-                          disabled={lookingUp || !regDigits.trim()}
-                          className="feedback-reg-submit-btn"
-                        >
-                          {lookingUp ? 'Finding...' : 'Find →'}
-                        </button>
-                      </div>
-                    </form>
-
-                    {/* Fun Personal Welcome Card */}
-                    {lookupSuccess && attendeeName && (
-                      <div className="feedback-welcome-card">
-                        <div className="feedback-welcome-avatar">👋</div>
-                        <div className="feedback-welcome-body">
-                          <div className="feedback-welcome-title">
-                            Hey <strong>{stripSalutation(attendeeName)}</strong>, welcome! 🎉
-                          </div>
-                          <div className="feedback-welcome-subtitle">
-                            Great to have you share your DeepAura experience! {batch ? `• Batch of ${batch}` : ''}
-                          </div>
-                          <div className="feedback-welcome-meta">
-                            <span className="welcome-reg-pill">
-                              {regDigits ? `REG-${regDigits.padStart(5, '0')}` : 'REG-PASS'}
-                            </span>
-                            <span className="welcome-verified-badge">
-                              ✅ Verified Alumnus
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {lookupAttempted && !lookupSuccess && !lookingUp && (
-                      <p className="identity-reg-hint" style={{ color: '#f87171' }}>
-                        ⚠️ No registration found for REG-{regDigits ? regDigits.padStart(5, '0') : ''}. Please re-check or choose &ldquo;Keep Me Anonymous&rdquo;.
-                      </p>
-                    )}
-
-                    {!lookupAttempted && !lookupSuccess && !lookingUp && (
-                      <p className="identity-reg-hint">
-                        💡 Enter your number (e.g. <strong>3</strong> or <strong>212</strong>) &amp; tap <strong>Find →</strong> to personalize!
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 
@@ -646,21 +742,17 @@ export const FeedbackPage: React.FC = () => {
 
             {/* Step Footer Navigation Buttons */}
             <div className="feedback-nav-footer">
-              {currentStep > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCurrentStep((prev) => (prev > 1 ? ((prev - 1) as any) : prev));
-                    window.scrollTo({ top: 120, behavior: 'smooth' });
-                  }}
-                  className="btn-secondary feedback-back-btn"
-                  disabled={submitting}
-                >
-                  ← Back
-                </button>
-              ) : (
-                <div />
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentStep((prev) => ((prev - 1) as any));
+                  window.scrollTo({ top: 120, behavior: 'smooth' });
+                }}
+                className="btn-secondary feedback-back-btn"
+                disabled={submitting}
+              >
+                ← Back
+              </button>
 
               {currentStep < 3 ? (
                 <button
