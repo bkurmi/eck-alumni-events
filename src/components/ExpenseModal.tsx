@@ -7,7 +7,7 @@ import type {
   PaymentVerification,
   Sponsorship,
 } from '../types';
-import { EXPENSE_CATEGORIES, EXPENSE_PAYMENT_MODES } from '../types';
+import { EXPENSE_CATEGORIES } from '../types';
 import {
   getPublicExpenseScreenshotUrl,
   formatINR,
@@ -862,20 +862,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                     margin: 0,
                   }}
                 >
-                  <span>💳 Payment Transactions &amp; Disbursements</span>
-                  {totalAllocatedSplits > 0 && (
-                    <span
-                      style={{
-                        fontSize: '0.72rem',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                        color: '#6ee7b7',
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
-                        fontWeight: 700,
-                      }}
-                    >
-                      ₹{formatINR(totalAllocatedSplits)} Paid ({splits.filter((s) => (parseInt(s.amount, 10) || 0) > 0).length} tranches)
+                  <span>💳 Disbursed From / Paid By</span>
+                  {splits.length > 1 && (
+                    <span style={{ fontSize: '0.74rem', color: '#86efac', fontWeight: 600 }}>
+                      (Split Across Accounts)
                     </span>
                   )}
                 </label>
@@ -909,12 +899,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               {/* Desktop Table Header */}
               {splits.length > 0 && (
                 <div className="expense-tx-header">
+                  <span style={{ textAlign: 'center' }}>#</span>
+                  <span>Paid By</span>
                   <span>Expense Type</span>
-                  <span>Mode</span>
                   <span>Payment Date</span>
-                  <span>By (Paid By)</span>
-                  <span>In-Hand Status</span>
-                  <span>Amount Spent</span>
+                  <span>Spent</span>
                   <span style={{ textAlign: 'center' }}>✕</span>
                 </div>
               )}
@@ -930,25 +919,86 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
                 const compactSelect = {
                   width: '100%',
-                  minHeight: '36px',
-                  padding: '4px 6px',
-                  borderRadius: '5px',
-                  backgroundColor: '#1e293b',
+                  minHeight: '32px',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  backgroundColor: '#0f172a',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
                   color: '#f8fafc',
-                  fontSize: '0.8rem',
+                  fontSize: '0.82rem',
                   outline: 'none',
                   boxSizing: 'border-box' as const,
                 };
 
                 return (
                   <div key={idx} className="expense-tx-row">
+                    {/* Mobile Header: #1 on left, ✕ button on right */}
+                    <div className="expense-tx-mobile-header">
+                      <span className="expense-tx-num-badge">#{idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSplitRow(idx)}
+                        className="expense-tx-remove-btn-mobile"
+                        title="Remove row"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
                     <div className="expense-tx-fields">
-                      {/* 1. Expense Type */}
-                      <div>
-                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
-                          Type
-                        </span>
+                      {/* Desktop Row Number */}
+                      <div className="expense-tx-desktop-only expense-tx-cell-num" style={{ alignItems: 'center', justifyContent: 'center' }}>
+                        <span className="expense-tx-num-badge">#{idx + 1}</span>
+                      </div>
+
+                      {/* 1. Paid By */}
+                      <div className="expense-tx-cell-paid-by">
+                        <span className="expense-tx-field-label">Paid By</span>
+                        <select
+                          value={s.account}
+                          onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
+                          style={compactSelect}
+                        >
+                          {KNOWN_EXPENSE_ACCOUNTS.map((acc) => {
+                            const accBal = getAccountInHandBalance(acc.label, liveSettlementData.accounts);
+                            return (
+                              <option key={acc.id} value={acc.label}>
+                                {acc.label} {accBal.netBalance > 0 ? `(₹${formatINR(accBal.netBalance)} in hand)` : ''}
+                              </option>
+                            );
+                          })}
+                          <option value="Other">👤 Other...</option>
+                        </select>
+                        {s.account === 'Other' && (
+                          <input
+                            type="text"
+                            value={s.customAccount || ''}
+                            onChange={(e) => handleSplitChange(idx, 'customAccount', e.target.value)}
+                            placeholder="Coordinator name"
+                            style={{
+                              ...compactSelect,
+                              marginTop: '3px',
+                              backgroundColor: '#070c18',
+                              borderColor: 'rgba(245, 158, 11, 0.4)',
+                            }}
+                          />
+                        )}
+                        {/* Compact In-Hand Balance & Remaining Hint */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.67rem', marginTop: '2px', padding: '0 1px' }}>
+                          <span style={{ color: '#94a3b8' }}>
+                            In Hand: <strong style={{ color: bal.netBalance > 0 ? '#34d399' : bal.netBalance < 0 ? '#f87171' : '#cbd5e1' }}>₹{formatINR(bal.netBalance)}</strong>
+                          </span>
+                          {enteredAmt > 0 && (
+                            <span style={{ color: projectedBalance >= 0 ? '#38bdf8' : '#fbbf24', fontWeight: 600 }}>
+                              {projectedBalance >= 0 ? `₹${formatINR(projectedBalance)} left` : `⚠️ Over ₹${formatINR(Math.abs(projectedBalance))}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 2. Expense Type */}
+                      <div className="expense-tx-cell-type">
+                        <span className="expense-tx-field-label">Expense Type</span>
                         <select
                           value={s.note || PAYMENT_TRANSACTION_TYPES[0]}
                           onChange={(e) => handleSplitChange(idx, 'note', e.target.value)}
@@ -962,29 +1012,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                         </select>
                       </div>
 
-                      {/* 2. Payment Mode */}
-                      <div>
-                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
-                          Mode
-                        </span>
-                        <select
-                          value={s.mode || 'UPI'}
-                          onChange={(e) => handleSplitChange(idx, 'mode', e.target.value)}
-                          style={compactSelect}
-                        >
-                          {EXPENSE_PAYMENT_MODES.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
                       {/* 3. Payment Date */}
-                      <div>
-                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
-                          Date
-                        </span>
+                      <div className="expense-tx-cell-date">
+                        <span className="expense-tx-field-label">Payment Date</span>
                         <input
                           type="date"
                           value={s.date || ''}
@@ -993,108 +1023,17 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                         />
                       </div>
 
-                      {/* 4. By (Paid By Coordinator) */}
-                      <div>
-                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
-                          Paid By
-                        </span>
-                        <select
-                          value={s.account}
-                          onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
-                          style={compactSelect}
-                        >
-                          {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
-                            <option key={acc.id} value={acc.label}>
-                              {acc.label}
-                            </option>
-                          ))}
-                          <option value="Other">👤 Other...</option>
-                        </select>
-                        {s.account === 'Other' && (
-                          <input
-                            type="text"
-                            value={s.customAccount || ''}
-                            onChange={(e) => handleSplitChange(idx, 'customAccount', e.target.value)}
-                            placeholder="Name"
-                            style={{
-                              ...compactSelect,
-                              marginTop: '3px',
-                              minHeight: '30px',
-                              backgroundColor: '#0f172a',
-                              border: '1px solid rgba(245, 158, 11, 0.4)',
-                            }}
-                          />
-                        )}
-                      </div>
-
-                      {/* 5. In-Hand Balance & Remaining Status */}
-                      <div>
-                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
-                          Balance
-                        </span>
-                        <div
-                          style={{
-                            minHeight: '36px',
-                            padding: '3px 6px',
-                            borderRadius: '5px',
-                            backgroundColor:
-                              bal.netBalance > 0
-                                ? projectedBalance >= 0
-                                  ? 'rgba(16, 185, 129, 0.12)'
-                                  : 'rgba(245, 158, 11, 0.14)'
-                                : bal.netBalance < 0
-                                ? 'rgba(239, 68, 68, 0.12)'
-                                : 'rgba(148, 163, 184, 0.08)',
-                            border: `1px solid ${
-                              bal.netBalance > 0
-                                ? projectedBalance >= 0
-                                  ? 'rgba(16, 185, 129, 0.3)'
-                                  : 'rgba(245, 158, 11, 0.4)'
-                                : bal.netBalance < 0
-                                ? 'rgba(239, 68, 68, 0.3)'
-                                : 'rgba(148, 163, 184, 0.18)'
-                            }`,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            fontSize: '0.7rem',
-                            boxSizing: 'border-box',
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: '#94a3b8' }}>In Hand:</span>
-                            <strong style={{ color: bal.netBalance > 0 ? '#86efac' : bal.netBalance < 0 ? '#fca5a5' : '#cbd5e1' }}>
-                              ₹{formatINR(bal.netBalance)}
-                            </strong>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: '#64748b' }}>After:</span>
-                            <span
-                              style={{
-                                fontWeight: 700,
-                                color: projectedBalance > 0 ? '#34d399' : projectedBalance === 0 ? '#cbd5e1' : '#fbbf24',
-                                fontSize: '0.68rem',
-                              }}
-                            >
-                              {projectedBalance >= 0 ? `₹${formatINR(projectedBalance)}` : `⚠ -₹${formatINR(Math.abs(projectedBalance))}`}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 6. Amount Spent */}
-                      <div>
-                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
-                          Amount
-                        </span>
+                      {/* 4. Amount Spent */}
+                      <div className="expense-tx-cell-spent">
+                        <span className="expense-tx-field-label">Spent</span>
                         <div style={{ position: 'relative' }}>
                           <span
                             style={{
                               position: 'absolute',
-                              left: '6px',
-                              top: '9px',
+                              left: '8px',
+                              top: '7px',
                               color: '#94a3b8',
-                              fontSize: '0.8rem',
+                              fontSize: '0.82rem',
                               pointerEvents: 'none',
                             }}
                           >
@@ -1110,44 +1049,37 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                             }
                             placeholder="0"
                             style={{
-                              width: '100%',
-                              minHeight: '36px',
-                              padding: '4px 6px 4px 18px',
-                              borderRadius: '5px',
-                              backgroundColor: '#1e293b',
-                              border: '1px solid rgba(134, 239, 172, 0.3)',
-                              color: '#f8fafc',
-                              fontSize: '0.88rem',
+                              ...compactSelect,
+                              paddingLeft: '20px',
                               fontWeight: 700,
-                              outline: 'none',
-                              boxSizing: 'border-box',
+                              color: '#f8fafc',
+                              borderColor: 'rgba(134, 239, 172, 0.3)',
                             }}
                           />
                         </div>
                       </div>
 
-                      {/* 7. Action Button (✕) */}
-                      <div>
-                        <span className="expense-tx-field-label" style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginBottom: '2px' }}>
-                          &nbsp;
-                        </span>
+                      {/* 6. Desktop Remove Button */}
+                      <div className="expense-tx-desktop-only expense-tx-cell-remove" style={{ alignItems: 'center', justifyContent: 'center' }}>
                         <button
                           type="button"
                           onClick={() => handleRemoveSplitRow(idx)}
                           style={{
-                            width: '36px',
-                            minHeight: '36px',
-                            borderRadius: '5px',
+                            width: '28px',
+                            height: '28px',
+                            minHeight: '28px',
+                            minWidth: '28px',
+                            borderRadius: '6px',
                             backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            color: '#fca5a5',
+                            border: '1px solid rgba(239, 68, 68, 0.35)',
+                            color: '#f87171',
                             fontSize: '13px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                           }}
-                          title="Remove this transaction row"
+                          title="Remove row"
                         >
                           ✕
                         </button>
@@ -1174,56 +1106,30 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               )}
             </div>
 
-            {/* Bottom Controls */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '8px',
-                paddingTop: '4px',
-              }}
-            >
+            {/* Centered Add Another Row Button matching user mockup */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '10px' }}>
               <button
                 type="button"
                 onClick={handleAddSplitRow}
                 style={{
-                  minHeight: '42px',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                  border: '1px dashed rgba(99, 102, 241, 0.4)',
-                  color: '#a5b4fc',
-                  fontSize: '0.85rem',
+                  minHeight: '40px',
+                  padding: '8px 24px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                  border: '1.5px dashed rgba(99, 102, 241, 0.45)',
+                  color: '#c7d2fe',
+                  fontSize: '0.86rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '8px',
+                  transition: 'all 0.15s ease',
                 }}
               >
                 <span>➕</span>
-                <span>Add Payment Transaction Row</span>
+                <span>Add Another Row</span>
               </button>
-
-              <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
-                Total Disbursed:{' '}
-                <strong style={{ color: totalAllocatedSplits > 0 ? '#86efac' : '#cbd5e1' }}>
-                  ₹{formatINR(totalAllocatedSplits)}
-                </strong>
-                {numExpected > 0 && (
-                  <span style={{ marginLeft: '6px' }}>
-                    ({totalAllocatedSplits >= numExpected ? (
-                      <span style={{ color: '#34d399' }}>✓ 100% Paid</span>
-                    ) : (
-                      <span style={{ color: '#fbbf24' }}>
-                        ₹{formatINR(numExpected - totalAllocatedSplits)} pending
-                      </span>
-                    )})
-                  </span>
-                )}
-              </div>
             </div>
           </div>
 

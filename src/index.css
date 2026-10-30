@@ -3091,11 +3091,11 @@ h6 {
   }
 }
 
-/* Expense Payment Transactions Row: Responsive Single-Row Table */
+/* Expense Payment Transactions: Responsive Mobile Cards & Desktop Table */
 .expense-tx-table {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -3106,7 +3106,6 @@ h6 {
 .expense-tx-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   background-color: #0f172a;
   padding: 12px;
   border-radius: 8px;
@@ -3115,40 +3114,152 @@ h6 {
   box-sizing: border-box;
 }
 
-.expense-tx-fields {
+/* Mobile card top header */
+.expense-tx-mobile-header {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.expense-tx-num-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #94a3b8;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.05);
+  line-height: 1.3;
+}
+
+.expense-tx-remove-btn-mobile {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  min-width: 30px;
+  border-radius: 6px;
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 2-Column Grid on Mobile */
+.expense-tx-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   width: 100%;
 }
 
+.expense-tx-cell-paid-by {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.expense-tx-cell-type {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.expense-tx-cell-date {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.expense-tx-cell-spent {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.expense-tx-desktop-only {
+  display: none !important;
+}
+
+.expense-tx-field-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+/* Laptop / Desktop Single-Row Layout (Roomy, Compact, No Cut-Offs) */
 @media (min-width: 768px) {
+  .expense-tx-table {
+    gap: 6px;
+  }
+
+  .expense-tx-mobile-header {
+    display: none !important;
+  }
+
+  .expense-tx-desktop-only {
+    display: flex !important;
+  }
+
   .expense-tx-header {
     display: grid;
-    grid-template-columns: 120px 80px 120px minmax(110px, 1.2fr) minmax(110px, 1fr) 100px 36px;
-    gap: 6px;
+    grid-template-columns: 30px minmax(200px, 1.6fr) minmax(170px, 1.3fr) 130px 120px 30px;
+    gap: 10px;
     padding: 0 8px 4px 8px;
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     font-weight: 700;
     color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     align-items: center;
   }
 
   .expense-tx-row {
     padding: 6px 8px;
+    background-color: #0b1324;
+    border-radius: 6px;
   }
 
   .expense-tx-fields {
     display: grid;
-    grid-template-columns: 120px 80px 120px minmax(110px, 1.2fr) minmax(110px, 1fr) 100px 36px;
-    gap: 6px;
+    grid-template-columns: 30px minmax(200px, 1.6fr) minmax(170px, 1.3fr) 130px 120px 30px;
+    gap: 10px;
     align-items: center;
   }
 
   .expense-tx-field-label {
-    display: none;
+    display: none !important;
+  }
+
+  .expense-tx-cell-num {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .expense-tx-cell-paid-by {
+    grid-column: 2;
+    grid-row: auto;
+  }
+
+  .expense-tx-cell-type {
+    grid-column: 3;
+    grid-row: auto;
+  }
+
+  .expense-tx-cell-date {
+    grid-column: 4;
+    grid-row: auto;
+  }
+
+  .expense-tx-cell-spent {
+    grid-column: 5;
+    grid-row: auto;
+  }
+
+  .expense-tx-cell-remove {
+    grid-column: 6;
+    grid-row: auto;
   }
 }
 
