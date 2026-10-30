@@ -217,16 +217,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           </span>
         </div>
 
-        {/* Card 3: Real Paid Expenses */}
-        <div className="stat-card">
-          <span className="stat-label">Real Paid Expenses</span>
-          <span className="stat-value font-success">₹{formatINR(stats.totalActual)}</span>
-          <span className="stat-hint">
-            Live Cash: ₹{formatINR(stats.liveCashBalance)} • {stats.settledCount} settled
-          </span>
-        </div>
-
-        {/* Card 4: Budget Deficit / Surplus */}
+        {/* Card 3: Budget Deficit / Projected Surplus */}
         <div
           className="stat-card"
           style={stats.isDeficit ? { borderColor: 'rgba(239, 68, 68, 0.45)' } : { borderColor: 'rgba(16, 185, 129, 0.45)' }}
@@ -250,6 +241,15 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             {stats.isDeficit
               ? `${stats.fundedPct}% funded • Need ₹${formatINR(Math.abs(stats.fundingGap))} more`
               : '100% funded by collections'}
+          </span>
+        </div>
+
+        {/* Card 4: Real Paid Expenses */}
+        <div className="stat-card">
+          <span className="stat-label">Real Paid Expenses</span>
+          <span className="stat-value font-success">₹{formatINR(stats.totalActual)}</span>
+          <span className="stat-hint">
+            Live Cash: ₹{formatINR(stats.liveCashBalance)} • {stats.settledCount} settled
           </span>
         </div>
       </div>
