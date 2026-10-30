@@ -178,3 +178,144 @@ export function computeFeedbackStats(feedbackList: EventFeedback[]): FeedbackSta
     recentNotes,
   };
 }
+
+/**
+ * Builds an Executive Committee WhatsApp Digest from received alumni feedback
+ */
+export function buildFeedbackCommitteeDigestMessage(
+  feedbackList: EventFeedback[],
+  stats: FeedbackStats,
+  eventName = 'DeepAura 2K26'
+): string {
+  const total = stats.totalCount;
+  if (total === 0) {
+    return [
+      `📊 *${eventName.toUpperCase()} — ALUMNI FEEDBACK DIGEST* ❤️`,
+      `🏛️ *ECK-RTU Alumni Kota Chapter | Working Committee Brief*`,
+      `_“दीप जले, यादें मुस्कुराएँ।”_`,
+      ``,
+      `No feedback responses have been received yet. Once alumni submit their survey, live ratings, favorite moments and suggestions will appear here!`,
+      ``,
+      `🔗 *Survey Link:* ${typeof window !== 'undefined' ? `${window.location.origin}/feedback` : 'https://eck-alumni-events.web.app/feedback'}`,
+    ].join('\n');
+  }
+
+  const lines: string[] = [];
+
+  // Header
+  lines.push(`📊 *${eventName.toUpperCase()} — ALUMNI FEEDBACK DIGEST* ❤️`);
+  lines.push(`🏛️ *ECK-RTU Alumni Kota Chapter | Working Committee Brief*`);
+  lines.push(`_“दीप जले, यादें मुस्कुराएँ।”_`);
+  lines.push(``);
+
+  // Key metrics
+  const eventStars = '⭐'.repeat(Math.max(1, Math.min(5, Math.round(stats.avgEventRating))));
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`📈 *KEY METRICS OVERVIEW*`);
+  lines.push(`• Total Survey Responses: *${total} Alumni*`);
+  lines.push(`• Overall Event Rating: *${stats.avgEventRating} / 5.0* ${eventStars}`);
+  lines.push(`• Digital Portal & Pass: *${stats.avgPortalRating} / 5.0* 💻`);
+
+  // Gate pass / entry ease
+  const smoothCount = feedbackList.filter(
+    (f) =>
+      f.responses?.gate_pass_easy === 'yes' ||
+      f.responses?.portal_ease === 'much_easier' ||
+      f.responses?.portal_ease === 'smooth'
+  ).length;
+  if (smoothCount > 0) {
+    const pct = Math.round((smoothCount / total) * 100);
+    lines.push(`• Digital Entry Experience: *${pct}% Smooth & Easy* 🎫`);
+  }
+
+  // Favorite moments breakdown
+  const favLabels: Record<string, string> = {
+    friends: '🤝 Meeting Batchmates & Friends',
+    memories: '📸 Reliving Campus Memories',
+    music: '🎵 Cultural & Music Evening',
+    faculty: '🎓 Meeting Faculty & Mentors',
+    food: '🍲 Food & Hospitality',
+    everything: '✨ Everything was Magical',
+  };
+
+  const sortedFavorites = Object.entries(stats.favoritePartsBreakdown)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+
+  if (sortedFavorites.length > 0) {
+    lines.push(``);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`🌟 *WHAT ALUMNI LOVED MOST*`);
+    for (const [key, count] of sortedFavorites) {
+      const label = favLabels[key] || key;
+      const pct = Math.round((count / total) * 100);
+      lines.push(`• ${label} (*${pct}%*)`);
+    }
+  }
+
+  // Emotional Echoes (up to 3 recent feelings)
+  const feelingsWithText = stats.recentFeelings
+    .filter((f) => f.text && f.text.trim().length > 3)
+    .slice(0, 3);
+
+  if (feelingsWithText.length > 0) {
+    lines.push(``);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`💬 *ALUMNI VOICES & SENTIMENT*`);
+    for (const f of feelingsWithText) {
+      const author =
+        f.name && f.name !== 'Anonymous Alumnus'
+          ? f.batch
+            ? `${f.name} ('${f.batch.slice(-2)})`
+            : f.name
+          : 'Alumnus';
+      lines.push(`> _“${f.text.replace(/\n+/g, ' ')}”_ — *${author}*`);
+    }
+  }
+
+  // Top suggestions for working committee (up to 3)
+  const notesWithSuggestions = stats.recentNotes
+    .map((n) => n.eventImprovements || n.nextReunionWish)
+    .filter((text): text is string => Boolean(text && text.trim().length > 3))
+    .slice(0, 3);
+
+  if (notesWithSuggestions.length > 0) {
+    lines.push(``);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`💡 *SUGGESTIONS FOR WORKING COMMITTEE*`);
+    notesWithSuggestions.forEach((note, idx) => {
+      lines.push(`${idx + 1}. _“${note.trim().replace(/\n+/g, ' ')}”_`);
+    });
+  }
+
+  // Footer with link to Admin Hub
+  lines.push(``);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  const adminUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/admin`
+      : 'https://eck-alumni-events.web.app/admin';
+  lines.push(`🔗 *Live Admin Hub:* ${adminUrl}`);
+  lines.push(`_Prepared for ECK-RTU Alumni Working Committee_ ✨`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Trigger WhatsApp share with cross-device compatibility (mobile app protocol + web fallback)
+ */
+export function shareToWhatsApp(text: string): void {
+  const encoded = encodeURIComponent(text);
+  const isMobile =
+    typeof navigator !== 'undefined' &&
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    window.open(`whatsapp://send?text=${encoded}`, '_self');
+    setTimeout(() => {
+      window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    }, 600);
+  } else {
+    window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
+  }
+}

@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { EventFeedback } from '../types';
-import { fetchEventFeedbackList, computeFeedbackStats } from '../lib/feedback';
+import {
+  fetchEventFeedbackList,
+  computeFeedbackStats,
+  buildFeedbackCommitteeDigestMessage,
+  shareToWhatsApp,
+} from '../lib/feedback';
 
 interface EventFeedbackManagerProps {
   eventId: string;
@@ -15,6 +20,18 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [ratingFilter, setRatingFilter] = useState<'all' | '5' | '4' | 'critical'>('all');
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+
+  const handleShareCommitteeReport = () => {
+    if (feedbackList.length === 0) return;
+    const digest = buildFeedbackCommitteeDigestMessage(feedbackList, stats, eventName);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(digest).catch(() => {});
+    }
+    setShareStatus('Opening WhatsApp & copied report to clipboard!');
+    setTimeout(() => setShareStatus(null), 3500);
+    shareToWhatsApp(digest);
+  };
 
   const loadFeedback = async () => {
     setLoading(true);
@@ -172,7 +189,28 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleShareCommitteeReport}
+            disabled={feedbackList.length === 0}
+            className="btn btn-whatsapp-primary btn-sm"
+            style={{
+              minHeight: '40px',
+              padding: '0.5rem 1rem',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              opacity: feedbackList.length === 0 ? 0.6 : 1,
+              cursor: feedbackList.length === 0 ? 'not-allowed' : 'pointer',
+            }}
+            title={
+              feedbackList.length === 0
+                ? 'No feedback responses received yet to share'
+                : 'Share Executive Committee Feedback Digest on WhatsApp'
+            }
+          >
+            💬 Share Report
+          </button>
           <button
             type="button"
             onClick={loadFeedback}
@@ -197,6 +235,28 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Share Toast Feedback */}
+      {shareStatus && (
+        <div
+          style={{
+            padding: '0.5rem 0.875rem',
+            borderRadius: '0.5rem',
+            background: 'rgba(34, 197, 94, 0.15)',
+            border: '1px solid rgba(34, 197, 94, 0.35)',
+            color: '#4ade80',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <span>✨</span>
+          <span>{shareStatus}</span>
+        </div>
+      )}
 
       {/* KPI Cards Row */}
       <div
@@ -278,11 +338,11 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#4ade80', marginTop: '0.25rem' }}>
             {stats.totalCount > 0
               ? `${Math.round(
-                  (((stats.portalEaseBreakdown['much_easier'] || 0) +
-                    (stats.portalEaseBreakdown['smooth'] || 0)) /
-                    stats.totalCount) *
-                    100
-                )}%`
+                (((stats.portalEaseBreakdown['much_easier'] || 0) +
+                  (stats.portalEaseBreakdown['smooth'] || 0)) /
+                  stats.totalCount) *
+                100
+              )}%`
               : '0%'}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '0.25rem' }}>
@@ -461,10 +521,10 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
               {mode === 'all'
                 ? `All (${feedbackList.length})`
                 : mode === '5'
-                ? '⭐ 5 Stars'
-                : mode === '4'
-                ? '⭐ 4 Stars'
-                : '⚠️ < 4 Stars'}
+                  ? '⭐ 5 Stars'
+                  : mode === '4'
+                    ? '⭐ 4 Stars'
+                    : '⚠️ < 4 Stars'}
             </button>
           ))}
         </div>
