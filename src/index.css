@@ -3051,30 +3051,23 @@ h6 {
   }
 }
 
-/* Budget & Expenses Overview: 2 rows with 2 blocks on laptop/desktop */
+/* Budget & Expenses Overview: 3 blocks (responsive 1 col mobile, 3 cols desktop) */
 .budget-stats-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
 }
 
-@media (min-width: 480px) {
+@media (min-width: 768px) {
   .budget-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-}
-
-@media (min-width: 900px) {
-  .budget-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
   }
 }
 
 .budget-stats-grid .stat-card {
   justify-content: center;
-  min-height: 106px;
+  min-height: 112px;
 }
 
 /* Account Settlement Grid: 1 column on mobile, 2 on tablet & laptop */
@@ -3205,7 +3198,7 @@ h6 {
 
   .expense-tx-header {
     display: grid;
-    grid-template-columns: 30px minmax(200px, 1.6fr) minmax(170px, 1.3fr) 130px 120px 30px;
+    grid-template-columns: 30px minmax(190px, 1.5fr) minmax(160px, 1.2fr) 145px 120px 30px;
     gap: 10px;
     padding: 0 8px 4px 8px;
     font-size: 0.7rem;
@@ -3223,7 +3216,7 @@ h6 {
 
   .expense-tx-fields {
     display: grid;
-    grid-template-columns: 30px minmax(200px, 1.6fr) minmax(170px, 1.3fr) 130px 120px 30px;
+    grid-template-columns: 30px minmax(190px, 1.5fr) minmax(160px, 1.2fr) 145px 120px 30px;
     gap: 10px;
     align-items: center;
   }

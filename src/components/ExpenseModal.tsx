@@ -48,6 +48,344 @@ export const PAYMENT_TRANSACTION_TYPES = [
   'Other / Misc',
 ];
 
+const CALENDAR_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const CALENDAR_MONTH_ABBRS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const CALENDAR_DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+const PaymentDatePicker: React.FC<{
+  value: string; // YYYY-MM-DD
+  onChange: (val: string) => void;
+  style?: React.CSSProperties;
+}> = ({ value, onChange, style }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const parsed = useMemo(() => {
+    if (value) {
+      const parts = value.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+          return { year: y, month: m, day: d };
+        }
+      }
+    }
+    const today = new Date();
+    return {
+      year: today.getFullYear(),
+      month: today.getMonth(),
+      day: today.getDate(),
+    };
+  }, [value]);
+
+  const [viewYear, setViewYear] = useState(parsed.year);
+  const [viewMonth, setViewMonth] = useState(parsed.month);
+
+  useEffect(() => {
+    if (isOpen) {
+      setViewYear(parsed.year);
+      setViewMonth(parsed.month);
+    }
+  }, [isOpen, parsed.year, parsed.month]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  const displayLabel = useMemo(() => {
+    if (!value) return '';
+    const parts = value.split('-');
+    if (parts.length === 3) {
+      const d = parseInt(parts[2], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const y = parseInt(parts[0], 10);
+      if (!isNaN(d) && !isNaN(m) && !isNaN(y) && m >= 0 && m < 12) {
+        return `${String(d).padStart(2, '0')} ${CALENDAR_MONTH_ABBRS[m]} ${y}`;
+      }
+    }
+    return value;
+  }, [value]);
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  const calendarDays = useMemo(() => {
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    const days: Array<{
+      day: number;
+      month: number;
+      year: number;
+      isCurrentMonth: boolean;
+      dateStr: string;
+    }> = [];
+
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const m = viewMonth === 0 ? 11 : viewMonth - 1;
+      const y = viewMonth === 0 ? viewYear - 1 : viewYear;
+      days.push({
+        day: d,
+        month: m,
+        year: y,
+        isCurrentMonth: false,
+        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+      });
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push({
+        day: d,
+        month: viewMonth,
+        year: viewYear,
+        isCurrentMonth: true,
+        dateStr: `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+      });
+    }
+
+    const totalCells = days.length <= 35 ? 35 : 42;
+    const remaining = totalCells - days.length;
+    for (let d = 1; d <= remaining; d++) {
+      const m = viewMonth === 11 ? 0 : viewMonth + 1;
+      const y = viewMonth === 11 ? viewYear + 1 : viewYear;
+      days.push({
+        day: d,
+        month: m,
+        year: y,
+        isCurrentMonth: false,
+        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+      });
+    }
+
+    return days;
+  }, [viewYear, viewMonth]);
+
+  const handlePrevMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        style={{
+          ...style,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          textAlign: 'left',
+          userSelect: 'none',
+          gap: '4px',
+        }}
+        title="Click to open calendar"
+      >
+        <span
+          style={{
+            color: displayLabel ? '#f8fafc' : '#94a3b8',
+            fontSize: '0.82rem',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {displayLabel || 'Select Date...'}
+        </span>
+        <span style={{ fontSize: '0.9rem', opacity: 0.85, flexShrink: 0 }}>📅</span>
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            right: 0,
+            zIndex: 9999,
+            width: '240px',
+            backgroundColor: '#0f172a',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            borderRadius: '10px',
+            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(99, 102, 241, 0.2)',
+            padding: '10px',
+            boxSizing: 'border-box',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Calendar Month Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                color: '#cbd5e1',
+                borderRadius: '5px',
+                width: '26px',
+                height: '26px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.78rem',
+              }}
+              title="Previous month"
+            >
+              ◀
+            </button>
+            <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: '0.82rem' }}>
+              {CALENDAR_MONTH_NAMES[viewMonth]} {viewYear}
+            </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                color: '#cbd5e1',
+                borderRadius: '5px',
+                width: '26px',
+                height: '26px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.78rem',
+              }}
+              title="Next month"
+            >
+              ▶
+            </button>
+          </div>
+
+          {/* Weekday Labels */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', marginBottom: '4px' }}>
+            {CALENDAR_DAY_NAMES.map((d) => (
+              <span key={d} style={{ color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>
+                {d}
+              </span>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+            {calendarDays.map((cd) => {
+              const isSelected = value === cd.dateStr;
+              const isToday = cd.dateStr === todayStr;
+              return (
+                <button
+                  key={cd.dateStr}
+                  type="button"
+                  onClick={() => {
+                    onChange(cd.dateStr);
+                    setIsOpen(false);
+                  }}
+                  style={{
+                    height: '26px',
+                    borderRadius: '4px',
+                    border: isToday && !isSelected ? '1px solid #38bdf8' : 'none',
+                    backgroundColor: isSelected ? '#3b82f6' : 'transparent',
+                    color: isSelected ? '#ffffff' : cd.isCurrentMonth ? '#e2e8f0' : '#475569',
+                    fontSize: '0.74rem',
+                    fontWeight: isSelected || isToday ? 700 : 400,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0,
+                    transition: 'background-color 0.1s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  {cd.day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick Shortcuts: Today & Clear */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(todayStr);
+                setIsOpen(false);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#38bdf8',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '2px 4px',
+              }}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('');
+                setIsOpen(false);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                fontSize: '0.72rem',
+                cursor: 'pointer',
+                padding: '2px 4px',
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   isOpen,
   onClose,
@@ -84,10 +422,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       mode?: string;
       note?: string;
     }>
-  >([
-    { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
-    { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
-  ]);
+  >([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -114,7 +449,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
         // Restore Account Disbursal & Splits
         const existingSplits = getExpenseSplits(initialData);
-        if (existingSplits.length > 1) {
+        if (existingSplits.length > 0) {
           setSplits(
             existingSplits.map((s) => {
               const matched = KNOWN_EXPENSE_ACCOUNTS.find(
@@ -126,39 +461,13 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 amount: String(Math.round(Number(s.amount) || 0)),
                 date: s.date || initialData.payment_date || '',
                 mode: s.mode || initialData.payment_mode || 'UPI',
-                note: s.note || '',
+                note: s.note || (initialData.status === 'partially_paid' ? 'Advance Payment' : ''),
               };
             })
           );
-        } else if (existingSplits.length === 1) {
-          const single = existingSplits[0];
-          const matched = KNOWN_EXPENSE_ACCOUNTS.find(
-            (a) => a.label === single.account || a.accountName === single.account || a.id === single.account
-          );
-          setSplits([
-            {
-              account: matched ? matched.label : 'Other',
-              customAccount: matched ? '' : single.account,
-              amount: String(Math.round(Number(single.amount) || 0)),
-              date: single.date || initialData.payment_date || '',
-              mode: single.mode || initialData.payment_mode || 'UPI',
-              note: single.note || (initialData.status === 'partially_paid' ? 'Advance Payment' : ''),
-            },
-            {
-              account: KNOWN_EXPENSE_ACCOUNTS[1].label,
-              customAccount: '',
-              amount: '',
-              date: new Date().toISOString().slice(0, 10),
-              mode: initialData.payment_mode || 'UPI',
-              note: '',
-            },
-          ]);
         } else {
           // Unassigned / no splits
-          setSplits([
-            { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
-            { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '', date: '', mode: 'UPI', note: '' },
-          ]);
+          setSplits([]);
         }
       } else {
         setItemName('');
@@ -171,10 +480,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         setNewReceiptFiles([]);
         setNewReceiptPreviews([]);
         setLightboxUrl(null);
-        setSplits([
-          { account: KNOWN_EXPENSE_ACCOUNTS[0].label, customAccount: '', amount: '' },
-          { account: KNOWN_EXPENSE_ACCOUNTS[1].label, customAccount: '', amount: '' },
-        ]);
+        setSplits([]);
       }
       setErrorMsg(null);
       setSaving(false);
@@ -269,17 +575,15 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   }, [totalAllocatedSplits, numExpected, splits]);
 
   const handleAddSplitRow = () => {
-    const nextAcc = KNOWN_EXPENSE_ACCOUNTS[splits.length % KNOWN_EXPENSE_ACCOUNTS.length];
-    const remainingBudget = Math.max(0, numExpected - totalAllocatedSplits);
     setSplits((prev) => [
       ...prev,
       {
-        account: nextAcc.label,
+        account: '',
         customAccount: '',
-        amount: remainingBudget > 0 ? String(remainingBudget) : '',
-        date: new Date().toISOString().slice(0, 10),
+        amount: '',
+        date: '',
         mode: 'UPI',
-        note: prev.length === 0 ? 'Advance Payment' : 'Part Payment',
+        note: '',
       },
     ]);
   };
@@ -327,28 +631,49 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       return;
     }
 
-    // Build payment transactions from rows
-    const validSplits = splits.filter((s) => (parseInt(s.amount, 10) || 0) > 0);
+    // Validate each payment transaction row if any rows are added
     let finalPaidFromAccount: string | null = null;
     let finalPaymentSplits: ExpensePaymentSplit[] = [];
     let totalDisbursedAmt = 0;
 
-    if (validSplits.length > 0) {
-      for (let i = 0; i < validSplits.length; i++) {
-        const s = validSplits[i];
-        const amt = parseInt(s.amount, 10) || 0;
-        const accLabel = s.account === 'Other' ? (s.customAccount || '').trim() : s.account;
+    if (splits.length > 0) {
+      for (let i = 0; i < splits.length; i++) {
+        const s = splits[i];
+        const accLabel = s.account === 'Other' ? (s.customAccount || '').trim() : (s.account || '').trim();
         if (!accLabel) {
-          setErrorMsg(`Please specify the coordinator or account name for Transaction #${i + 1}.`);
+          setErrorMsg(
+            s.account === 'Other'
+              ? `Please specify the coordinator or account name for Transaction #${i + 1}.`
+              : `Please select the payer account in "Paid By" for Transaction #${i + 1}.`
+          );
           return;
         }
+
+        const noteLabel = (s.note || '').trim();
+        if (!noteLabel) {
+          setErrorMsg(`Please select the Expense Type for Transaction #${i + 1}.`);
+          return;
+        }
+
+        const dateVal = (s.date || '').trim();
+        if (!dateVal) {
+          setErrorMsg(`Please select the Payment Date for Transaction #${i + 1}.`);
+          return;
+        }
+
+        const amt = parseInt(s.amount, 10) || 0;
+        if (amt <= 0) {
+          setErrorMsg(`Please enter a valid amount spent (greater than ₹0) for Transaction #${i + 1}.`);
+          return;
+        }
+
         totalDisbursedAmt += amt;
         finalPaymentSplits.push({
           account: accLabel,
           amount: amt,
-          date: s.date || null,
+          date: dateVal,
           mode: s.mode || 'UPI',
-          note: s.note?.trim() || null,
+          note: noteLabel,
         });
       }
 
@@ -862,10 +1187,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               {splits.length > 0 && (
                 <div className="expense-tx-header">
                   <span style={{ textAlign: 'center' }}>#</span>
-                  <span>Paid By</span>
-                  <span>Expense Type</span>
-                  <span>Payment Date</span>
-                  <span>Spent</span>
+                  <span>Paid By <span style={{ color: '#f87171' }}>*</span></span>
+                  <span>Expense Type <span style={{ color: '#f87171' }}>*</span></span>
+                  <span>Payment Date <span style={{ color: '#f87171' }}>*</span></span>
+                  <span>Spent <span style={{ color: '#f87171' }}>*</span></span>
                   <span style={{ textAlign: 'center' }}>✕</span>
                 </div>
               )}
@@ -908,12 +1233,13 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
                       {/* 1. Paid By */}
                       <div className="expense-tx-cell-paid-by">
-                        <span className="expense-tx-field-label">Paid By</span>
+                        <span className="expense-tx-field-label">Paid By <span style={{ color: '#f87171' }}>*</span></span>
                         <select
-                          value={s.account}
+                          value={s.account || ''}
                           onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
                           style={compactSelect}
                         >
+                          <option value="">Select Account...</option>
                           {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
                             <option key={acc.id} value={acc.label}>
                               {acc.label}
@@ -939,12 +1265,13 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
                       {/* 2. Expense Type */}
                       <div className="expense-tx-cell-type">
-                        <span className="expense-tx-field-label">Expense Type</span>
+                        <span className="expense-tx-field-label">Expense Type <span style={{ color: '#f87171' }}>*</span></span>
                         <select
-                          value={s.note || PAYMENT_TRANSACTION_TYPES[0]}
+                          value={s.note || ''}
                           onChange={(e) => handleSplitChange(idx, 'note', e.target.value)}
                           style={compactSelect}
                         >
+                          <option value="">Select Type...</option>
                           {PAYMENT_TRANSACTION_TYPES.map((t) => (
                             <option key={t} value={t}>
                               {t}
@@ -955,18 +1282,17 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
                       {/* 3. Payment Date */}
                       <div className="expense-tx-cell-date">
-                        <span className="expense-tx-field-label">Payment Date</span>
-                        <input
-                          type="date"
+                        <span className="expense-tx-field-label">Payment Date <span style={{ color: '#f87171' }}>*</span></span>
+                        <PaymentDatePicker
                           value={s.date || ''}
-                          onChange={(e) => handleSplitChange(idx, 'date', e.target.value)}
+                          onChange={(val) => handleSplitChange(idx, 'date', val)}
                           style={compactSelect}
                         />
                       </div>
 
                       {/* 4. Amount Spent */}
                       <div className="expense-tx-cell-spent">
-                        <span className="expense-tx-field-label">Spent</span>
+                        <span className="expense-tx-field-label">Spent <span style={{ color: '#f87171' }}>*</span></span>
                         <div style={{ position: 'relative' }}>
                           <span
                             style={{
