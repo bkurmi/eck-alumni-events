@@ -189,7 +189,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* 4 Stats Cards — 2 rows with 2 blocks on laptop/desktop */}
+      {/* 3 Stats Cards — responsive 1 col mobile, 3 cols desktop */}
       <div className="stats-grid budget-stats-grid">
         {/* Card 1: Total Available Funds */}
         <div className="stat-card">
@@ -207,50 +207,69 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Expected Budget */}
-        <div className="stat-card">
-          <span className="stat-label">Expected Budget (Plan)</span>
-          <span className="stat-value">₹{formatINR(stats.totalExpected)}</span>
-          <span className="stat-hint">
-            {stats.totalItems} planned line items
-            {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
-          </span>
-        </div>
-
-        {/* Card 3: Budget Deficit / Projected Surplus */}
+        {/* Card 2: Expected Budget (Plan) with Projected Surplus/Deficit */}
         <div
           className="stat-card"
-          style={stats.isDeficit ? { borderColor: 'rgba(239, 68, 68, 0.45)' } : { borderColor: 'rgba(16, 185, 129, 0.45)' }}
+          style={stats.isDeficit ? { borderColor: 'rgba(239, 68, 68, 0.45)' } : undefined}
         >
-          <span
-            className="stat-label"
-            style={{ color: stats.isDeficit ? '#f87171' : '#34d399' }}
-          >
-            {stats.isDeficit ? 'Budget Deficit (Shortfall)' : 'Projected Surplus'}
-          </span>
-          <span
-            className={`stat-value ${stats.isDeficit ? 'text-error' : 'font-success'}`}
-            style={{ color: stats.isDeficit ? '#ef4444' : '#10b981' }}
-          >
-            {stats.isDeficit ? '-' : '+'}₹{formatINR(Math.abs(stats.fundingGap))}
-          </span>
-          <span
-            className="stat-hint"
-            style={{ color: stats.isDeficit ? '#fca5a5' : '#86efac', fontWeight: 600 }}
-          >
-            {stats.isDeficit
-              ? `${stats.fundedPct}% funded • Need ₹${formatINR(Math.abs(stats.fundingGap))} more`
-              : '100% funded by collections'}
-          </span>
+          <span className="stat-label">Expected Budget (Plan)</span>
+          <span className="stat-value">₹{formatINR(stats.totalExpected)}</span>
+          <div className="stat-hint" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '3px', alignItems: 'center' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                backgroundColor: stats.isDeficit ? 'rgba(239, 68, 68, 0.16)' : 'rgba(16, 185, 129, 0.16)',
+                color: stats.isDeficit ? '#f87171' : '#34d399',
+                border: stats.isDeficit ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(16, 185, 129, 0.35)',
+              }}
+            >
+              {stats.isDeficit
+                ? `Projected Deficit: -₹${formatINR(Math.abs(stats.fundingGap))}`
+                : `Projected Surplus: +₹${formatINR(stats.fundingGap)}`}
+            </span>
+            <span>
+              {stats.totalItems} planned line items
+              {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
+            </span>
+          </div>
         </div>
 
-        {/* Card 4: Real Paid Expenses */}
-        <div className="stat-card">
+        {/* Card 3: Real Paid Expenses with Real Surplus/Deficit */}
+        <div
+          className="stat-card"
+          style={stats.liveCashBalance < 0 ? { borderColor: 'rgba(239, 68, 68, 0.45)' } : undefined}
+        >
           <span className="stat-label">Real Paid Expenses</span>
           <span className="stat-value font-success">₹{formatINR(stats.totalActual)}</span>
-          <span className="stat-hint">
-            Live Cash: ₹{formatINR(stats.liveCashBalance)} • {stats.settledCount} settled
-          </span>
+          <div className="stat-hint" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '3px', alignItems: 'center' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                backgroundColor: stats.liveCashBalance >= 0 ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)',
+                color: stats.liveCashBalance >= 0 ? '#34d399' : '#f87171',
+                border: stats.liveCashBalance >= 0 ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)',
+              }}
+            >
+              {stats.liveCashBalance >= 0
+                ? `Actual Surplus: +₹${formatINR(stats.liveCashBalance)}`
+                : `Actual Deficit: -₹${formatINR(Math.abs(stats.liveCashBalance))}`}
+            </span>
+            <span>
+              Live Cash in Hand • {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'under plan' : 'over plan'}` : ''}
+            </span>
+          </div>
         </div>
       </div>
 
