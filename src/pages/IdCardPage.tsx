@@ -18,6 +18,7 @@ import {
   markIdCardDownloaded,
 } from '../lib/gate';
 import { supabase } from '../lib/supabase';
+import { isFeedbackEnabled } from '../lib/feedback';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
 const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
@@ -1338,6 +1339,51 @@ export const IdCardPage: React.FC = () => {
                 <p className="id-download-hint">
                   💡 <strong>Gate Check-in Tip:</strong> Save the <strong>Gate Entry Pass (With QR)</strong> to your phone gallery. Simply show that QR code to the gate verification team at Agora Ground on 1st November for instant VIP entry!
                 </p>
+              )}
+
+              {isFeedbackEnabled() && (
+                <div
+                  style={{
+                    marginTop: '1.25rem',
+                    padding: '0.875rem 1rem',
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    borderRadius: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '1.25rem' }}>❤️</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
+                        DeepAura 2K26 – Your Take!
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
+                        Share your 2-minute experience &amp; help shape future reunions!
+                      </div>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/feedback?name=${encodeURIComponent(registration.alumni?.name || '')}&batch=${encodeURIComponent(registration.alumni?.year_of_passing || '')}&regId=&regNo=${registration.registration_id || ""}`}
+                    className="btn-festive-primary"
+                    style={{
+                      fontSize: '0.8125rem',
+                      padding: '0.4rem 0.875rem',
+                      minHeight: '38px',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      borderRadius: '0.5rem',
+                    }}
+                  >
+                    <span>Give Feedback</span> →
+                  </Link>
+                </div>
               )}
             </div>
           </div>

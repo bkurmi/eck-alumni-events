@@ -10,6 +10,7 @@ import { SponsorshipsManager } from '../components/SponsorshipsManager';
 import { SponsorshipModal } from '../components/SponsorshipModal';
 import { EventExpensesManager } from '../components/EventExpensesManager';
 import { ExpenseModal } from '../components/ExpenseModal';
+import { EventFeedbackManager } from '../components/EventFeedbackManager';
 import {
   fetchSponsorshipsFromDb,
   saveSponsorshipToDb,
@@ -63,7 +64,7 @@ export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'registrations' | 'sponsorships' | 'expenses' | 'upi_report' | 'gate_portal'
+    'registrations' | 'sponsorships' | 'expenses' | 'upi_report' | 'gate_portal' | 'feedback'
   >('registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
@@ -602,24 +603,28 @@ export const AdminPage: React.FC = () => {
                   <h1 className="admin-title">
                     {activeTab === 'gate_portal'
                       ? 'Gate Verification & Turnout'
-                      : activeTab === 'upi_report'
-                        ? 'UPI Reconciliation Ledger'
-                        : activeTab === 'sponsorships'
-                          ? 'Sponsorships Ledger'
-                          : activeTab === 'expenses'
-                            ? 'Event Budget & Expenses'
-                            : 'Registrations Overview'}
+                      : activeTab === 'feedback'
+                        ? 'Alumni Feedback & Sentiments'
+                        : activeTab === 'upi_report'
+                          ? 'UPI Reconciliation Ledger'
+                          : activeTab === 'sponsorships'
+                            ? 'Sponsorships Ledger'
+                            : activeTab === 'expenses'
+                              ? 'Event Budget & Expenses'
+                              : 'Registrations Overview'}
                   </h1>
                   <p className="admin-subtitle">
                     {activeTab === 'gate_portal'
                       ? 'QR scanning, attendance & walk-ins.'
-                      : activeTab === 'upi_report'
-                        ? 'Track & verify payments.'
-                        : activeTab === 'sponsorships'
-                          ? 'Track Alumni sponsors'
-                          : activeTab === 'expenses'
-                            ? 'Track expected budget vs real expenses.'
-                            : 'Verify screenshots and alumni submissions.'}
+                      : activeTab === 'feedback'
+                        ? 'Insights, ratings and ideas submitted by alumni.'
+                        : activeTab === 'upi_report'
+                          ? 'Track & verify payments.'
+                          : activeTab === 'sponsorships'
+                            ? 'Track Alumni sponsors'
+                            : activeTab === 'expenses'
+                              ? 'Track expected budget vs real expenses.'
+                              : 'Verify screenshots and alumni submissions.'}
                   </p>
                   <div className="admin-status-badge-row" style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span className={`badge ${getRegistrationStatusInfo(activeEvent).isClosed ? 'badge-closed' : 'badge-open'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
@@ -749,6 +754,20 @@ export const AdminPage: React.FC = () => {
                     </span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  className={`admin-view-tab-btn ${activeTab === 'feedback' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('feedback')}
+                >
+                  <span className="tab-title">
+                    <span className="tab-icon">❤️</span>
+                    <span className="tab-text-full">Alumni Survey</span>
+                    <span className="tab-text-short">Survey</span>
+                  </span>
+                  <span className="admin-tab-count" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24' }}>
+                    Survey
+                  </span>
+                </button>
               </div>
 
               {activeTab === 'gate_portal' ? (
@@ -837,6 +856,11 @@ export const AdminPage: React.FC = () => {
                     fetchExpensesData();
                   }}
                   loading={loadingData}
+                />
+              ) : activeTab === 'feedback' ? (
+                <EventFeedbackManager
+                  eventId={activeEvent.id}
+                  eventName={activeEvent.event_name}
                 />
               ) : activeTab === 'upi_report' ? (
                 <UpiReconciliationReport

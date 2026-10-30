@@ -4,6 +4,7 @@ import { EventPage } from './pages/EventPage';
 import { AdminPage } from './pages/AdminPage';
 import { IdCardPage } from './pages/IdCardPage';
 import { GatePage } from './pages/GatePage';
+import { FeedbackPage } from './pages/FeedbackPage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/events/:slug" element={<EventPage />} />
         <Route path="/id-card" element={<IdCardPage />} />
         <Route path="/download-pass" element={<IdCardPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/gate" element={<GatePage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

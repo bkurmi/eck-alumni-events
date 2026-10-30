@@ -34,6 +34,19 @@ export function formatDisplayMobile(mobile?: string | null, fallback = 'Not Prov
   return mobile;
 }
 
+/**
+ * Strips formal salutations and prefixes (e.g. "Dr.", "Dr", "Er.", "Er", "Prof.", "Mr.", "Mrs.", "Ms.", "Shri", "Smt")
+ * both with or without dots and spaces, so names display cleanly and warmly in greetings and cards.
+ */
+export function stripSalutation(name?: string | null): string {
+  if (!name) return '';
+  let cleaned = name.trim();
+  while (/^(er|dr|prof|mr|mrs|ms|shri|smt)[\.:\-]?\s+/i.test(cleaned)) {
+    cleaned = cleaned.replace(/^(er|dr|prof|mr|mrs|ms|shri|smt)[\.:\-]?\s+/i, '').trim();
+  }
+  return cleaned;
+}
+
 const LOCAL_STORAGE_PREFIX = 'eck_reg_cache_';
 
 // Purge any legacy registration caches from browser so database is strictly the single source of truth

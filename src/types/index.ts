@@ -360,4 +360,42 @@ export const EXPENSE_PAYMENT_MODES = [
   'Other',
 ] as const;
 
+// Feedback Types
+export interface EventFeedback {
+  id?: string;
+  event_id: string;
+  registration_id?: string | null;
+  registration_number?: string | null;
+  attendee_name?: string | null;
+  batch?: string | null;
+  is_anonymous: boolean;
+  event_rating: number; // 1-5
+  portal_rating: number; // 1-5
+  responses: Record<string, any>;
+  user_agent?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FeedbackQuestionOption {
+  label: string;
+  emoji?: string;
+  value: string;
+}
+
+export type FeedbackQuestionType = 'rating' | 'emoji_scale' | 'chips' | 'radio' | 'textarea';
+
+export interface FeedbackQuestion {
+  id: string;
+  section: 'event' | 'digital' | 'heart';
+  type: FeedbackQuestionType;
+  title: string;
+  subtitle?: string;
+  options?: (string | FeedbackQuestionOption)[];
+  allowMultiple?: boolean;
+  placeholder?: string;
+  required?: boolean;
+}
+
+
 
