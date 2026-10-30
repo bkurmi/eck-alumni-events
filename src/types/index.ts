@@ -310,6 +310,11 @@ export const SPONSORSHIP_PAYMENT_MODES = [
 // Expense Ledger Types
 export type ExpenseStatus = 'planned' | 'partially_paid' | 'paid' | 'settled' | 'cancelled';
 
+export interface ExpensePaymentSplit {
+  account: string; // e.g. 'Hari Narayan (SBI)', 'Mitesh (Axis)', 'Cash in Hand', or custom
+  amount: number;
+}
+
 export interface EventExpense {
   id: string;
   event_id?: string | null;
@@ -322,6 +327,8 @@ export interface EventExpense {
   vendor_phone?: string | null;
   payment_mode?: string | null;
   payment_date?: string | null;
+  paid_from_account?: string | null;
+  payment_splits?: ExpensePaymentSplit[] | null;
   payment_screenshot_path?: string | null;
   notes?: string | null;
   created_by?: string | null;

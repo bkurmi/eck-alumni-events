@@ -1,10 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import type { EventExpense } from '../types';
+import type { EventExpense, EventRegistration, PaymentVerification, Sponsorship } from '../types';
 import {
   formatINR,
   getExpenseCategoryIcon,
-  getPublicExpenseScreenshotUrl,
+  getAllExpenseScreenshotUrls,
   buildExpensesWhatsAppMessage,
+  computeAccountSettlements,
+  formatExpensePayerSummary,
+  getExpenseSplits,
+  KNOWN_EXPENSE_ACCOUNTS,
 } from '../lib/expenses';
 
 interface EventExpensesManagerProps {
@@ -15,6 +19,9 @@ interface EventExpensesManagerProps {
   totalHeadcount?: number;
   sponsorshipCount?: number;
   eventName?: string;
+  registrations?: EventRegistration[];
+  verifications?: PaymentVerification[];
+  sponsorships?: Sponsorship[];
   onAddExpense: () => void;
   onEditExpense: (expense: EventExpense) => void;
   onRefresh?: () => void;
@@ -29,6 +36,9 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   totalHeadcount = 0,
   sponsorshipCount = 0,
   eventName = 'ECK-RTU Alumni DeepAura 2K26',
+  registrations = [],
+  verifications = [],
+  sponsorships = [],
   onAddExpense,
   onEditExpense,
   onRefresh: _onRefresh,
@@ -36,7 +46,19 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('all');
+  const [isSettlementOpen, setIsSettlementOpen] = useState<boolean>(true);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  // Live account settlements & cash balances
+  const settlementData = useMemo(() => {
+    return computeAccountSettlements(
+      expenses,
+      registrations,
+      verifications,
+      sponsorships
+    );
+  }, [expenses, registrations, verifications, sponsorships]);
 
   // Aggregated Financial Metrics & Feasibility
   const stats = useMemo(() => {
@@ -79,24 +101,43 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
     };
   }, [expenses, registrationAmount, sponsorshipAmount]);
 
-  // Filtered expenses based on search and status
+  // Filtered expenses based on search, status & paying account
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
       const q = searchQuery.toLowerCase().trim();
+      const splits = getExpenseSplits(e);
+      const payerText = splits.map((s) => s.account).join(' ') + ' ' + (e.paid_from_account || '');
+
       const matchesSearch =
         !q ||
         (e.item_name || '').toLowerCase().includes(q) ||
         (e.vendor_name || '').toLowerCase().includes(q) ||
         (e.vendor_phone || '').toLowerCase().includes(q) ||
         (e.notes || '').toLowerCase().includes(q) ||
-        (e.category || '').toLowerCase().includes(q);
+        (e.category || '').toLowerCase().includes(q) ||
+        payerText.toLowerCase().includes(q);
 
       const matchesStatus =
         selectedStatus === 'all' ? true : e.status === selectedStatus;
 
-      return matchesSearch && matchesStatus;
+      let matchesAccount = true;
+      if (selectedAccountFilter !== 'all') {
+        if (selectedAccountFilter === 'unassigned') {
+          matchesAccount = Number(e.actual_amount || 0) > 0 && splits.length === 0;
+        } else {
+          matchesAccount =
+            splits.some((s) =>
+              s.account.toLowerCase().includes(selectedAccountFilter.toLowerCase())
+            ) ||
+            (e.paid_from_account || '')
+              .toLowerCase()
+              .includes(selectedAccountFilter.toLowerCase());
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesAccount;
     });
-  }, [expenses, searchQuery, selectedStatus]);
+  }, [expenses, searchQuery, selectedStatus, selectedAccountFilter]);
 
   // WhatsApp Share Action
   const handleShareWhatsApp = () => {
@@ -113,7 +154,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       registrationAmount,
       sponsorshipAmount,
       registrationCount,
-      totalHeadcount
+      totalHeadcount,
+      settlementData.accounts
     );
     const encoded = encodeURIComponent(text);
     const isMobile =
@@ -310,6 +352,371 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         </div>
       )}
 
+      {/* ── ACCOUNT SETTLEMENT & CASH IN HAND CARD ── */}
+      <div
+        style={{
+          backgroundColor: '#1e293b',
+          borderRadius: '12px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Settlement Header */}
+        <div
+          onClick={() => setIsSettlementOpen((prev) => !prev)}
+          style={{
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            cursor: 'pointer',
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            userSelect: 'none',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '18px' }}>💳</span>
+            <div>
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: '0.94rem',
+                  fontWeight: 700,
+                  color: '#f8fafc',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>Account Settlement &amp; Net Balance</span>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    padding: '1px 7px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(99, 102, 241, 0.18)',
+                    color: '#a5b4fc',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                  }}
+                >
+                  Adjusted per Person
+                </span>
+              </h4>
+              <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
+                Total collections vs expenses disbursed from each account
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {selectedAccountFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedAccountFilter('all');
+                }}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  color: '#cbd5e1',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Filter ✕
+              </button>
+            )}
+            <span style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>
+              {isSettlementOpen ? '▲ Hide' : '▼ View Breakdown'}
+            </span>
+          </div>
+        </div>
+
+        {/* Settlement Content */}
+        {isSettlementOpen && (
+          <div
+            style={{
+              padding: '12px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            {/* Account Cards Grid */}
+            <div className="settlement-accounts-grid">
+              {settlementData.accounts.map((acc) => {
+                const isSelected =
+                  selectedAccountFilter.toLowerCase() === acc.accountName.toLowerCase();
+                const isPositive = acc.netBalance > 0;
+                const isNegative = acc.netBalance < 0;
+
+                return (
+                  <div
+                    key={acc.accountId}
+                    onClick={() =>
+                      setSelectedAccountFilter((prev) =>
+                        prev.toLowerCase() === acc.accountName.toLowerCase() ? 'all' : acc.accountName
+                      )
+                    }
+                    style={{
+                      backgroundColor: isSelected ? '#1e293b' : '#0c1322',
+                      borderRadius: '12px',
+                      padding: '14px 16px',
+                      border: isSelected
+                        ? '1.5px solid #6366f1'
+                        : '1px solid rgba(255, 255, 255, 0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isSelected ? '0 0 12px rgba(99, 102, 241, 0.25)' : 'none',
+                      minWidth: 0,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = '#111c30';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.16)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = '#0c1322';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                      }
+                    }}
+                  >
+                    {/* Header: Name, Bank & Status Pill */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: '1.05rem',
+                            color: '#f8fafc',
+                            letterSpacing: '-0.2px',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {acc.accountName}
+                        </span>
+                        {acc.bankName && acc.bankName !== 'Other' && (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                              color: '#94a3b8',
+                              letterSpacing: '0.3px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {acc.bankName}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Status Pill: Grey for SETTLED, Green for SURPLUS, Red for DUE */}
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: '9999px',
+                          backgroundColor: isPositive
+                            ? 'rgba(16, 185, 129, 0.1)'
+                            : isNegative
+                            ? 'rgba(239, 68, 68, 0.1)'
+                            : 'rgba(148, 163, 184, 0.12)',
+                          color: isPositive ? '#34d399' : isNegative ? '#f87171' : '#94a3b8',
+                          border: isPositive
+                            ? '1px solid rgba(16, 185, 129, 0.5)'
+                            : isNegative
+                            ? '1px solid rgba(239, 68, 68, 0.5)'
+                            : '1px solid rgba(148, 163, 184, 0.35)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          whiteSpace: 'nowrap',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.4px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '13px',
+                            height: '13px',
+                            borderRadius: '50%',
+                            border: `1.5px solid ${isNegative ? '#f87171' : isPositive ? '#34d399' : '#94a3b8'}`,
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            color: isNegative ? '#f87171' : isPositive ? '#34d399' : '#94a3b8',
+                          }}
+                        >
+                          {isNegative ? '!' : '✓'}
+                        </span>
+                        {isPositive ? 'SURPLUS' : isNegative ? 'DUE' : 'SETTLED'}
+                      </span>
+                    </div>
+
+                    {/* Inflow vs Spent Row */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '0.86rem',
+                        gap: '8px',
+                      }}
+                    >
+                      {/* Inflow */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '15px',
+                            height: '15px',
+                            borderRadius: '50%',
+                            border: '1.5px solid #34d399',
+                            color: '#34d399',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            lineHeight: 1,
+                          }}
+                        >
+                          +
+                        </span>
+                        <span style={{ color: '#cbd5e1' }}>Inflow:</span>
+                        <strong style={{ color: '#34d399', fontWeight: 700, fontSize: '0.92rem' }}>
+                          ₹{formatINR(acc.inflow)}
+                        </strong>
+                      </div>
+
+                      {/* Spent */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '15px',
+                            height: '15px',
+                            borderRadius: '50%',
+                            border: '1.5px solid #f87171',
+                            color: '#f87171',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            lineHeight: 1,
+                          }}
+                        >
+                          −
+                        </span>
+                        <span style={{ color: '#cbd5e1' }}>Spent:</span>
+                        <strong style={{ color: '#f87171', fontWeight: 700, fontSize: '0.92rem' }}>
+                          ₹{formatINR(acc.outflow)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Dashed Separator */}
+                    <div style={{ borderTop: '1px dashed rgba(255, 255, 255, 0.1)', margin: '1px 0' }} />
+
+                    {/* Dedicated Balance Pill Box */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#0a0f1d',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '8px',
+                        padding: '9px 14px',
+                      }}
+                    >
+                      <span style={{ color: '#94a3b8', fontSize: '0.92rem', fontWeight: 500 }}>
+                        Balance
+                      </span>
+                      <strong
+                        style={{
+                          color: isPositive ? '#34d399' : isNegative ? '#f87171' : '#cbd5e1',
+                          fontSize: '1.12rem',
+                          fontWeight: 700,
+                          letterSpacing: '0.2px',
+                        }}
+                      >
+                        {isPositive
+                          ? `+₹${formatINR(acc.netBalance)}`
+                          : isNegative
+                          ? `-₹${formatINR(Math.abs(acc.netBalance))}`
+                          : '₹0'}
+                      </strong>
+                    </div>
+
+                    {/* Footer: Expenses Count & Filter Link */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '0.8rem',
+                        color: '#94a3b8',
+                        paddingTop: '2px',
+                      }}
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>☑</span>
+                        <span>
+                          {acc.expenseCount} {acc.expenseCount === 1 ? 'expense' : 'expenses'} paid
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          color: isSelected ? '#a5b4fc' : '#cbd5e1',
+                          fontWeight: 600,
+                          textDecoration: 'underline',
+                          textUnderlineOffset: '2px',
+                        }}
+                      >
+                        <span style={{ fontSize: '12px', textDecoration: 'none' }}>☰</span>
+                        <span>{isSelected ? '✓ Filtered' : 'Filter by this'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+
+          </div>
+        )}
+      </div>
+
       {/* ── SECTION HEADER & PRIMARY ACTIONS ── */}
       <div
         style={{
@@ -408,7 +815,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         </div>
       </div>
 
-      {/* ── SEARCH & STATUS BAR (Single Line, Even on Mobile) ── */}
+      {/* ── SEARCH & FILTER BAR (Mobile Responsive) ── */}
       <div
         style={{
           display: 'flex',
@@ -420,11 +827,11 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           border: '1px solid rgba(255, 255, 255, 0.08)',
           width: '100%',
           boxSizing: 'border-box',
-          flexWrap: 'nowrap',
+          flexWrap: 'wrap',
         }}
       >
         {/* Search Input Box */}
-        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
           <span
             style={{
               position: 'absolute',
@@ -442,7 +849,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search expenses, vendor, contact..."
+            placeholder="Search expenses, vendor, payer..."
             style={{
               width: '100%',
               padding: '8px 28px 8px 30px',
@@ -482,34 +889,69 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           )}
         </div>
 
-        {/* Status Dropdown */}
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          style={{
-            padding: '8px 10px',
-            borderRadius: '8px',
-            backgroundColor: '#0f172a',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            color: '#f8fafc',
-            fontSize: '14px',
-            outline: 'none',
-            minHeight: '40px',
-            flexShrink: 0,
-            maxWidth: '135px',
-            minWidth: '105px',
-            boxSizing: 'border-box',
-            cursor: 'pointer',
-          }}
-          title="Filter by expense status"
-        >
-          <option value="all">⚡ Status: All</option>
-          <option value="planned">📝 Planned</option>
-          <option value="partially_paid">🟡 Partial</option>
-          <option value="paid">✅ Paid</option>
-          <option value="settled">🎉 Settled</option>
-          <option value="cancelled">❌ Cancelled</option>
-        </select>
+        {/* Filter Dropdowns container */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Account Filter Dropdown */}
+          <select
+            value={selectedAccountFilter}
+            onChange={(e) => setSelectedAccountFilter(e.target.value)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: '8px',
+              backgroundColor: '#0f172a',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#f8fafc',
+              fontSize: '14px',
+              outline: 'none',
+              minHeight: '40px',
+              flexShrink: 0,
+              maxWidth: '150px',
+              minWidth: '115px',
+              boxSizing: 'border-box',
+              cursor: 'pointer',
+            }}
+            title="Filter by paying account"
+          >
+            <option value="all">💳 Account: All</option>
+            {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
+              <option key={acc.id} value={acc.accountName}>
+                {acc.accountName}
+              </option>
+            ))}
+            {settlementData.unassignedExpenseTotal > 0 && (
+              <option value="unassigned">⚠️ Unassigned</option>
+            )}
+          </select>
+
+          {/* Status Dropdown */}
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: '8px',
+              backgroundColor: '#0f172a',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#f8fafc',
+              fontSize: '14px',
+              outline: 'none',
+              minHeight: '40px',
+              flexShrink: 0,
+              maxWidth: '135px',
+              minWidth: '105px',
+              boxSizing: 'border-box',
+              cursor: 'pointer',
+            }}
+            title="Filter by expense status"
+          >
+            <option value="all">⚡ Status: All</option>
+            <option value="planned">📝 Planned</option>
+            <option value="partially_paid">🟡 Partial</option>
+            <option value="paid">✅ Paid</option>
+            <option value="settled">🎉 Settled</option>
+            <option value="cancelled">❌ Cancelled</option>
+          </select>
+        </div>
       </div>
 
       {/* Main Expense Ledger List */}
@@ -561,9 +1003,10 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             const hasActual = actAmt > 0;
             const badge = getStatusBadge(expense.status);
             const categoryIcon = getExpenseCategoryIcon(expense.category);
-            const receiptUrl = getPublicExpenseScreenshotUrl(expense.payment_screenshot_path);
+            const receiptUrls = getAllExpenseScreenshotUrls(expense.payment_screenshot_path);
             const budgetSharePct =
               stats.totalExpected > 0 ? Math.round((expAmt / stats.totalExpected) * 100) : 0;
+            const payerSummary = formatExpensePayerSummary(expense);
 
             return (
               <div
@@ -589,61 +1032,39 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                   e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
                 }}
               >
-                {/* Header Row: Icon, Title, Category Tag, Badges & Edit */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                {/* ── TIER 1: Item Name, Category, Budget % & Status/Actions ── */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    flexWrap: 'wrap',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                    <span style={{ fontSize: '18px', flexShrink: 0 }}>{categoryIcon}</span>
+                    <span style={{ fontSize: '20px', flexShrink: 0, lineHeight: 1 }}>{categoryIcon}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
-                      <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: '#f8fafc' }}>
                         {expense.item_name}
                       </h4>
-                      <span style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', color: '#94a3b8' }}>
+                      <span
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          color: '#cbd5e1',
+                          fontWeight: 500,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {expense.category}
                       </span>
                       {budgetSharePct > 0 && (
-                        <span style={{ color: '#a5b4fc', fontSize: '0.72rem' }}>
+                        <span style={{ color: '#818cf8', fontSize: '0.72rem', fontWeight: 600 }}>
                           ({budgetSharePct}% of budget)
-                        </span>
-                      )}
-                      {(expense.vendor_name || expense.vendor_phone) && (
-                        <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
-                          • Vendor:{' '}
-                          {expense.vendor_name ? (
-                            <strong>{expense.vendor_name}</strong>
-                          ) : (
-                            <span style={{ color: '#94a3b8' }}>Contact</span>
-                          )}
-                          {expense.vendor_phone && (() => {
-                            const clean = expense.vendor_phone.replace(/\D/g, '').slice(-10);
-                            const display = expense.vendor_phone.startsWith('+91')
-                              ? expense.vendor_phone
-                              : clean.length === 10
-                              ? `+91 ${clean}`
-                              : expense.vendor_phone;
-                            const tel = clean.length === 10 ? `+91${clean}` : expense.vendor_phone;
-                            return (
-                              <a
-                                href={`tel:${tel}`}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  marginLeft: '6px',
-                                  color: '#38bdf8',
-                                  textDecoration: 'none',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '2px',
-                                }}
-                                title={`Call ${display}`}
-                              >
-                                📞 {display}
-                              </a>
-                            );
-                          })()}
-                        </span>
-                      )}
-                      {hasActual && expense.payment_date && (
-                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                          • Paid: {expense.payment_date}
                         </span>
                       )}
                     </div>
@@ -651,28 +1072,34 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
                   {/* Actions & Status Badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    {receiptUrl && (
+                    {receiptUrls.length > 0 && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPreviewImageUrl(receiptUrl);
+                          setPreviewImageUrl(receiptUrls[0]);
                         }}
                         style={{
                           background: 'rgba(99, 102, 241, 0.15)',
-                          border: '1px solid rgba(99, 102, 241, 0.3)',
+                          border: '1px solid rgba(99, 102, 241, 0.35)',
                           color: '#a5b4fc',
                           borderRadius: '6px',
-                          padding: '2px 7px',
+                          padding: '3px 8px',
                           fontSize: '0.72rem',
+                          fontWeight: 600,
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
                           gap: '4px',
+                          minHeight: '28px',
                         }}
-                        title="View Receipt"
+                        title={
+                          receiptUrls.length > 1
+                            ? `View ${receiptUrls.length} attached receipts`
+                            : 'View attached receipt'
+                        }
                       >
-                        📄 Receipt
+                        📄 {receiptUrls.length > 1 ? `${receiptUrls.length} Bills 👁️` : 'Bill 👁️'}
                       </button>
                     )}
 
@@ -683,7 +1110,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                         border: `1px solid ${badge.border}`,
                         fontSize: '0.7rem',
                         fontWeight: 700,
-                        padding: '2px 8px',
+                        padding: '3px 8px',
                         borderRadius: '999px',
                         textTransform: 'uppercase',
                         letterSpacing: '0.3px',
@@ -692,85 +1119,270 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                       {badge.label}
                     </span>
 
-                    <span style={{ color: '#64748b', fontSize: '13px' }} title="Edit Item">
+                    <span style={{ color: '#64748b', fontSize: '14px', cursor: 'pointer' }} title="Edit Item">
                       ✏️
                     </span>
                   </div>
                 </div>
 
-                {/* Inline Compact Financial Details Row (No giant empty gap!) */}
+                {/* ── TIER 2: Context Bar (Vendor & Payment Details) ── */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
+                    justifyContent: 'space-between',
                     flexWrap: 'wrap',
-                    fontSize: '0.84rem',
-                    paddingTop: '4px',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                    gap: '8px',
+                    padding: '6px 10px',
+                    backgroundColor: '#0f172a',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255, 255, 255, 0.04)',
+                    fontSize: '0.78rem',
                   }}
                 >
+                  {/* Left: Vendor & Paid Date */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: '#cbd5e1' }}>
+                    {(expense.vendor_name || expense.vendor_phone) ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ color: '#94a3b8' }}>👤 Vendor:</span>
+                        <strong style={{ color: '#f1f5f9' }}>{expense.vendor_name || 'Vendor'}</strong>
+                        {expense.vendor_phone && (() => {
+                          const clean = expense.vendor_phone.replace(/\D/g, '').slice(-10);
+                          const display = expense.vendor_phone.startsWith('+91')
+                            ? expense.vendor_phone
+                            : clean.length === 10
+                              ? `+91 ${clean}`
+                              : expense.vendor_phone;
+                          const tel = clean.length === 10 ? `+91${clean}` : expense.vendor_phone;
+                          return (
+                            <a
+                              href={`tel:${tel}`}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                marginLeft: '4px',
+                                color: '#38bdf8',
+                                textDecoration: 'none',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px',
+                              }}
+                              title={`Call ${display}`}
+                            >
+                              📞 {display}
+                            </a>
+                          );
+                        })()}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#64748b', fontStyle: 'italic' }}>No vendor specified</span>
+                    )}
+
+                    {expense.payment_date && (
+                      <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
+                        📅 Paid: <strong style={{ color: '#cbd5e1' }}>{expense.payment_date}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  {expense.payment_mode && (
+                    <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                      Mode: <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{expense.payment_mode}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── TIER 3: Financials & Budget Variance ── */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    flexWrap: 'wrap',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  {/* Expected, Actual & Variance */}
                   <div>
-                    <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Expected: </span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Expected: </span>
                     <strong style={{ color: '#93c5fd' }}>₹{formatINR(expAmt)}</strong>
                   </div>
 
-                  <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>•</span>
+                  <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>│</span>
 
                   <div>
-                    <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Actual Paid: </span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Actual Paid: </span>
                     <strong style={{ color: hasActual ? '#86efac' : '#64748b' }}>
                       {hasActual ? `₹${formatINR(actAmt)}` : '₹0'}
                     </strong>
                   </div>
 
-                  <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>•</span>
-
-                  <div>
-                    {!hasActual ? (
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                        ⏳ Payment not yet disbursed
-                      </span>
-                    ) : diff >= 0 ? (
-                      <span
-                        style={{
-                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                          color: '#34d399',
-                          border: '1px solid rgba(16, 185, 129, 0.3)',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        +₹{formatINR(diff)} Saved (Under Budget)
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                          color: '#f87171',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        -₹{formatINR(Math.abs(diff))} Over Budget
-                      </span>
-                    )}
-                  </div>
-
-                  {expense.notes && (
-                    <>
-                      <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>•</span>
-                      <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontStyle: 'italic' }}>
-                        "{expense.notes}"
-                      </span>
-                    </>
+                  {hasActual && (
+                    <div>
+                      {diff >= 0 ? (
+                        <span
+                          style={{
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            color: '#34d399',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.73rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          +₹{formatINR(diff)} Saved (Under Budget)
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.73rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          -₹{formatINR(Math.abs(diff))} Over Budget
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
+
+                {/* ── TIER 3.5: Disbursed Line (Consistent on EVERY card - Single or Split!) ── */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    flexWrap: 'wrap',
+                    fontSize: '0.76rem',
+                  }}
+                >
+                  <span style={{ color: '#94a3b8', fontWeight: 600 }}>Disbursed:</span>
+                  {payerSummary.isSplit && payerSummary.splits.length > 0 ? (
+                    payerSummary.splits.map((sp, sIdx) => (
+                      <span
+                        key={sIdx}
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          color: '#cbd5e1',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {sp.account.split('(')[0].replace(/💵|👤/g, '').trim()}:{' '}
+                        <strong style={{ color: '#86efac' }}>₹{formatINR(sp.amount)}</strong>
+                      </span>
+                    ))
+                  ) : expense.paid_from_account ? (
+                    <span
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        color: '#cbd5e1',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {expense.paid_from_account.split('(')[0].replace(/💵|👤/g, '').trim()}:{' '}
+                      <strong style={{ color: '#86efac' }}>
+                        ₹{formatINR(actAmt > 0 ? actAmt : expAmt)}
+                      </strong>
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        color: '#fca5a5',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ⚠️ Unassigned
+                    </span>
+                  )}
+                </div>
+
+                {/* ── TIER 4: Bills & Notes (Only if present) ── */}
+                {(receiptUrls.length > 0 || expense.notes) && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      paddingTop: '6px',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+                      fontSize: '0.76rem',
+                    }}
+                  >
+                    {/* Direct Clickable Receipt Links */}
+                    {receiptUrls.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Attached Bills:</span>
+                        {receiptUrls.map((url, rIdx) => (
+                          <a
+                            key={rIdx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                              border: '1px solid rgba(56, 189, 248, 0.35)',
+                              color: '#38bdf8',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.15s',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={`Open original bill #${rIdx + 1} in new tab`}
+                          >
+                            📄 Bill {receiptUrls.length > 1 ? `#${rIdx + 1}` : ''} ↗
+                          </a>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {expense.notes && (
+                      <div
+                        style={{
+                          color: '#94a3b8',
+                          fontStyle: 'italic',
+                          maxWidth: '100%',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        💬 "{expense.notes}"
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -783,7 +1395,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            backgroundColor: 'rgba(0, 0, 0, 0.88)',
             zIndex: 10000,
             display: 'flex',
             alignItems: 'center',
@@ -795,7 +1407,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           <div
             style={{
               position: 'relative',
-              maxWidth: '90vw',
+              maxWidth: '92vw',
               maxHeight: '90vh',
               display: 'flex',
               flexDirection: 'column',
@@ -808,29 +1420,62 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               alt="Receipt Bill"
               style={{
                 maxWidth: '100%',
-                maxHeight: '80vh',
+                maxHeight: '78vh',
                 borderRadius: '8px',
                 objectFit: 'contain',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
               }}
             />
-            <button
-              type="button"
-              onClick={() => setPreviewImageUrl(null)}
+            <div
               style={{
-                marginTop: '12px',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                border: 'none',
-                color: '#ffffff',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                minHeight: '40px',
+                display: 'flex',
+                gap: '10px',
+                marginTop: '14px',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
               }}
             >
-              Close Preview
-            </button>
+              <a
+                href={previewImageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  color: '#38bdf8',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  minHeight: '40px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                🔗 Open Original in New Tab ↗
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewImageUrl(null)}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  border: 'none',
+                  color: '#ffffff',
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: '40px',
+                }}
+              >
+                ✕ Close Preview
+              </button>
+            </div>
           </div>
         </div>
       )}
