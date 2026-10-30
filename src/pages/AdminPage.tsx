@@ -316,7 +316,7 @@ export const AdminPage: React.FC = () => {
 
   const handleSaveExpense = async (
     payload: Partial<EventExpense>,
-    receiptFile?: File | null
+    receiptFiles?: File[] | File | null
   ): Promise<boolean> => {
     try {
       await saveExpenseToDb(
@@ -324,7 +324,7 @@ export const AdminPage: React.FC = () => {
           ...payload,
           event_id: activeEvent.id || null,
         },
-        receiptFile,
+        receiptFiles,
         activeEvent.event_slug
       );
       await fetchExpensesData();
@@ -820,6 +820,9 @@ export const AdminPage: React.FC = () => {
                   totalHeadcount={stats.totalAttendees}
                   sponsorshipCount={sponsorships.length}
                   eventName={activeEvent.event_name}
+                  registrations={registrations}
+                  verifications={verifications}
+                  sponsorships={sponsorships}
                   onAddExpense={() => {
                     setSelectedExpense(null);
                     setIsExpenseModalOpen(true);
@@ -1375,6 +1378,10 @@ export const AdminPage: React.FC = () => {
         initialData={selectedExpense}
         currentUserEmail={session?.user?.email}
         eventId={activeEvent.id}
+        expenses={expenses}
+        registrations={registrations}
+        verifications={verifications}
+        sponsorships={sponsorships}
       />
     </div>
   );
