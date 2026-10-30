@@ -29,7 +29,15 @@ export function getExpenseSplits(expense: EventExpense): ExpensePaymentSplit[] {
     if (valid.length > 0) return valid;
   }
   if (expense.paid_from_account && Number(expense.actual_amount || 0) > 0) {
-    return [{ account: expense.paid_from_account, amount: Number(expense.actual_amount || 0) }];
+    return [
+      {
+        account: expense.paid_from_account,
+        amount: Number(expense.actual_amount || 0),
+        date: expense.payment_date || null,
+        mode: expense.payment_mode || null,
+        note: expense.status === 'partially_paid' ? 'Advance Payment' : null,
+      },
+    ];
   }
   return [];
 }

@@ -1140,7 +1140,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                     fontSize: '0.78rem',
                   }}
                 >
-                  {/* Left: Vendor & Paid Date */}
+                  {/* Left: Vendor */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: '#cbd5e1' }}>
                     {(expense.vendor_name || expense.vendor_phone) ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
@@ -1176,13 +1176,6 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                       </span>
                     ) : (
                       <span style={{ color: '#64748b', fontStyle: 'italic' }}>No vendor specified</span>
-                    )}
-
-                    {expense.payment_date && (
-                      <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>•</span>
-                        📅 Paid: <strong style={{ color: '#cbd5e1' }}>{expense.payment_date}</strong>
-                      </span>
                     )}
                   </div>
 
@@ -1267,36 +1260,44 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 >
                   <span style={{ color: '#94a3b8', fontWeight: 600 }}>Disbursed:</span>
                   {payerSummary.isSplit && payerSummary.splits.length > 0 ? (
-                    payerSummary.splits.map((sp, sIdx) => (
-                      <span
-                        key={sIdx}
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(255, 255, 255, 0.12)',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          color: '#cbd5e1',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {sp.account.split('(')[0].replace(/💵|👤/g, '').trim()}:{' '}
-                        <strong style={{ color: '#86efac' }}>₹{formatINR(sp.amount)}</strong>
-                      </span>
-                    ))
+                    payerSummary.splits.map((sp, sIdx) => {
+                      return (
+                        <span
+                          key={sIdx}
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.72rem',
+                            color: '#cbd5e1',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <span>{sp.account.split('(')[0].replace(/💵|👤/g, '').trim()}:</span>
+                          <strong style={{ color: '#86efac' }}>₹{formatINR(sp.amount)}</strong>
+                        </span>
+                      );
+                    })
                   ) : expense.paid_from_account ? (
                     <span
                       style={{
                         backgroundColor: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.12)',
-                        padding: '2px 8px',
+                        padding: '3px 8px',
                         borderRadius: '6px',
                         fontSize: '0.72rem',
                         color: '#cbd5e1',
-                        whiteSpace: 'nowrap',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        flexWrap: 'wrap',
                       }}
                     >
-                      {expense.paid_from_account.split('(')[0].replace(/💵|👤/g, '').trim()}:{' '}
+                      <span>{expense.paid_from_account.split('(')[0].replace(/💵|👤/g, '').trim()}:</span>
                       <strong style={{ color: '#86efac' }}>
                         ₹{formatINR(actAmt > 0 ? actAmt : expAmt)}
                       </strong>

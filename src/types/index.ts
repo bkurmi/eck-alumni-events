@@ -313,6 +313,9 @@ export type ExpenseStatus = 'planned' | 'partially_paid' | 'paid' | 'settled' | 
 export interface ExpensePaymentSplit {
   account: string; // e.g. 'Hari Narayan (SBI)', 'Mitesh (Axis)', 'Cash in Hand', or custom
   amount: number;
+  date?: string | null; // e.g. '2026-10-30'
+  mode?: string | null; // e.g. 'UPI', 'Cash', 'Bank Transfer', etc.
+  note?: string | null; // e.g. 'Advance', 'Final settlement'
 }
 
 export interface EventExpense {

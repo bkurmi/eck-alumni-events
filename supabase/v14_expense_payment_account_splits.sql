@@ -18,6 +18,6 @@ ALTER TABLE event_expenses
 CREATE INDEX IF NOT EXISTS idx_expenses_paid_from_account ON event_expenses(paid_from_account);
 
 COMMENT ON COLUMN event_expenses.paid_from_account IS 'Paying coordinator account or summary string (e.g. Account Name, Cash in Hand, or Split summary)';
-COMMENT ON COLUMN event_expenses.payment_splits IS 'Array of account split objects: [{"account": "Account A", "amount": 100}, {"account": "Account B", "amount": 20}]';
+COMMENT ON COLUMN event_expenses.payment_splits IS 'Array of account split objects: [{"account": "string", "amount": number, "date": "YYYY-MM-DD", "mode": "string", "note": "string"}]';
 
 
