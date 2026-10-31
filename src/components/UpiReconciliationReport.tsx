@@ -449,9 +449,55 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
   // CSV Export for filtered selection
   const handleExportCSV = () => {
+    if (activeLedgerTab === 'sponsorships') {
+      const headers = [
+        'Sponsor Name',
+        'Category / Tier',
+        'Amount (INR)',
+        'Receiving UPI ID',
+        'Date',
+        'Contact Person',
+        'Contact Phone',
+        'Payment Status',
+        'Payment Mode',
+        'Transaction Ref',
+        'Notes',
+      ];
+      const rows = filteredSponsorships.map((sp) => [
+        `"${(sp.sponsor_name || '').replace(/"/g, '""')}"`,
+        `"${(sp.category || '').replace(/"/g, '""')}"`,
+        `"${sp.amount || 0}"`,
+        `"${sp.receiving_upi_id || ''}"`,
+        `"${formatDDMMYYYY((sp.created_at || '').slice(0, 10))}"`,
+        `"${(sp.contact_person || '').replace(/"/g, '""')}"`,
+        `"${formatDisplayMobile(sp.contact_phone || '', '')}"`,
+        `"${sp.payment_status || 'CONFIRMED'}"`,
+        `"${sp.payment_mode || 'UPI'}"`,
+        `"${(sp.transaction_reference || '').replace(/"/g, '""')}"`,
+        `"${(sp.notes || '').replace(/"/g, '""')}"`,
+      ].join(','));
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute(
+        'download',
+        `ECK_Sponsorships_Report_${new Date().toISOString().slice(0, 10)}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
     const headers = [
       'Person Name',
       'Attendance Status',
+      'Total Headcount',
+      'Adult',
+      'Kids (10+)',
+      'Kids (<10)',
       'Contribution (INR)',
       'Credited UPI ID',
       'Registration Number',
@@ -464,27 +510,45 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     ];
 
     const rows = filteredList.map((item) => {
-      const alumni = item.registration.alumni;
+      const reg = item.registration;
+      const alumni = reg.alumni;
       const attStatus =
-        item.registration.attendance_status === 'yes'
+        reg.attendance_status === 'yes'
           ? 'Attending'
-          : item.registration.attendance_status === 'payment_pending'
+          : reg.attendance_status === 'payment_pending'
             ? 'Payment Pending'
-            : item.registration.attendance_status === 'maybe'
+            : reg.attendance_status === 'maybe'
               ? 'Maybe'
               : 'No';
+
+      const isNotAttending = reg.attendance_status === 'no';
+      const adults = isNotAttending
+        ? 0
+        : (reg.adults_count !== undefined && reg.adults_count !== null
+            ? Number(reg.adults_count)
+            : Math.max(1, Number(reg.number_of_attendees || 1) - Number(reg.children_above_7_count || 0) - Number(reg.children_under_7_count || 0)));
+      const kidsAbove10 = isNotAttending ? 0 : Number(reg.children_above_7_count || 0);
+      const kidsUnder10 = isNotAttending ? 0 : Number(reg.children_under_7_count || 0);
+      const totalHeadcount = isNotAttending
+        ? 0
+        : (Number(reg.number_of_attendees) || (adults + kidsAbove10 + kidsUnder10));
+
       return [
-        `"${alumni?.name || ''}"`,
+        `"${(alumni?.name || '').replace(/"/g, '""')}"`,
         `"${attStatus}"`,
+        `"${totalHeadcount}"`,
+        `"${adults}"`,
+        `"${kidsAbove10}"`,
+        `"${kidsUnder10}"`,
         `"${item.amount}"`,
         `"${item.assignedUpi || 'Unassigned'}"`,
-        `"${item.registration.registration_number}"`,
+        `"${reg.registration_number || ''}"`,
         `"${formatDDMMYYYY(item.paymentDate)}"`,
         `"${item.verifiedBy || 'Not Verified'}"`,
         `"${formatDisplayMobile(alumni?.mobile, '')}"`,
         `"${alumni?.year_of_passing || ''}"`,
         `"${alumni?.engineering_discipline || ''}"`,
-        `"${alumni?.city || ''}"`,
+        `"${(alumni?.city || '').replace(/"/g, '""')}"`,
       ].join(',');
     });
 
@@ -503,11 +567,28 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
   // Build WhatsApp Summary Text
   const buildWhatsAppSummaryText = () => {
+    const totalHeadcountSum = filteredList.reduce((acc, item) => {
+      const reg = item.registration;
+      if (reg.attendance_status === 'no') return acc;
+      const adults =
+        reg.adults_count !== undefined && reg.adults_count !== null
+          ? Number(reg.adults_count)
+          : Math.max(
+              1,
+              Number(reg.number_of_attendees || 1) -
+                Number(reg.children_above_7_count || 0) -
+                Number(reg.children_under_7_count || 0)
+            );
+      const k10 = Number(reg.children_above_7_count || 0);
+      const ku10 = Number(reg.children_under_7_count || 0);
+      return acc + (Number(reg.number_of_attendees) || adults + k10 + ku10);
+    }, 0);
+
     let text = `*ECK-RTU Alumni DeepAura 2K26 — UPI Reconciliation Report*\n`;
     text += `📊 *View:* ${viewMode === 'daywise' ? 'Day-wise Breakdown' : 'Overall Consolidated'}\n`;
     text += `🎟️ *Attendance Filter:* ${attendanceFilter.toUpperCase()}\n`;
     text += `💰 *Selected Total:* ₹${currentTotals.totalAmount.toLocaleString('en-IN')}\n`;
-    text += `👥 *Total Registrations:* ${currentTotals.totalRegCount} (₹${currentTotals.regAmount.toLocaleString('en-IN')})\n`;
+    text += `👥 *Total Registrations:* ${currentTotals.totalRegCount} (${totalHeadcountSum} Attendees Headcount) • ₹${currentTotals.regAmount.toLocaleString('en-IN')}\n`;
     if (currentTotals.totalSponsorCount > 0) {
       text += `🤝 *Total Sponsorships:* ${currentTotals.totalSponsorCount} (₹${currentTotals.sponsorAmount.toLocaleString('en-IN')})\n`;
     }
@@ -1477,7 +1558,14 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     📞 {formatDisplayMobile(editingReg.registration.alumni?.mobile)} • Batch of{' '}
                     {editingReg.registration.alumni?.year_of_passing} • 📅 {formatDDMMYYYY(editingReg.registration.created_at.slice(0, 10))}
-                    {editingReg.registration.attendance_status === 'yes' && editingReg.registration.number_of_attendees > 1 && ` • ${editingReg.registration.number_of_attendees} persons`}
+                    {editingReg.registration.attendance_status === 'yes' && (
+                      <>
+                        {` • 👥 ${editingReg.registration.number_of_attendees || 1} Total`}
+                        {editingReg.registration.adults_count !== undefined && (
+                          ` (${editingReg.registration.adults_count} Adult${editingReg.registration.adults_count > 1 ? 's' : ''}${editingReg.registration.children_above_7_count ? `, ${editingReg.registration.children_above_7_count} Kids 10+` : ''}${editingReg.registration.children_under_7_count ? `, ${editingReg.registration.children_under_7_count} Kids <10` : ''})`
+                        )}
+                      </>
+                    )}
                   </span>
                 </div>
                 <span className="font-accent font-bold" style={{ fontSize: '1.15rem' }}>
