@@ -319,3 +319,50 @@ export function shareToWhatsApp(text: string): void {
     window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
   }
 }
+
+/**
+ * Builds a fun, catchy, and motivational WhatsApp share message for an alumnus
+ * who just submitted feedback.
+ *
+ * IMPORTANT PRIVACY NOTE:
+ * This message deliberately NEVER includes any actual feedback answers,
+ * ratings, or survey responses. It only shares an enthusiastic, humorous shoutout
+ * encouraging fellow alumni/batchmates to participate as well!
+ */
+export function buildAlumniFeedbackShareMessage(options?: {
+  attendeeName?: string | null;
+  batch?: string | null;
+  isAnonymous?: boolean;
+}): string {
+  const isAnon = options?.isAnonymous ?? false;
+  const rawName = options?.attendeeName?.trim();
+  const rawBatch = options?.batch?.trim();
+
+  const name = !isAnon && rawName ? rawName : '';
+  const batch = !isAnon && rawBatch ? `Batch of ${rawBatch}` : '';
+  const signature = [name, batch].filter(Boolean).join(' • ');
+
+  const feedbackUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/feedback`
+      : 'https://eck-alumni-events.web.app/feedback';
+
+  const lines = [
+    '🪔✨ *ECK-RTU Alumni DeepAura 2K26* ✨🪔',
+    '“दीप जले, यादें मुस्कुराएँ।”',
+    '',
+    '📢 *Doston, maine apna DeepAura feedback submit kar diya!* 📝⚡',
+    '',
+    '😂 _Sach batau toh:_ Ye hostel ki 2-minute Maggi se bhi tez tha aur engineering viva ya end-sem clearance se 100 guna aasan! 🍜💯',
+    '',
+    'Hum sabka feedback aane wale har reunion ko aur grand, smooth aur yaadgar banayega. ❤️🎉',
+    '',
+    '👉 *Ab tumhari baari hai — share your memories & suggestions:*',
+    `🔗 ${feedbackUrl}`,
+    '',
+    '*(Bas 2 minute lagenge, abhi tap karo aur review do!)* 🚀',
+    ...(signature ? ['', `— ${signature} 🎓`] : ['', '— An ECK-RTU Alumnus 🎓']),
+  ];
+
+  return lines.join('\n');
+}
