@@ -508,80 +508,61 @@ export const FeedbackPage: React.FC = () => {
       <canvas ref={canvasRef} className="feedback-confetti-canvas" />
 
       <main className="feedback-main-container">
-        {/* Campaign Banner Header */}
-        <header className="feedback-hero-banner">
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <div className="feedback-badge-pill">
-              <span className="badge-dot" /> 2-Minute Alumni Survey
+        {/* Campaign Banner Header (Hidden on final step to keep mobile view compact) */}
+        {currentStep !== 4 && (
+          <header className="feedback-hero-banner">
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <div className="feedback-badge-pill">
+                <span className="badge-dot" /> 2-Minute Alumni Survey
+              </div>
+              {currentStep >= 1 && currentStep <= 3 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep(0);
+                    window.scrollTo({ top: 100, behavior: 'smooth' });
+                  }}
+                  className="feedback-badge-pill"
+                  style={{
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    borderColor: 'rgba(245, 158, 11, 0.35)',
+                    color: '#fbbf24',
+                    cursor: 'pointer',
+                  }}
+                  title="Click to edit identity or switch to anonymous"
+                >
+                  {isAnonymous ? (
+                    <span>🛡️ Anonymous</span>
+                  ) : (
+                    <span>👤 {attendeeName ? stripSalutation(attendeeName) : 'Participant'} {regDigits ? `(REG-${regDigits.padStart(5, '0')})` : ''}</span>
+                  )}
+                  <span style={{ opacity: 0.7, textDecoration: 'underline', marginLeft: '3px' }}>✎</span>
+                </button>
+              )}
             </div>
-            {currentStep >= 1 && currentStep <= 3 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentStep(0);
-                  window.scrollTo({ top: 100, behavior: 'smooth' });
-                }}
-                className="feedback-badge-pill"
-                style={{
-                  background: 'rgba(245, 158, 11, 0.12)',
-                  borderColor: 'rgba(245, 158, 11, 0.35)',
-                  color: '#fbbf24',
-                  cursor: 'pointer',
-                }}
-                title="Click to edit identity or switch to anonymous"
-              >
-                {isAnonymous ? (
-                  <span>🛡️ Anonymous</span>
-                ) : (
-                  <span>👤 {attendeeName ? stripSalutation(attendeeName) : 'Participant'} {regDigits ? `(REG-${regDigits.padStart(5, '0')})` : ''}</span>
-                )}
-                <span style={{ opacity: 0.7, textDecoration: 'underline', marginLeft: '3px' }}>✎</span>
-              </button>
-            )}
-          </div>
-          <h1 className="feedback-hero-title">{FEEDBACK_CAMPAIGN.title}</h1>
-          <p className="feedback-hero-tagline">{FEEDBACK_CAMPAIGN.tagline}</p>
-        </header>
+            <h1 className="feedback-hero-title">{FEEDBACK_CAMPAIGN.title}</h1>
+            <p className="feedback-hero-tagline">{FEEDBACK_CAMPAIGN.tagline}</p>
+          </header>
+        )}
 
         {/* ── STEP 4: THANK YOU SCREEN ───────────────────────────── */}
         {currentStep === 4 ? (
-          <div className="feedback-thankyou-card">
+          <div className="feedback-thankyou-card feedback-thankyou-compact">
             <div className="thankyou-emoji-sparkle">💖</div>
             <h2 className="thankyou-title">{FEEDBACK_CAMPAIGN.closingQuote.title}</h2>
-            <p className="thankyou-message">{FEEDBACK_CAMPAIGN.closingQuote.message}</p>
-            <div className="thankyou-quote-box">
-              <span className="quote-icon">“</span>
-              <p className="quote-text">{FEEDBACK_CAMPAIGN.closingQuote.subMessage}</p>
-            </div>
+            <p className="thankyou-message thankyou-message-compact">
+              {FEEDBACK_CAMPAIGN.closingQuote.subMessage}
+            </p>
 
-            {/* Highlighted WhatsApp Motivation & Batch Invite Card */}
-            <div className="feedback-share-highlight-card">
-              <div className="share-highlight-kicker-badge">
-                <span>🔥 Pass The Mic</span>
-              </div>
-              <h3 className="share-highlight-heading">
-                Motivate Batchmates to Share Their Review!
-              </h3>
-              <p className="share-highlight-lead">
-                The more batchmates share their takeaways, the better and grander our future reunions will be. Send a quick shoutout to your batch WhatsApp groups!
-              </p>
-
-              {/* Privacy Notice: strictly clarifies no actual feedback is shared */}
-              <div className="share-privacy-callout">
-                <span className="share-privacy-icon">🔒</span>
-                <div className="share-privacy-text">
-                  <strong>100% Confidential:</strong> We <u>never</u> share your personal answers, ratings, or comments. This WhatsApp button only shares an encouraging shoutout to motivate other alumni to participate!
-                </div>
+            {/* Streamlined Mobile-First WhatsApp Sharing Box */}
+            <div className="feedback-share-highlight-card feedback-share-compact">
+              <div className="share-compact-head">
+                <span className="share-compact-pill">📢 Pass The Mic</span>
+                <h3 className="share-compact-title">Motivate Your Batchmates!</h3>
               </div>
 
-              {/* Humorous Message Preview */}
-              <div className="share-preview-snippet">
-                <div className="share-preview-header">
-                  <span className="share-preview-tag">💬 WhatsApp Message Preview</span>
-                </div>
-                <div className="share-preview-body">
-                  &ldquo;📢 Doston, maine apna DeepAura feedback submit kar diya! 😂 Sach batau toh ye hostel Maggi se bhi tez tha aur engineering viva se 100x aasan! 🍜 Ab tumhari baari hai...&rdquo;
-                </div>
+              <div className="share-compact-quote">
+                &ldquo;Maine feedback submit kar diya! (Hostel Maggi se bhi tez 😂🍜) Ab tumhari baari hai!&rdquo;
               </div>
 
               {/* Action Buttons */}
@@ -591,12 +572,12 @@ export const FeedbackPage: React.FC = () => {
                   onClick={handleShareWhatsApp}
                   className="btn-share-whatsapp-festive"
                   id="btn-feedback-share-whatsapp"
-                  title="Share fun shoutout on WhatsApp"
+                  title="Share"
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M12.031 2C6.511 2 2.023 6.488 2.023 12.008c0 1.848.508 3.585 1.396 5.088L2 22l5.06-1.328c1.449.809 3.109 1.258 4.967 1.258 5.524 0 10.016-4.488 10.016-10.008S17.555 2 12.031 2zm5.787 14.18c-.244.688-1.229 1.264-1.742 1.344-.472.072-1.074.132-3.153-.728-2.656-1.101-4.354-3.791-4.487-3.967-.13-.176-1.072-1.429-1.072-2.726 0-1.296.677-1.936.918-2.199.24-.264.527-.33.703-.33.176 0 .352.002.506.01.164.009.385-.062.602.46.223.535.757 1.848.824 1.98.067.132.112.287.022.463-.09.176-.134.286-.266.44-.132.154-.277.343-.396.462-.132.132-.27.275-.117.538.154.263.684 1.127 1.47 1.826 1.011.898 1.862 1.177 2.126 1.309.264.132.418.11.572-.066.154-.176.66-.77.836-1.034.176-.264.352-.22.593-.132.242.088 1.54.726 1.804.858.264.132.44.198.506.308.066.11.066.638-.178 1.326z" />
                   </svg>
-                  <span>Share on WhatsApp</span>
+                  <span>Share</span>
                 </button>
 
                 <button
@@ -608,6 +589,14 @@ export const FeedbackPage: React.FC = () => {
                 >
                   <span>{copiedMessage ? '✅ Copied!' : '📋 Copy Text'}</span>
                 </button>
+              </div>
+
+              {/* Privacy Reassurance: Clean, highlighted & perfectly aligned */}
+              <div className="share-compact-privacy">
+                <span className="privacy-lock-inline">🔒</span>
+                <span>
+                  <strong className="privacy-highlight-title">100% Confidential:</strong> Only invites batchmates — your feedback answers are never shared.
+                </span>
               </div>
             </div>
 
