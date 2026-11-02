@@ -17,6 +17,9 @@ export const KNOWN_EXPENSE_ACCOUNTS: ExpenseAccountOption[] = [
   { id: 'Mukesh', label: 'Mukesh (YES)', accountName: 'Mukesh', bankName: 'YES', upiId: '9001017275@ybl' },
   { id: 'Chetan', label: 'Chetan (UPI)', accountName: 'Chetan', bankName: 'UPI', upiId: '9799951857@upi' },
   { id: 'Lokesh', label: 'Lokesh (ICICI)', accountName: 'Lokesh', bankName: 'ICICI', upiId: 'gautam.lucky-1@okicici' },
+  { id: 'Bhawesh', label: 'Bhawesh (UPI)', accountName: 'Bhawesh', bankName: 'UPI' },
+  { id: 'Manoj', label: 'Manoj (UPI)', accountName: 'Manoj', bankName: 'UPI' },
+  { id: 'Shailendra', label: 'Shailendra (UPI)', accountName: 'Shailendra', bankName: 'UPI' },
   { id: 'Cash in Hand', label: '💵 Cash in Hand / Spot Cash', accountName: 'Cash in Hand', bankName: 'Cash', isCash: true },
 ];
 

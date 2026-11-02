@@ -394,6 +394,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   initialData,
   currentUserEmail,
   eventId,
+  expenses = [],
 }) => {
   const [itemName, setItemName] = useState('');
   const [category, setCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
@@ -424,6 +425,50 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
     }>
   >([]);
 
+  // Dynamically resolve available payer account options:
+  // Pre-configured known organizer accounts (Hari, Mitesh, Rajeev, Mukesh, Chetan, Lokesh, Bhawesh, Manoj, Cash in Hand)
+  // plus any custom accounts detected in existing transactions/transfers
+  const availableAccountOptions = useMemo(() => {
+    const list = [...KNOWN_EXPENSE_ACCOUNTS];
+    const seen = new Set(list.map((a) => a.accountName.toLowerCase().trim()));
+
+    if (expenses && expenses.length > 0) {
+      expenses.forEach((e) => {
+        const existingSplits = getExpenseSplits(e);
+        existingSplits.forEach((s) => {
+          const raw = (s.account || '').trim();
+          const cleanName = raw.split('(')[0].replace(/💵|👤/g, '').trim();
+          if (cleanName && !seen.has(cleanName.toLowerCase())) {
+            seen.add(cleanName.toLowerCase());
+            list.push({
+              id: cleanName,
+              label: `👤 ${cleanName}`,
+              accountName: cleanName,
+              bankName: 'Other',
+            });
+          }
+        });
+        if (e.category === 'Internal Transfer') {
+          const sender = (e.paid_from_account || '').trim();
+          const receiver = (e.vendor_name || '').trim();
+          [sender, receiver].forEach((accName) => {
+            const clean = accName.split('(')[0].replace(/💵|👤/g, '').trim();
+            if (clean && !seen.has(clean.toLowerCase())) {
+              seen.add(clean.toLowerCase());
+              list.push({
+                id: clean,
+                label: `👤 ${clean}`,
+                accountName: clean,
+                bankName: 'Other',
+              });
+            }
+          });
+        }
+      });
+    }
+    return list;
+  }, [expenses]);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -452,8 +497,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         if (existingSplits.length > 0) {
           setSplits(
             existingSplits.map((s) => {
-              const matched = KNOWN_EXPENSE_ACCOUNTS.find(
-                (a) => a.label === s.account || a.accountName === s.account || a.id === s.account
+              const matched = availableAccountOptions.find(
+                (a) =>
+                  a.label.toLowerCase() === s.account.toLowerCase() ||
+                  a.accountName.toLowerCase() === s.account.toLowerCase() ||
+                  a.id.toLowerCase() === s.account.toLowerCase()
               );
               return {
                 account: matched ? matched.label : 'Other',
@@ -1240,7 +1288,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                           style={compactSelect}
                         >
                           <option value="">Select Account...</option>
-                          {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
+                          {availableAccountOptions.map((acc) => (
                             <option key={acc.id} value={acc.label}>
                               {acc.label}
                             </option>
