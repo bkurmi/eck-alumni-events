@@ -839,6 +839,7 @@ export const AdminPage: React.FC = () => {
                   totalHeadcount={stats.totalAttendees}
                   sponsorshipCount={sponsorships.length}
                   eventName={activeEvent.event_name}
+                  eventId={activeEvent.id}
                   registrations={registrations}
                   verifications={verifications}
                   sponsorships={sponsorships}
@@ -850,6 +851,8 @@ export const AdminPage: React.FC = () => {
                     setSelectedExpense(item);
                     setIsExpenseModalOpen(true);
                   }}
+                  onSaveExpense={handleSaveExpense}
+                  onDeleteExpense={handleDeleteExpense}
                   onRefresh={() => {
                     fetchRegistrations();
                     fetchSponsorshipsData();

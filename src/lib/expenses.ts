@@ -81,9 +81,12 @@ export interface AccountSettlement {
   isCash?: boolean;
   inflow: number; // collected from regs & sponsors
   outflow: number; // disbursed for real expenses
-  netBalance: number; // inflow - outflow
+  transferredIn?: number; // internal transfers received from other coordinators
+  transferredOut?: number; // internal transfers sent to other coordinators
+  netBalance: number; // inflow + transferredIn - outflow - transferredOut
   status: 'surplus' | 'deficit' | 'settled';
   expenseCount: number;
+  transferCount?: number;
 }
 
 /**
@@ -95,12 +98,14 @@ export function getAccountInHandBalance(
 ): {
   inflow: number;
   outflow: number;
+  transferredIn: number;
+  transferredOut: number;
   netBalance: number;
   matched: AccountSettlement | null;
 } {
   const clean = (accountIdentifier || '').toLowerCase().trim();
   if (!clean || clean.includes('unassigned') || clean === 'other') {
-    return { inflow: 0, outflow: 0, netBalance: 0, matched: null };
+    return { inflow: 0, outflow: 0, transferredIn: 0, transferredOut: 0, netBalance: 0, matched: null };
   }
 
   const found = settlements.find((s) => {
@@ -119,12 +124,14 @@ export function getAccountInHandBalance(
     return {
       inflow: found.inflow,
       outflow: found.outflow,
+      transferredIn: found.transferredIn || 0,
+      transferredOut: found.transferredOut || 0,
       netBalance: found.netBalance,
       matched: found,
     };
   }
 
-  return { inflow: 0, outflow: 0, netBalance: 0, matched: null };
+  return { inflow: 0, outflow: 0, transferredIn: 0, transferredOut: 0, netBalance: 0, matched: null };
 }
 
 /**
@@ -160,11 +167,52 @@ export function computeAccountSettlements(
       isCash: acc.isCash,
       inflow: 0,
       outflow: 0,
+      transferredIn: 0,
+      transferredOut: 0,
       netBalance: 0,
       status: 'settled',
       expenseCount: 0,
+      transferCount: 0,
     });
   });
+
+  // Helper to resolve or register an account in settlementsMap
+  const getOrCreateAccountItem = (rawName: string): AccountSettlement | null => {
+    const clean = (rawName || '').trim();
+    if (!clean) return null;
+    const lower = clean.toLowerCase();
+
+    for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+      const accId = acc.id.toLowerCase();
+      const accName = acc.accountName.toLowerCase();
+      if (
+        lower === accId ||
+        lower === accName ||
+        lower.includes(accName) ||
+        (acc.upiId && lower.includes(acc.upiId.toLowerCase()))
+      ) {
+        return settlementsMap.get(accId) || null;
+      }
+    }
+
+    if (!settlementsMap.has(lower)) {
+      settlementsMap.set(lower, {
+        accountId: clean,
+        accountName: clean,
+        label: `👤 ${clean}`,
+        bankName: 'Other',
+        inflow: 0,
+        outflow: 0,
+        transferredIn: 0,
+        transferredOut: 0,
+        netBalance: 0,
+        status: 'settled',
+        expenseCount: 0,
+        transferCount: 0,
+      });
+    }
+    return settlementsMap.get(lower)!;
+  };
 
   // 3. Compute Inflows from Registrations
   registrations.forEach((reg) => {
@@ -197,13 +245,32 @@ export function computeAccountSettlements(
     }
   });
 
-  // 5. Compute Outflows from Expenses
+  // 5. Compute Outflows & Internal Transfers from Expenses
   let unassignedExpenseTotal = 0;
 
   expenses.forEach((expense) => {
     if (expense.status === 'cancelled') return;
     const actualAmt = Number(expense.actual_amount || 0);
     if (actualAmt <= 0) return;
+
+    // Handle Inter-Account Transfers
+    if (expense.category === 'Internal Transfer') {
+      const senderRaw = expense.paid_from_account || expense.payment_splits?.[0]?.account || '';
+      const receiverRaw = expense.vendor_name || '';
+
+      const senderItem = getOrCreateAccountItem(senderRaw);
+      if (senderItem) {
+        senderItem.transferredOut = (senderItem.transferredOut || 0) + actualAmt;
+        senderItem.transferCount = (senderItem.transferCount || 0) + 1;
+      }
+
+      const receiverItem = getOrCreateAccountItem(receiverRaw);
+      if (receiverItem) {
+        receiverItem.transferredIn = (receiverItem.transferredIn || 0) + actualAmt;
+        receiverItem.transferCount = (receiverItem.transferCount || 0) + 1;
+      }
+      return;
+    }
 
     const splits = getExpenseSplits(expense);
     if (splits.length === 0) {
@@ -236,23 +303,11 @@ export function computeAccountSettlements(
         item.outflow += splitAmt;
         item.expenseCount += 1;
       } else if (rawName) {
-        const customKey = rawName;
-        if (!settlementsMap.has(customKey)) {
-          settlementsMap.set(customKey, {
-            accountId: split.account,
-            accountName: split.account,
-            label: `👤 ${split.account}`,
-            bankName: 'Other',
-            inflow: 0,
-            outflow: 0,
-            netBalance: 0,
-            status: 'settled',
-            expenseCount: 0,
-          });
+        const customItem = getOrCreateAccountItem(split.account);
+        if (customItem) {
+          customItem.outflow += splitAmt;
+          customItem.expenseCount += 1;
         }
-        const customItem = settlementsMap.get(customKey)!;
-        customItem.outflow += splitAmt;
-        customItem.expenseCount += 1;
       } else {
         unassignedExpenseTotal += splitAmt;
       }
@@ -264,6 +319,8 @@ export function computeAccountSettlements(
   let totalOutflow = 0;
 
   settlementsMap.forEach((acc) => {
+    // Adjust Inflow directly with transfers (Receiver's inflow increases, Sender's inflow decreases)
+    acc.inflow = acc.inflow + (acc.transferredIn || 0) - (acc.transferredOut || 0);
     acc.netBalance = acc.inflow - acc.outflow;
     if (acc.netBalance > 0) acc.status = 'surplus';
     else if (acc.netBalance < 0) acc.status = 'deficit';
@@ -275,7 +332,14 @@ export function computeAccountSettlements(
 
   // Keep accounts that have activity, plus standard organizer accounts
   const accounts = Array.from(settlementsMap.values()).filter((acc) => {
-    if (acc.inflow > 0 || acc.outflow > 0) return true;
+    if (
+      acc.inflow > 0 ||
+      acc.outflow > 0 ||
+      (acc.transferredIn || 0) > 0 ||
+      (acc.transferredOut || 0) > 0
+    ) {
+      return true;
+    }
     return !acc.isCash && acc.bankName !== 'Other';
   });
 
@@ -548,6 +612,8 @@ export function getExpenseCategoryIcon(category: string): string {
       return '🏛️';
     case 'Marketing & Communication':
       return '📢';
+    case 'Internal Transfer':
+      return '🔄';
     default:
       return '📦';
   }
@@ -597,8 +663,12 @@ export function buildExpensesWhatsAppMessage(
     ? `\n💰 *FUNDS & BUDGET FEASIBILITY:*\n• *Available Inflow:* ₹${formatINR(totalAvailableFunds)} (Regs: ₹${formatINR(registrationAmount)}${attendingDetails} + Sponsors: ₹${formatINR(sponsorshipAmount)})\n• *Planned Budget:* ₹${formatINR(totalExpected)}${costPerHead}\n• *Funding Status:* ${isDeficit ? `🚨 Deficit of -₹${formatINR(Math.abs(fundingGap))} (${coveragePct}% funded)` : `✅ Fully Funded (+₹${formatINR(fundingGap)} surplus)`}\n• *Real Paid Outflow:* ₹${formatINR(totalActual)}\n• *Live Cash Balance:* ₹${formatINR(liveCash)}`
     : `\n💰 *EXPENSE OVERVIEW:*\n• *Expected Budget:* ₹${formatINR(totalExpected)}\n• *Actual Paid:* ₹${formatINR(totalActual)}`;
 
+  // Real vendor expenses vs inter-account transfers
+  const realExpenses = expenses.filter((e) => e.category !== 'Internal Transfer');
+  const transferItems = expenses.filter((e) => e.category === 'Internal Transfer');
+
   // Itemized listing
-  const itemsText = expenses
+  const itemsText = realExpenses
     .map((item, idx) => {
       const diff = item.expected_amount - item.actual_amount;
       const diffLabel =
@@ -636,14 +706,26 @@ export function buildExpensesWhatsAppMessage(
     settlements && settlements.length > 0
       ? `\n\n💳 *ACCOUNT SETTLEMENT & CASH IN HAND:*\n` +
         settlements
-          .map(
-            (s) =>
-              `• *${s.accountName}*: In ₹${formatINR(s.inflow)} - Out ₹${formatINR(s.outflow)} = *${s.netBalance >= 0 ? '+' : ''}₹${formatINR(s.netBalance)}* ${s.netBalance > 0 ? '🟢 (Surplus)' : s.netBalance < 0 ? '🔴 (Due)' : '⚪ (Settled)'}`
-          )
+          .map((s) => {
+            return `• *${s.accountName}*: In ₹${formatINR(s.inflow)} - Out ₹${formatINR(s.outflow)} = *${s.netBalance >= 0 ? '+' : ''}₹${formatINR(s.netBalance)}* ${s.netBalance > 0 ? '🟢 (Surplus)' : s.netBalance < 0 ? '🔴 (Due)' : '⚪ (Settled)'}`;
+          })
+          .join('\n')
+      : '';
+
+  const transfersSection =
+    transferItems.length > 0
+      ? `\n\n🔄 *INTER-ACCOUNT TRANSFERS (${transferItems.length}):*\n` +
+        transferItems
+          .map((t, idx) => {
+            const from = t.paid_from_account || 'Unknown';
+            const to = t.vendor_name || 'Unknown';
+            const note = t.notes ? ` (${t.notes})` : '';
+            return `• ${idx + 1}. *${from} ➔ ${to}*: ₹${formatINR(t.actual_amount)}${note}`;
+          })
           .join('\n')
       : '';
 
   const footer = `\n\n📌 _Generated from ECK-RTU Alumni Central Portal._`;
 
-  return `${header}\n${fundingSection}${settlementsSection}\n\n📋 *ITEMIZED EXPENSES (${expenses.length}):*\n${itemsText}${footer}`;
+  return `${header}\n${fundingSection}${settlementsSection}${transfersSection}\n\n📋 *ITEMIZED EXPENSES (${realExpenses.length}):*\n${itemsText}${footer}`;
 }
