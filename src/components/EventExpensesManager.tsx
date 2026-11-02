@@ -8,7 +8,6 @@ import {
   computeAccountSettlements,
   formatExpensePayerSummary,
   getExpenseSplits,
-  KNOWN_EXPENSE_ACCOUNTS,
 } from '../lib/expenses';
 import { AccountTransferModal } from './AccountTransferModal';
 
@@ -1377,8 +1376,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             title="Filter by paying account"
           >
             <option value="all">💳 Account: All</option>
-            {KNOWN_EXPENSE_ACCOUNTS.map((acc) => (
-              <option key={acc.id} value={acc.accountName}>
+            {settlementData.accounts.map((acc) => (
+              <option key={acc.accountId} value={acc.accountName}>
                 {acc.accountName}
               </option>
             ))}
