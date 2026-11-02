@@ -918,13 +918,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             />
             <div className="qr-checkbox-info">
               <div className="qr-checkbox-top">
-                <span className="qr-checkbox-badge badge-unassigned">Untagged</span>
+                <span className="qr-checkbox-badge badge-unassigned">💵 Cash</span>
                 <span className="qr-checkbox-count">{accountStats['unassigned']?.count || 0} Regs</span>
               </div>
               <div className="qr-checkbox-account-label">
-                <strong className="qr-checkbox-name">Unassigned</strong>
+                <strong className="qr-checkbox-name">Cash in Hand</strong>
               </div>
-              <span className="qr-checkbox-upi font-mono">Not Linked</span>
+              <span className="qr-checkbox-upi font-mono">Spot Cash / Untagged</span>
               <span className="qr-checkbox-amount font-accent">
                 ₹{(accountStats['unassigned']?.totalAmount || 0).toLocaleString('en-IN')}
               </span>

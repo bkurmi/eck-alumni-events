@@ -223,11 +223,21 @@ export function computeAccountSettlements(
         ? Number(verif.amount)
         : Number(reg.amount || 0);
 
+    let matched = false;
     for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
       if (acc.upiId && upi === acc.upiId.toLowerCase()) {
         const item = settlementsMap.get(acc.id.toLowerCase());
         if (item) item.inflow += amount;
+        matched = true;
         break;
+      }
+    }
+
+    // Untagged/unassigned collections (e.g. spot cash or cash entries) are attributed to Cash in Hand
+    if (!matched && amount > 0) {
+      const cashItem = settlementsMap.get('cash in hand');
+      if (cashItem) {
+        cashItem.inflow += amount;
       }
     }
   });
@@ -236,11 +246,21 @@ export function computeAccountSettlements(
   sponsorships.forEach((sp) => {
     const upi = (sp.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
     const amount = Number(sp.amount || 0);
+    let matched = false;
     for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
       if (acc.upiId && upi === acc.upiId.toLowerCase()) {
         const item = settlementsMap.get(acc.id.toLowerCase());
         if (item) item.inflow += amount;
+        matched = true;
         break;
+      }
+    }
+
+    // Untagged/unassigned collections (e.g. spot cash or cash entries) are attributed to Cash in Hand
+    if (!matched && amount > 0) {
+      const cashItem = settlementsMap.get('cash in hand');
+      if (cashItem) {
+        cashItem.inflow += amount;
       }
     }
   });
