@@ -342,9 +342,9 @@ export function computeAccountSettlements(
   let totalOutflow = 0;
 
   settlementsMap.forEach((acc) => {
-    // Adjust Inflow directly with transfers (Receiver's inflow increases, Sender's inflow decreases)
-    acc.inflow = acc.inflow + (acc.transferredIn || 0) - (acc.transferredOut || 0);
-    acc.netBalance = acc.inflow - acc.outflow;
+    // Preserve pure Inflow from registrations & sponsorships (never overwrite with transfers)
+    const netTransfers = (acc.transferredIn || 0) - (acc.transferredOut || 0);
+    acc.netBalance = acc.inflow + netTransfers - acc.outflow;
     if (acc.netBalance > 0) acc.status = 'surplus';
     else if (acc.netBalance < 0) acc.status = 'deficit';
     else acc.status = 'settled';
@@ -730,7 +730,11 @@ export function buildExpensesWhatsAppMessage(
       ? `\n\n💳 *ACCOUNT SETTLEMENT & CASH IN HAND:*\n` +
         settlements
           .map((s) => {
-            return `• *${s.accountName}*: In ₹${formatINR(s.inflow)} - Out ₹${formatINR(s.outflow)} = *${s.netBalance >= 0 ? '+' : ''}₹${formatINR(s.netBalance)}* ${s.netBalance > 0 ? '🟢 (Surplus)' : s.netBalance < 0 ? '🔴 (Due)' : '⚪ (Settled)'}`;
+            const transferPart =
+              (s.transferredIn || 0) > 0 || (s.transferredOut || 0) > 0
+                ? ` (⇄ ${(s.transferredIn || 0) > 0 ? `+₹${formatINR(s.transferredIn || 0)}` : ''}${(s.transferredOut || 0) > 0 ? ` -₹${formatINR(s.transferredOut || 0)}` : ''})`
+                : '';
+            return `• *${s.accountName}*: In ₹${formatINR(s.inflow)} - Out ₹${formatINR(s.outflow)}${transferPart} = *${s.netBalance >= 0 ? '+' : ''}₹${formatINR(s.netBalance)}* ${s.netBalance > 0 ? '🟢 (Surplus)' : s.netBalance < 0 ? '🔴 (Due)' : '⚪ (Settled)'}`;
           })
           .join('\n')
       : '';

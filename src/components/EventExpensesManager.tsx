@@ -720,6 +720,40 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                       </div>
                     </div>
 
+                    {/* Internal Transfers breakdown (if any) */}
+                    {((acc.transferredIn || 0) > 0 || (acc.transferredOut || 0) > 0) && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '0.78rem',
+                          backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                          border: '1px solid rgba(99, 102, 241, 0.22)',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          color: '#c7d2fe',
+                        }}
+                        title={`Transfers for ${acc.accountName}: +₹${formatINR(acc.transferredIn || 0)} received, -₹${formatINR(acc.transferredOut || 0)} sent`}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                          <span>⇄ Transfers:</span>
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
+                          {(acc.transferredIn || 0) > 0 && (
+                            <span style={{ color: '#34d399' }}>
+                              +₹{formatINR(acc.transferredIn || 0)}
+                            </span>
+                          )}
+                          {(acc.transferredOut || 0) > 0 && (
+                            <span style={{ color: '#f87171' }}>
+                              -₹{formatINR(acc.transferredOut || 0)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Dashed Separator */}
                     <div style={{ borderTop: '1px dashed rgba(255, 255, 255, 0.1)', margin: '1px 0' }} />
 
