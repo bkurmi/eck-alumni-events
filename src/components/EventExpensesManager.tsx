@@ -10,6 +10,7 @@ import {
   getExpenseSplits,
   KNOWN_EXPENSE_ACCOUNTS,
 } from '../lib/expenses';
+import { AccountTransferModal } from './AccountTransferModal';
 
 interface EventExpensesManagerProps {
   expenses: EventExpense[];
@@ -19,11 +20,14 @@ interface EventExpensesManagerProps {
   totalHeadcount?: number;
   sponsorshipCount?: number;
   eventName?: string;
+  eventId?: string;
   registrations?: EventRegistration[];
   verifications?: PaymentVerification[];
   sponsorships?: Sponsorship[];
   onAddExpense: () => void;
   onEditExpense: (expense: EventExpense) => void;
+  onSaveExpense?: (expense: Partial<EventExpense>, receiptFiles?: File[] | File | null) => Promise<boolean>;
+  onDeleteExpense?: (id: string) => Promise<boolean>;
   onRefresh?: () => void;
   loading?: boolean;
 }
@@ -36,11 +40,14 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   totalHeadcount = 0,
   sponsorshipCount = 0,
   eventName = 'ECK-RTU Alumni DeepAura 2K26',
+  eventId,
   registrations = [],
   verifications = [],
   sponsorships = [],
   onAddExpense,
   onEditExpense,
+  onSaveExpense,
+  onDeleteExpense,
   onRefresh: _onRefresh,
   loading: _loading = false,
 }) => {
@@ -49,6 +56,20 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('all');
   const [isSettlementOpen, setIsSettlementOpen] = useState<boolean>(true);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  // Inter-Account Transfers Modal State
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [selectedTransfer, setSelectedTransfer] = useState<EventExpense | null>(null);
+  const [presetFromAccount, setPresetFromAccount] = useState<string | undefined>(undefined);
+  const [isTransfersHistoryOpen, setIsTransfersHistoryOpen] = useState<boolean>(true);
+  const [activeLedgerTab, setActiveLedgerTab] = useState<'expenses' | 'transfers' | 'all'>('expenses');
+
+  // Internal transfers records
+  const internalTransfers = useMemo(() => {
+    return expenses.filter(
+      (e) => e.category === 'Internal Transfer' && e.status !== 'cancelled'
+    );
+  }, [expenses]);
 
   // Live account settlements & cash balances
   const settlementData = useMemo(() => {
@@ -60,11 +81,12 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
     );
   }, [expenses, registrations, verifications, sponsorships]);
 
-  // Aggregated Financial Metrics & Feasibility
+  // Aggregated Financial Metrics & Feasibility (excludes internal transfers so real budget is not distorted)
   const stats = useMemo(() => {
-    const totalItems = expenses.length;
-    const totalExpected = expenses.reduce((sum, e) => sum + Number(e.expected_amount || 0), 0);
-    const totalActual = expenses.reduce((sum, e) => sum + Number(e.actual_amount || 0), 0);
+    const realExpenses = expenses.filter((e) => e.category !== 'Internal Transfer');
+    const totalItems = realExpenses.length;
+    const totalExpected = realExpenses.reduce((sum, e) => sum + Number(e.expected_amount || 0), 0);
+    const totalActual = realExpenses.reduce((sum, e) => sum + Number(e.actual_amount || 0), 0);
 
     // Total available pool collected so far
     const totalAvailableFunds = registrationAmount + sponsorshipAmount;
@@ -82,7 +104,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
     const actualVariance = totalExpected - totalActual;
     const isUnderBudget = actualVariance >= 0;
 
-    const settledCount = expenses.filter(
+    const settledCount = realExpenses.filter(
       (e) => e.status === 'settled' || e.status === 'paid'
     ).length;
 
@@ -101,9 +123,16 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
     };
   }, [expenses, registrationAmount, sponsorshipAmount]);
 
-  // Filtered expenses based on search, status & paying account
+  // Filtered expenses based on active ledger tab, search, status & paying account
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
+      const isTransfer = e.category === 'Internal Transfer';
+
+      // 1. Filter by Active Ledger Tab (Expenses vs Transfers)
+      if (activeLedgerTab === 'expenses' && isTransfer) return false;
+      if (activeLedgerTab === 'transfers' && !isTransfer) return false;
+
+      // 2. Search query filter
       const q = searchQuery.toLowerCase().trim();
       const splits = getExpenseSplits(e);
       const payerText = splits.map((s) => s.account).join(' ') + ' ' + (e.paid_from_account || '');
@@ -117,27 +146,30 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         (e.category || '').toLowerCase().includes(q) ||
         payerText.toLowerCase().includes(q);
 
+      // 3. Status filter
       const matchesStatus =
         selectedStatus === 'all' ? true : e.status === selectedStatus;
 
+      // 4. Account filter
       let matchesAccount = true;
       if (selectedAccountFilter !== 'all') {
+        const accLower = selectedAccountFilter.toLowerCase();
         if (selectedAccountFilter === 'unassigned') {
-          matchesAccount = Number(e.actual_amount || 0) > 0 && splits.length === 0;
+          matchesAccount = !isTransfer && Number(e.actual_amount || 0) > 0 && splits.length === 0;
+        } else if (isTransfer) {
+          const sender = (e.paid_from_account || '').toLowerCase();
+          const receiver = (e.vendor_name || '').toLowerCase();
+          matchesAccount = sender.includes(accLower) || receiver.includes(accLower);
         } else {
           matchesAccount =
-            splits.some((s) =>
-              s.account.toLowerCase().includes(selectedAccountFilter.toLowerCase())
-            ) ||
-            (e.paid_from_account || '')
-              .toLowerCase()
-              .includes(selectedAccountFilter.toLowerCase());
+            splits.some((s) => s.account.toLowerCase().includes(accLower)) ||
+            (e.paid_from_account || '').toLowerCase().includes(accLower);
         }
       }
 
       return matchesSearch && matchesStatus && matchesAccount;
     });
-  }, [expenses, searchQuery, selectedStatus, selectedAccountFilter]);
+  }, [expenses, activeLedgerTab, searchQuery, selectedStatus, selectedAccountFilter]);
 
   // WhatsApp Share Action
   const handleShareWhatsApp = () => {
@@ -429,7 +461,36 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedTransfer(null);
+                setPresetFromAccount(undefined);
+                setIsTransferModalOpen(true);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                minHeight: '44px',
+                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>⇄</span>
+              <span>Transfer Funds</span>
+            </button>
+
             {selectedAccountFilter !== 'all' && (
               <button
                 type="button"
@@ -438,13 +499,14 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                   setSelectedAccountFilter('all');
                 }}
                 style={{
-                  padding: '3px 8px',
+                  padding: '5px 10px',
                   borderRadius: '6px',
                   border: '1px solid rgba(255, 255, 255, 0.15)',
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   color: '#cbd5e1',
-                  fontSize: '0.72rem',
+                  fontSize: '0.74rem',
                   cursor: 'pointer',
+                  minHeight: '44px',
                 }}
               >
                 Clear Filter ✕
@@ -693,7 +755,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                       </strong>
                     </div>
 
-                    {/* Footer: Expenses Count & Filter Link */}
+                    {/* Footer: Expenses Count, Transfer Action & Filter Link */}
                     <div
                       style={{
                         display: 'flex',
@@ -702,6 +764,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                         fontSize: '0.8rem',
                         color: '#94a3b8',
                         paddingTop: '2px',
+                        gap: '8px',
+                        flexWrap: 'wrap',
                       }}
                     >
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -711,25 +775,230 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                         </span>
                       </div>
 
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          color: isSelected ? '#a5b4fc' : '#cbd5e1',
-                          fontWeight: 600,
-                          textDecoration: 'underline',
-                          textUnderlineOffset: '2px',
-                        }}
-                      >
-                        <span style={{ fontSize: '12px', textDecoration: 'none' }}>☰</span>
-                        <span>{isSelected ? '✓ Filtered' : 'Filter by this'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTransfer(null);
+                            setPresetFromAccount(acc.accountName);
+                            setIsTransferModalOpen(true);
+                          }}
+                          style={{
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            border: '1px solid rgba(99, 102, 241, 0.35)',
+                            borderRadius: '6px',
+                            color: '#a5b4fc',
+                            fontSize: '0.74rem',
+                            fontWeight: 600,
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            minHeight: '34px',
+                          }}
+                          title={`Transfer funds out from ${acc.accountName}`}
+                        >
+                          <span>⇄</span>
+                          <span>Transfer</span>
+                        </button>
+
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: isSelected ? '#a5b4fc' : '#cbd5e1',
+                            fontWeight: 600,
+                            textDecoration: 'underline',
+                            textUnderlineOffset: '2px',
+                          }}
+                        >
+                          <span style={{ fontSize: '12px', textDecoration: 'none' }}>☰</span>
+                          <span>{isSelected ? '✓ Filtered' : 'Filter by this'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {/* ── INTER-ACCOUNT TRANSFERS HISTORY SECTION ── */}
+            {internalTransfers.length > 0 && (
+              <div
+                style={{
+                  marginTop: '10px',
+                  backgroundColor: '#0c1322',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(99, 102, 241, 0.25)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  onClick={() => setIsTransfersHistoryOpen((prev) => !prev)}
+                  style={{
+                    padding: '10px 14px',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '16px' }}>🔄</span>
+                    <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#e0e7ff' }}>
+                      Inter-Account Transfer History ({internalTransfers.length})
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        backgroundColor: 'rgba(99, 102, 241, 0.25)',
+                        color: '#c7d2fe',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Total Transferred: ₹
+                      {formatINR(
+                        internalTransfers.reduce(
+                          (sum, t) => sum + Number(t.actual_amount || 0),
+                          0
+                        )
+                      )}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.78rem', color: '#a5b4fc', fontWeight: 600 }}>
+                    {isTransfersHistoryOpen ? '▲ Hide' : '▼ View History'}
+                  </span>
+                </div>
+
+                {isTransfersHistoryOpen && (
+                  <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {internalTransfers.map((tx) => {
+                      const from = tx.paid_from_account || 'Unknown';
+                      const to = tx.vendor_name || 'Unknown';
+                      const amt = Number(tx.actual_amount || 0);
+                      const receiptUrls = getAllExpenseScreenshotUrls(tx.payment_screenshot_path);
+
+                      return (
+                        <div
+                          key={tx.id}
+                          onClick={() => {
+                            setSelectedTransfer(tx);
+                            setIsTransferModalOpen(true);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '9px 12px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            fontSize: '0.84rem',
+                            cursor: 'pointer',
+                            gap: '8px',
+                            flexWrap: 'wrap',
+                            transition: 'background-color 0.15s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                                color: '#a5b4fc',
+                                fontSize: '14px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              ⇄
+                            </span>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <strong style={{ color: '#f87171' }}>{from}</strong>
+                                <span style={{ color: '#94a3b8' }}>➔</span>
+                                <strong style={{ color: '#34d399' }}>{to}</strong>
+                                {tx.payment_mode && (
+                                  <span
+                                    style={{
+                                      fontSize: '0.7rem',
+                                      padding: '1px 6px',
+                                      borderRadius: '4px',
+                                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                      color: '#94a3b8',
+                                    }}
+                                  >
+                                    {tx.payment_mode}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '2px' }}>
+                                {tx.payment_date || 'No date'}
+                                {tx.notes ? ` • ${tx.notes}` : ''}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <strong style={{ color: '#a5b4fc', fontSize: '0.96rem', fontWeight: 700 }}>
+                              ₹{formatINR(amt)}
+                            </strong>
+                            {receiptUrls.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewImageUrl(receiptUrls[0]);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '15px',
+                                  padding: '4px',
+                                }}
+                                title="View transfer receipt"
+                              >
+                                📎
+                              </button>
+                            )}
+                            <span
+                              style={{
+                                fontSize: '0.75rem',
+                                color: '#818cf8',
+                                textDecoration: 'underline',
+                                fontWeight: 600,
+                              }}
+                            >
+                              Edit ✏️
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
 
           </div>
@@ -759,52 +1028,96 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               gap: '8px',
             }}
           >
-            <span>Itemized Expense Ledger</span>
+            <span>
+              {activeLedgerTab === 'transfers'
+                ? 'Internal Transfers'
+                : activeLedgerTab === 'all'
+                ? 'All Ledger Transactions'
+                : 'Itemized Expense Ledger'}
+            </span>
             <span
               style={{
                 fontSize: '0.72rem',
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '12px',
-                background: 'rgba(99, 102, 241, 0.15)',
-                color: '#a5b4fc',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
+                background:
+                  activeLedgerTab === 'transfers'
+                    ? 'rgba(99, 102, 241, 0.2)'
+                    : 'rgba(16, 185, 129, 0.15)',
+                color: activeLedgerTab === 'transfers' ? '#c7d2fe' : '#6ee7b7',
+                border:
+                  activeLedgerTab === 'transfers'
+                    ? '1px solid rgba(99, 102, 241, 0.35)'
+                    : '1px solid rgba(16, 185, 129, 0.35)',
               }}
             >
-              {expenses.length} Items
+              {filteredExpenses.length} {activeLedgerTab === 'transfers' ? 'Transfers' : 'Items'}
             </span>
           </h3>
           <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-            Vendor quotes, planned budgets &amp; real payments
+            {activeLedgerTab === 'transfers'
+              ? 'Coordinator-to-coordinator internal fund movements'
+              : 'Vendor quotes, planned budgets & real event payments'}
           </p>
         </div>
 
-        {/* Action Buttons: Add Expense & Share Report */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-          <button
-            type="button"
-            onClick={onAddExpense}
-            style={{
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '9px 15px',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              minHeight: '40px',
-              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <span>➕</span>
-            <span>Add Expense</span>
-          </button>
+        {/* Action Buttons: Add Expense / New Transfer & Share Report */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {activeLedgerTab === 'transfers' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTransfer(null);
+                setPresetFromAccount(undefined);
+                setIsTransferModalOpen(true);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '9px 15px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                minHeight: '44px',
+                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>⇄</span>
+              <span>New Transfer</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onAddExpense}
+              style={{
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '9px 15px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                minHeight: '44px',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>➕</span>
+              <span>Add Expense</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -823,7 +1136,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
-              minHeight: '40px',
+              minHeight: '44px',
               whiteSpace: 'nowrap',
             }}
             title="Share itemized Budget report to WhatsApp"
@@ -832,6 +1145,138 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             <span>Share Report</span>
           </button>
         </div>
+      </div>
+
+      {/* ── 2 TABS / SEGMENTED CONTROL: Expenses vs Internal Transfers ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          backgroundColor: '#0c1322',
+          padding: '4px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          width: 'fit-content',
+          maxWidth: '100%',
+          overflowX: 'auto',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveLedgerTab('expenses')}
+          style={{
+            padding: '8px 14px',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: activeLedgerTab === 'expenses' ? '#1e293b' : 'transparent',
+            color: activeLedgerTab === 'expenses' ? '#34d399' : '#94a3b8',
+            fontWeight: activeLedgerTab === 'expenses' ? 700 : 500,
+            fontSize: '0.84rem',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            boxShadow: activeLedgerTab === 'expenses' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
+            minHeight: '40px',
+          }}
+        >
+          <span>📋</span>
+          <span>Itemized Expenses</span>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              padding: '1px 7px',
+              borderRadius: '999px',
+              backgroundColor:
+                activeLedgerTab === 'expenses'
+                  ? 'rgba(52, 211, 153, 0.18)'
+                  : 'rgba(255, 255, 255, 0.06)',
+              color: activeLedgerTab === 'expenses' ? '#34d399' : '#64748b',
+              fontWeight: 700,
+            }}
+          >
+            {stats.totalItems}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveLedgerTab('transfers')}
+          style={{
+            padding: '8px 14px',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: activeLedgerTab === 'transfers' ? '#1e293b' : 'transparent',
+            color: activeLedgerTab === 'transfers' ? '#a5b4fc' : '#94a3b8',
+            fontWeight: activeLedgerTab === 'transfers' ? 700 : 500,
+            fontSize: '0.84rem',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            boxShadow: activeLedgerTab === 'transfers' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
+            minHeight: '40px',
+          }}
+        >
+          <span>🔄</span>
+          <span>Internal Transfers</span>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              padding: '1px 7px',
+              borderRadius: '999px',
+              backgroundColor:
+                activeLedgerTab === 'transfers'
+                  ? 'rgba(99, 102, 241, 0.25)'
+                  : 'rgba(255, 255, 255, 0.06)',
+              color: activeLedgerTab === 'transfers' ? '#a5b4fc' : '#64748b',
+              fontWeight: 700,
+            }}
+          >
+            {internalTransfers.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveLedgerTab('all')}
+          style={{
+            padding: '8px 12px',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: activeLedgerTab === 'all' ? '#1e293b' : 'transparent',
+            color: activeLedgerTab === 'all' ? '#f8fafc' : '#64748b',
+            fontWeight: activeLedgerTab === 'all' ? 700 : 500,
+            fontSize: '0.84rem',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            boxShadow: activeLedgerTab === 'all' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
+            minHeight: '40px',
+          }}
+        >
+          <span>All</span>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              padding: '1px 6px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              color: '#94a3b8',
+              fontWeight: 600,
+            }}
+          >
+            {expenses.length}
+          </span>
+        </button>
       </div>
 
       {/* ── SEARCH & FILTER BAR (Mobile Responsive) ── */}
@@ -984,16 +1429,48 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             border: '1px dashed rgba(255, 255, 255, 0.15)',
           }}
         >
-          <span style={{ fontSize: '42px', display: 'block', marginBottom: '12px' }}>📊</span>
+          <span style={{ fontSize: '42px', display: 'block', marginBottom: '12px' }}>
+            {activeLedgerTab === 'transfers' ? '🔄' : '📊'}
+          </span>
           <h3 style={{ margin: '0 0 6px 0', fontSize: '1.15rem', color: '#f8fafc', fontWeight: 600 }}>
-            {expenses.length === 0 ? 'No Expense Items Recorded Yet' : 'No Matching Expenses Found'}
+            {activeLedgerTab === 'transfers'
+              ? internalTransfers.length === 0
+                ? 'No Internal Transfers Recorded Yet'
+                : 'No Matching Transfers Found'
+              : stats.totalItems === 0
+              ? 'No Expense Items Recorded Yet'
+              : 'No Matching Expenses Found'}
           </h3>
           <p style={{ margin: '0 0 16px 0', color: '#94a3b8', fontSize: '0.88rem' }}>
-            {expenses.length === 0
+            {activeLedgerTab === 'transfers'
+              ? 'Transfers between coordinators appear here without distorting event expenses.'
+              : stats.totalItems === 0
               ? 'Start by entering expected budget items like Caterers, Tent, DJ, Lights, and ID cards.'
               : 'Try adjusting your search query or category filters.'}
           </p>
-          {expenses.length === 0 && (
+          {activeLedgerTab === 'transfers' && internalTransfers.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTransfer(null);
+                setPresetFromAccount(undefined);
+                setIsTransferModalOpen(true);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 18px',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                minHeight: '44px',
+              }}
+            >
+              ⇄ Record First Transfer
+            </button>
+          ) : stats.totalItems === 0 ? (
             <button
               type="button"
               onClick={onAddExpense}
@@ -1011,7 +1488,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             >
               ➕ Add First Expense Item
             </button>
-          )}
+          ) : null}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1030,7 +1507,14 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
             return (
               <div
                 key={expense.id}
-                onClick={() => onEditExpense(expense)}
+                onClick={() => {
+                  if (expense.category === 'Internal Transfer') {
+                    setSelectedTransfer(expense);
+                    setIsTransferModalOpen(true);
+                  } else {
+                    onEditExpense(expense);
+                  }
+                }}
                 style={{
                   backgroundColor: '#1e293b',
                   borderRadius: '10px',
@@ -1113,7 +1597,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                   </div>
                 </div>
 
-                {/* ── TIER 2: Context Bar (Vendor & Payment Details) ── */}
+                {/* ── TIER 2: Context Bar (Vendor & Payment Details / Transfer Details) ── */}
                 <div
                   style={{
                     display: 'flex',
@@ -1128,44 +1612,53 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                     fontSize: '0.78rem',
                   }}
                 >
-                  {/* Left: Vendor */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: '#cbd5e1' }}>
-                    {(expense.vendor_name || expense.vendor_phone) ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#94a3b8' }}>👤 Vendor:</span>
-                        <strong style={{ color: '#f1f5f9' }}>{expense.vendor_name || 'Vendor'}</strong>
-                        {expense.vendor_phone && (() => {
-                          const clean = expense.vendor_phone.replace(/\D/g, '').slice(-10);
-                          const display = expense.vendor_phone.startsWith('+91')
-                            ? expense.vendor_phone
-                            : clean.length === 10
-                              ? `+91 ${clean}`
-                              : expense.vendor_phone;
-                          const tel = clean.length === 10 ? `+91${clean}` : expense.vendor_phone;
-                          return (
-                            <a
-                              href={`tel:${tel}`}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                marginLeft: '4px',
-                                color: '#38bdf8',
-                                textDecoration: 'none',
-                                fontWeight: 600,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '2px',
-                              }}
-                              title={`Call ${display}`}
-                            >
-                              📞 {display}
-                            </a>
-                          );
-                        })()}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#64748b', fontStyle: 'italic' }}>No vendor specified</span>
-                    )}
-                  </div>
+                  {expense.category === 'Internal Transfer' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ color: '#a5b4fc', fontWeight: 600 }}>⇄ Transfer:</span>
+                      <strong style={{ color: '#f87171' }}>{expense.paid_from_account || 'Sender'}</strong>
+                      <span style={{ color: '#94a3b8' }}>➔</span>
+                      <strong style={{ color: '#34d399' }}>{expense.vendor_name || 'Receiver'}</strong>
+                    </div>
+                  ) : (
+                    /* Left: Vendor */
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: '#cbd5e1' }}>
+                      {(expense.vendor_name || expense.vendor_phone) ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                          <span style={{ color: '#94a3b8' }}>👤 Vendor:</span>
+                          <strong style={{ color: '#f1f5f9' }}>{expense.vendor_name || 'Vendor'}</strong>
+                          {expense.vendor_phone && (() => {
+                            const clean = expense.vendor_phone.replace(/\D/g, '').slice(-10);
+                            const display = expense.vendor_phone.startsWith('+91')
+                              ? expense.vendor_phone
+                              : clean.length === 10
+                                ? `+91 ${clean}`
+                                : expense.vendor_phone;
+                            const tel = clean.length === 10 ? `+91${clean}` : expense.vendor_phone;
+                            return (
+                              <a
+                                href={`tel:${tel}`}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  marginLeft: '4px',
+                                  color: '#38bdf8',
+                                  textDecoration: 'none',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '2px',
+                                }}
+                                title={`Call ${display}`}
+                              >
+                                📞 {display}
+                              </a>
+                            );
+                          })()}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#64748b', fontStyle: 'italic' }}>No vendor specified</span>
+                      )}
+                    </div>
+                  )}
 
                   {expense.payment_mode && (
                     <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
@@ -1184,55 +1677,79 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                     fontSize: '0.82rem',
                   }}
                 >
-                  {/* Expected, Actual & Variance */}
-                  <div>
-                    <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Expected: </span>
-                    <strong style={{ color: '#93c5fd' }}>₹{formatINR(expAmt)}</strong>
-                  </div>
-
-                  <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>│</span>
-
-                  <div>
-                    <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Actual Paid: </span>
-                    <strong style={{ color: hasActual ? '#86efac' : '#64748b' }}>
-                      {hasActual ? `₹${formatINR(actAmt)}` : '₹0'}
-                    </strong>
-                  </div>
-
-                  {hasActual && (
-                    <div>
-                      {diff >= 0 ? (
-                        <span
-                          style={{
-                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                            color: '#34d399',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            fontSize: '0.73rem',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          +₹{formatINR(diff)} Saved (Under Budget)
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                            color: '#f87171',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            fontSize: '0.73rem',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          -₹{formatINR(Math.abs(diff))} Over Budget
-                        </span>
-                      )}
+                  {expense.category === 'Internal Transfer' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Transferred Amount: </span>
+                      <strong style={{ color: '#a5b4fc', fontSize: '1rem', fontWeight: 800 }}>
+                        ₹{formatINR(actAmt)}
+                      </strong>
+                      <span
+                        style={{
+                          backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                          color: '#c7d2fe',
+                          border: '1px solid rgba(99, 102, 241, 0.3)',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Internal Coordinator Transfer
+                      </span>
                     </div>
+                  ) : (
+                    <>
+                      {/* Expected, Actual & Variance */}
+                      <div>
+                        <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Expected: </span>
+                        <strong style={{ color: '#93c5fd' }}>₹{formatINR(expAmt)}</strong>
+                      </div>
+
+                      <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>│</span>
+
+                      <div>
+                        <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Actual Paid: </span>
+                        <strong style={{ color: hasActual ? '#86efac' : '#64748b' }}>
+                          {hasActual ? `₹${formatINR(actAmt)}` : '₹0'}
+                        </strong>
+                      </div>
+
+                      {hasActual && (
+                        <div>
+                          {diff >= 0 ? (
+                            <span
+                              style={{
+                                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                                color: '#34d399',
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.73rem',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              +₹{formatINR(diff)} Saved (Under Budget)
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.73rem',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              -₹{formatINR(Math.abs(diff))} Over Budget
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -1468,6 +1985,31 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           </div>
         </div>
       )}
+      {/* Inter-Account Transfer Modal */}
+      <AccountTransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => {
+          setIsTransferModalOpen(false);
+          setSelectedTransfer(null);
+          setPresetFromAccount(undefined);
+        }}
+        onSave={async (payload, receiptFile) => {
+          if (onSaveExpense) {
+            return await onSaveExpense(payload, receiptFile);
+          }
+          return false;
+        }}
+        onDelete={async (id) => {
+          if (onDeleteExpense) {
+            return await onDeleteExpense(id);
+          }
+          return false;
+        }}
+        initialData={selectedTransfer}
+        presetFromAccount={presetFromAccount}
+        accounts={settlementData.accounts}
+        eventId={eventId}
+      />
     </div>
   );
 };
