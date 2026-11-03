@@ -46,7 +46,6 @@ const DEFAULT_EVENT: ECKEvent = {
 
 export const EventPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
-  const activeSlug = slug || 'deepaura-2k26';
   const showIdCards = isAlumniIdCardsEnabled();
 
   const [event, setEvent] = useState<ECKEvent>(DEFAULT_EVENT);
@@ -70,19 +69,61 @@ export const EventPage: React.FC = () => {
     async function loadEvent() {
       setLoading(true);
       try {
-        const [{ data, error }, regCount] = await Promise.all([
-          supabase
+        let rawEvent: ECKEvent | null = null;
+        let resolvedSlug = slug;
+
+        if (slug) {
+          const { data, error } = await supabase
             .from('events')
             .select('*')
-            .eq('event_slug', activeSlug)
-            .single(),
-          getEventRegistrationCount(activeSlug),
-        ]);
+            .eq('event_slug', slug)
+            .single();
 
-        const rawEvent: ECKEvent =
-          error || !data
-            ? { ...DEFAULT_EVENT, event_slug: activeSlug }
-            : (data as ECKEvent);
+          if (!error && data) {
+            rawEvent = data as ECKEvent;
+          }
+        } else {
+          // Automatic nearest active/upcoming event discovery on root path '/'
+          const { data: openEvents } = await supabase
+            .from('events')
+            .select('*')
+            .eq('status', 'OPEN')
+            .order('event_date', { ascending: true })
+            .limit(1);
+
+          if (openEvents && openEvents.length > 0) {
+            rawEvent = openEvents[0] as ECKEvent;
+          } else {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const { data: upcomingEvents } = await supabase
+              .from('events')
+              .select('*')
+              .gte('event_date', todayStr)
+              .order('event_date', { ascending: true })
+              .limit(1);
+
+            if (upcomingEvents && upcomingEvents.length > 0) {
+              rawEvent = upcomingEvents[0] as ECKEvent;
+            } else {
+              const { data: recentEvents } = await supabase
+                .from('events')
+                .select('*')
+                .order('event_date', { ascending: false })
+                .limit(1);
+
+              if (recentEvents && recentEvents.length > 0) {
+                rawEvent = recentEvents[0] as ECKEvent;
+              }
+            }
+          }
+        }
+
+        if (!rawEvent) {
+          rawEvent = { ...DEFAULT_EVENT, event_slug: resolvedSlug || DEFAULT_EVENT.event_slug };
+        }
+        resolvedSlug = rawEvent.event_slug;
+
+        const regCount = await getEventRegistrationCount(resolvedSlug);
 
         // Check database-driven registration deadline and maintain in Supabase events table
         const deadlineInfo = getRegistrationStatusInfo(rawEvent);
@@ -91,7 +132,7 @@ export const EventPage: React.FC = () => {
         }
 
         // Maintain in the Supabase events table
-        syncEventRegistrationStatus(activeSlug, rawEvent.status, rawEvent.registration_closes_at).catch(() => {});
+        syncEventRegistrationStatus(resolvedSlug, rawEvent.status, rawEvent.registration_closes_at).catch(() => {});
 
         const rotation = resolveActivePaymentConfig(rawEvent, regCount);
 
@@ -126,7 +167,7 @@ export const EventPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [activeSlug]);
+  }, [slug]);
 
   // Apply dynamic theming based on event config
   useEffect(() => {
@@ -148,7 +189,7 @@ export const EventPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Refresh live count right before registration to ensure up-to-date rotation
-    getEventRegistrationCount(activeSlug)
+    getEventRegistrationCount(event.event_slug)
       .then((count) => {
         setRegistrationCount(count);
         const rotation = resolveActivePaymentConfig(event, count);
@@ -202,7 +243,7 @@ export const EventPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Ensure next registration in the same browser session gets latest rotation
-    getEventRegistrationCount(activeSlug)
+    getEventRegistrationCount(event.event_slug)
       .then((count) => {
         setRegistrationCount(count);
         const rotation = resolveActivePaymentConfig(event, count);
@@ -239,6 +280,7 @@ export const EventPage: React.FC = () => {
       <Header
         title="ECK-RTU Alumni Kota Chapter"
         tagline={event.tagline || '“दीप जले, यादें मुस्कुराएँ।”'}
+        currentEventSlug={event.event_slug}
       />
 
       <main className="main-content">
@@ -273,7 +315,7 @@ export const EventPage: React.FC = () => {
                   <div className="closed-icon-big">🔒</div>
                   <h2>Online Registration is Closed</h2>
                   <p className="closed-lead">
-                    Online registrations for DeepAura 2K26 are closed as per schedule.
+                    Online registrations for {event.event_name} are closed as per schedule.
                   </p>
                   <div className="closed-spot-box">
                     <h4>⚡ Spot Walk-in Registration at College Gate</h4>
@@ -281,8 +323,12 @@ export const EventPage: React.FC = () => {
                       Missed registering online? You can still attend! Please visit the Spot Walk-in Registration Desk at the ECK Campus Gate on the event day.
                     </p>
                     <div className="spot-summary-pills">
-                      <span className="spot-rate-chip">Adults: ₹1,000 / person</span>
-                      <span className="spot-rate-chip">Kids (10+ yrs): ₹500</span>
+                      <span className="spot-rate-chip">
+                        Adults: ₹{(event.pricing_config?.spot_adult || 1000).toLocaleString('en-IN')} / person
+                      </span>
+                      <span className="spot-rate-chip">
+                        Kids (10+ yrs): ₹{(event.pricing_config?.spot_child_above_10 || 500).toLocaleString('en-IN')}
+                      </span>
                       <span className="spot-rate-chip chip-free">Kids (&lt;10 yrs): Free</span>
                     </div>
                   </div>
@@ -307,7 +353,9 @@ export const EventPage: React.FC = () => {
                 <>
                   <div className="form-event-summary-bar">
                     <span className="summary-title">{event.event_name}</span>
-                    <span className="summary-fee">₹800 Single • ₹1,500 Couple</span>
+                    <span className="summary-fee">
+                      {`₹${(event.pricing_config?.single_adult || event.registration_fee || 800).toLocaleString('en-IN')} Single • ₹${(event.pricing_config?.couple || 1500).toLocaleString('en-IN')} Couple`}
+                    </span>
                   </div>
 
                   <RegistrationForm
@@ -403,14 +451,14 @@ export const EventPage: React.FC = () => {
                   </div>
                 </div>
 
-                {event.status === 'OPEN' && !isRegistrationClosed() && (
+                {event.status === 'OPEN' && !isRegistrationClosed(event) && (
                   <div className="bottom-cta-wrap">
                     <button
                       type="button"
                       onClick={handleStartRegistration}
                       className="btn btn-festive-primary btn-large btn-block"
                     >
-                      <span>Register for DeepAura 2K26</span>
+                      <span>Register for {event.event_name}</span>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
@@ -442,9 +490,9 @@ export const EventPage: React.FC = () => {
             <img src="/logo-rtu.png" alt="RTU Kota" className="footer-crest-img" width="44" height="44" />
           </div>
           <p className="footer-org-name">ECK-RTU Alumni Kota Chapter</p>
-          <p className="footer-tagline-text">“दीप जले, यादें मुस्कुराएँ।”</p>
+          <p className="footer-tagline-text">{event.tagline || '“दीप जले, यादें मुस्कुराएँ।”'}</p>
           <p className="footer-sub">
-            ECK-RTU Alumni DeepAura 2K26 • Kota, Rajasthan
+            {event.event_name} • Kota, Rajasthan
           </p>
           <p className="footer-copyright">
             © {new Date().getFullYear()} ECK-RTU Alumni Kota Chapter. All Rights Reserved.
