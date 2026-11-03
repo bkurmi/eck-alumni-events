@@ -14,6 +14,7 @@ import {
   getRegistrationStatusInfo,
   syncEventRegistrationStatus,
   isRegistrationClosed,
+  isEventConcluded,
 } from '../lib/eventStatus';
 import type {
   ECKEvent,
@@ -375,8 +376,8 @@ export const EventPage: React.FC = () => {
                 onManageRegistrationClick={handleOpenManageModal}
               />
 
-              {/* Dedicated Highlight Card: Alumni Gate Pass & ID Card */}
-              {showIdCards && (
+              {/* Dedicated Highlight Card: Alumni Gate Pass & ID Card - hidden once event concludes */}
+              {showIdCards && !isEventConcluded(event) && (
                 <section className="idpass-home-feature-card" aria-label="Alumni ID Card and Entry Pass">
                   <div className="idpass-ticket-notch idpass-ticket-notch-left" aria-hidden="true" />
                   <div className="idpass-ticket-notch idpass-ticket-notch-right" aria-hidden="true" />

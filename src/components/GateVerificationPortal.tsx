@@ -86,6 +86,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   event,
 }) => {
   const isGateEnabled = isAdminGatePortalEnabled();
+  const activeEventSlug = event?.event_slug || 'deepaura-2k26';
+  const eventPrefix = (event?.event_code || 'REG').toUpperCase();
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'manual' | 'spot' | 'log'>('scanner');
   const [gateEntries, setGateEntries] = useState<GateEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
@@ -384,7 +386,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       found = registrations.find((r) => cleanMobileNumber(r.alumni?.mobile || '') === clean) || null;
       if (!found && clean.length === 10) {
         try {
-          const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
+          const res = await lookupRegistrationByMobile(activeEventSlug, clean);
           if (res.found && res.alumni) {
             found = {
               id: res.registration_id || '',
@@ -414,7 +416,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       }
     } else if (query.reg) {
       const digits = query.reg.replace(/\D/g, '').slice(0, 5);
-      const canonical = formatRegistrationNumberInput(digits);
+      const canonical = formatRegistrationNumberInput(digits, eventPrefix);
 
       found =
         registrations.find((r) => {
@@ -425,7 +427,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
       if (!found && canonical) {
         try {
-          const res = await lookupRegistrationByRegNumber('deepaura-2k26', canonical);
+          const res = await lookupRegistrationByRegNumber(activeEventSlug, canonical, eventPrefix);
           if (res.found && res.alumni) {
             found = {
               id: res.registration_id || '',
@@ -546,7 +548,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           if (!isMounted) return;
           const clean = cleanMobileNumber(decodedText);
           let targetPhone = clean.length === 10 ? clean : '';
-          let targetReg = !targetPhone && decodedText.toUpperCase().includes('REG-') ? decodedText : '';
+          let targetReg =
+            !targetPhone &&
+            (decodedText.toUpperCase().includes(`${eventPrefix}-`) ||
+              decodedText.toUpperCase().includes('REG-') ||
+              decodedText.includes('-'))
+              ? decodedText
+              : '';
 
           // Stop camera scanner immediately to freeze frame and show attendee card
           if (scannerInstanceRef.current) {
@@ -758,7 +766,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       // 1. Always attempt live database lookup first for most accurate snapshot and counts
       if (clean && clean.length === 10) {
         try {
-          const remote = await lookupRegistrationByMobile('deepaura-2k26', clean);
+          const remote = await lookupRegistrationByMobile(activeEventSlug, clean);
           if (remote.found && remote.alumni) {
             matched = {
               id: remote.registration_id || '',
@@ -826,7 +834,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       // 1. Query live database directly to fetch the latest counts and combined screenshots
       let matched: EventRegistration | null = null;
       try {
-        const remote = await lookupRegistrationByMobile('deepaura-2k26', clean);
+        const remote = await lookupRegistrationByMobile(activeEventSlug, clean);
         if (remote.found && remote.alumni) {
           matched = {
             id: remote.registration_id || '',
@@ -1044,6 +1052,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       amount: totalContributionAmount,
       verifiedBy: verifiedByNote,
       paymentScreenshotPath: finalCombinedScreenshotPath,
+      eventSlug: activeEventSlug,
     });
 
     // 3. Reinforce updating exact attendee counts and attached screenshot via Security Definer RPC
@@ -1694,7 +1703,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     <div className="gate-search-flow-box">
                       <form onSubmit={handleSearchByRegNumber} className="gate-search-input-group">
                         <div className="manual-reg-input-group">
-                          <span className="manual-reg-prefix">REG-</span>
+                          <span className="manual-reg-prefix">{eventPrefix}-</span>
                           <input
                             type="text"
                             inputMode="numeric"

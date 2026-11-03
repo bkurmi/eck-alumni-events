@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { isAlumniIdCardsEnabled } from '../lib/gate';
+import { isEventConcluded } from '../lib/eventStatus';
 import type { RegistrationFormData, RegistrationResult, ECKEvent } from '../types';
 
 interface SuccessPageProps {
@@ -47,7 +48,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
       `👤 ${formData.name} | 🎓 ${batchText}`,
       `👥 Attendance: ${attendanceText}`,
       '',
-      ...(isAttending ? [`🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`, ''] : []),
+      ...(isAttending && !isEventConcluded(event) ? [`🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`, ''] : []),
       '🙏 Thank you, ECK-RTU Alumni Kota Chapter!',
       'Looking forward to celebrating with seniors, batchmates & juniors!',
       '',
@@ -119,7 +120,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           </button>
         </div>
 
-        {isAlumniIdCardsEnabled() && isAttending && (
+        {isAlumniIdCardsEnabled() && !isEventConcluded(event) && isAttending && (
           <div className="badge-pass-row">
             <Link
               to={`/id-card?reg=${encodeURIComponent(result.registration_number)}`}

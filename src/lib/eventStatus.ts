@@ -42,6 +42,26 @@ export function isRegistrationClosed(event?: ECKEvent | null, now: Date = new Da
 }
 
 /**
+ * Check whether an event has concluded (starting the next day after the event date in IST).
+ * E.g., for event_date = '2026-11-01', the event concludes on 2026-11-02 00:00:00 IST.
+ * Also returns true if event.status is explicitly 'CLOSED' or 'COMPLETED'.
+ */
+export function isEventConcluded(event?: ECKEvent | null, now: Date = new Date()): boolean {
+  if (!event) return false;
+  if (event.status === 'CLOSED' || event.status === 'COMPLETED') {
+    return true;
+  }
+  if (!event.event_date) return false;
+
+  const dateStr = event.event_date.split('T')[0];
+  const endOfEventDay = new Date(`${dateStr}T23:59:59+05:30`);
+  if (!isNaN(endOfEventDay.getTime())) {
+    return now.getTime() > endOfEventDay.getTime();
+  }
+  return false;
+}
+
+/**
  * Returns complete registration status info, deadline formatted string, and countdown text.
  */
 export function getRegistrationStatusInfo(event?: ECKEvent | null, now: Date = new Date()) {

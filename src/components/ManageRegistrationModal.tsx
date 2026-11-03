@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { ECKEvent, ExistingRegistrationLookup } from '../types';
 import { lookupRegistrationByMobile, cleanMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { isAlumniIdCardsEnabled } from '../lib/gate';
+import { isEventConcluded } from '../lib/eventStatus';
 
 interface ManageRegistrationModalProps {
   isOpen: boolean;
@@ -275,7 +276,7 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
 
               {/* Action Buttons */}
               <div className="found-reg-actions">
-                {isAlumniIdCardsEnabled() && foundReg.attendance_status === 'yes' && (
+                {isAlumniIdCardsEnabled() && !isEventConcluded(event) && foundReg.attendance_status === 'yes' && (
                   <Link
                     to={`/id-card?mobile=${cleanMobileNumber(foundReg.alumni?.mobile || mobile)}`}
                     onClick={onClose}

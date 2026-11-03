@@ -21,10 +21,10 @@
 ALTER TABLE events ADD COLUMN IF NOT EXISTS event_code TEXT DEFAULT NULL;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS pricing_config JSONB DEFAULT NULL;
 
--- Backfill existing DeepAura 2K26 with code 'DA26' and current pricing rules
+-- Backfill existing DeepAura 2K26 with code 'REG' and current pricing rules
 UPDATE events
 SET 
-  event_code = COALESCE(event_code, 'DA26'),
+  event_code = 'REG',
   pricing_config = COALESCE(
     pricing_config,
     '{
@@ -116,7 +116,11 @@ BEGIN
     updated_at = NOW()
   RETURNING last_val INTO v_next_val;
 
-  RETURN v_prefix || '-' || LPAD(v_next_val::TEXT, 4, '0');
+  IF v_prefix = 'REG' THEN
+    RETURN 'REG-' || LPAD(v_next_val::TEXT, 5, '0');
+  ELSE
+    RETURN v_prefix || '-' || LPAD(v_next_val::TEXT, 4, '0');
+  END IF;
 END;
 $$;
 

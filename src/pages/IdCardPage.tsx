@@ -19,6 +19,7 @@ import {
 } from '../lib/gate';
 import { supabase } from '../lib/supabase';
 import { isFeedbackEnabled } from '../lib/feedback';
+import { isEventConcluded } from '../lib/eventStatus';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
 const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
@@ -41,7 +42,8 @@ function dataURLtoBlob(dataurl: string): Blob {
 
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [eventsList, setEventsList] = useState<ECKEvent[]>([]);
   const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number' | 'name'>('reg_number');
   const [mobileInput, setMobileInput] = useState('');
   const [regInput, setRegInput] = useState('');
@@ -80,6 +82,7 @@ export const IdCardPage: React.FC = () => {
     id: 'deepaura-2026',
     event_name: 'ECK-RTU Alumni DeepAura 2K26',
     event_slug: 'deepaura-2k26',
+    event_code: 'REG',
     event_date: '2026-11-01',
     event_time: '5:00 PM onwards',
     location: 'Agora Ground, ECK-RTU Campus, Kota',
@@ -96,11 +99,50 @@ export const IdCardPage: React.FC = () => {
     updated_at: new Date().toISOString(),
   };
 
+  const [activeEvent, setActiveEvent] = useState<ECKEvent>(defaultEvent);
+  const isConcluded = isEventConcluded(activeEvent);
+
+  // Load available events and resolve active event based on query param or status
+  useEffect(() => {
+    let isMounted = true;
+    async function loadEvents() {
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select('*')
+          .order('event_date', { ascending: false });
+
+        if (!error && data && data.length > 0 && isMounted) {
+          const list = data as ECKEvent[];
+          setEventsList(list);
+
+          const eventParam = searchParams.get('event');
+          const matched = eventParam
+            ? list.find((e) => e.event_slug === eventParam)
+            : null;
+
+          if (matched) {
+            setActiveEvent(matched);
+          } else {
+            const openEv = list.find((e) => e.status === 'OPEN');
+            setActiveEvent(openEv || list[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load events for ID cards:', err);
+      }
+    }
+    loadEvents();
+    return () => {
+      isMounted = false;
+    };
+  }, [searchParams]);
+
   // If feature is disabled by .env flag
   if (!isEnabled) {
     return (
       <div className="id-card-page-wrapper">
-        <Header />
+        <Header currentEventSlug={activeEvent.event_slug} />
         <main className="id-card-content-container">
           <div className="form-back-nav" style={{ marginBottom: '1.25rem' }}>
             <Link to="/" className="btn-back-link">
@@ -173,7 +215,7 @@ export const IdCardPage: React.FC = () => {
     setDownloadSuccess(false);
 
     try {
-      const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
+      const res = await lookupRegistrationByMobile(activeEvent.event_slug, clean);
       if (!res.found || !res.alumni) {
         setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
@@ -210,19 +252,65 @@ export const IdCardPage: React.FC = () => {
 
   // Reusable Registration Number Lookup (formats digits to REG-XXXXX with up to 5 digits, prepending 0s)
   const executeRegLookup = async (rawRegOrDigits: string) => {
-    const formattedReg = formatRegistrationNumberInput(rawRegOrDigits);
-    if (!formattedReg) {
-      setErrorMsg('Please enter a valid numeric registration number (up to 5 digits).');
-      return;
-    }
+    const rawClean = (rawRegOrDigits || '').trim();
+    const digitsOnly = rawClean.replace(/\D/g, '');
+    const numValue = Number(digitsOnly);
+    const eventPrefix = (activeEvent.event_code || 'REG').toUpperCase();
 
     setLoading(true);
     setErrorMsg(null);
     setRegistration(null);
     setDownloadSuccess(false);
 
+    // 1. Instant check in preloaded allRegistrations (matches Gate Verification Portal)
+    if (allRegistrations && allRegistrations.length > 0 && digitsOnly) {
+      const matchInMem = allRegistrations.find((r) => {
+        const rDigits = (r.registration_number || '').replace(/\D/g, '');
+        return (
+          r.registration_number?.toUpperCase() === rawClean.toUpperCase() ||
+          rDigits === digitsOnly ||
+          (numValue > 0 && Number(rDigits) === numValue)
+        );
+      });
+
+      if (matchInMem && matchInMem.alumni) {
+        if (matchInMem.attendance_status !== 'yes') {
+          setErrorMsg(ID_PASS_LOCKED_MSG);
+          setLoading(false);
+          return;
+        }
+
+        const existingPhoto = await resolvePhotoWithStorageFallback(matchInMem);
+        const enrichedRes = { ...matchInMem, photo_url: existingPhoto || matchInMem.photo_url };
+        cachedEntryBlobRef.current = null;
+        cachedEntryDataUrlRef.current = null;
+        cachedSocialBlobRef.current = null;
+        cachedSocialDataUrlRef.current = null;
+        setRegistration(enrichedRes);
+        setIsPhoneVerified(false);
+        setPassViewMode('social');
+        setVerifyPhoneInput('');
+        setVerifyPhoneError(null);
+        if (existingPhoto) {
+          setPhotoPreview(existingPhoto);
+        } else {
+          setPhotoPreview(null);
+        }
+        setLoading(false);
+        return;
+      }
+    }
+
+    // 2. Network RPC / Table Lookup
+    const formattedReg = formatRegistrationNumberInput(rawRegOrDigits, eventPrefix);
+    if (!formattedReg) {
+      setErrorMsg('Please enter a valid numeric registration number (up to 5 digits).');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await lookupRegistrationByRegNumber('deepaura-2k26', formattedReg);
+      const res = await lookupRegistrationByRegNumber(activeEvent.event_slug, formattedReg, eventPrefix);
       if (!res.found || !res.alumni) {
         setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
@@ -273,8 +361,9 @@ export const IdCardPage: React.FC = () => {
       setErrorMsg('Please enter your registration number (e.g. 39 or 00039).');
       return;
     }
-    // Automatically pad to 5 digits
-    const padded = digitsOnly.padStart(5, '0');
+    const eventPrefix = (activeEvent.event_code || 'REG').toUpperCase();
+    const padLen = eventPrefix === 'REG' ? 5 : 4;
+    const padded = digitsOnly.padStart(padLen, '0');
     setRegInput(padded);
     executeRegLookup(padded);
   };
@@ -284,7 +373,7 @@ export const IdCardPage: React.FC = () => {
     let isMounted = true;
     setLoadingAllRegistrations(true);
 
-    fetchAllRegistrationsForLookup(defaultEvent.event_slug)
+    fetchAllRegistrationsForLookup(activeEvent.event_slug)
       .then((list) => {
         if (isMounted) setAllRegistrations(list);
       })
@@ -298,7 +387,7 @@ export const IdCardPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeEvent.event_slug]);
 
   // Instant In-Memory Predictive Search Filter (0ms delay on keystrokes)
   const filteredNameRegistrations = React.useMemo(() => {
@@ -621,16 +710,24 @@ export const IdCardPage: React.FC = () => {
         ? `${window.location.origin}/id-card`
         : 'https://eck-alumni-events.pages.dev/id-card';
 
+    const eventDateFormatted = activeEvent.event_date
+      ? new Date(activeEvent.event_date).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : 'Event Day';
+
     const lines = [
-      '🪔 *ECK-RTU Alumni DeepAura 2K26* 🪔',
+      `🪔 *${activeEvent.event_name || 'ECK-RTU Alumni'}* 🪔`,
       '🎟️ *Official Entry ID Card Pass*',
       '',
       `👤 *Attendee:* ${name}`,
       `🎫 *Registration ID:* ${regNum}`,
       ...(branchAndBatch ? [`🎓 *Branch & Batch:* ${branchAndBatch}`] : []),
       ...(totalGuests ? [`👥 *Total Attendees:* ${totalGuests}`] : []),
-      '📅 *Event Date:* 1st November 2026 | 5:00 PM onwards',
-      '📍 *Venue:* Agora Ground, ECK-RTU Campus, Kota',
+      `📅 *Event Date:* ${eventDateFormatted} | ${activeEvent.event_time || '5:00 PM onwards'}`,
+      `📍 *Venue:* ${activeEvent.location || 'ECK-RTU Campus, Kota'}`,
       '',
       `👉 *Get your pass:* ${baseUrl}`,
       '',
@@ -737,7 +834,7 @@ export const IdCardPage: React.FC = () => {
 
   return (
     <div className="id-card-page-wrapper">
-      <Header />
+      <Header currentEventSlug={activeEvent.event_slug} />
 
       <main className="id-card-content-container">
         {/* Back navigation to Event Details */}
@@ -752,15 +849,93 @@ export const IdCardPage: React.FC = () => {
           <span className="badge-pill-accent">Alumni Event Pass Portal</span>
           <h1 className="id-page-title">Generate Your Event ID Card</h1>
           <p className="id-page-subtitle">
-            Search by your phone number, Registration ID, or Attendee Name, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
+            Search by your phone number, Registration ID, or Attendee Name, upload your photograph, and save your official pass with QR code for {activeEvent.event_name}.
           </p>
         </div>
 
         {/* Step 1: Lookup Box */}
         {!registration ? (
           <div className="id-lookup-card">
-            {/* Search Type Selector Tabs */}
-            <div className="id-search-tabs" role="tablist" aria-label="Search ID Pass by">
+            {eventsList.length > 1 && (
+              <div className="id-event-selector-box" style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                  Select Event Edition:
+                </label>
+                <select
+                  value={activeEvent.event_slug}
+                  onChange={(e) => {
+                    const found = eventsList.find((ev) => ev.event_slug === e.target.value);
+                    if (found) {
+                      setActiveEvent(found);
+                      setSearchParams({ event: found.event_slug });
+                      setRegistration(null);
+                      setErrorMsg(null);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    minHeight: '44px',
+                    padding: '8px 12px',
+                    backgroundColor: '#0f172a',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    borderRadius: '8px',
+                    color: '#fbbf24',
+                    fontSize: '16px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {eventsList.map((ev) => (
+                    <option key={ev.id} value={ev.event_slug}>
+                      {ev.event_name} {ev.status === 'CLOSED' ? '(Concluded Keepsake)' : '(Active)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {isConcluded ? (
+              <div
+                className="id-concluded-notice-box"
+                style={{
+                  background: 'rgba(15, 23, 42, 0.75)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: '12px',
+                  padding: '24px 18px',
+                  textAlign: 'center',
+                  margin: '12px 0 18px',
+                }}
+              >
+                <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🔒</div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc', marginBottom: '8px' }}>
+                  Pass Downloads Concluded
+                </h3>
+                <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 16px' }}>
+                  Gate pass downloads for <strong>{activeEvent.event_name}</strong> have closed as the event concluded on {activeEvent.event_date}.
+                </p>
+                <Link
+                  to={`/events/${activeEvent.event_slug}`}
+                  className="btn btn-primary-action"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 18px',
+                    borderRadius: '8px',
+                    fontSize: '0.92rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: '#0f172a',
+                  }}
+                >
+                  ← View Event Memories &amp; Recap
+                </Link>
+              </div>
+            ) : (
+              <>
+                {/* Search Type Selector Tabs */}
+                <div className="id-search-tabs" role="tablist" aria-label="Search ID Pass by">
               <button
                 type="button"
                 role="tab"
@@ -811,8 +986,8 @@ export const IdCardPage: React.FC = () => {
 
                 <form onSubmit={handleRegLookupSubmit} className="id-lookup-form">
                   <div className="id-integrated-input-box id-reg-input-group">
-                    <span className="id-input-prefix id-reg-prefix" title="Registration prefix REG- is fixed">
-                      REG-
+                    <span className="id-input-prefix id-reg-prefix" title={`Registration prefix ${(activeEvent.event_code || 'REG').toUpperCase()}-`}>
+                      {(activeEvent.event_code || 'REG').toUpperCase()}-
                     </span>
                     <input
                       type="text"
@@ -1027,11 +1202,17 @@ export const IdCardPage: React.FC = () => {
                 </div>
               </>
             )}
+              </>
+            )}
 
-            <div className="id-lookup-footer">
-              <span>Haven't registered yet? </span>
-              <Link to="/" className="id-link-accent">Register here for DeepAura 2K26</Link>
-            </div>
+            {!isConcluded && (
+              <div className="id-lookup-footer">
+                <span>Haven't registered yet? </span>
+                <Link to={`/events/${activeEvent.event_slug}`} className="id-link-accent">
+                  Register here for {activeEvent.event_name}
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           /* Step 2 & 3: Photo Upload and Live ID Card */
@@ -1168,7 +1349,7 @@ export const IdCardPage: React.FC = () => {
               <span>
                 {passViewMode === 'social' || !IS_GATE_PASS_RELEASED
                   ? '🔒 Social Pass: Personal phone QR code shielded for safe sharing with friends & groups'
-                  : '🎟️ Official Entry Pass: Show this QR code at the ECK-RTU gate on 1st November'}
+                  : `🎟️ Official Entry Pass: Show this QR code at the gate on ${activeEvent.event_date ? new Date(activeEvent.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'event day'}`}
               </span>
             </div>
 
@@ -1177,7 +1358,7 @@ export const IdCardPage: React.FC = () => {
               {/* Visible Pass based on active view mode & verification */}
               <IdCardPass
                 registration={registration}
-                event={defaultEvent}
+                event={activeEvent}
                 photoUrl={photoPreview}
                 cardRef={passViewMode === 'social' || !isPhoneVerified ? socialCardRef : entryCardRef}
                 hideQr={passViewMode === 'social' || !isPhoneVerified}
@@ -1198,7 +1379,7 @@ export const IdCardPage: React.FC = () => {
                 >
                   <IdCardPass
                     registration={registration}
-                    event={defaultEvent}
+                    event={activeEvent}
                     photoUrl={photoPreview}
                     cardRef={passViewMode === 'social' ? entryCardRef : socialCardRef}
                     hideQr={passViewMode === 'social' ? false : true}
@@ -1271,44 +1452,64 @@ export const IdCardPage: React.FC = () => {
               )}
 
               <div className="id-pass-action-buttons">
-                {passViewMode === 'entry' && (
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    className="btn-primary-action download-card-btn"
-                    disabled={downloading}
-                    id="btn-download-pass"
-                    title="Download official gate pass PNG with QR code"
+                {isConcluded ? (
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      background: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      borderRadius: '8px',
+                      color: '#fbbf24',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      textAlign: 'center',
+                      width: '100%',
+                    }}
                   >
-                    {downloading ? (
-                      <span>Generating High-Res Pass...</span>
-                    ) : (
-                      <>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        <span>Download Gate Entry Pass</span>
-                      </>
+                    🔒 Event Concluded — Gate pass downloads are closed.
+                  </div>
+                ) : (
+                  <>
+                    {passViewMode === 'entry' && (
+                      <button
+                        type="button"
+                        onClick={handleDownload}
+                        className="btn-primary-action download-card-btn"
+                        disabled={downloading}
+                        id="btn-download-pass"
+                        title="Download official gate pass PNG with QR code"
+                      >
+                        {downloading ? (
+                          <span>Generating High-Res Pass...</span>
+                        ) : (
+                          <>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            <span>Download Gate Entry Pass</span>
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
-                )}
 
-                {passViewMode === 'social' && (
-                  <button
-                    type="button"
-                    onClick={handleShareWhatsApp}
-                    className="btn-whatsapp-pass-download"
-                    disabled={sharingWhatsApp || downloading}
-                    id="btn-share-pass-whatsapp"
-                    title="Share privacy-protected pass image on WhatsApp"
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path d="M12.031 2C6.511 2 2.023 6.488 2.023 12.008c0 1.848.508 3.585 1.396 5.088L2 22l5.06-1.328c1.449.809 3.109 1.258 4.967 1.258 5.524 0 10.016-4.488 10.016-10.008S17.555 2 12.031 2zm5.787 14.18c-.244.688-1.229 1.264-1.742 1.344-.472.072-1.074.132-3.153-.728-2.656-1.101-4.354-3.791-4.487-3.967-.13-.176-1.072-1.429-1.072-2.726 0-1.296.677-1.936.918-2.199.24-.264.527-.33.703-.33.176 0 .352.002.506.01.164.009.385-.062.602.46.223.535.757 1.848.824 1.98.067.132.112.287.022.463-.09.176-.134.286-.266.44-.132.154-.277.343-.396.462-.132.132-.27.275-.117.538.154.263.684 1.127 1.47 1.826 1.011.898 1.862 1.177 2.126 1.309.264.132.418.11.572-.066.154-.176.66-.77.836-1.034.176-.264.352-.22.593-.132.242.088 1.54.726 1.804.858.264.132.44.198.506.308.066.11.066.638-.178 1.326z" />
-                    </svg>
-                    <span>{sharingWhatsApp ? 'Preparing Pass Image...' : 'Share Pass on WhatsApp'}</span>
-                  </button>
+                    {passViewMode === 'social' && (
+                      <button
+                        type="button"
+                        onClick={handleShareWhatsApp}
+                        className="btn-whatsapp-pass-download"
+                        disabled={sharingWhatsApp || downloading}
+                        id="btn-share-pass-whatsapp"
+                        title="Share privacy-protected pass image on WhatsApp"
+                      >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M12.031 2C6.511 2 2.023 6.488 2.023 12.008c0 1.848.508 3.585 1.396 5.088L2 22l5.06-1.328c1.449.809 3.109 1.258 4.967 1.258 5.524 0 10.016-4.488 10.016-10.008S17.555 2 12.031 2zm5.787 14.18c-.244.688-1.229 1.264-1.742 1.344-.472.072-1.074.132-3.153-.728-2.656-1.101-4.354-3.791-4.487-3.967-.13-.176-1.072-1.429-1.072-2.726 0-1.296.677-1.936.918-2.199.24-.264.527-.33.703-.33.176 0 .352.002.506.01.164.009.385-.062.602.46.223.535.757 1.848.824 1.98.067.132.112.287.022.463-.09.176-.134.286-.266.44-.132.154-.277.343-.396.462-.132.132-.27.275-.117.538.154.263.684 1.127 1.47 1.826 1.011.898 1.862 1.177 2.126 1.309.264.132.418.11.572-.066.154-.176.66-.77.836-1.034.176-.264.352-.22.593-.132.242.088 1.54.726 1.804.858.264.132.44.198.506.308.066.11.066.638-.178 1.326z" />
+                        </svg>
+                        <span>{sharingWhatsApp ? 'Preparing Pass Image...' : 'Share Pass on WhatsApp'}</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1360,7 +1561,7 @@ export const IdCardPage: React.FC = () => {
                     <span style={{ fontSize: '1.25rem' }}>❤️</span>
                     <div style={{ textAlign: 'left' }}>
                       <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
-                        DeepAura 2K26 – Your Take!
+                        {activeEvent.event_name || 'Alumni Reunion'} – Your Take!
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
                         Share your 2-minute experience &amp; help shape future reunions!

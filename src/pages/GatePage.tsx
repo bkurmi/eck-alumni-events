@@ -13,6 +13,7 @@ export const GatePage: React.FC = () => {
   const [staffSession, setStaffSession] = useState<GateStaffSession | null>(null);
   const [adminSession, setAdminSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [eventsList, setEventsList] = useState<ECKEvent[]>([]);
   const [activeEvent, setActiveEvent] = useState<ECKEvent | null>(null);
 
   // Registrations state for stats and counter
@@ -39,29 +40,44 @@ export const GatePage: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch registrations once authorized
-  const fetchRegistrations = async () => {
+  // Fetch registrations once authorized, strictly scoped to active event
+  const fetchRegistrations = async (selectedEv?: ECKEvent | null) => {
     try {
-      const [regRes, verifRes, eventRes] = await Promise.all([
-        supabase
-          .from('event_registrations')
-          .select(`
-            *,
-            alumni:alumni_id (*)
-          `)
-          .order('created_at', { ascending: false }),
+      const eventRes = await supabase
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: false });
+
+      let targetEvent = selectedEv !== undefined ? selectedEv : activeEvent;
+      if (!eventRes.error && eventRes.data && eventRes.data.length > 0) {
+        const evList = eventRes.data as ECKEvent[];
+        setEventsList(evList);
+        if (!targetEvent) {
+          targetEvent = evList.find((e) => e.status === 'OPEN') || evList[0];
+          setActiveEvent(targetEvent);
+        }
+      }
+
+      if (!targetEvent) return;
+
+      const regQuery = supabase
+        .from('event_registrations')
+        .select(`
+          *,
+          alumni:alumni_id (*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (targetEvent.id) {
+        regQuery.eq('event_id', targetEvent.id);
+      }
+
+      const [regRes, verifRes] = await Promise.all([
+        regQuery,
         supabase
           .from('payment_verifications')
           .select('registration_id, verified_status'),
-        supabase
-          .from('events')
-          .select('*')
-          .order('event_date', { ascending: false }),
       ]);
-
-      if (!eventRes.error && eventRes.data && eventRes.data.length > 0) {
-        setActiveEvent(eventRes.data[0] as ECKEvent);
-      }
 
       if (!regRes.error && regRes.data) {
         const list = regRes.data as any[];
@@ -161,7 +177,7 @@ export const GatePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="gate-header-user-bar">
+        <div className="gate-header-user-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div className="gate-user-badge">
             <span className="gate-user-dot" aria-hidden="true" />
             <div className="gate-user-text">
@@ -172,6 +188,41 @@ export const GatePage: React.FC = () => {
               <span className="gate-station-name">{stationDisplayName}</span>
             </div>
           </div>
+
+          {eventsList.length > 0 && (
+            <div className="gate-event-selector-wrap" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Active Event:</span>
+              <select
+                value={activeEvent?.id || ''}
+                onChange={(e) => {
+                  const ev = eventsList.find((x) => x.id === e.target.value);
+                  if (ev) {
+                    setActiveEvent(ev);
+                    fetchRegistrations(ev);
+                  }
+                }}
+                className="gate-event-select"
+                style={{
+                  padding: '6px 10px',
+                  backgroundColor: '#0f172a',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  borderRadius: '6px',
+                  color: '#fbbf24',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  minHeight: '34px',
+                }}
+              >
+                {eventsList.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.event_name} {ev.status === 'CLOSED' ? '(Closed)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </header>
 

@@ -186,9 +186,13 @@ export function formatRegistrationNumberInput(rawInput: string, defaultPrefix = 
  */
 export async function lookupRegistrationByRegNumber(
   eventSlug: string,
-  regNumberOrDigits: string
+  regNumberOrDigits: string,
+  defaultPrefix = 'REG'
 ): Promise<ExistingRegistrationLookup> {
-  const formattedRegNumber = formatRegistrationNumberInput(regNumberOrDigits);
+  const formattedRegNumber = formatRegistrationNumberInput(regNumberOrDigits, defaultPrefix);
+  const digitsOnly = (regNumberOrDigits || '').replace(/\D/g, '');
+  const legacyRegFormat = digitsOnly ? `REG-${digitsOnly.padStart(5, '0')}` : '';
+
   if (!formattedRegNumber) {
     return { found: false };
   }
@@ -204,10 +208,25 @@ export async function lookupRegistrationByRegNumber(
       if (data.found) {
         return data as ExistingRegistrationLookup;
       }
-      return { found: false };
     }
   } catch (rpcErr) {
     console.warn('RPC get_registration_by_reg_number notice:', rpcErr);
+  }
+
+  // If primary RPC with formatted prefix didn't find, and formatted is different from legacy REG-00000, retry RPC with legacy REG
+  if (legacyRegFormat && legacyRegFormat !== formattedRegNumber) {
+    try {
+      const { data: legacyData, error: legacyErr } = await supabase.rpc('get_registration_by_reg_number', {
+        p_event_slug: eventSlug,
+        p_reg_number: legacyRegFormat,
+      });
+
+      if (!legacyErr && legacyData && legacyData.found) {
+        return legacyData as ExistingRegistrationLookup;
+      }
+    } catch {
+      // Silently fall through to table query
+    }
   }
 
   // 2. Secondary fallback: Direct Supabase table query
@@ -220,8 +239,13 @@ export async function lookupRegistrationByRegNumber(
 
     let query = supabase
       .from('event_registrations')
-      .select('*, alumni:alumni_id (*)')
-      .ilike('registration_number', formattedRegNumber);
+      .select('*, alumni:alumni_id (*)');
+
+    if (legacyRegFormat && legacyRegFormat !== formattedRegNumber) {
+      query = query.or(`registration_number.ilike.${formattedRegNumber},registration_number.ilike.${legacyRegFormat}`);
+    } else {
+      query = query.ilike('registration_number', formattedRegNumber);
+    }
 
     if (eventData?.id) {
       query = query.eq('event_id', eventData.id);

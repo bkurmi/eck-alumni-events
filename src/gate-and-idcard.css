@@ -7571,3 +7571,18 @@
     font-size: 0.88rem;
   }
 }
+
+/* Keepsake concluded banner & event dropdown */
+.ticket-v-concluded-banner {
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.2), rgba(245, 158, 11, 0.25));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-align: center;
+  margin-bottom: 12px;
+}
