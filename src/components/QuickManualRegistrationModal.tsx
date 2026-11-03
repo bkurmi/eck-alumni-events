@@ -4,7 +4,7 @@ import { ENGINEERING_DISCIPLINES, INDIAN_STATES } from '../types';
 import { supabase } from '../lib/supabase';
 import { calculateContribution } from '../lib/pricing';
 import { lookupRegistrationByMobile, cleanMobileNumber } from '../lib/registrations';
-import { DEFAULT_UPI_CONFIGS, UPI_ACCOUNT_NAMES } from '../lib/paymentRotation';
+import { getEventUpiConfigs } from '../lib/paymentRotation';
 
 interface QuickManualRegistrationModalProps {
   isOpen: boolean;
@@ -110,7 +110,8 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
   const [amountOverride, setAmountOverride] = useState<string>('');
   const [isCustomAmount, setIsCustomAmount] = useState<boolean>(false);
   const [markAsVerified, setMarkAsVerified] = useState<boolean>(true);
-  const [selectedUpiId, setSelectedUpiId] = useState<string>('9799951857@upi');
+  const defaultEventUpi = event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || 'cash_handover';
+  const [selectedUpiId, setSelectedUpiId] = useState<string>(defaultEventUpi);
   const [customUpiInput, setCustomUpiInput] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState<string>('Paid directly via QR (Manual Admin Entry)');
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -156,17 +157,14 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     return options;
   }, [engineeringDiscipline]);
 
-  // Known receiving UPI options (including current selected UPI if custom)
+  // Known receiving UPI options dynamically loaded from event
   const upiOptions = useMemo(() => {
+    const eventConfigs = getEventUpiConfigs(event);
     const list = [
-      ...DEFAULT_UPI_CONFIGS.map((c) => ({
+      ...eventConfigs.map((c) => ({
         upi_id: c.upi_id.toLowerCase().trim(),
-        label: `${c.account_name || UPI_ACCOUNT_NAMES[c.upi_id.toLowerCase().trim()] || 'Organizer'} (${c.upi_id})`,
+        label: `${c.account_name || 'Organizer'} (${c.upi_id})`,
       })),
-      {
-        upi_id: '9799951857@upi',
-        label: `${UPI_ACCOUNT_NAMES['9799951857@upi'] || 'Chetan'} (9799951857@upi)`,
-      },
       {
         upi_id: 'cash_handover',
         label: '💵 Cash Handover / Direct',
@@ -186,7 +184,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
       if (!list.some((item) => item.upi_id === norm)) {
         list.splice(list.length - 2, 0, {
           upi_id: norm,
-          label: `${UPI_ACCOUNT_NAMES[norm] || 'Recorded Account'} (${norm})`,
+          label: `Recorded Account (${norm})`,
         });
       }
     }
@@ -428,7 +426,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     setAmountOverride('800');
     setIsCustomAmount(false);
     setMarkAsVerified(true);
-    setSelectedUpiId('9799951857@upi');
+    setSelectedUpiId(event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || 'cash_handover');
     setCustomUpiInput('');
     setPaymentNotes('Paid directly via QR (Manual Admin Entry)');
     setScreenshotFile(null);

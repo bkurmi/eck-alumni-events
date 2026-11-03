@@ -7,12 +7,13 @@ import {
   type GateStaffSession,
 } from '../lib/gateAuth';
 import { supabase } from '../lib/supabase';
-import type { EventRegistration } from '../types';
+import type { EventRegistration, ECKEvent } from '../types';
 
 export const GatePage: React.FC = () => {
   const [staffSession, setStaffSession] = useState<GateStaffSession | null>(null);
   const [adminSession, setAdminSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [activeEvent, setActiveEvent] = useState<ECKEvent | null>(null);
 
   // Registrations state for stats and counter
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -41,7 +42,7 @@ export const GatePage: React.FC = () => {
   // Fetch registrations once authorized
   const fetchRegistrations = async () => {
     try {
-      const [regRes, verifRes] = await Promise.all([
+      const [regRes, verifRes, eventRes] = await Promise.all([
         supabase
           .from('event_registrations')
           .select(`
@@ -52,7 +53,15 @@ export const GatePage: React.FC = () => {
         supabase
           .from('payment_verifications')
           .select('registration_id, verified_status'),
+        supabase
+          .from('events')
+          .select('*')
+          .order('event_date', { ascending: false }),
       ]);
+
+      if (!eventRes.error && eventRes.data && eventRes.data.length > 0) {
+        setActiveEvent(eventRes.data[0] as ECKEvent);
+      }
 
       if (!regRes.error && regRes.data) {
         const list = regRes.data as any[];
@@ -174,6 +183,7 @@ export const GatePage: React.FC = () => {
           staffName={staffDisplayName}
           stationName={stationDisplayName}
           onLogout={handleLogout}
+          event={activeEvent}
         />
       </main>
     </div>

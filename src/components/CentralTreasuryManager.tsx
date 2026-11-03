@@ -34,10 +34,16 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
   const [selectedTransfer, setSelectedTransfer] = useState<EventExpense | null>(null);
   const [presetFromAccount, setPresetFromAccount] = useState<string | undefined>(undefined);
 
-  // 1. Compute Master Account Settlements across all accounts
+  // 1. Compute Master Account Settlements across all accounts (supporting dynamic event coordinator accounts)
   const settlementData = useMemo(() => {
-    return computeAccountSettlements(expenses, registrations, verifications, sponsorships);
-  }, [expenses, registrations, verifications, sponsorships]);
+    return computeAccountSettlements(
+      expenses,
+      registrations,
+      verifications,
+      sponsorships,
+      (activeEvent as any)?.expense_accounts_config || undefined
+    );
+  }, [expenses, registrations, verifications, sponsorships, (activeEvent as any)?.expense_accounts_config]);
 
   // 2. Total Liquid Cash across all coordinators
   const totalLiquidAssets = useMemo(() => {
@@ -119,9 +125,9 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
     const custodians: { name: string; bank: string; upiId?: string; amount: number; isCash?: boolean }[] = [];
     if (effectiveMukeshLegacy > 0 || (mukeshAcc && mukeshAcc.netBalance > 0)) {
       custodians.push({
-        name: 'Mukesh',
+        name: mukeshAcc?.accountName || 'Mukesh',
         bank: mukeshAcc?.bankName || 'YES Bank',
-        upiId: mukeshAcc?.upiId || '9001017275@ybl',
+        upiId: mukeshAcc?.upiId || undefined,
         amount: effectiveMukeshLegacy,
         isCash: false,
       });

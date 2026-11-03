@@ -32,12 +32,13 @@ const DEFAULT_EVENT: ECKEvent = {
   description:
     'Join fellow ECK and RTU alumni for an evening of nostalgic reunions, networking, cultural performances, gala dinner, and Diwali celebrations.',
   registration_fee: 800,
-  upi_id: '9799951857@upi',
+  upi_id: null,
   banner_image_url: '/deepaura-banner.jpg',
   tagline: '“दीप जले, यादें मुस्कुराएँ।”',
   theme_primary_color: '#f59e0b',
   theme_accent_color: '#d97706',
-  qr_image_url: '/qr-1.png',
+  qr_image_url: null,
+  upi_rotation_configs: null,
   status: 'OPEN',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -99,7 +100,7 @@ export const EventPage: React.FC = () => {
           setEvent({
             ...rawEvent,
             upi_id: rotation.activeConfig.upi_id,
-            qr_image_url: rotation.activeConfig.qr_image_url,
+            qr_image_url: rotation.activeConfig.qr_image_url || null,
           });
         }
       } catch (err) {
@@ -112,7 +113,7 @@ export const EventPage: React.FC = () => {
             ...DEFAULT_EVENT,
             status: fallbackStatus,
             upi_id: rotation.activeConfig.upi_id,
-            qr_image_url: rotation.activeConfig.qr_image_url,
+            qr_image_url: rotation.activeConfig.qr_image_url || null,
           });
         }
       } finally {
@@ -154,7 +155,7 @@ export const EventPage: React.FC = () => {
         setEvent((prev) => ({
           ...prev,
           upi_id: rotation.activeConfig.upi_id,
-          qr_image_url: rotation.activeConfig.qr_image_url,
+          qr_image_url: rotation.activeConfig.qr_image_url || null,
         }));
       })
       .catch(() => { });
@@ -187,7 +188,7 @@ export const EventPage: React.FC = () => {
       setEvent((prevEvent) => ({
         ...prevEvent,
         upi_id: rotation.activeConfig.upi_id,
-        qr_image_url: rotation.activeConfig.qr_image_url,
+        qr_image_url: rotation.activeConfig.qr_image_url || null,
       }));
       return nextCount;
     });
@@ -208,7 +209,7 @@ export const EventPage: React.FC = () => {
         setEvent((prev) => ({
           ...prev,
           upi_id: rotation.activeConfig.upi_id,
-          qr_image_url: rotation.activeConfig.qr_image_url,
+          qr_image_url: rotation.activeConfig.qr_image_url || null,
         }));
       })
       .catch(() => { });

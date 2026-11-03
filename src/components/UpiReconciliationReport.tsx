@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { EventRegistration, PaymentVerification, Sponsorship } from '../types';
-import { DEFAULT_UPI_CONFIGS, UPI_ACCOUNT_NAMES } from '../lib/paymentRotation';
+import type { EventRegistration, PaymentVerification, Sponsorship, ECKEvent } from '../types';
+import { getUpiAccountName } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 
@@ -8,6 +8,7 @@ interface UpiReconciliationReportProps {
   registrations: EventRegistration[];
   verifications: PaymentVerification[];
   sponsorships?: Sponsorship[];
+  event?: ECKEvent | null;
   onSaveVerification: (
     registrationId: string,
     upiId: string,
@@ -40,60 +41,80 @@ const getPublicScreenshotUrl = (path: string | null | undefined) => {
 
 
 
-// Receiving accounts tracked specifically for UPI Reconciliation Reporting
-const RECONCILIATION_ACCOUNTS: {
-  upi_id: string;
-  bankName: string;
-  accountName: string;
-  isSponsorAccount?: boolean;
-}[] = [
-    ...DEFAULT_UPI_CONFIGS.map((c, idx) => {
-      let bank = 'UPI';
-      const upi = c.upi_id.toLowerCase().trim();
-      if (upi.includes('sbi')) bank = 'SBI';
-      else if (upi.includes('axis')) bank = 'AXIS';
-      else if (upi.includes('ybl')) bank = 'YES';
-      else if (upi.includes('ibl') || upi.includes('icici')) bank = 'ICICI';
-      return {
-        upi_id: upi,
-        bankName: bank,
-        accountName: c.account_name || UPI_ACCOUNT_NAMES[upi] || `Account ${idx + 1}`,
-        isSponsorAccount: false,
-      };
-    }),
-    {
-      upi_id: '9799951857@upi',
-      bankName: 'UPI',
-      accountName: UPI_ACCOUNT_NAMES['9799951857@upi'] || 'Chetan',
-      isSponsorAccount: false,
-    },
-    {
-      upi_id: 'gautam.lucky-1@okicici',
-      bankName: 'ICICI',
-      accountName: UPI_ACCOUNT_NAMES['gautam.lucky-1@okicici'] || 'Lokesh',
-      isSponsorAccount: false,
-    },
-  ];
-
 export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = ({
   registrations,
   verifications,
   sponsorships = [],
+  event,
   onSaveVerification,
   onEditSponsorship,
   currentUserEmail,
 }) => {
-  // Known accounts list specifically for reconciliation reporting
+  // Known accounts list dynamically merged from active event configs and actual recorded transactions
   const knownAccounts: KnownAccount[] = useMemo(() => {
-    return RECONCILIATION_ACCOUNTS.map((c) => ({
-      upi_id: c.upi_id.toLowerCase().trim(),
-      label: `${c.accountName} (${c.bankName})`,
-      badge: c.accountName,
-      bankName: c.bankName,
-      accountName: c.accountName,
-      isSponsorAccount: c.isSponsorAccount,
-    }));
-  }, []);
+    const list: KnownAccount[] = [];
+    const seen = new Set<string>();
+
+    // 1. Add event-specific configured UPI accounts first if present
+    if (event?.upi_rotation_configs && Array.isArray(event.upi_rotation_configs)) {
+      event.upi_rotation_configs.forEach((c) => {
+        const upi = (c.upi_id || '').toLowerCase().trim();
+        if (upi && !seen.has(upi)) {
+          seen.add(upi);
+          let bank = 'UPI';
+          if (upi.includes('sbi')) bank = 'SBI';
+          else if (upi.includes('axis')) bank = 'AXIS';
+          else if (upi.includes('ybl')) bank = 'YES';
+          else if (upi.includes('ibl') || upi.includes('icici')) bank = 'ICICI';
+          const accName = c.account_name || getUpiAccountName(upi, event) || 'UPI Account';
+          list.push({
+            upi_id: upi,
+            label: `${accName} (${bank})`,
+            badge: accName,
+            bankName: bank,
+            accountName: accName,
+            isSponsorAccount: false,
+          });
+        }
+      });
+    }
+
+    // 2. Add any accounts recorded in verifications
+    verifications.forEach((v) => {
+      const upi = (v.upi_id || '').toLowerCase().trim();
+      if (upi && !seen.has(upi)) {
+        seen.add(upi);
+        const accName = getUpiAccountName(upi, event) || 'UPI Account';
+        list.push({
+          upi_id: upi,
+          label: `${accName} (${upi})`,
+          badge: accName,
+          bankName: 'UPI',
+          accountName: accName,
+          isSponsorAccount: false,
+        });
+      }
+    });
+
+    // 3. Add any accounts recorded in sponsorships
+    sponsorships.forEach((s) => {
+      const upi = (s.receiving_upi_id || '').toLowerCase().trim();
+      if (upi && !seen.has(upi)) {
+        seen.add(upi);
+        const accName = getUpiAccountName(upi, event) || 'Sponsor Account';
+        list.push({
+          upi_id: upi,
+          label: `${accName} (${upi})`,
+          badge: accName,
+          bankName: 'UPI',
+          accountName: accName,
+          isSponsorAccount: true,
+        });
+      }
+    });
+
+    return list;
+  }, [event, verifications, sponsorships]);
 
   // All filterable account keys: known accounts + 'unassigned'
   const allAccountKeys = useMemo(() => {
@@ -235,7 +256,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     });
 
     sponsorships.forEach((s) => {
-      const key = (s.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
+      const key = (s.receiving_upi_id || 'unassigned').toLowerCase().trim();
       if (!stats[key]) {
         stats[key] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
       }
@@ -316,7 +337,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   // Filtered sponsorships based on selected UPI accounts, search, and date
   const filteredSponsorships = useMemo(() => {
     return (sponsorships || []).filter((s) => {
-      const rawUpi = (s.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
+      const rawUpi = (s.receiving_upi_id || 'unassigned').toLowerCase().trim();
       const isKnown = knownAccounts.some((a) => a.upi_id === rawUpi);
       const upi = isKnown ? rawUpi : 'unassigned';
       if (!selectedAccounts.includes(upi)) {
@@ -617,7 +638,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     if (filteredSponsorships.length > 0) {
       text += `\n🤝 *Sponsorship Contributions (${filteredSponsorships.length}):*\n`;
       filteredSponsorships.forEach((sp, idx) => {
-        text += `  ${idx + 1}. ${sp.sponsor_name} — ₹${Number(sp.amount || 0).toLocaleString('en-IN')} [${sp.receiving_upi_id || 'gautam.lucky-1@okicici'}]\n`;
+        text += `  ${idx + 1}. ${sp.sponsor_name} — ₹${Number(sp.amount || 0).toLocaleString('en-IN')} [${sp.receiving_upi_id || 'Direct / Bank'}]\n`;
       });
     }
 
@@ -1161,8 +1182,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                           </span>
                         </td>
                         <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
-                          <span className="assigned-upi-pill" title={sp.receiving_upi_id || 'gautam.lucky-1@okicici'}>
-                            {sp.receiving_upi_id || 'gautam.lucky-1@okicici'}
+                          <span className="assigned-upi-pill" title={sp.receiving_upi_id || 'Direct / Bank'}>
+                            {sp.receiving_upi_id || 'Direct / Bank'}
                           </span>
                         </td>
                         <td style={{ padding: '6px 4px', textAlign: 'center', fontSize: '0.82rem' }} className="font-mono">
@@ -1221,7 +1242,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       <div className="upi-m-account-wrap">
                         <span className="upi-m-account-label">UPI ID:</span>
                         <span className="assigned-upi-pill">
-                          <span className="upi-pill-raw font-mono">{sp.receiving_upi_id || 'gautam.lucky-1@okicici'}</span>
+                          <span className="upi-pill-raw font-mono">{sp.receiving_upi_id || 'Direct / Bank'}</span>
                         </span>
                       </div>
                       <button
@@ -1673,7 +1694,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                     className="upi-form-select"
                   >
                     {knownAccounts.map((acc) => {
-                      const name = acc.accountName || UPI_ACCOUNT_NAMES[acc.upi_id] || '';
+                      const name = acc.accountName || '';
                       const hasName = name && name.toLowerCase().trim() !== acc.upi_id.toLowerCase().trim();
                       const bankLabel = acc.bankName && acc.bankName !== 'UPI' ? ` (${acc.bankName})` : '';
                       const displayText = hasName

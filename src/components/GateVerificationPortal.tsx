@@ -19,9 +19,9 @@ import {
   formatRegistrationNumberInput,
 } from '../lib/registrations';
 import { calculateContribution, calculateSpotContribution } from '../lib/pricing';
-import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
+import { getEventUpiConfigs } from '../lib/paymentRotation';
 import { ENGINEERING_DISCIPLINES } from '../types';
-import type { EventRegistration, GateEntry, GateVerificationResult } from '../types';
+import type { EventRegistration, GateEntry, GateVerificationResult, ECKEvent } from '../types';
 
 function toTitleCase(str: string): string {
   return str
@@ -74,6 +74,7 @@ interface GateVerificationPortalProps {
   staffName?: string;
   stationName?: string;
   onLogout?: () => void;
+  event?: ECKEvent | null;
 }
 
 export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
@@ -82,6 +83,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   staffName,
   stationName,
   onLogout,
+  event,
 }) => {
   const isGateEnabled = isAdminGatePortalEnabled();
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'manual' | 'spot' | 'log'>('scanner');
@@ -207,10 +209,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const spotCameraInputRef = useRef<HTMLInputElement | null>(null);
   const spotFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Event configured UPI endpoints for spot collection
+  const eventUpiConfigs = React.useMemo(() => {
+    return getEventUpiConfigs(event);
+  }, [event]);
+
   // Currently selected UPI configuration (if paying via QR)
   const selectedUpiConfig = React.useMemo(() => {
-    return DEFAULT_UPI_CONFIGS.find((c) => c.upi_id === spotPaymentMode) || null;
-  }, [spotPaymentMode]);
+    return eventUpiConfigs.find((c) => c.upi_id === spotPaymentMode) || null;
+  }, [eventUpiConfigs, spotPaymentMode]);
 
   const handleCopyUpi = (upiId: string) => {
     try {
@@ -2459,7 +2466,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       💵 Cash Collected ({isExistingPaid ? `Difference: ₹${amountToCollect}` : `₹${amountToCollect}`})
                     </option>
                     <optgroup label={`📱 UPI QR - Scan to Pay ${isExistingPaid ? `Difference (₹${amountToCollect})` : `(₹${amountToCollect})`}`}>
-                      {DEFAULT_UPI_CONFIGS.map((config) => {
+                      {eventUpiConfigs.map((config) => {
                         const bankHandle = config.upi_id.includes('@')
                           ? `@${config.upi_id.split('@')[1]}`
                           : config.upi_id;
@@ -2510,7 +2517,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   <div className="spot-qr-account-switcher">
                     <span className="switcher-label">Switch Receiver:</span>
                     <div className="switcher-pills">
-                      {DEFAULT_UPI_CONFIGS.map((config) => (
+                      {eventUpiConfigs.map((config) => (
                         <button
                           key={config.upi_id}
                           type="button"
@@ -2531,7 +2538,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     <div className="spot-qr-frame-box">
                       <div className="spot-qr-image-wrapper">
                         <img
-                          src={selectedUpiConfig.qr_image_url}
+                          src={selectedUpiConfig.qr_image_url || undefined}
                           alt={`UPI QR Code for ${selectedUpiConfig.account_name}`}
                           className="spot-qr-img"
                         />

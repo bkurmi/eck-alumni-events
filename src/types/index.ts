@@ -2,7 +2,7 @@
 
 export interface UpiPaymentConfig {
   upi_id: string;
-  qr_image_url: string;
+  qr_image_url?: string | null;
   account_name?: string;
 }
 
@@ -23,6 +23,15 @@ export interface EventPricingConfig {
   spot_child_under_10?: number;
 }
 
+export interface ExpenseAccountConfig {
+  id: string;
+  label: string;
+  accountName: string;
+  bankName: string;
+  upiId?: string;
+  isCash?: boolean;
+}
+
 export interface ECKEvent {
   id: string;
   event_name: string;
@@ -41,6 +50,7 @@ export interface ECKEvent {
   theme_accent_color: string;
   qr_image_url: string | null;
   upi_rotation_configs?: UpiPaymentConfig[] | null;
+  expense_accounts_config?: ExpenseAccountConfig[] | null;
   registration_closes_at?: string | null;
   memory_media?: EventMemoryMedia | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'COMPLETED';

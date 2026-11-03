@@ -11,15 +11,6 @@ export interface ExpenseAccountOption {
 }
 
 export const KNOWN_EXPENSE_ACCOUNTS: ExpenseAccountOption[] = [
-  { id: 'Hari Narayan', label: 'Hari Narayan (SBI)', accountName: 'Hari Narayan', bankName: 'SBI', upiId: '9414177517@sbi' },
-  { id: 'Mitesh', label: 'Mitesh (Axis)', accountName: 'Mitesh', bankName: 'AXIS', upiId: 'jyotibala.nagar@axisbank' },
-  { id: 'Rajeev', label: 'Rajeev (ICICI)', accountName: 'Rajeev', bankName: 'ICICI', upiId: '9414936876@ibl' },
-  { id: 'Mukesh', label: 'Mukesh (YES)', accountName: 'Mukesh', bankName: 'YES', upiId: '9001017275@ybl' },
-  { id: 'Chetan', label: 'Chetan (UPI)', accountName: 'Chetan', bankName: 'UPI', upiId: '9799951857@upi' },
-  { id: 'Lokesh', label: 'Lokesh (ICICI)', accountName: 'Lokesh', bankName: 'ICICI', upiId: 'gautam.lucky-1@okicici' },
-  { id: 'Bhawesh', label: 'Bhawesh (UPI)', accountName: 'Bhawesh', bankName: 'UPI' },
-  { id: 'Manoj', label: 'Manoj (UPI)', accountName: 'Manoj', bankName: 'UPI' },
-  { id: 'Shailendra', label: 'Shailendra (UPI)', accountName: 'Shailendra', bankName: 'UPI' },
   { id: 'Cash in Hand', label: '💵 Cash in Hand / Spot Cash', accountName: 'Cash in Hand', bankName: 'Cash', isCash: true },
 ];
 
@@ -144,7 +135,8 @@ export function computeAccountSettlements(
   expenses: EventExpense[],
   registrations: any[] = [],
   verifications: any[] = [],
-  sponsorships: any[] = []
+  sponsorships: any[] = [],
+  customAccounts?: ExpenseAccountOption[]
 ): {
   accounts: AccountSettlement[];
   unassignedExpenseTotal: number;
@@ -152,15 +144,25 @@ export function computeAccountSettlements(
   totalOutflow: number;
   netEventBalance: number;
 } {
-  // 1. Map verifications by registration_id
+  // 1. Build combined known accounts list (defaults + event specific custom accounts)
+  const allKnownAccounts: ExpenseAccountOption[] = [...KNOWN_EXPENSE_ACCOUNTS];
+  if (Array.isArray(customAccounts) && customAccounts.length > 0) {
+    customAccounts.forEach((c) => {
+      if (!allKnownAccounts.some((k) => k.id.toLowerCase() === c.id.toLowerCase())) {
+        allKnownAccounts.push(c);
+      }
+    });
+  }
+
+  // 2. Map verifications by registration_id
   const verifByRegId = new Map<string, any>();
   verifications.forEach((v) => {
     verifByRegId.set(v.registration_id, v);
   });
 
-  // 2. Initialize settlement data for known accounts
+  // 3. Initialize settlement data for known accounts
   const settlementsMap = new Map<string, AccountSettlement>();
-  KNOWN_EXPENSE_ACCOUNTS.forEach((acc) => {
+  allKnownAccounts.forEach((acc) => {
     settlementsMap.set(acc.id.toLowerCase(), {
       accountId: acc.id,
       accountName: acc.accountName,
@@ -185,7 +187,7 @@ export function computeAccountSettlements(
     if (!clean) return null;
     const lower = clean.toLowerCase();
 
-    for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+    for (const acc of allKnownAccounts) {
       const accId = acc.id.toLowerCase();
       const accName = acc.accountName.toLowerCase();
       if (
@@ -227,7 +229,7 @@ export function computeAccountSettlements(
         : Number(reg.amount || 0);
 
     let matched = false;
-    for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+    for (const acc of allKnownAccounts) {
       if (acc.upiId && upi === acc.upiId.toLowerCase()) {
         const item = settlementsMap.get(acc.id.toLowerCase());
         if (item) item.inflow += amount;
@@ -247,10 +249,10 @@ export function computeAccountSettlements(
 
   // 4. Compute Inflows from Sponsorships
   sponsorships.forEach((sp) => {
-    const upi = (sp.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
+    const upi = (sp.receiving_upi_id || '').toLowerCase().trim();
     const amount = Number(sp.amount || 0);
     let matched = false;
-    for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+    for (const acc of allKnownAccounts) {
       if (acc.upiId && upi === acc.upiId.toLowerCase()) {
         const item = settlementsMap.get(acc.id.toLowerCase());
         if (item) item.inflow += amount;

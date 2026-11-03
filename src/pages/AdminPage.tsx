@@ -38,12 +38,13 @@ const DEFAULT_EVENT: ECKEvent = {
   description:
     'Join fellow ECK and RTU alumni for an evening of nostalgic reunions, networking, cultural celebrations, gala dinner, and Diwali celebrations.',
   registration_fee: 800,
-  upi_id: '9799951857@upi',
+  upi_id: null,
   banner_image_url: '/deepaura-banner.jpg',
   tagline: '“दीप जले, यादें मुस्कुराएँ।”',
   theme_primary_color: '#6366f1',
   theme_accent_color: '#f59e0b',
-  qr_image_url: '/qr-1.png',
+  qr_image_url: null,
+  upi_rotation_configs: null,
   status: 'OPEN',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -954,6 +955,7 @@ export const AdminPage: React.FC = () => {
                   registrations={registrations}
                   verifications={verifications}
                   sponsorships={sponsorships}
+                  event={activeEvent}
                   onSaveVerification={handleSaveVerification}
                   onEditSponsorship={(sp) => {
                     setSelectedSponsorship(sp);
@@ -1475,6 +1477,7 @@ export const AdminPage: React.FC = () => {
         onSave={handleSaveSponsorship}
         initialData={selectedSponsorship}
         currentUserEmail={session?.user?.email}
+        event={activeEvent}
       />
 
       {/* Expense Entry & Edit Modal */}

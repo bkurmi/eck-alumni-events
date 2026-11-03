@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import type { Sponsorship } from '../types';
-import { DEFAULT_UPI_CONFIGS, UPI_ACCOUNT_NAMES } from '../lib/paymentRotation';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import type { Sponsorship, ECKEvent } from '../types';
+import { getEventUpiConfigs } from '../lib/paymentRotation';
 import { getPublicSponsorshipScreenshotUrl } from '../lib/sponsorships';
 
 interface SponsorshipModalProps {
@@ -9,6 +9,7 @@ interface SponsorshipModalProps {
   onSave: (sponsorship: Partial<Sponsorship>, screenshotFile?: File | null) => Promise<boolean>;
   initialData?: Sponsorship | null;
   currentUserEmail?: string;
+  event?: ECKEvent | null;
 }
 
 const PRESET_AMOUNTS = [5000, 11000, 21000, 51000, 100000];
@@ -19,6 +20,7 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
   onSave,
   initialData,
   currentUserEmail,
+  event,
 }) => {
   const [sponsorName, setSponsorName] = useState('');
   const [amount, setAmount] = useState<string>('');
@@ -39,15 +41,14 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
   const formTopRef = useRef<HTMLDivElement | null>(null);
   const formBodyRef = useRef<HTMLFormElement | null>(null);
 
-  // Available receiving UPI account options
-  const knownUpiOptions = [
-    { upi: 'gautam.lucky-1@okicici', label: `Lokesh (gautam.lucky-1@okicici)` },
-    { upi: '9799951857@upi', label: `Chetan (9799951857@upi)` },
-    ...DEFAULT_UPI_CONFIGS.map((c) => ({
+  // Available receiving UPI account options loaded dynamically from active event
+  const knownUpiOptions = useMemo(() => {
+    const eventConfigs = getEventUpiConfigs(event);
+    return eventConfigs.map((c) => ({
       upi: c.upi_id.toLowerCase().trim(),
-      label: `${c.account_name || UPI_ACCOUNT_NAMES[c.upi_id.toLowerCase().trim()] || 'UPI'} (${c.upi_id})`,
-    })),
-  ];
+      label: `${c.account_name || 'UPI'} (${c.upi_id})`,
+    }));
+  }, [event]);
 
   // Initialize or reset form when modal opens or initialData changes
   useEffect(() => {
@@ -80,7 +81,7 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
         // New entry defaults (Lokesh is the primary recipient for Sponsorships)
         setSponsorName('');
         setAmount('');
-        setReceivingUpiId('gautam.lucky-1@okicici');
+        setReceivingUpiId(event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || '');
         setCustomUpi('');
         setContactPerson('');
         setContactPhone('');
