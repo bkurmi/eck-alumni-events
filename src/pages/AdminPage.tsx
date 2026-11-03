@@ -9,6 +9,7 @@ import { GateStaffManagerModal } from '../components/GateStaffManagerModal';
 import { SponsorshipsManager } from '../components/SponsorshipsManager';
 import { SponsorshipModal } from '../components/SponsorshipModal';
 import { EventExpensesManager } from '../components/EventExpensesManager';
+import { CentralTreasuryManager } from '../components/CentralTreasuryManager';
 import { ExpenseModal } from '../components/ExpenseModal';
 import { EventFeedbackManager } from '../components/EventFeedbackManager';
 import {
@@ -64,7 +65,7 @@ export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'registrations' | 'sponsorships' | 'expenses' | 'upi_report' | 'gate_portal' | 'feedback'
+    'registrations' | 'sponsorships' | 'expenses' | 'treasury' | 'upi_report' | 'gate_portal' | 'feedback'
   >('registrations');
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
@@ -84,6 +85,7 @@ export const AdminPage: React.FC = () => {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<EventExpense | null>(null);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
+  const [allEvents, setAllEvents] = useState<ECKEvent[]>([DEFAULT_EVENT]);
   const [singleCopied, setSingleCopied] = useState(false);
 
 
@@ -124,9 +126,7 @@ export const AdminPage: React.FC = () => {
         supabase
           .from('events')
           .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+          .order('created_at', { ascending: false }),
       ]);
 
       if (regRes.error) {
@@ -135,6 +135,15 @@ export const AdminPage: React.FC = () => {
       }
       const list = (regRes.data as any) || [];
       const verifList = (verifRes.data as any) || [];
+      const eventsData = ((eventRes.data as any[]) || []).map((e: any) => {
+        const ev = { ...e } as ECKEvent;
+        const deadlineInfo = getRegistrationStatusInfo(ev);
+        if (deadlineInfo.isClosed) ev.status = 'CLOSED';
+        return ev;
+      });
+      if (eventsData.length > 0) {
+        setAllEvents(eventsData);
+      }
 
       // Attach payment verification entries to each registration
       list.forEach((reg: any) => {
@@ -150,8 +159,8 @@ export const AdminPage: React.FC = () => {
         if (deadlineInfo.isClosed) ev.status = 'CLOSED';
         setActiveEvent(ev);
         syncEventRegistrationStatus(ev.event_slug, ev.status, ev.registration_closes_at).catch(() => { });
-      } else if (eventRes.data) {
-        const ev = { ...(eventRes.data as ECKEvent) };
+      } else if (eventsData.length > 0) {
+        const ev = { ...eventsData[0] };
         const deadlineInfo = getRegistrationStatusInfo(ev);
         if (deadlineInfo.isClosed) ev.status = 'CLOSED';
         setActiveEvent(ev);
@@ -362,8 +371,9 @@ export const AdminPage: React.FC = () => {
     if (session) {
       if (activeTab === 'sponsorships' || activeTab === 'upi_report') {
         fetchSponsorshipsData();
-      } else if (activeTab === 'expenses') {
+      } else if (activeTab === 'expenses' || activeTab === 'treasury') {
         fetchExpensesData();
+        fetchSponsorshipsData();
       }
     }
   }, [session, activeTab]);
@@ -737,6 +747,18 @@ export const AdminPage: React.FC = () => {
                   </span>
                   <span className="admin-tab-count">{expenses.length}</span>
                 </button>
+                <button
+                  type="button"
+                  className={`admin-view-tab-btn ${activeTab === 'treasury' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('treasury')}
+                >
+                  <span className="tab-title">
+                    <span className="tab-icon">🏛️</span>
+                    <span className="tab-text-full">Treasury &amp; Legacy Fund</span>
+                    <span className="tab-text-short">Treasury</span>
+                  </span>
+                  <span className="admin-tab-count">Ledger</span>
+                </button>
                 {isAdminGatePortalEnabled() && (
                   <button
                     type="button"
@@ -853,6 +875,21 @@ export const AdminPage: React.FC = () => {
                   }}
                   onSaveExpense={handleSaveExpense}
                   onDeleteExpense={handleDeleteExpense}
+                  onRefresh={() => {
+                    fetchRegistrations();
+                    fetchSponsorshipsData();
+                    fetchExpensesData();
+                  }}
+                  loading={loadingData}
+                />
+              ) : activeTab === 'treasury' ? (
+                <CentralTreasuryManager
+                  expenses={expenses}
+                  registrations={registrations}
+                  verifications={verifications}
+                  sponsorships={sponsorships}
+                  activeEvent={activeEvent}
+                  allEvents={allEvents}
                   onRefresh={() => {
                     fetchRegistrations();
                     fetchSponsorshipsData();
