@@ -199,13 +199,13 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     });
   }, [selectedUpiId]);
 
-  // Calculate pricing (mapped to pricing rule: kidsAbove7 in schema = 10+ years in display)
+  // Calculate pricing dynamically per event
   const pricing = useMemo(() => {
     if (attendanceStatus !== 'yes') {
-      return calculateContribution(0, 0, 0);
+      return calculateContribution(0, 0, 0, event?.pricing_config, event?.registration_fee);
     }
-    return calculateContribution(adultsCount, kidsAbove10, kidsUnder10);
-  }, [attendanceStatus, adultsCount, kidsAbove10, kidsUnder10]);
+    return calculateContribution(adultsCount, kidsAbove10, kidsUnder10, event?.pricing_config, event?.registration_fee);
+  }, [attendanceStatus, adultsCount, kidsAbove10, kidsUnder10, event?.pricing_config, event?.registration_fee]);
 
   // Sync default amount when attendees change (unless manually overridden)
   useEffect(() => {
@@ -328,7 +328,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
             setAmountOverride(String(lookup.amount));
             setIsCustomAmount(true);
           } else {
-            const calc = calculateContribution(prevAdults, prevKids10, prevKidsUnder10);
+            const calc = calculateContribution(prevAdults, prevKids10, prevKidsUnder10, event?.pricing_config, event?.registration_fee);
             setAmountOverride(String(calc.totalAmount));
           }
 

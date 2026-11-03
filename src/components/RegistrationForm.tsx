@@ -15,7 +15,7 @@ import {
 import { PaymentSection } from './PaymentSection';
 import { UpiPaymentFlowModal } from './UpiPaymentFlowModal';
 import { supabase } from '../lib/supabase';
-import { calculateContribution } from '../lib/pricing';
+import { calculateContribution, formatPricingPillSummary } from '../lib/pricing';
 import {
   lookupRegistrationByMobile,
   convertLookupToFormData,
@@ -172,18 +172,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   // Pricing calculation managed purely in codebase
   const pricing = useMemo(() => {
     if (formData.attendance_status !== 'yes') {
-      return calculateContribution(0, 0, 0);
+      return calculateContribution(0, 0, 0, event.pricing_config, event.registration_fee);
     }
     return calculateContribution(
       formData.adults_count ?? 1,
       formData.children_above_7_count ?? 0,
-      formData.children_under_7_count ?? 0
+      formData.children_under_7_count ?? 0,
+      event.pricing_config,
+      event.registration_fee
     );
   }, [
     formData.attendance_status,
     formData.adults_count,
     formData.children_above_7_count,
     formData.children_under_7_count,
+    event.pricing_config,
+    event.registration_fee,
   ]);
 
   const totalAmount = pricing.totalAmount;
@@ -197,6 +201,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const minKidsAbove7 = isEnforcingMinCounts ? (activeExistingReg?.children_above_7_count ?? 0) : 0;
   const minKidsUnder7 = isEnforcingMinCounts ? (activeExistingReg?.children_under_7_count ?? 0) : 0;
 
+  // Dynamic tier rates for UI display
+  const singleAdultRate = event.pricing_config?.single_adult ?? event.registration_fee ?? 800;
+  const coupleAdultRate = event.pricing_config?.couple ?? (singleAdultRate > 0 ? singleAdultRate * 2 - 100 : 1500);
+  const extraAdultRate = event.pricing_config?.extra_adult ?? singleAdultRate;
+
   // Previously paid contribution calculation
   const previousPaidAmount = useMemo(() => {
     if (!isUpdateMode || !activeExistingReg || activeExistingReg.attendance_status !== 'yes') {
@@ -208,8 +217,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     const prevAdults = activeExistingReg.adults_count ?? 1;
     const prevKids7 = activeExistingReg.children_above_7_count ?? 0;
     const prevKidsUnder7 = activeExistingReg.children_under_7_count ?? 0;
-    return calculateContribution(prevAdults, prevKids7, prevKidsUnder7).totalAmount;
-  }, [isUpdateMode, activeExistingReg]);
+    return calculateContribution(
+      prevAdults,
+      prevKids7,
+      prevKidsUnder7,
+      event.pricing_config,
+      event.registration_fee
+    ).totalAmount;
+  }, [isUpdateMode, activeExistingReg, event.pricing_config, event.registration_fee]);
 
   const additionalAmountDue = Math.max(0, totalAmount - previousPaidAmount);
 
@@ -1417,7 +1432,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         <div className="card-header-badge">
           <div className="step-tag-pill">Step 2 of 3</div>
           <h2 className="card-title">Attendance &amp; Guests</h2>
-          <p className="card-subtitle">Will you be attending the ECK-RTU Alumni DeepAura 2K26 celebration?</p>
+          <p className="card-subtitle">Will you be attending {event.event_name}?</p>
         </div>
 
         <div className={`attendance-options-grid ${errorFieldId === 'attend-yes' ? 'input-error-highlight' : ''}`}>
@@ -1477,7 +1492,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </span>
               </div>
               <div className="rates-summary-badge">
-                <span>₹800 Single • ₹1,500 Couple • ₹300 Kids (10+) • Free (&lt;10)</span>
+                <span>{formatPricingPillSummary(event.pricing_config, event.registration_fee)}</span>
               </div>
             </div>
 
@@ -1493,10 +1508,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   </div>
                   <span className="tier-desc">
                     {(formData.adults_count ?? 1) === 1
-                      ? '₹800 for 1 adult'
+                      ? `₹${singleAdultRate.toLocaleString('en-IN')} for 1 adult`
                       : (formData.adults_count ?? 1) === 2
-                        ? '₹1,500 for couple'
-                        : `₹1,500 couple + ₹800/extra adult`}
+                        ? `₹${coupleAdultRate.toLocaleString('en-IN')} for couple`
+                        : `₹${coupleAdultRate.toLocaleString('en-IN')} couple + ₹${extraAdultRate.toLocaleString('en-IN')}/extra adult`}
                   </span>
                 </div>
                 <div className="stepper-controls">

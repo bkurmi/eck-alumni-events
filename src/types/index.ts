@@ -12,15 +12,28 @@ export interface EventMemoryMedia {
   instagram_url?: string | null;
 }
 
+export interface EventPricingConfig {
+  single_adult?: number;
+  couple?: number;
+  extra_adult?: number;
+  child_above_7?: number;
+  child_under_7?: number;
+  spot_adult?: number;
+  spot_child_above_10?: number;
+  spot_child_under_10?: number;
+}
+
 export interface ECKEvent {
   id: string;
   event_name: string;
   event_slug: string;
+  event_code?: string | null;
   event_date: string;
   event_time: string | null;
   location: string;
   description: string | null;
   registration_fee: number;
+  pricing_config?: EventPricingConfig | null;
   upi_id: string | null;
   banner_image_url: string | null;
   tagline: string | null;

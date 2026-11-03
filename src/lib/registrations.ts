@@ -158,14 +158,26 @@ export async function lookupRegistrationByMobile(
 }
 
 /**
- * Normalizes input numeric registration id (e.g. "39", "00039", or "REG-00039")
- * into canonical "REG-00039" format with leading zeros up to 5 digits.
+ * Normalizes input registration number:
+ * - "39" -> "REG-00039"
+ * - "DA26-42" -> "DA26-0042"
+ * - "NY27-1" -> "NY27-0001"
+ * Supports custom event prefixes as well as legacy REG- prefix.
  */
-export function formatRegistrationNumberInput(rawInput: string): string {
-  const digits = (rawInput || '').replace(/\D/g, '').slice(0, 5);
-  if (!digits) return '';
-  const padded = digits.padStart(5, '0');
-  return `REG-${padded}`;
+export function formatRegistrationNumberInput(rawInput: string, defaultPrefix = 'REG'): string {
+  const trimmed = (rawInput || '').trim().toUpperCase();
+  if (!trimmed) return '';
+
+  // Matches e.g. "DA26-0042", "DA26 42", "REG-00039", or bare digits "39"
+  const match = trimmed.match(/^([A-Z0-9]{2,8})?[-_\s]*(\d+)$/);
+  if (match) {
+    const prefix = match[1] || defaultPrefix;
+    const digits = match[2].slice(-5);
+    const padLen = prefix === 'REG' ? 5 : 4;
+    return `${prefix}-${digits.padStart(padLen, '0')}`;
+  }
+
+  return trimmed;
 }
 
 /**
