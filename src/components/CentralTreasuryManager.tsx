@@ -5,6 +5,7 @@ import {
   computeAccountSettlements,
   saveExpenseToDb,
   deleteExpenseFromDb,
+  getExpenseSplits,
 } from '../lib/expenses';
 import { getRegistrationStatusInfo } from '../lib/eventStatus';
 import { AccountTransferModal } from './AccountTransferModal';
@@ -102,39 +103,53 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
       .filter((e) => {
         if (e.category !== 'Internal Transfer' || e.status === 'cancelled') return false;
         const note = (e.notes || '').toLowerCase();
-        const receiver = (e.vendor_name || '').toLowerCase();
-        return (
-          (note.includes('legacy') || note.includes('corpus')) &&
-          receiver.includes('mukesh')
-        );
+        return note.includes('legacy') || note.includes('corpus');
       })
       .reduce((sum, e) => sum + Number(e.actual_amount || 0), 0);
 
     const totalCorpusPool = corpusInflows + transfersSweptIn;
     const netBalance = totalCorpusPool - disbursements;
 
-    // Custodians holding the Legacy Fund:
-    // Primary designated custodian is Mukesh (YES Bank)
-    const mukeshAcc = settlementData.accounts.find((a) =>
-      a.accountName.toLowerCase().includes('mukesh')
-    );
+    // Identify designated custodians holding the Legacy Fund from recorded transactions
+    const legacyHoldingAccountNames = new Set<string>();
+    legacyRecords.forEach((e) => {
+      if (e.paid_from_account) legacyHoldingAccountNames.add(e.paid_from_account.toLowerCase().trim());
+      getExpenseSplits(e).forEach((s) => {
+        if (s.account) legacyHoldingAccountNames.add(s.account.toLowerCase().trim());
+      });
+    });
+    expenses.forEach((e) => {
+      if (e.category === 'Internal Transfer' && e.status !== 'cancelled') {
+        const note = (e.notes || '').toLowerCase();
+        if ((note.includes('legacy') || note.includes('corpus')) && e.vendor_name) {
+          legacyHoldingAccountNames.add(e.vendor_name.toLowerCase().trim());
+        }
+      }
+    });
 
-    // If there is an explicit legacy balance recorded, Mukesh holds it; otherwise fallback to Mukesh's net balance
-    const effectiveMukeshLegacy = netBalance > 0 ? netBalance : (mukeshAcc?.netBalance || 0);
+    const custodianAcc = settlementData.accounts.find((a) =>
+      legacyHoldingAccountNames.has(a.accountName.toLowerCase().trim()) ||
+      legacyHoldingAccountNames.has(a.accountId.toLowerCase().trim()) ||
+      Array.from(legacyHoldingAccountNames).some(
+        (h) => a.accountName.toLowerCase().includes(h) || h.includes(a.accountName.toLowerCase())
+      )
+    ) || settlementData.accounts.find((a) => a.netBalance > 0);
+
+    const effectiveLegacy = netBalance > 0 ? netBalance : (custodianAcc?.netBalance || 0);
 
     const custodians: { name: string; bank: string; upiId?: string; amount: number; isCash?: boolean }[] = [];
-    if (effectiveMukeshLegacy > 0 || (mukeshAcc && mukeshAcc.netBalance > 0)) {
+    if (effectiveLegacy > 0 && custodianAcc) {
       custodians.push({
-        name: mukeshAcc?.accountName || 'Mukesh',
-        bank: mukeshAcc?.bankName || 'YES Bank',
-        upiId: mukeshAcc?.upiId || undefined,
-        amount: effectiveMukeshLegacy,
-        isCash: false,
+        name: custodianAcc.accountName,
+        bank: custodianAcc.bankName || 'Bank',
+        upiId: custodianAcc.upiId || undefined,
+        amount: effectiveLegacy,
+        isCash: custodianAcc.isCash || false,
       });
     }
 
     return {
-      netBalance: effectiveMukeshLegacy,
+      netBalance: effectiveLegacy,
       disbursements,
       custodians,
     };
@@ -187,19 +202,23 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
       const netSurplus = totalInflow - totalExpenses;
 
       // Find who holds this event's funds:
-      // Any coordinator with positive netBalance (excluding Mukesh's legacy allocation)
+      // Any coordinator with positive netBalance (excluding their legacy allocation if they are a legacy custodian)
+      const legacyCustodianNames = new Set(
+        legacyFund.custodians.map((c) => c.name.toLowerCase().trim())
+      );
+
       const eventCustodians = settlementData.accounts
         .filter((a) => {
-          if (a.accountName.toLowerCase().includes('mukesh')) {
-            // Mukesh holds legacy fund; if he has balance beyond legacy, include him
-            const operationalSurplusWithMukesh = Math.max(0, a.netBalance - legacyFund.netBalance);
-            return operationalSurplusWithMukesh > 0;
+          const isLegacy = legacyCustodianNames.has(a.accountName.toLowerCase().trim());
+          if (isLegacy) {
+            const operationalSurplus = Math.max(0, a.netBalance - legacyFund.netBalance);
+            return operationalSurplus > 0;
           }
           return a.netBalance > 0;
         })
         .map((a) => {
-          const isMukesh = a.accountName.toLowerCase().includes('mukesh');
-          const holdingAmt = isMukesh
+          const isLegacy = legacyCustodianNames.has(a.accountName.toLowerCase().trim());
+          const holdingAmt = isLegacy
             ? Math.max(0, a.netBalance - legacyFund.netBalance)
             : a.netBalance;
 

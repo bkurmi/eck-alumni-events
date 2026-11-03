@@ -314,7 +314,7 @@ export function computeAccountSettlements(
       const splits = getExpenseSplits(expense);
       const targetAccounts = splits.length > 0
         ? splits.map((s) => ({ rawName: s.account, amount: Number(s.amount || 0) }))
-        : [{ rawName: expense.paid_from_account || 'Mukesh', amount: actualAmt }];
+        : [{ rawName: expense.paid_from_account || 'Unassigned', amount: actualAmt }];
 
       targetAccounts.forEach(({ rawName, amount }) => {
         const accItem = getOrCreateAccountItem(rawName);
@@ -323,7 +323,7 @@ export function computeAccountSettlements(
             accItem.outflow += amount;
             accItem.expenseCount += 1;
           } else {
-            // Corpus addition / Inflow held by custodian (e.g. Mukesh)
+            // Corpus addition / Inflow held by designated custodian
             accItem.inflow += amount;
           }
         }

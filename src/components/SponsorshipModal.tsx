@@ -78,7 +78,7 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
         setScreenshotFile(null);
         setScreenshotPreview(getPublicSponsorshipScreenshotUrl(initialData.payment_screenshot_path));
       } else {
-        // New entry defaults (Lokesh is the primary recipient for Sponsorships)
+        // New entry defaults from active event
         setSponsorName('');
         setAmount('');
         setReceivingUpiId(event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || '');

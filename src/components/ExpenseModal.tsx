@@ -6,6 +6,7 @@ import type {
   EventRegistration,
   PaymentVerification,
   Sponsorship,
+  ExpenseAccountConfig,
 } from '../types';
 import { EXPENSE_CATEGORIES } from '../types';
 import {
@@ -23,6 +24,7 @@ interface ExpenseModalProps {
   initialData?: EventExpense | null;
   currentUserEmail?: string;
   eventId?: string;
+  expenseAccountsConfig?: ExpenseAccountConfig[] | null;
   expenses?: EventExpense[];
   registrations?: EventRegistration[];
   verifications?: PaymentVerification[];
@@ -394,6 +396,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   initialData,
   currentUserEmail,
   eventId,
+  expenseAccountsConfig,
   expenses = [],
 }) => {
   const [itemName, setItemName] = useState('');
@@ -426,11 +429,29 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   >([]);
 
   // Dynamically resolve available payer account options:
-  // Pre-configured known organizer accounts (Hari, Mitesh, Rajeev, Mukesh, Chetan, Lokesh, Bhawesh, Manoj, Cash in Hand)
+  // Pre-configured accounts from active event configuration (or defaults)
   // plus any custom accounts detected in existing transactions/transfers
   const availableAccountOptions = useMemo(() => {
     const list = [...KNOWN_EXPENSE_ACCOUNTS];
     const seen = new Set(list.map((a) => a.accountName.toLowerCase().trim()));
+
+    // 1. Include event-specific configured accounts if present
+    if (expenseAccountsConfig && Array.isArray(expenseAccountsConfig)) {
+      expenseAccountsConfig.forEach((cfg) => {
+        const cleanName = (cfg.accountName || cfg.id || '').trim();
+        if (cleanName && !seen.has(cleanName.toLowerCase())) {
+          seen.add(cleanName.toLowerCase());
+          list.push({
+            id: cfg.id || cleanName,
+            label: cfg.label || `👤 ${cleanName}`,
+            accountName: cfg.accountName || cleanName,
+            bankName: cfg.bankName || 'Other',
+            upiId: cfg.upiId,
+            isCash: cfg.isCash,
+          });
+        }
+      });
+    }
 
     if (expenses && expenses.length > 0) {
       expenses.forEach((e) => {

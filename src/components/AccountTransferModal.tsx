@@ -102,13 +102,13 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
       // Default new transfer
       const defaultFrom =
         presetFromAccount ||
-        (availableAccounts.length > 0 ? availableAccounts[0].name : 'Hari Narayan');
+        (availableAccounts.length > 0 ? availableAccounts[0].name : '');
       setFromAccount(defaultFrom);
 
       const defaultTo =
         availableAccounts.find(
           (a) => a.name.toLowerCase() !== defaultFrom.toLowerCase()
-        )?.name || 'Mukesh';
+        )?.name || (availableAccounts.length > 1 ? availableAccounts[1].name : '');
       setToAccount(defaultTo);
 
       setAmount('');

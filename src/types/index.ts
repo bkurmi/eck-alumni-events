@@ -341,7 +341,7 @@ export const SPONSORSHIP_PAYMENT_MODES = [
 export type ExpenseStatus = 'planned' | 'partially_paid' | 'paid' | 'settled' | 'cancelled';
 
 export interface ExpensePaymentSplit {
-  account: string; // e.g. 'Hari Narayan (SBI)', 'Mitesh (Axis)', 'Cash in Hand', or custom
+  account: string; // e.g. 'Cash in Hand', 'Bank', or custom organizer account
   amount: number;
   date?: string | null; // e.g. '2026-10-30'
   mode?: string | null; // e.g. 'UPI', 'Cash', 'Bank Transfer', etc.

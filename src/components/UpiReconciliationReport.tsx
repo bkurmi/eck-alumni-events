@@ -1100,7 +1100,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           <div className="empty-state-card" style={{ marginTop: '20px' }}>
             <p className="empty-title">No sponsorship contributions found</p>
             <p className="empty-desc">
-              Try checking Lokesh's UPI account above or clearing your search / date filters.
+              Try selecting all accounts above or clearing your search / date filters.
             </p>
           </div>
         ) : (

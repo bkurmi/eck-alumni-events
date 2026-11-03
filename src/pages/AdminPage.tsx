@@ -1492,6 +1492,7 @@ export const AdminPage: React.FC = () => {
         initialData={selectedExpense}
         currentUserEmail={session?.user?.email}
         eventId={activeEvent.id}
+        expenseAccountsConfig={activeEvent?.expense_accounts_config}
         expenses={expenses}
         registrations={registrations}
         verifications={verifications}
