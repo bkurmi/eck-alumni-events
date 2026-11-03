@@ -1,5 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import type { EventExpense, EventRegistration, PaymentVerification, Sponsorship } from '../types';
+import type {
+  EventExpense,
+  EventRegistration,
+  PaymentVerification,
+  Sponsorship,
+  ECKEvent,
+  ExpenseAccountConfig,
+} from '../types';
 import {
   formatINR,
   getExpenseCategoryIcon,
@@ -20,6 +27,8 @@ interface EventExpensesManagerProps {
   sponsorshipCount?: number;
   eventName?: string;
   eventId?: string;
+  event?: ECKEvent | null;
+  expenseAccountsConfig?: ExpenseAccountConfig[] | null;
   registrations?: EventRegistration[];
   verifications?: PaymentVerification[];
   sponsorships?: Sponsorship[];
@@ -40,6 +49,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   sponsorshipCount = 0,
   eventName = 'ECK-RTU Alumni DeepAura 2K26',
   eventId,
+  event,
+  expenseAccountsConfig,
   registrations = [],
   verifications = [],
   sponsorships = [],
@@ -76,9 +87,10 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       expenses,
       registrations,
       verifications,
-      sponsorships
+      sponsorships,
+      expenseAccountsConfig || event?.expense_accounts_config || undefined
     );
-  }, [expenses, registrations, verifications, sponsorships]);
+  }, [expenses, registrations, verifications, sponsorships, expenseAccountsConfig, event]);
 
   // Aggregated Financial Metrics & Feasibility (excludes internal transfers so real budget is not distorted)
   const stats = useMemo(() => {

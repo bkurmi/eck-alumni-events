@@ -187,6 +187,11 @@ export function computeAccountSettlements(
     if (!clean) return null;
     const lower = clean.toLowerCase();
 
+    // Any variant of cash always resolves to the single 'Cash in Hand' account
+    if (lower.includes('cash')) {
+      return settlementsMap.get('cash in hand') || null;
+    }
+
     for (const acc of allKnownAccounts) {
       const accId = acc.id.toLowerCase();
       const accName = acc.accountName.toLowerCase();
@@ -238,11 +243,22 @@ export function computeAccountSettlements(
       }
     }
 
-    // Untagged/unassigned collections (e.g. spot cash or cash entries) are attributed to Cash in Hand
+    // Untagged collections: genuine UPI IDs get resolved to their coordinator/account; all cash variants go to Cash in Hand
     if (!matched && amount > 0) {
-      const cashItem = settlementsMap.get('cash in hand');
-      if (cashItem) {
-        cashItem.inflow += amount;
+      const isExplicitCash = !upi || upi.includes('cash') || upi === 'spot';
+      if (!isExplicitCash) {
+        const upiItem = getOrCreateAccountItem(upi);
+        if (upiItem) {
+          upiItem.inflow += amount;
+        } else {
+          const cashItem = settlementsMap.get('cash in hand');
+          if (cashItem) cashItem.inflow += amount;
+        }
+      } else {
+        const cashItem = settlementsMap.get('cash in hand');
+        if (cashItem) {
+          cashItem.inflow += amount;
+        }
       }
     }
   });
@@ -261,11 +277,22 @@ export function computeAccountSettlements(
       }
     }
 
-    // Untagged/unassigned collections (e.g. spot cash or cash entries) are attributed to Cash in Hand
+    // Untagged collections: genuine UPI IDs get resolved to their coordinator/account; all cash variants go to Cash in Hand
     if (!matched && amount > 0) {
-      const cashItem = settlementsMap.get('cash in hand');
-      if (cashItem) {
-        cashItem.inflow += amount;
+      const isExplicitCash = !upi || upi.includes('cash') || upi === 'spot';
+      if (!isExplicitCash) {
+        const upiItem = getOrCreateAccountItem(upi);
+        if (upiItem) {
+          upiItem.inflow += amount;
+        } else {
+          const cashItem = settlementsMap.get('cash in hand');
+          if (cashItem) cashItem.inflow += amount;
+        }
+      } else {
+        const cashItem = settlementsMap.get('cash in hand');
+        if (cashItem) {
+          cashItem.inflow += amount;
+        }
       }
     }
   });

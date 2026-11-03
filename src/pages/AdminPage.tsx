@@ -910,6 +910,8 @@ export const AdminPage: React.FC = () => {
                   sponsorshipCount={sponsorships.length}
                   eventName={activeEvent.event_name}
                   eventId={activeEvent.id}
+                  event={activeEvent}
+                  expenseAccountsConfig={activeEvent?.expense_accounts_config}
                   registrations={registrations}
                   verifications={verifications}
                   sponsorships={sponsorships}
