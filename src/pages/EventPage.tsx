@@ -5,6 +5,7 @@ import { EventCard } from '../components/EventCard';
 import { RegistrationForm } from '../components/RegistrationForm';
 import { SuccessPage } from '../components/SuccessPage';
 import { ManageRegistrationModal } from '../components/ManageRegistrationModal';
+import { EventMemoryWall } from '../components/EventMemoryWall';
 import { supabase } from '../lib/supabase';
 import { convertLookupToFormData, getEventRegistrationCount } from '../lib/registrations';
 import { resolveActivePaymentConfig } from '../lib/paymentRotation';
@@ -416,6 +417,9 @@ export const EventPage: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Live Event Memories & Highlights */}
+              <EventMemoryWall event={event} />
             </div>
           )}
         </div>

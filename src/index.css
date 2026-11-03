@@ -3031,6 +3031,144 @@ h6 {
   }
 }
 
+/* Active Event Context & Action Bar */
+.admin-event-context-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.75) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  margin-top: 4px;
+}
+
+@media (min-width: 768px) {
+  .admin-event-context-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    gap: 16px;
+  }
+}
+
+.admin-event-context-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-event-label-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-event-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.admin-event-switcher-select {
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  max-width: 100%;
+  transition: border-color 0.2s ease;
+}
+
+.admin-event-switcher-select:focus {
+  border-color: #f59e0b;
+}
+
+.admin-event-name-display {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-event-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-event-deadline-text {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.admin-event-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.admin-event-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.admin-media-btn {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.admin-media-btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .admin-event-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .admin-event-action-btn {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -7021,5 +7159,290 @@ h6 {
   .expense-modal-body {
     padding: 14px !important;
     gap: 12px !important;
+  }
+}
+
+/* ============================================================
+   Flashy Dynamic Moving Photo Stream & Shutter Flash Stage
+   ============================================================ */
+
+.memory-flash-section {
+  margin: 36px 0;
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% 0%, #171f38 0%, #080b14 75%);
+  border-radius: 20px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.memory-flash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.memory-flash-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memory-flash-title {
+  margin: 0;
+  font-size: clamp(1.3rem, 3.5vw, 1.85rem);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.memory-flash-title span {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #f97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.memory-flash-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.memory-flash-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f1f5f9;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.memory-flash-btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.memory-flash-btn.active {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000000;
+  font-weight: 800;
+  border-color: #f59e0b;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.4);
+}
+
+/* ── 3-Photo Flash Stage ── */
+.memory-flash-stage {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 640px) {
+  .memory-flash-stage {
+    grid-template-columns: 1fr 1.6fr 1fr;
+  }
+}
+
+.memory-flash-frame {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #0b0f19;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  min-height: 220px;
+  height: 240px;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+@media (min-width: 640px) {
+  .memory-flash-frame.hero-frame {
+    height: 310px;
+    border: 1.5px solid rgba(245, 158, 11, 0.5);
+    box-shadow: 0 14px 40px rgba(245, 158, 11, 0.2);
+  }
+}
+
+.memory-flash-frame:hover {
+  transform: scale(1.03) translateY(-4px) !important;
+  border-color: #fbbf24;
+  box-shadow: 0 20px 45px rgba(245, 158, 11, 0.3);
+  z-index: 5;
+}
+
+.memory-flash-img-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.memory-flash-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform-origin: center center;
+  transition: opacity 0.35s ease;
+}
+
+/* Alternating Ken Burns motion */
+.zoom-in-motion {
+  animation: kenBurnsZoomIn 12s infinite alternate ease-in-out;
+}
+
+.zoom-out-motion {
+  animation: kenBurnsZoomOut 14s infinite alternate ease-in-out;
+}
+
+.pan-motion {
+  animation: kenBurnsPan 13s infinite alternate ease-in-out;
+}
+
+/* Camera Shutter Flash Burst Overlay */
+.camera-shutter-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(245, 158, 11, 0.6) 60%, transparent 100%);
+  opacity: 0;
+  z-index: 10;
+  transition: opacity 0.25s ease-out;
+}
+
+.camera-shutter-flash.flashing {
+  opacity: 0.9;
+  animation: shutterPulse 0.35s ease-out;
+}
+
+/* ── Continuous Moving Photo Ribbons (Marquee) ── */
+.memory-marquee-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  padding: 4px 0;
+}
+
+.memory-marquee-track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  will-change: transform;
+}
+
+.slide-left-track {
+  animation: marqueeLeft 42s linear infinite;
+}
+
+.slide-right-track {
+  animation: marqueeRight 46s linear infinite;
+}
+
+.memory-marquee-wrapper:hover .memory-marquee-track,
+.memory-marquee-wrapper:active .memory-marquee-track {
+  animation-play-state: paused;
+}
+
+.marquee-photo-card {
+  position: relative;
+  flex-shrink: 0;
+  width: clamp(160px, 30vw, 235px);
+  height: clamp(115px, 22vw, 165px);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.marquee-photo-card:hover {
+  transform: scale(1.08) translateY(-4px);
+  border-color: #f59e0b;
+  box-shadow: 0 12px 28px rgba(245, 158, 11, 0.35);
+  z-index: 10;
+}
+
+.marquee-photo-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.marquee-photo-card:hover img {
+  transform: scale(1.06);
+}
+
+/* ── Animation Keyframes ── */
+@keyframes kenBurnsZoomIn {
+  0% { transform: scale(1.0) translate(0, 0); }
+  100% { transform: scale(1.16) translate(-1.5%, -1.5%); }
+}
+
+@keyframes kenBurnsZoomOut {
+  0% { transform: scale(1.18) translate(1%, 1%); }
+  100% { transform: scale(1.0) translate(-1%, -1%); }
+}
+
+@keyframes kenBurnsPan {
+  0% { transform: scale(1.12) translate(-2%, 0); }
+  50% { transform: scale(1.05) translate(2%, -1%); }
+  100% { transform: scale(1.14) translate(0, 2%); }
+}
+
+@keyframes shutterPulse {
+  0% { opacity: 0; transform: scale(0.9); }
+  40% { opacity: 0.95; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@keyframes marqueeLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marqueeRight {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+@media (max-width: 640px) {
+  .memory-flash-section {
+    padding: 18px 12px;
+  }
+  .memory-flash-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .memory-flash-actions {
+    justify-content: space-between;
+  }
+  .memory-flash-btn {
+    flex: 1 1 auto;
+    min-height: 44px;
   }
 }
