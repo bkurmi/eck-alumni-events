@@ -350,6 +350,8 @@ export const EXPENSE_CATEGORIES = [
   'Venue, Electricity & Logistics',
   'Marketing & Communication',
   'Miscellaneous & Contingency',
+  'Internal Transfer',
+  'Campus Legacy Fund',
 ] as const;
 
 export const EXPENSE_PAYMENT_MODES = [

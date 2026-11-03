@@ -295,6 +295,40 @@ export function computeAccountSettlements(
       return;
     }
 
+    // Handle Campus Legacy Fund (Corpus Inflow vs Disbursement)
+    if (expense.category === 'Campus Legacy Fund') {
+      const note = (expense.notes || '').toLowerCase();
+      const item = (expense.item_name || '').toLowerCase();
+      const isDisbursement =
+        item.includes('disbursement') ||
+        item.includes('scholarship') ||
+        item.includes('payout') ||
+        item.includes('grant') ||
+        note.includes('disbursement') ||
+        note.includes('scholarship') ||
+        note.includes('payout') ||
+        note.includes('grant');
+
+      const splits = getExpenseSplits(expense);
+      const targetAccounts = splits.length > 0
+        ? splits.map((s) => ({ rawName: s.account, amount: Number(s.amount || 0) }))
+        : [{ rawName: expense.paid_from_account || 'Mukesh', amount: actualAmt }];
+
+      targetAccounts.forEach(({ rawName, amount }) => {
+        const accItem = getOrCreateAccountItem(rawName);
+        if (accItem && amount > 0) {
+          if (isDisbursement) {
+            accItem.outflow += amount;
+            accItem.expenseCount += 1;
+          } else {
+            // Corpus addition / Inflow held by custodian (e.g. Mukesh)
+            accItem.inflow += amount;
+          }
+        }
+      });
+      return;
+    }
+
     const splits = getExpenseSplits(expense);
     if (splits.length === 0) {
       unassignedExpenseTotal += actualAmt;
@@ -637,6 +671,8 @@ export function getExpenseCategoryIcon(category: string): string {
       return '📢';
     case 'Internal Transfer':
       return '🔄';
+    case 'Campus Legacy Fund':
+      return '🌱';
     default:
       return '📦';
   }
