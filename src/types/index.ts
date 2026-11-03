@@ -6,6 +6,12 @@ export interface UpiPaymentConfig {
   account_name?: string;
 }
 
+export interface EventMemoryMedia {
+  photos: string[];
+  youtube_url?: string | null;
+  instagram_url?: string | null;
+}
+
 export interface ECKEvent {
   id: string;
   event_name: string;
@@ -23,6 +29,7 @@ export interface ECKEvent {
   qr_image_url: string | null;
   upi_rotation_configs?: UpiPaymentConfig[] | null;
   registration_closes_at?: string | null;
+  memory_media?: EventMemoryMedia | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'COMPLETED';
   created_at: string;
   updated_at: string;

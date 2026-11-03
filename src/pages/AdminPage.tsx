@@ -10,6 +10,7 @@ import { SponsorshipsManager } from '../components/SponsorshipsManager';
 import { SponsorshipModal } from '../components/SponsorshipModal';
 import { EventExpensesManager } from '../components/EventExpensesManager';
 import { CentralTreasuryManager } from '../components/CentralTreasuryManager';
+import { EventMemoryManagerModal } from '../components/EventMemoryManagerModal';
 import { ExpenseModal } from '../components/ExpenseModal';
 import { EventFeedbackManager } from '../components/EventFeedbackManager';
 import {
@@ -83,6 +84,7 @@ export const AdminPage: React.FC = () => {
   const [isSponsorshipModalOpen, setIsSponsorshipModalOpen] = useState(false);
   const [selectedSponsorship, setSelectedSponsorship] = useState<Sponsorship | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<EventExpense | null>(null);
   const [activeEvent, setActiveEvent] = useState<ECKEvent>(DEFAULT_EVENT);
   const [allEvents, setAllEvents] = useState<ECKEvent[]>([DEFAULT_EVENT]);
@@ -98,8 +100,14 @@ export const AdminPage: React.FC = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession((prev: any) => {
+        // Prevent unnecessary re-renders on window focus/tab switch when token auto-refreshes
+        if (prev?.user?.id === newSession?.user?.id && Boolean(prev) === Boolean(newSession)) {
+          return prev;
+        }
+        return newSession;
+      });
     });
 
     return () => subscription.unsubscribe();
@@ -634,36 +642,12 @@ export const AdminPage: React.FC = () => {
                             ? 'Track Alumni sponsors'
                             : activeTab === 'expenses'
                               ? 'Track expected budget vs real expenses.'
-                              : 'Verify screenshots and alumni submissions.'}
+                              : activeTab === 'treasury'
+                                ? 'Central liquidity, coordinator balances & legacy endowment.'
+                                : 'Verify screenshots and alumni submissions.'}
                   </p>
-                  <div className="admin-status-badge-row" style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span className={`badge ${getRegistrationStatusInfo(activeEvent).isClosed ? 'badge-closed' : 'badge-open'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                      {getRegistrationStatusInfo(activeEvent).isClosed ? '🔴 Online Registration: CLOSED' : '🟢 Online Registration: ACTIVE'}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                      Deadline: {getRegistrationStatusInfo(activeEvent).formattedDeadline} ({getRegistrationStatusInfo(activeEvent).timeRemainingText})
-                    </span>
-                  </div>
                 </div>
                 <div className="admin-actions">
-                  <button
-                    type="button"
-                    onClick={() => setIsManualEntryOpen(true)}
-                    className="btn btn-primary btn-sm admin-quick-entry-btn"
-                    style={{
-                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
-                    }}
-                    title="Quickly register alumnus who paid via QR/UPI directly"
-                  >
-                    <span>⚡</span>
-                    <span>Quick Entry</span>
-                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -676,7 +660,7 @@ export const AdminPage: React.FC = () => {
                     title="Refresh Data"
                   >
                     <span>🔄</span>
-                    <span>Refresh</span>
+                    <span>{loadingData ? 'Syncing...' : 'Refresh'}</span>
                   </button>
                   <button
                     type="button"
@@ -690,6 +674,69 @@ export const AdminPage: React.FC = () => {
                       <line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Active Event Context & Action Bar */}
+              <div className="admin-event-context-bar">
+                <div className="admin-event-context-main">
+                  <div className="admin-event-label-cluster">
+                    <span className="admin-event-tag">🎪 Active Event</span>
+                    {allEvents.length > 1 ? (
+                      <select
+                        value={activeEvent.id}
+                        onChange={(e) => {
+                          const found = allEvents.find((ev) => ev.id === e.target.value);
+                          if (found) setActiveEvent(found);
+                        }}
+                        className="admin-event-switcher-select"
+                        aria-label="Switch Active Event"
+                      >
+                        {allEvents.map((ev) => (
+                          <option key={ev.id} value={ev.id}>
+                            {ev.event_name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="admin-event-name-display">{activeEvent.event_name}</span>
+                    )}
+                  </div>
+
+                  <div className="admin-event-meta-row">
+                    <span className={`badge ${getRegistrationStatusInfo(activeEvent).isClosed ? 'badge-closed' : 'badge-open'}`} style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                      {getRegistrationStatusInfo(activeEvent).isClosed ? '🔴 Online Reg: CLOSED' : '🟢 Online Reg: ACTIVE'}
+                    </span>
+                    <span className="admin-event-deadline-text">
+                      Deadline: {getRegistrationStatusInfo(activeEvent).formattedDeadline}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Event-Tied Actions */}
+                <div className="admin-event-actions">
+                  <button
+                    type="button"
+                    onClick={() => setIsManualEntryOpen(true)}
+                    className="btn btn-primary btn-sm admin-event-action-btn"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
+                    }}
+                    title={`Quick register alumnus for ${activeEvent.event_name}`}
+                  >
+                    <span>⚡</span>
+                    <span>Quick Entry</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsMemoryModalOpen(true)}
+                    className="btn btn-secondary btn-sm admin-event-action-btn admin-media-btn"
+                    title={`Upload and curate photos & video for ${activeEvent.event_name}`}
+                  >
+                    <span>📸</span>
+                    <span>Event Media ({activeEvent.memory_media?.photos?.length || 0})</span>
                   </button>
                 </div>
               </div>
@@ -1446,6 +1493,22 @@ export const AdminPage: React.FC = () => {
         registrations={registrations}
         verifications={verifications}
         sponsorships={sponsorships}
+      />
+
+      {/* Event Memory & Media Modal */}
+      <EventMemoryManagerModal
+        isOpen={isMemoryModalOpen}
+        onClose={() => setIsMemoryModalOpen(false)}
+        event={activeEvent}
+        onSaveSuccess={(updatedMedia) => {
+          setActiveEvent((prev) => ({
+            ...prev,
+            memory_media: updatedMedia,
+          }));
+          setAllEvents((prev) =>
+            prev.map((e) => (e.id === activeEvent.id ? { ...e, memory_media: updatedMedia } : e))
+          );
+        }}
       />
     </div>
   );
