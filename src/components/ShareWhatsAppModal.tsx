@@ -20,6 +20,7 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
   filteredRegistrations,
   event,
 }) => {
+  const eventName = event?.event_name || 'ECK-RTU Alumni Event';
   const [filterOption, setFilterOption] = useState<FilterOption>('attending');
   const [groupOption, setGroupOption] = useState<GroupOption>('grouped');
   const [sortOrder, setSortOrder] = useState<SortOption>('latest_registered');
@@ -135,13 +136,17 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     const lines: string[] = [];
 
     // Festive Header
-    lines.push(`🪔✨ *${eventName.toUpperCase()}* ✨🪔`);
+    lines.push(`✨ *${eventName.toUpperCase()}* ✨`);
     lines.push('🏛️ *Organised By:* ECK-RTU Alumni Kota Chapter');
-    lines.push('✨ *“दीप जले, यादें मुस्कुराएँ।”*');
+    if (event?.tagline) {
+      lines.push(`✨ *${event.tagline}*`);
+    } else {
+      lines.push('✨ *“दीप जले, यादें मुस्कुराएँ।”*');
+    }
     lines.push('🎉 *Registered Alumni & Attendees List* 🎉');
     lines.push('');
     lines.push('Dear ECK-RTU Alumni & Friends,');
-    lines.push('The celebration is getting bigger and brighter! 🪔 Here is the latest list of our enthusiastic alumni who have registered for ECK-RTU Alumni DeepAura 2K26:');
+    lines.push(`The celebration is getting bigger and brighter! ✨ Here is the latest list of our enthusiastic alumni who have registered for ${eventName}:`);
     lines.push('');
 
     // Summary Highlights
@@ -262,13 +267,17 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 
     // Festive Outro & Event Details
     lines.push('━━━━━━━━━━━━━━━━━━━━━');
-    lines.push('🪔 *“दीप जले, यादें मुस्कुराएँ।” Let’s illuminate this reunion together!*');
+    if (event?.tagline) {
+      lines.push(`*${event.tagline} Let’s celebrate this reunion together!*`);
+    } else {
+      lines.push('🪔 *“दीप जले, यादें मुस्कुराएँ।” Let’s illuminate this reunion together!*');
+    }
     lines.push(`📅 *Date:* ${eventDate}`);
     lines.push(`📍 *Venue:* ${eventVenue}`);
     if (includeEventLink) {
       lines.push(`🔗 *Register / Update Details:* ${websiteUrl}`);
     }
-    lines.push('✨ *See you all at ECK-RTU Alumni DeepAura 2K26! Shubh Deepawali!* ✨🪔');
+    lines.push(`✨ *See you all at ${eventName}!* ✨`);
 
     return lines.join('\n');
   }, [
@@ -352,7 +361,7 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'ECK-RTU Alumni DeepAura 2K26 - Attendees',
+          title: `${eventName} - Attendees`,
           text: generatedMessage,
         });
         setShareStatus('Shared successfully!');

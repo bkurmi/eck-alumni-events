@@ -420,10 +420,13 @@ export const AdminPage: React.FC = () => {
     const venue = activeEvent?.location || 'ECK Campus, Kota';
     const webUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
 
+    const eventName = activeEvent?.event_name || 'ECK-RTU Alumni Event';
+    const eventTagline = activeEvent?.tagline || '“दीप जले, यादें मुस्कुराएँ।”';
+
     const lines = [
-      '🪔✨ *ECK-RTU ALUMNI DEEPAURA 2K26* ✨🪔',
+      `✨ *${eventName.toUpperCase()}* ✨`,
       '🏛️ *Organised By:* ECK-RTU Alumni Kota Chapter',
-      '✨ *Tagline:* “दीप जले, यादें मुस्कुराएँ।”',
+      eventTagline ? `✨ *Tagline:* ${eventTagline}` : '',
       `🎉 *Registration Details: ${name}*`,
       '',
       `🎫 *Registration ID:* ${reg.registration_number}`,
@@ -443,7 +446,7 @@ export const AdminPage: React.FC = () => {
       `📅 *Date:* ${eventDate}`,
       `📍 *Venue:* ${venue}`,
       `🔗 *Portal:* ${webUrl}`,
-      '🪔 *“दीप जले, यादें मुस्कुराएँ।” See you at DeepAura 2K26!* ✨',
+      eventTagline ? `*${eventTagline} See you at ${eventName}!* ✨` : `*See you at ${eventName}!* ✨`,
     ];
 
     return lines.filter(Boolean).join('\n');
@@ -500,13 +503,26 @@ export const AdminPage: React.FC = () => {
     const name = reg.alumni?.name || 'Alumnus';
     const batch = reg.alumni?.year_of_passing ? `Batch of ${reg.alumni.year_of_passing}` : '';
     const amount = reg.amount || 800;
-    const text = `Namaste ${name} Ji! We noticed you started your registration for ECK-RTU Alumni DeepAura 2K26${batch ? ` (${batch})` : ''}, but the payment screenshot hasn't been uploaded yet. If you have completed your UPI payment of ₹${amount}, please reply with your screenshot here so we can confirm your official pass. Warm regards, ECK Alumni Team.`;
+    const text = `Namaste ${name} Ji! We noticed you started your registration for ${activeEvent.event_name}${batch ? ` (${batch})` : ''}, but the payment screenshot hasn't been uploaded yet. If you have completed your UPI payment of ₹${amount}, please reply with your screenshot here so we can confirm your official pass. Warm regards, ECK Alumni Team.`;
     window.open(`https://wa.me/${target}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  // Registrations scoped strictly to the selected active event
+  const scopedRegistrations = useMemo(() => {
+    if (!activeEvent?.id || activeEvent.id === 'mock-deepaura-2026') return registrations;
+    return registrations.filter((reg) => {
+      const regEventId = reg.event_id || (reg as any).events?.id;
+      const regEventSlug = (reg as any).events?.event_slug;
+      return (
+        regEventId === activeEvent.id ||
+        (regEventSlug && regEventSlug === activeEvent.event_slug)
+      );
+    });
+  }, [registrations, activeEvent.id, activeEvent.event_slug]);
+
   // Filtered registrations
   const filteredRegistrations = useMemo(() => {
-    return registrations.filter((reg) => {
+    return scopedRegistrations.filter((reg) => {
       const matchesStatus =
         statusFilter === 'all' ? true : reg.attendance_status === statusFilter;
 
@@ -548,20 +564,20 @@ export const AdminPage: React.FC = () => {
       const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
       return timeB - timeA;
     });
-  }, [registrations, searchQuery, statusFilter]);
+  }, [scopedRegistrations, searchQuery, statusFilter]);
 
   // Summary Metrics
   const stats = useMemo(() => {
-    const totalRegs = registrations.length;
-    const attendingRegs = registrations.filter((r) => r.attendance_status === 'yes');
-    const paymentPendingRegs = registrations.filter((r) => r.attendance_status === 'payment_pending');
+    const totalRegs = scopedRegistrations.length;
+    const attendingRegs = scopedRegistrations.filter((r) => r.attendance_status === 'yes');
+    const paymentPendingRegs = scopedRegistrations.filter((r) => r.attendance_status === 'payment_pending');
     const totalAttendees = attendingRegs.reduce(
       (sum, r) => sum + (r.number_of_attendees || 1),
       0
     );
     const totalAmount = attendingRegs.reduce((sum, r) => sum + getEffectiveRegAmount(r, verifications), 0);
     const pendingAmount = paymentPendingRegs.reduce((sum, r) => sum + getEffectiveRegAmount(r, verifications), 0);
-    const maybeCount = registrations.filter((r) => r.attendance_status === 'maybe').length;
+    const maybeCount = scopedRegistrations.filter((r) => r.attendance_status === 'maybe').length;
 
     const confirmedSponsorshipAmount = sponsorships.reduce(
       (sum, s) => sum + Number(s.amount || 0),
@@ -582,7 +598,7 @@ export const AdminPage: React.FC = () => {
       grandTotalFunds,
       sponsorshipsCount: sponsorships.length,
     };
-  }, [registrations, verifications, sponsorships]);
+  }, [scopedRegistrations, verifications, sponsorships]);
 
   const getPublicScreenshotUrl = (path: string | null) => {
     if (!path) return null;

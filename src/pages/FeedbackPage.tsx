@@ -10,8 +10,8 @@ import {
 } from '../lib/feedback';
 import { lookupRegistrationByRegNumber, stripSalutation } from '../lib/registrations';
 import {
-  FEEDBACK_CAMPAIGN,
-  DEFAULT_FEEDBACK_QUESTIONS,
+  getFeedbackCampaign,
+  getFeedbackQuestions,
 } from '../config/feedbackQuestions';
 import type { FeedbackQuestion } from '../types';
 import '../feedback.css';
@@ -36,7 +36,7 @@ const STEP_CONTEXT = {
     kicker: 'Step 3 of 3',
     time: '~40s',
     title: 'Nostalgia & Next Reunion',
-    description: 'Reflections after DeepAura, emotions, and ideas for our next gathering.',
+    description: 'Reflections after the reunion, emotions, and ideas for our next gathering.',
   },
 } as const;
 
@@ -70,7 +70,18 @@ export const FeedbackPage: React.FC = () => {
   const [eventId, setEventId] = useState<string>('');
   const [eventSlug, setEventSlug] = useState<string>('deepaura-2k26');
   const [eventName, setEventName] = useState<string>('DeepAura 2K26');
+  const [eventCode, setEventCode] = useState<string>('REG');
+  const [eventTagline, setEventTagline] = useState<string>('“दीप जले, यादें मुस्कुराएँ।”');
   const [loadingEvent, setLoadingEvent] = useState(true);
+
+  // Dynamic campaign and questions
+  const campaign = React.useMemo(() => {
+    return getFeedbackCampaign({ event_name: eventName, tagline: eventTagline });
+  }, [eventName, eventTagline]);
+
+  const feedbackQuestions = React.useMemo(() => {
+    return getFeedbackQuestions({ event_name: eventName });
+  }, [eventName]);
 
   // Can start survey: requires either verified registration or anonymous mode
   const canStartSurvey = isAnonymous || (lookupSuccess && Boolean(attendeeName));
@@ -104,6 +115,8 @@ export const FeedbackPage: React.FC = () => {
       attendeeName: stripSalutation(attendeeName),
       batch,
       isAnonymous,
+      eventName,
+      tagline: eventTagline,
     });
     shareToWhatsApp(text);
   };
@@ -113,6 +126,8 @@ export const FeedbackPage: React.FC = () => {
       attendeeName: stripSalutation(attendeeName),
       batch,
       isAnonymous,
+      eventName,
+      tagline: eventTagline,
     });
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -132,21 +147,27 @@ export const FeedbackPage: React.FC = () => {
     }
   };
 
-  // Fetch active event
+  // Fetch active event (or matching ?event=slug)
   useEffect(() => {
     async function loadActiveEvent() {
       try {
         const { data, error } = await supabase
           .from('events')
-          .select('id, event_name, event_slug, status')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          .select('id, event_name, event_slug, event_code, tagline, status, event_date')
+          .order('event_date', { ascending: false });
 
-        if (data && !error) {
-          setEventId(data.id);
-          if (data.event_slug) setEventSlug(data.event_slug);
-          if (data.event_name) setEventName(data.event_name);
+        if (data && !error && data.length > 0) {
+          const paramSlug = searchParams.get('event');
+          const matched = paramSlug ? data.find((e: any) => e.event_slug === paramSlug) : null;
+          const target = matched || data.find((e: any) => e.status === 'OPEN') || data[0];
+
+          if (target) {
+            setEventId(target.id);
+            if (target.event_slug) setEventSlug(target.event_slug);
+            if (target.event_name) setEventName(target.event_name);
+            setEventCode(target.event_code || (target.event_slug === 'deepaura-2k26' ? 'REG' : 'REG'));
+            if (target.tagline) setEventTagline(target.tagline);
+          }
         }
       } catch (e) {
         console.error('Failed to load active event for feedback:', e);
@@ -156,7 +177,7 @@ export const FeedbackPage: React.FC = () => {
     }
 
     loadActiveEvent();
-  }, []);
+  }, [searchParams]);
 
   // Manual lookup handler (runs on Find button click or Enter key)
   const handleManualLookup = async (digitsToLookup?: string) => {
@@ -167,13 +188,14 @@ export const FeedbackPage: React.FC = () => {
     setLookingUp(true);
     setLookupAttempted(true);
     try {
-      const result = await lookupRegistrationByRegNumber(eventSlug, trimmed);
+      const result = await lookupRegistrationByRegNumber(eventSlug, trimmed, eventCode || 'REG');
       if (result.found && result.alumni) {
-        const formatted = trimmed.padStart(5, '0');
+        const padLen = (eventCode || 'REG') === 'REG' ? 5 : 4;
+        const formatted = trimmed.padStart(padLen, '0');
         setAttendeeName(stripSalutation(result.alumni.name || ''));
         setBatch(String(result.alumni.year_of_passing || ''));
         if (result.registration_id) setRegistrationId(result.registration_id);
-        // Automatically append zeros right inside the input field so it becomes the actual 5-digit number!
+        // Automatically append zeros right inside the input field so it becomes the actual formatted number!
         setRegDigits(formatted);
         setLookupSuccess(true);
       } else {
@@ -195,9 +217,9 @@ export const FeedbackPage: React.FC = () => {
   }, [eventSlug]);
 
   // Filter questions by section
-  const eventQuestions = DEFAULT_FEEDBACK_QUESTIONS.filter((q) => q.section === 'event');
-  const digitalQuestions = DEFAULT_FEEDBACK_QUESTIONS.filter((q) => q.section === 'digital');
-  const heartQuestions = DEFAULT_FEEDBACK_QUESTIONS.filter((q) => q.section === 'heart');
+  const eventQuestions = feedbackQuestions.filter((q) => q.section === 'event');
+  const digitalQuestions = feedbackQuestions.filter((q) => q.section === 'digital');
+  const heartQuestions = feedbackQuestions.filter((q) => q.section === 'heart');
 
   const handleOptionChange = (questionId: string, value: any) => {
     setResponses((prev) => ({
@@ -302,7 +324,8 @@ export const FeedbackPage: React.FC = () => {
       (responses.overall_experience === 'amazing' ? 5 : responses.overall_experience === 'good' ? 4 : 3);
     const portalRating = Number(responses.portal_experience) || 5;
 
-    const formattedRegNumber = regDigits.trim() ? `REG-${regDigits.trim().padStart(5, '0')}` : null;
+    const padLen = (eventCode || 'REG') === 'REG' ? 5 : 4;
+    const formattedRegNumber = regDigits.trim() ? `${eventCode || 'REG'}-${regDigits.trim().padStart(padLen, '0')}` : null;
 
     const { error } = await submitEventFeedback({
       eventId,
@@ -534,14 +557,14 @@ export const FeedbackPage: React.FC = () => {
                   {isAnonymous ? (
                     <span>🛡️ Anonymous</span>
                   ) : (
-                    <span>👤 {attendeeName ? stripSalutation(attendeeName) : 'Participant'} {regDigits ? `(REG-${regDigits.padStart(5, '0')})` : ''}</span>
+                    <span>👤 {attendeeName ? stripSalutation(attendeeName) : 'Participant'} {regDigits ? `(${eventCode || 'REG'}-${regDigits.padStart((eventCode || 'REG') === 'REG' ? 5 : 4, '0')})` : ''}</span>
                   )}
                   <span style={{ opacity: 0.7, textDecoration: 'underline', marginLeft: '3px' }}>✎</span>
                 </button>
               )}
             </div>
-            <h1 className="feedback-hero-title">{FEEDBACK_CAMPAIGN.title}</h1>
-            <p className="feedback-hero-tagline">{FEEDBACK_CAMPAIGN.tagline}</p>
+            <h1 className="feedback-hero-title">{campaign.title}</h1>
+            <p className="feedback-hero-tagline">{campaign.tagline}</p>
           </header>
         )}
 
@@ -549,9 +572,9 @@ export const FeedbackPage: React.FC = () => {
         {currentStep === 4 ? (
           <div className="feedback-thankyou-card feedback-thankyou-compact">
             <div className="thankyou-emoji-sparkle">💖</div>
-            <h2 className="thankyou-title">{FEEDBACK_CAMPAIGN.closingQuote.title}</h2>
+            <h2 className="thankyou-title">{campaign.closingQuote.title}</h2>
             <p className="thankyou-message thankyou-message-compact">
-              {FEEDBACK_CAMPAIGN.closingQuote.subMessage}
+              {campaign.closingQuote.subMessage}
             </p>
 
             {/* Streamlined Mobile-First WhatsApp Sharing Box */}
@@ -676,8 +699,8 @@ export const FeedbackPage: React.FC = () => {
                     }}
                     className="identity-reg-input-row"
                   >
-                    <div className="feedback-reg-input-group" title="Registration prefix REG- is fixed">
-                      <span className="feedback-reg-prefix">REG-</span>
+                    <div className="feedback-reg-input-group" title={`Registration prefix ${eventCode || 'REG'}- is fixed`}>
+                      <span className="feedback-reg-prefix">{eventCode || 'REG'}-</span>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -713,11 +736,11 @@ export const FeedbackPage: React.FC = () => {
                           Hey <strong>{stripSalutation(attendeeName)}</strong>, welcome! 🎉
                         </div>
                         <div className="feedback-welcome-subtitle">
-                          Great to have you share your DeepAura experience!
+                          Great to have you share your {eventName} experience!
                         </div>
                         <div className="feedback-welcome-meta">
                           <span className="welcome-reg-pill">
-                            {regDigits ? `REG-${regDigits.padStart(5, '0')}` : 'REG-PASS'}
+                            {regDigits ? `${eventCode || 'REG'}-${regDigits.padStart((eventCode || 'REG') === 'REG' ? 5 : 4, '0')}` : `${eventCode || 'REG'}-PASS`}
                           </span>
                           <span className="welcome-verified-badge">
                             ✅ Verified Alumnus
@@ -734,7 +757,7 @@ export const FeedbackPage: React.FC = () => {
 
                   {lookupAttempted && !lookupSuccess && !lookingUp && (
                     <p className="identity-reg-hint" style={{ color: '#f87171' }}>
-                      ⚠️ No registration found for REG-{regDigits ? regDigits.padStart(5, '0') : ''}. Please re-check or choose &ldquo;Keep Me Anonymous&rdquo;.
+                      ⚠️ No registration found for {eventCode || 'REG'}-{regDigits ? regDigits.padStart((eventCode || 'REG') === 'REG' ? 5 : 4, '0') : ''}. Please re-check or choose &ldquo;Keep Me Anonymous&rdquo;.
                     </p>
                   )}
 
