@@ -26,3 +26,43 @@
 
 ### 5. Verification & Testing
 - When creating, editing, or validating UI components with browser or preview tools, always test and inspect at mobile screen dimensions (e.g. 375×667 or 390×844) before verifying desktop layouts.
+
+
+---
+
+## Multi-Event Dynamic Architecture Standards
+
+### 1. Zero Hardcoding of Event Identity & Pricing
+- **No Hardcoded Slugs or Dates**: Never hardcode `'deepaura-2k26'`, `'2026-11-01'`, or fixed fee amounts in frontend components or SQL queries.
+- **Dynamic Configuration**: Always read event properties dynamically from the active event record:
+  - `event.event_slug`, `event.event_name`, `event.short_name`, `event.event_date`
+  - `event.pricing_config` (single, couple, extra adult, child, spot rates)
+  - `event.tagline`, `event.banner_image_url`, `event.theme_primary_color`, `event.theme_accent_color`
+- **Short Name Usage**: Use `event.short_name || event.event_name` on ID card stubs, badges, seals, mobile buttons, and feedback headings for concise labeling.
+
+### 2. Strict Event Scoping & Data Isolation
+- **Strict Query Filtering**: All data operations—Gate verification, pass lookups, attendee statistics, directory tables, sponsorships, and expenses—MUST be strictly scoped to the active event (`.eq('event_id', activeEvent.id)` or `reg.event_id === activeEvent.id`).
+- **Never Mix Registrations**: The Admin registrations directory and summary stat cards must reflect attendees only for the currently selected event edition.
+- **Routing**: Each event is accessible via `/events/:slug`. The root path `/` auto-detects and loads the nearest upcoming open event, falling back to the latest edition recap.
+
+### 3. Financial Decoupling & Central Treasury
+- **No Hardcoded Coordinator Names or UPIs**: Never hardcode personal coordinator names (e.g., Mukesh, Hari Narayan, Lokesh, Mitesh, Rajeev, etc.), personal phone numbers, or private UPI handles in code.
+- **Database-Driven UPI Inflows**: UPI receivers, rotation weights, and QR code image URLs must be loaded directly from `events.upi_rotation_configs` (JSONB) or `events.upi_id`.
+- **Database-Driven Expense Accounts**: Expense accounts, bank details, and cash custodians must be retrieved from `events.expense_accounts_config` (JSONB) or recorded transaction splits.
+- **Canonical Cash Account**: All physical cash collections and spot entries must map strictly to the canonical account name `'Cash in Hand'`. Genuine UPI transactions must never be categorized as cash.
+
+### 4. Registration Numbering & Backward Compatibility
+- **Event-Scoped Sequence**: Registration numbers are generated per event using atomic database counters:
+  - DeepAura 2K26 retains prefix `'REG'` (`REG-00001` to `REG-00039` with 5-digit padding) for 100% backward compatibility.
+  - Future events use custom prefixes (e.g., `NY27-0001`, `HM27-0001` with 4-digit padding).
+- **Flexible Number Lookups**: Lookup inputs must support both bare digits (e.g., `39`) and prefixed numbers (e.g., `REG-00039`, `REG-39`), matching in-memory first for 0ms response.
+
+### 5. Event Lifecycle & Pass Concluded Rules
+- **Automatic Concluded Detection**: An event is considered concluded starting the day after the event date in IST (`isEventConcluded(event)`), or when `status === 'CLOSED'` / `'COMPLETED'`.
+- **Hide Pass Downloads Post-Event**: The pass download highlight card on the homepage and pass buttons in modals must be completely hidden once an event concludes (matching the closed registration button behavior).
+- **Concluded Notice on Direct URL**: Direct access to `/id-card` for a concluded event must display an informative concluded notice directing alumni to event recaps and memory walls.
+
+### 6. Free Tier Safeguards & Zero Data Loss
+- **No Destructive DB Changes**: Never drop, rename, or reset tables (`alumni`, `event_registrations`, `payment_verifications`, `expenses`, `sponsorships`). All schema migrations must be strictly additive (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`).
+- **Free-Tier Compatibility**: Maintain 100% compatibility with Supabase and Cloudflare Pages free tiers (no paid add-ons, client-side photo compression, minimal bundle size).
+- **Build Verification**: Always verify changes by running `npm run build` and checking for zero TypeScript and bundling errors before completing any task.
