@@ -226,7 +226,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                 className="btn btn-festive-primary btn-large btn-block"
                 id="btn-register-now"
               >
-                <span>Join DeepAura 2K26 • Register Now</span>
+                <span>Join {event.short_name || event.event_name} • Register Now</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="9 18 15 12 9 6"/>
                 </svg>

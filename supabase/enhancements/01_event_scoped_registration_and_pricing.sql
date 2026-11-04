@@ -19,12 +19,14 @@
 -- ────────────────────────────────────────────────────────────
 
 ALTER TABLE events ADD COLUMN IF NOT EXISTS event_code TEXT DEFAULT NULL;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS short_name TEXT DEFAULT NULL;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS pricing_config JSONB DEFAULT NULL;
 
--- Backfill existing DeepAura 2K26 with code 'REG' and current pricing rules
+-- Backfill existing DeepAura 2K26 with code 'REG', short_name 'DeepAura 2K26' and current pricing rules
 UPDATE events
 SET 
   event_code = 'REG',
+  short_name = COALESCE(short_name, 'DeepAura 2K26'),
   pricing_config = COALESCE(
     pricing_config,
     '{

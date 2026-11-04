@@ -35,6 +35,7 @@ export interface ExpenseAccountConfig {
 export interface ECKEvent {
   id: string;
   event_name: string;
+  short_name?: string | null;
   event_slug: string;
   event_code?: string | null;
   event_date: string;

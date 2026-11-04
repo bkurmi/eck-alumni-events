@@ -1,7 +1,7 @@
 import type { FeedbackQuestion } from '../types';
 
-export function getFeedbackCampaign(event?: { event_name?: string; tagline?: string } | null) {
-  const eventName = event?.event_name || 'DeepAura 2K26';
+export function getFeedbackCampaign(event?: { event_name?: string; short_name?: string | null; tagline?: string } | null) {
+  const eventName = event?.short_name || event?.event_name || 'DeepAura 2K26';
   const tagline = event?.tagline || 'A few clicks today, better reunions tomorrow.';
 
   return {
@@ -16,8 +16,8 @@ export function getFeedbackCampaign(event?: { event_name?: string; tagline?: str
   };
 }
 
-export function getFeedbackQuestions(event?: { event_name?: string } | null): FeedbackQuestion[] {
-  const eventName = event?.event_name || 'DeepAura 2K26';
+export function getFeedbackQuestions(event?: { event_name?: string; short_name?: string | null } | null): FeedbackQuestion[] {
+  const eventName = event?.short_name || event?.event_name || 'DeepAura 2K26';
 
   return [
     // ── Section 1: The Event Experience 🎉 ───────────────────────

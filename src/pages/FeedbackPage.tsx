@@ -153,7 +153,7 @@ export const FeedbackPage: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('events')
-          .select('id, event_name, event_slug, event_code, tagline, status, event_date')
+          .select('id, event_name, short_name, event_slug, event_code, tagline, status, event_date')
           .order('event_date', { ascending: false });
 
         if (data && !error && data.length > 0) {
@@ -164,7 +164,7 @@ export const FeedbackPage: React.FC = () => {
           if (target) {
             setEventId(target.id);
             if (target.event_slug) setEventSlug(target.event_slug);
-            if (target.event_name) setEventName(target.event_name);
+            setEventName(target.short_name || target.event_name || 'DeepAura 2K26');
             setEventCode(target.event_code || (target.event_slug === 'deepaura-2k26' ? 'REG' : 'REG'));
             if (target.tagline) setEventTagline(target.tagline);
           }

@@ -68,7 +68,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
   hideQr = false,
 }) => {
   const isConcluded = event?.status === 'CLOSED';
-  const eventTitle = (event?.event_name || 'DEEPAURA 2K26').toUpperCase();
+  const eventTitle = (event?.short_name || event?.event_name || 'DEEPAURA 2K26').toUpperCase();
   const eventTagline = event?.tagline || 'A ROYAL DIWALI REUNION';
 
   const alumni = registration.alumni;
