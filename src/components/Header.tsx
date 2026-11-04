@@ -153,6 +153,24 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
+          <Link to="/directory" className="nav-btn directory-link" title="Alumni Directory & Help">
+            <svg className="nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span className="nav-btn-text">Directory</span>
+          </Link>
+
+          <Link to="/profile" className="nav-btn profile-link" title="My Alumni Profile">
+            <svg className="nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <span className="nav-btn-text">My Profile</span>
+          </Link>
+
           <a href="/admin" className="nav-btn admin-link" title="Organizer Admin">
             <svg className="nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>

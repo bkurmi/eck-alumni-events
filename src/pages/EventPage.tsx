@@ -415,6 +415,40 @@ export const EventPage: React.FC = () => {
                 </section>
               )}
 
+              {/* Alumni Directory & Help Portal Spotlight */}
+              <section className="idpass-home-feature-card directory-spotlight-card" aria-label="Alumni Directory and Help">
+                <div className="idpass-feature-inner">
+                  <div className="idpass-feature-top">
+                    <span className="idpass-badge-pill" style={{ borderColor: 'rgba(59, 130, 246, 0.4)', background: 'rgba(59, 130, 246, 0.12)', color: '#93c5fd' }}>
+                      <span className="idpass-badge-dot" style={{ background: '#3b82f6' }}>●</span>
+                      <span className="idpass-badge-label">ALUMNI NETWORK</span>
+                      <span className="idpass-badge-sep">•</span>
+                      <span className="idpass-badge-sub">Directory &amp; Help Desk</span>
+                    </span>
+                  </div>
+
+                  <div className="idpass-feature-body">
+                    <h3 className="idpass-title">
+                      <span className="idpass-icon-badge">👥</span>
+                      <span>Alumni Directory &amp; Help Connect</span>
+                    </h3>
+                    <p className="idpass-desc">
+                      Looking for guidance in your engineering department or settling into a new city? Search alumni by department, location, or update your profile.
+                    </p>
+                  </div>
+
+                  <div className="idpass-feature-cta-wrap">
+                    <Link to="/directory" className="btn btn-idpass-feature-primary" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                      <span className="btn-ticket-icon">🔍</span>
+                      <span>Explore Alumni Directory</span>
+                      <svg className="btn-arrow-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </Link>
+                  </div>
+                </div>
+              </section>
+
               {/* Event Highlights & Features for Alumni */}
               <div className="event-perks-section">
                 <h3 className="section-title">What to Expect</h3>

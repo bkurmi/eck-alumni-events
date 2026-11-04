@@ -5,6 +5,7 @@ import { AdminPage } from './pages/AdminPage';
 import { IdCardPage } from './pages/IdCardPage';
 import { GatePage } from './pages/GatePage';
 import { FeedbackPage } from './pages/FeedbackPage';
+import { AlumniDirectoryPage } from './pages/AlumniDirectoryPage';
 
 function App() {
   return (
@@ -12,6 +13,9 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/events/:slug" element={<EventPage />} />
+        <Route path="/directory" element={<AlumniDirectoryPage />} />
+        <Route path="/alumni" element={<AlumniDirectoryPage />} />
+        <Route path="/profile" element={<AlumniDirectoryPage autoOpenProfile />} />
         <Route path="/id-card" element={<IdCardPage />} />
         <Route path="/download-pass" element={<IdCardPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />

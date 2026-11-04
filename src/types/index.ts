@@ -75,8 +75,35 @@ export interface Alumni {
   industry_domain?: string;
   professional_category: string;
   work_location: string | null;
+  linkedin_url?: string | null;
+  photo_url?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AlumniDirectoryItem extends Alumni {
+  resolved_photo_url: string | null;
+  latest_event_registration_number?: string | null;
+}
+
+export interface UpdateAlumniPayload {
+  alumni_id: string;
+  mobile: string;
+  name: string;
+  email?: string | null;
+  year_of_passing?: number | null;
+  engineering_discipline?: string | null;
+  organization?: string | null;
+  employment_type?: string | null;
+  industry_domain?: string | null;
+  professional_category?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  address?: string | null;
+  work_location?: string | null;
+  linkedin_url?: string | null;
+  photo_url?: string | null;
 }
 
 export interface PaymentVerification {
