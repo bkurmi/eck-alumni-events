@@ -23,6 +23,16 @@ import {
   cleanMobileNumber,
 } from '../lib/registrations';
 import { isRegistrationClosed } from '../lib/eventStatus';
+import {
+  AlertCircle,
+  X,
+  Lock,
+  Check,
+  Clock,
+  Minus,
+  Plus,
+  ArrowRight,
+} from 'lucide-react';
 
 interface RegistrationFormProps {
   event: ECKEvent;
@@ -959,35 +969,37 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   };
 
   return (
-    <form className="registration-form" onSubmit={handleSubmit} noValidate>
+    <form className="w-full max-w-3xl mx-auto space-y-6" onSubmit={handleSubmit} noValidate>
       {/* Scroll anchor placed right at top of form */}
       <div ref={formTopRef} id="form-top-anchor" style={{ scrollMarginTop: '80px' }} />
 
       {/* Prominent High-Visibility Error Banner at Top */}
       {formError && (
-        <div className="registration-error-alert animate-alert-shake" role="alert" tabIndex={-1}>
-          <div className="alert-error-left">
-            <div className="alert-error-icon-bubble">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
+        <div
+          className="flex items-start justify-between gap-3 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 shadow-xl shadow-rose-950/40 animate-in fade-in"
+          role="alert"
+          tabIndex={-1}
+        >
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 shrink-0 mt-0.5">
+              <AlertCircle className="w-5 h-5" />
             </div>
-            <div className="alert-error-details">
+            <div className="space-y-1 text-xs sm:text-sm">
               {errorFieldId ? (
                 <>
-                  <strong className="alert-error-heading">Please complete the required information</strong>
-                  <p className="alert-error-text">{formError}</p>
+                  <strong className="font-bold text-rose-100 block text-sm sm:text-base">
+                    Please complete the required information
+                  </strong>
+                  <p className="text-rose-200/90 leading-relaxed">{formError}</p>
                 </>
               ) : (
-                <strong className="alert-error-heading">{formError}</strong>
+                <strong className="font-bold text-rose-100 block text-sm sm:text-base">{formError}</strong>
               )}
             </div>
           </div>
           <button
             type="button"
-            className="alert-dismiss-btn"
+            className="p-1.5 rounded-lg text-rose-400 hover:text-white hover:bg-rose-500/20 transition-colors shrink-0 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
             onClick={() => {
               setFormError(null);
               setErrorFieldId(null);
@@ -995,38 +1007,45 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             title="Dismiss notice"
             aria-label="Dismiss error notice"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
       )}
 
       {/* Feature 2: Update Mode Notice Banner (Only for completed registrations) */}
       {isUpdateMode && activeExistingReg?.payment_screenshot_path && (
-        <div className="update-mode-badge-card animate-slide-down">
-          <div className="update-badge-left">
-            <span className="update-pill">🔒 Existing Registration Preloaded &amp; Locked</span>
-            <h3 className="update-reg-num">
+        <div className="flex flex-col sm:flex-row items-start gap-3.5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/40 shadow-lg shadow-amber-500/10">
+          <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-300 shrink-0">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div className="space-y-1.5">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+              Existing Registration Preloaded &amp; Locked
+            </span>
+            <h3 className="text-xl font-black text-white font-mono tracking-wide">
               {activeExistingReg?.registration_number || 'REGISTRATION FOUND'}
             </h3>
-            <p className="update-reg-desc">
-              Your registered details for <strong>{formData.name || 'Alumni'}</strong> have been preloaded. Fresh registrations are not allowed for this mobile number; you can update your details or add attendees below.
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Your registered details for <strong className="text-white">{formData.name || 'Alumni'}</strong> have been preloaded. Fresh registrations are not allowed for this mobile number; you can update your details or add attendees below.
             </p>
           </div>
         </div>
       )}
 
       {/* STEP 1: ALUMNI INFORMATION */}
-      <div className="form-card">
-        <div className="card-header-badge">
-          <div className="step-tag-pill">Step 1 of 3</div>
-          <h2 className="card-title">Alumni Information</h2>
-          <p className="card-subtitle">Please enter your alumni contact details.</p>
+      <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md space-y-5">
+        <div className="space-y-1 border-b border-slate-800/80 pb-3">
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            Step 1 of 3
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Alumni Information</h2>
+          <p className="text-xs sm:text-sm text-slate-400">Please enter your alumni contact details.</p>
         </div>
 
-        <div className="form-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Full Name */}
-          <div className="field-group full-width">
-            <label className="field-label required" htmlFor="field-name">
+          <div className="sm:col-span-2 space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-name">
               Full Name
             </label>
             <input
@@ -1037,18 +1056,20 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               onChange={handleChange}
               placeholder="e.g. Er. Bhawesh Kurmi"
               required
-              className={`input-field ${errorFieldId === 'field-name' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-name' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
               autoComplete="name"
             />
           </div>
 
           {/* Mobile */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-mobile">
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-mobile">
               Mobile / WhatsApp Number
             </label>
-            <div className="input-prefix-wrap">
-              <span className="input-prefix">+91</span>
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 text-slate-400 font-medium text-base select-none pointer-events-none">+91</span>
               <input
                 id="field-mobile"
                 type="tel"
@@ -1061,20 +1082,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 placeholder="10-digit number"
                 maxLength={10}
                 required
-                className={`input-field prefixed-input ${errorFieldId === 'field-mobile' ? 'input-error-highlight' : ''}`}
+                className={`w-full min-h-[44px] pl-12 pr-10 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                  errorFieldId === 'field-mobile' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
                 autoComplete="tel-national"
               />
               {checkingMobile && (
-                <span className="input-field-spinner" title="Checking registration...">
-                  <span className="mini-spinner" />
+                <span className="absolute right-3.5 flex items-center justify-center text-amber-400" title="Checking registration...">
+                  <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
                 </span>
               )}
             </div>
 
             {/* Confirmation indicator when mobile is matched and preloaded */}
             {isUpdateMode && activeExistingReg?.payment_screenshot_path && (
-              <div className="existing-reg-locked-badge animate-slide-down">
-                <span className="badge-icon">✓</span>
+              <div className="mt-2 flex items-start gap-2 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs leading-relaxed animate-in fade-in">
+                <Check className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
                   Existing registration <strong>{activeExistingReg.registration_number}</strong> ({activeExistingReg.alumni?.name}) preloaded. Updates will save directly to this registration.
                 </span>
@@ -1082,8 +1105,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             )}
 
             {!isUpdateMode && activeExistingReg && activeExistingReg.attendance_status === 'payment_pending' && !activeExistingReg.payment_screenshot_path && (
-              <div className="existing-reg-pending-badge animate-slide-down">
-                <span className="badge-icon">⏳</span>
+              <div className="mt-2 flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs leading-relaxed animate-in fade-in">
+                <Clock className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
                   Found your saved draft registration (<strong>{activeExistingReg.registration_number}</strong>). Your details have been restored! Please upload your payment screenshot below to confirm your attendance pass.
                 </span>
@@ -1092,9 +1115,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           </div>
 
           {/* Email */}
-          <div className="field-group">
-            <label className="field-label" htmlFor="field-email">
-              Email Address <span className="label-optional">(Optional)</span>
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200" htmlFor="field-email">
+              Email Address <span className="text-slate-400 font-normal">(Optional)</span>
             </label>
             <input
               id="field-email"
@@ -1103,14 +1126,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.email}
               onChange={handleChange}
               placeholder="alumni@example.com"
-              className={`input-field ${errorFieldId === 'field-email' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-email' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
               autoComplete="email"
             />
           </div>
 
           {/* Year of Passing */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-year">
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-year">
               Year of Passing (Batch)
             </label>
             <select
@@ -1119,11 +1144,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.year_of_passing}
               onChange={handleChange}
               required
-              className={`input-field select-field ${errorFieldId === 'field-year' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-year' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
             >
               <option value="">Select Passing Year</option>
               {passingYears.map((year) => (
-                <option key={year} value={year}>
+                <option key={year} value={year} className="bg-slate-900 text-slate-100">
                   Class of {year}
                 </option>
               ))}
@@ -1131,8 +1158,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           </div>
 
           {/* Engineering Discipline */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-discipline">
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-discipline">
               Engineering Discipline / Branch
             </label>
             <select
@@ -1141,11 +1168,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.engineering_discipline}
               onChange={handleChange}
               required
-              className={`input-field select-field ${errorFieldId === 'field-discipline' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-discipline' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
             >
               <option value="">Select Branch</option>
               {ENGINEERING_DISCIPLINES.map((discipline) => (
-                <option key={discipline} value={discipline}>
+                <option key={discipline} value={discipline} className="bg-slate-900 text-slate-100">
                   {discipline}
                 </option>
               ))}
@@ -1154,8 +1183,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           {/* Conditional Other for Engineering Discipline */}
           {formData.engineering_discipline === 'Other' && (
-            <div className="field-group animate-slide-down">
-              <label className="field-label required" htmlFor="field-discipline-other">
+            <div className="sm:col-span-2 space-y-1.5 animate-in fade-in">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-discipline-other">
                 Specify Engineering Branch
               </label>
               <input
@@ -1166,15 +1195,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. M.Tech Thermal, MCA, Applied Sciences"
                 required
-                className={`input-field ${errorFieldId === 'field-discipline-other' ? 'input-error-highlight' : ''}`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                  errorFieldId === 'field-discipline-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
                 autoFocus
               />
             </div>
           )}
 
           {/* Address */}
-          <div className="field-group full-width">
-            <label className="field-label required" htmlFor="field-address">
+          <div className="sm:col-span-2 space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-address">
               Permanent / Residential Address
             </label>
             <textarea
@@ -1185,13 +1216,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               rows={2}
               placeholder="House/Plot No., Street, Colony/Locality"
               required
-              className={`input-field textarea-field ${errorFieldId === 'field-address' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[70px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors resize-y ${
+                errorFieldId === 'field-address' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
             />
           </div>
 
           {/* Country */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-country">
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-country">
               Country
             </label>
             <select
@@ -1200,10 +1233,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.country}
               onChange={handleChange}
               required
-              className="input-field select-field"
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
             >
               {COUNTRY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <option key={opt.value} value={opt.value} className="bg-slate-900 text-slate-100">
                   {opt.label}
                 </option>
               ))}
@@ -1212,8 +1245,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           {/* If Country is Other: Specify Country Name */}
           {formData.country === 'Other' && (
-            <div className="field-group animate-slide-down">
-              <label className="field-label required" htmlFor="field-country-other">
+            <div className="space-y-1.5 animate-in fade-in">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-country-other">
                 Country Name
               </label>
               <input
@@ -1224,7 +1257,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. United States, United Kingdom, UAE, Singapore"
                 required
-                className={`input-field ${errorFieldId === 'field-country-other' ? 'input-error-highlight' : ''}`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                  errorFieldId === 'field-country-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
                 autoFocus
               />
             </div>
@@ -1232,8 +1267,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           {/* If Country is India: State Dropdown */}
           {formData.country === 'India' && (
-            <div className="field-group animate-slide-down">
-              <label className="field-label required" htmlFor="field-state">
+            <div className="space-y-1.5 animate-in fade-in">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-state">
                 State / UT
               </label>
               <select
@@ -1242,11 +1277,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 value={formData.state}
                 onChange={handleChange}
                 required
-                className={`input-field select-field ${errorFieldId === 'field-state' ? 'input-error-highlight' : ''}`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                  errorFieldId === 'field-state' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
               >
                 <option value="">Select State / UT</option>
                 {INDIAN_STATES.map((st) => (
-                  <option key={st} value={st}>
+                  <option key={st} value={st} className="bg-slate-900 text-slate-100">
                     {st}
                   </option>
                 ))}
@@ -1256,8 +1293,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           {/* Conditional Other for State within India */}
           {formData.country === 'India' && formData.state === 'Other' && (
-            <div className="field-group animate-slide-down">
-              <label className="field-label required" htmlFor="field-state-other">
+            <div className="space-y-1.5 animate-in fade-in">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-state-other">
                 Specify State / Region
               </label>
               <input
@@ -1268,7 +1305,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. New State / UT"
                 required
-                className={`input-field ${errorFieldId === 'field-state-other' ? 'input-error-highlight' : ''}`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                  errorFieldId === 'field-state-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
                 autoFocus
               />
             </div>
@@ -1276,9 +1315,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           {/* If Country is Other: State/Province/Emirate (Optional) */}
           {formData.country === 'Other' && (
-            <div className="field-group animate-slide-down">
-              <label className="field-label" htmlFor="field-state-other">
-                State / Province / Emirate <span className="label-optional">(Optional)</span>
+            <div className="space-y-1.5 animate-in fade-in">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200" htmlFor="field-state-other">
+                State / Province / Emirate <span className="text-slate-400 font-normal">(Optional)</span>
               </label>
               <input
                 id="field-state-other"
@@ -1287,14 +1326,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 value={formData.state_other || ''}
                 onChange={handleChange}
                 placeholder="e.g. California, Ontario, Dubai"
-                className="input-field"
+                className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
               />
             </div>
           )}
 
           {/* City */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-city">
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-city">
               {formData.country === 'India' ? 'City' : 'City / Town / Region'}
             </label>
             <input
@@ -1305,13 +1344,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               onChange={handleChange}
               placeholder={formData.country === 'India' ? 'e.g. Kota, Jaipur, Delhi' : 'e.g. Dubai, London, San Jose'}
               required
-              className={`input-field ${errorFieldId === 'field-city' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-city' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
             />
           </div>
 
           {/* Employment Type */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-employment-type">
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-employment-type">
               Employment Type
             </label>
             <select
@@ -1320,11 +1361,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.employment_type}
               onChange={handleChange}
               required
-              className={`input-field select-field ${errorFieldId === 'field-employment-type' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-employment-type' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
             >
               <option value="">Select Employment Type</option>
               {EMPLOYMENT_TYPES.map((type) => (
-                <option key={type} value={type}>
+                <option key={type} value={type} className="bg-slate-900 text-slate-100">
                   {type}
                 </option>
               ))}
@@ -1333,8 +1376,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           {/* Conditional Other for Employment Type */}
           {formData.employment_type === 'Other' && (
-            <div className="field-group animate-slide-down">
-              <label className="field-label required" htmlFor="field-employment-other">
+            <div className="sm:col-span-2 space-y-1.5 animate-in fade-in">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-employment-other">
                 Specify Employment Type
               </label>
               <input
@@ -1345,15 +1388,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. Armed Forces, Social Worker, Homemaker"
                 required
-                className={`input-field ${errorFieldId === 'field-employment-other' ? 'input-error-highlight' : ''}`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                  errorFieldId === 'field-employment-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
                 autoFocus
               />
             </div>
           )}
 
           {/* Industry / Domain */}
-          <div className="field-group">
-            <label className="field-label required" htmlFor="field-industry">
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-industry">
               Industry / Domain
             </label>
             <select
@@ -1362,11 +1407,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.industry_domain}
               onChange={handleChange}
               required
-              className={`input-field select-field ${errorFieldId === 'field-industry' ? 'input-error-highlight' : ''}`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-industry' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
             >
               <option value="">Select Industry / Domain</option>
               {INDUSTRY_DOMAINS.map((domain) => (
-                <option key={domain} value={domain}>
+                <option key={domain} value={domain} className="bg-slate-900 text-slate-100">
                   {domain}
                 </option>
               ))}
@@ -1375,8 +1422,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           {/* Conditional Other for Industry / Domain */}
           {formData.industry_domain === 'Other' && (
-            <div className="field-group animate-slide-down">
-              <label className="field-label required" htmlFor="field-industry-other">
+            <div className="sm:col-span-2 space-y-1.5 animate-in fade-in">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-industry-other">
                 Specify Industry / Domain
               </label>
               <input
@@ -1387,16 +1434,18 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. Aerospace, Energy & Power, Media"
                 required
-                className={`input-field ${errorFieldId === 'field-industry-other' ? 'input-error-highlight' : ''}`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                  errorFieldId === 'field-industry-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
                 autoFocus
               />
             </div>
           )}
 
           {/* Organization */}
-          <div className="field-group">
-            <label className="field-label" htmlFor="field-organization">
-              Organization / Company / Business <span className="label-optional">(Optional)</span>
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200" htmlFor="field-organization">
+              Organization / Company / Business <span className="text-slate-400 font-normal">(Optional)</span>
             </label>
             <input
               id="field-organization"
@@ -1405,14 +1454,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.organization}
               onChange={handleChange}
               placeholder="e.g. NTPC, Infosys, Entrepreneur"
-              className="input-field"
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
             />
           </div>
 
           {/* Work Location */}
-          <div className="field-group full-width">
-            <label className="field-label" htmlFor="field-work-loc">
-              Current Work Location <span className="label-optional">(Optional)</span>
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200" htmlFor="field-work-loc">
+              Current Work Location <span className="text-slate-400 font-normal">(Optional)</span>
             </label>
             <input
               id="field-work-loc"
@@ -1421,92 +1470,120 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.work_location}
               onChange={handleChange}
               placeholder="e.g. New Delhi, Mumbai, Bengaluru, Abroad"
-              className="input-field"
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
             />
           </div>
         </div>
       </div>
 
       {/* STEP 2: ATTENDANCE & GUESTS */}
-      <div className="form-card">
-        <div className="card-header-badge">
-          <div className="step-tag-pill">Step 2 of 3</div>
-          <h2 className="card-title">Attendance &amp; Guests</h2>
-          <p className="card-subtitle">Will you be attending {event.event_name}?</p>
+      <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md space-y-5">
+        <div className="space-y-1 border-b border-slate-800/80 pb-3">
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            Step 2 of 3
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Attendance &amp; Guests</h2>
+          <p className="text-xs sm:text-sm text-slate-400">Will you be attending {event.event_name}?</p>
         </div>
 
-        <div className={`attendance-options-grid ${errorFieldId === 'attend-yes' ? 'input-error-highlight' : ''}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 ${errorFieldId === 'attend-yes' ? 'p-1 rounded-xl ring-2 ring-rose-500' : ''}`}>
           <button
             type="button"
-            className={`attendance-chip ${formData.attendance_status === 'yes' ? 'selected' : ''}`}
+            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${
+              formData.attendance_status === 'yes'
+                ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
+                : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950/80'
+            }`}
             onClick={() => handleAttendanceChange('yes')}
             id="attend-yes"
           >
-            <div className="chip-indicator">
+            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${
+              formData.attendance_status === 'yes'
+                ? 'bg-amber-500 border-amber-500 text-slate-950'
+                : 'border-slate-600'
+            }`}>
               {formData.attendance_status === 'yes' ? '✓' : ''}
             </div>
-            <div className="chip-text">
-              <span className="chip-title">Yes, Attending</span>
-              <span className="chip-desc">I will join the celebration</span>
+            <div>
+              <span className="font-bold block text-sm sm:text-base text-white">Yes, Attending</span>
+              <span className="text-xs text-slate-400 block">I will join celebration</span>
             </div>
           </button>
 
           <button
             type="button"
-            className={`attendance-chip ${formData.attendance_status === 'maybe' ? 'selected' : ''}`}
+            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${
+              formData.attendance_status === 'maybe'
+                ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
+                : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950/80'
+            }`}
             onClick={() => handleAttendanceChange('maybe')}
             id="attend-maybe"
           >
-            <div className="chip-indicator">
+            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${
+              formData.attendance_status === 'maybe'
+                ? 'bg-amber-500 border-amber-500 text-slate-950'
+                : 'border-slate-600'
+            }`}>
               {formData.attendance_status === 'maybe' ? '✓' : ''}
             </div>
-            <div className="chip-text">
-              <span className="chip-title">Maybe</span>
-              <span className="chip-desc">Tentative plan</span>
+            <div>
+              <span className="font-bold block text-sm sm:text-base text-white">Maybe</span>
+              <span className="text-xs text-slate-400 block">Tentative plan</span>
             </div>
           </button>
 
           <button
             type="button"
-            className={`attendance-chip ${formData.attendance_status === 'no' ? 'selected' : ''}`}
+            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${
+              formData.attendance_status === 'no'
+                ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
+                : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950/80'
+            }`}
             onClick={() => handleAttendanceChange('no')}
             id="attend-no"
           >
-            <div className="chip-indicator">
+            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${
+              formData.attendance_status === 'no'
+                ? 'bg-amber-500 border-amber-500 text-slate-950'
+                : 'border-slate-600'
+            }`}>
               {formData.attendance_status === 'no' ? '✓' : ''}
             </div>
-            <div className="chip-text">
-              <span className="chip-title">No</span>
-              <span className="chip-desc">Unable to join this time</span>
+            <div>
+              <span className="font-bold block text-sm sm:text-base text-white">No</span>
+              <span className="text-xs text-slate-400 block">Unable to join this time</span>
             </div>
           </button>
         </div>
 
         {formData.attendance_status === 'yes' && (
-          <div className="attendees-breakdown-container">
-            <div className="breakdown-header-box">
-              <div className="breakdown-title-wrap">
-                <label className="field-label">Who is joining you at the reunion?</label>
-                <span className="field-hint">
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 sm:p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="space-y-0.5">
+                <label className="text-xs sm:text-sm font-semibold text-white block">Who is joining you at the reunion?</label>
+                <span className="text-xs text-slate-400 block">
                   Specify adults &amp; kids accompanying you. Contribution calculates automatically.
                 </span>
               </div>
-              <div className="rates-summary-badge">
+              <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 self-start sm:self-auto shrink-0">
                 <span>{formatPricingPillSummary(event.pricing_config, event.registration_fee)}</span>
               </div>
             </div>
 
-            <div className="attendee-tiers-grid">
+            <div className="space-y-3">
               {/* Adults Counter */}
-              <div className="tier-counter-card">
-                <div className="tier-info">
-                  <div className="tier-name-row">
-                    <span className="tier-title">Adults</span>
+              <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm sm:text-base font-bold text-white">Adults</span>
                     {(formData.adults_count ?? 1) === 2 && (
-                      <span className="tier-badge couple-badge">Couple Rate</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Couple Rate
+                      </span>
                     )}
                   </div>
-                  <span className="tier-desc">
+                  <span className="text-xs text-slate-400 block">
                     {(formData.adults_count ?? 1) === 1
                       ? `₹${singleAdultRate.toLocaleString('en-IN')} for 1 adult`
                       : (formData.adults_count ?? 1) === 2
@@ -1514,12 +1591,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         : `₹${coupleAdultRate.toLocaleString('en-IN')} couple + ₹${extraAdultRate.toLocaleString('en-IN')}/extra adult`}
                   </span>
                 </div>
-                <div className="stepper-controls">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleCountStep('adults_count', -1)}
                     disabled={(formData.adults_count ?? 1) <= minAdults}
-                    className="stepper-btn"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white font-bold text-lg flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
                     aria-label="Decrease adults"
                     id="btn-dec-adults"
                     title={
@@ -1528,11 +1605,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         : undefined
                     }
                   >
-                    −
+                    <Minus className="w-4 h-4" />
                   </button>
-                  <div className="stepper-count-wrap">
-                    <span className="stepper-count">{formData.adults_count ?? 1}</span>
-                    <span className="stepper-person-label">
+                  <div className="flex flex-col items-center justify-center min-w-[44px]">
+                    <span className="text-base sm:text-lg font-black text-white">{formData.adults_count ?? 1}</span>
+                    <span className="text-[10px] text-slate-400 font-medium uppercase">
                       {(formData.adults_count ?? 1) === 1 ? 'Adult' : 'Adults'}
                     </span>
                   </div>
@@ -1540,29 +1617,29 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     type="button"
                     onClick={() => handleCountStep('adults_count', 1)}
                     disabled={(formData.adults_count ?? 1) >= 10}
-                    className="stepper-btn"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white font-bold text-lg flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
                     aria-label="Increase adults"
                     id="btn-inc-adults"
                   >
-                    +
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
               {/* Children (>10 years) Counter */}
-              <div className="tier-counter-card">
-                <div className="tier-info">
-                  <div className="tier-name-row">
-                    <span className="tier-title">Children (10+ Years)</span>
+              <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm sm:text-base font-bold text-white">Children (10+ Years)</span>
                   </div>
-                  <span className="tier-desc">₹300 per child</span>
+                  <span className="text-xs text-slate-400 block">₹300 per child</span>
                 </div>
-                <div className="stepper-controls">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleCountStep('children_above_7_count', -1)}
                     disabled={(formData.children_above_7_count ?? 0) <= minKidsAbove7}
-                    className="stepper-btn"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white font-bold text-lg flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
                     aria-label="Decrease children 10 and above"
                     id="btn-dec-kids-above-7"
                     title={
@@ -1571,11 +1648,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         : undefined
                     }
                   >
-                    −
+                    <Minus className="w-4 h-4" />
                   </button>
-                  <div className="stepper-count-wrap">
-                    <span className="stepper-count">{formData.children_above_7_count ?? 0}</span>
-                    <span className="stepper-person-label">
+                  <div className="flex flex-col items-center justify-center min-w-[44px]">
+                    <span className="text-base sm:text-lg font-black text-white">{formData.children_above_7_count ?? 0}</span>
+                    <span className="text-[10px] text-slate-400 font-medium uppercase">
                       {(formData.children_above_7_count ?? 0) === 1 ? 'Child' : 'Children'}
                     </span>
                   </div>
@@ -1583,30 +1660,32 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     type="button"
                     onClick={() => handleCountStep('children_above_7_count', 1)}
                     disabled={(formData.children_above_7_count ?? 0) >= 10}
-                    className="stepper-btn"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white font-bold text-lg flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
                     aria-label="Increase children 10 and above"
                     id="btn-inc-kids-above-7"
                   >
-                    +
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
               {/* Children (<10 years) Counter */}
-              <div className="tier-counter-card">
-                <div className="tier-info">
-                  <div className="tier-name-row">
-                    <span className="tier-title">Children (Under 10 Years)</span>
-                    <span className="tier-badge free-badge">Free</span>
+              <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm sm:text-base font-bold text-white">Children (Under 10 Years)</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Free
+                    </span>
                   </div>
-                  <span className="tier-desc">Complimentary reunion entry</span>
+                  <span className="text-xs text-slate-400 block">Complimentary reunion entry</span>
                 </div>
-                <div className="stepper-controls">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleCountStep('children_under_7_count', -1)}
                     disabled={(formData.children_under_7_count ?? 0) <= minKidsUnder7}
-                    className="stepper-btn"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white font-bold text-lg flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
                     aria-label="Decrease children under 10"
                     id="btn-dec-kids-under-7"
                     title={
@@ -1615,11 +1694,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         : undefined
                     }
                   >
-                    −
+                    <Minus className="w-4 h-4" />
                   </button>
-                  <div className="stepper-count-wrap">
-                    <span className="stepper-count">{formData.children_under_7_count ?? 0}</span>
-                    <span className="stepper-person-label">
+                  <div className="flex flex-col items-center justify-center min-w-[44px]">
+                    <span className="text-base sm:text-lg font-black text-white">{formData.children_under_7_count ?? 0}</span>
+                    <span className="text-[10px] text-slate-400 font-medium uppercase">
                       {(formData.children_under_7_count ?? 0) === 1 ? 'Child' : 'Children'}
                     </span>
                   </div>
@@ -1627,11 +1706,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     type="button"
                     onClick={() => handleCountStep('children_under_7_count', 1)}
                     disabled={(formData.children_under_7_count ?? 0) >= 10}
-                    className="stepper-btn"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white font-bold text-lg flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
                     aria-label="Increase children under 10"
                     id="btn-inc-kids-under-7"
                   >
-                    +
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1639,22 +1718,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
             {/* In Update Mode: Inform user why counts cannot decrease */}
             {isEnforcingMinCounts && (
-              <div className="attendee-locked-callout">
-                <span className="locked-icon">🔒</span>
-                <span className="locked-text">
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-amber-200">
+                <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">
                   Previously registered counts cannot be reduced. You can increase counts to register additional family members.
                 </span>
               </div>
             )}
 
             {/* Total Summary Row */}
-            <div className="attendee-total-pill-bar">
-              <span className="attendee-total-text">
-                👥 Total Attending: <strong>{pricing.totalAttendees}</strong>{' '}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 p-3.5 sm:p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs sm:text-sm">
+              <span className="text-slate-300 font-medium">
+                👥 Total Attending: <strong className="text-white font-bold">{pricing.totalAttendees}</strong>{' '}
                 {pricing.totalAttendees === 1 ? 'person' : 'persons'}
               </span>
-              <span className="attendee-total-amount">
-                Total Contribution: <strong>₹{pricing.totalAmount}</strong>
+              <span className="text-amber-400 font-semibold text-sm sm:text-base">
+                Total Contribution: <strong className="text-white font-bold">₹{pricing.totalAmount}</strong>
               </span>
             </div>
           </div>
@@ -1705,20 +1784,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       />
 
       {/* SUBMIT BUTTON */}
-      <div className="form-submit-bar">
+      <div className="w-full space-y-3 pt-2">
         {formError && (
           <div
-            className="submit-error-banner"
+            className="flex items-center justify-between gap-2 p-3 sm:p-3.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs sm:text-sm cursor-pointer hover:bg-rose-500/25 transition-colors"
             onClick={() => scrollToError(formError, errorFieldId || undefined)}
             role="button"
             tabIndex={0}
             title="Click to scroll to top to review error"
           >
-            <div className="submit-error-banner-left">
-              <span className="submit-error-badge">Action Required</span>
-              <span className="submit-error-summary">{formError}</span>
+            <div className="flex items-center gap-2 truncate">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500 text-white shrink-0">
+                Action Required
+              </span>
+              <span className="font-medium truncate">{formError}</span>
             </div>
-            <span className="submit-error-scroll-link">
+            <span className="text-rose-300 font-semibold underline shrink-0">
               Scroll to Error ↑
             </span>
           </div>
@@ -1726,12 +1807,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         <button
           type="submit"
           disabled={submitting}
-          className="btn btn-festive-primary btn-large btn-block"
+          className="w-full min-h-[48px] py-3.5 px-6 rounded-xl font-bold text-base bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
           id="btn-submit-registration"
         >
           {submitting ? (
-            <div className="spinner-wrap">
-              <div className="spinner" />
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
               <span>
                 {isUpdateMode ? 'Saving Updated Registration...' : 'Submitting Your Registration...'}
               </span>
@@ -1751,14 +1832,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   'Submit Alumni Record'
                 )}
               </span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
+              <ArrowRight className="w-5 h-5" />
             </>
           )}
         </button>
-        <p className="privacy-guarantee">
-          🔒 Verified ECK Alumni Network. Your details are preserved securely for community activities.
+        <p className="text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
+          <span>🔒</span>
+          <span>Verified ECK Alumni Network. Your details are preserved securely for community activities.</span>
         </p>
       </div>
     </form>

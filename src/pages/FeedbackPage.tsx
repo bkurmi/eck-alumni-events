@@ -14,7 +14,16 @@ import {
   getFeedbackQuestions,
 } from '../config/feedbackQuestions';
 import type { FeedbackQuestion } from '../types';
-import '../feedback.css';
+import {
+  Star,
+  Check,
+  Copy,
+  MessageCircle,
+  Shield,
+  ArrowRight,
+  ArrowLeft,
+  Lock,
+} from 'lucide-react';
 
 const STEP_CONTEXT = {
   1: {
@@ -98,206 +107,181 @@ export const FeedbackPage: React.FC = () => {
     event_improvements: '',
     portal_experience: 5,
     gate_pass_easy: 'yes',
-    portal_navigation: 5,
-    portal_ease: 'much_easier',
-    portal_improvements: '',
-    after_deepaura_feeling: '',
-    next_reunion_wish: '',
-    stay_connected: 'yes_absolutely',
+    digital_suggestions: '',
+    reunion_feeling: 'nostalgic',
+    next_reunion_ideas: '',
+    message_to_batch: '',
   });
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
 
-  const handleShareWhatsApp = () => {
-    const text = buildAlumniFeedbackShareMessage({
-      attendeeName: stripSalutation(attendeeName),
-      batch,
-      isAnonymous,
-      eventName,
-      tagline: eventTagline,
-    });
-    shareToWhatsApp(text);
-  };
-
-  const handleCopyShareMessage = async () => {
-    const text = buildAlumniFeedbackShareMessage({
-      attendeeName: stripSalutation(attendeeName),
-      batch,
-      isAnonymous,
-      eventName,
-      tagline: eventTagline,
-    });
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
-      setCopiedMessage(true);
-      setTimeout(() => setCopiedMessage(false), 2500);
-    } catch (err) {
-      console.error('Failed to copy share message:', err);
-    }
-  };
-
-  // Fetch active event (or matching ?event=slug)
+  // Fetch nearest open / active event metadata
   useEffect(() => {
-    async function loadActiveEvent() {
+    const fetchActiveEvent = async () => {
       try {
         const { data, error } = await supabase
           .from('events')
-          .select('id, event_name, short_name, event_slug, event_code, tagline, status, event_date')
-          .order('event_date', { ascending: false });
+          .select('id, event_slug, event_name, event_code, tagline')
+          .order('event_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        if (data && !error && data.length > 0) {
-          const paramSlug = searchParams.get('event');
-          const matched = paramSlug ? data.find((e: any) => e.event_slug === paramSlug) : null;
-          const target = matched || data.find((e: any) => e.status === 'OPEN') || data[0];
-
-          if (target) {
-            setEventId(target.id);
-            if (target.event_slug) setEventSlug(target.event_slug);
-            setEventName(target.short_name || target.event_name || 'DeepAura 2K26');
-            setEventCode(target.event_code || (target.event_slug === 'deepaura-2k26' ? 'REG' : 'REG'));
-            if (target.tagline) setEventTagline(target.tagline);
-          }
+        if (data && !error) {
+          setEventId(data.id);
+          setEventSlug(data.event_slug || 'deepaura-2k26');
+          setEventName(data.event_name || 'DeepAura 2K26');
+          setEventCode(data.event_code || 'REG');
+          setEventTagline(data.tagline || '“दीप जले, यादें मुस्कुराएँ।”');
         }
-      } catch (e) {
-        console.error('Failed to load active event for feedback:', e);
+      } catch (err) {
+        console.warn('Could not load dynamic event metadata for feedback, using fallback defaults:', err);
       } finally {
         setLoadingEvent(false);
       }
-    }
+    };
 
-    loadActiveEvent();
-  }, [searchParams]);
-
-  // Manual lookup handler (runs on Find button click or Enter key)
-  const handleManualLookup = async (digitsToLookup?: string) => {
-    const rawDigits = digitsToLookup !== undefined ? digitsToLookup : regDigits;
-    const trimmed = rawDigits.trim().replace(/\D/g, '');
-    if (!trimmed || isAnonymous) return;
-
-    setLookingUp(true);
-    setLookupAttempted(true);
-    try {
-      const result = await lookupRegistrationByRegNumber(eventSlug, trimmed, eventCode || 'REG');
-      if (result.found && result.alumni) {
-        const padLen = (eventCode || 'REG') === 'REG' ? 5 : 4;
-        const formatted = trimmed.padStart(padLen, '0');
-        setAttendeeName(stripSalutation(result.alumni.name || ''));
-        setBatch(String(result.alumni.year_of_passing || ''));
-        if (result.registration_id) setRegistrationId(result.registration_id);
-        // Automatically append zeros right inside the input field so it becomes the actual formatted number!
-        setRegDigits(formatted);
-        setLookupSuccess(true);
-      } else {
-        setLookupSuccess(false);
-      }
-    } catch (err) {
-      console.warn('Registration lookup error:', err);
-      setLookupSuccess(false);
-    } finally {
-      setLookingUp(false);
-    }
-  };
-
-  // Run initial lookup if passed via URL (e.g. from pass QR)
-  useEffect(() => {
-    if (rawInitialDigits && !isAnonymous && eventSlug) {
-      handleManualLookup(rawInitialDigits);
-    }
-  }, [eventSlug]);
+    fetchActiveEvent();
+  }, []);
 
   // Filter questions by section
   const eventQuestions = feedbackQuestions.filter((q) => q.section === 'event');
   const digitalQuestions = feedbackQuestions.filter((q) => q.section === 'digital');
   const heartQuestions = feedbackQuestions.filter((q) => q.section === 'heart');
 
-  const handleOptionChange = (questionId: string, value: any) => {
-    setResponses((prev) => ({
-      ...prev,
-      [questionId]: value,
-    }));
+  // Handle manual lookup when typing reg digits
+  const handleManualLookup = async () => {
+    const digits = regDigits.trim();
+    if (!digits) return;
+
+    setLookingUp(true);
+    setLookupAttempted(true);
+
+    try {
+      const match = await lookupRegistrationByRegNumber(eventSlug, digits, eventCode || 'REG');
+      if (match && match.found && match.alumni) {
+        const cleanedName = stripSalutation(match.alumni.name || '');
+        setAttendeeName(cleanedName);
+        setBatch(String(match.alumni.year_of_passing || ''));
+        setRegistrationId(match.registration_id || '');
+        setLookupSuccess(true);
+      } else {
+        setLookupSuccess(false);
+      }
+    } catch {
+      setLookupSuccess(false);
+    } finally {
+      setLookingUp(false);
+    }
   };
 
-  const handleChipToggle = (questionId: string, value: string) => {
+  // Option selection helpers
+  const handleOptionChange = (questionId: string, value: any) => {
+    setResponses((prev) => ({ ...prev, [questionId]: value }));
+  };
+
+  const handleChipToggle = (questionId: string, chipValue: string) => {
     setResponses((prev) => {
       const currentList: string[] = Array.isArray(prev[questionId]) ? prev[questionId] : [];
-      if (currentList.includes(value)) {
-        return { ...prev, [questionId]: currentList.filter((v) => v !== value) };
-      } else {
-        return { ...prev, [questionId]: [...currentList, value] };
-      }
+      const exists = currentList.includes(chipValue);
+      const updated = exists
+        ? currentList.filter((v) => v !== chipValue)
+        : [...currentList, chipValue];
+      return { ...prev, [questionId]: updated };
     });
   };
 
-  // Trigger celebration confetti
+  // WhatsApp Share Trigger
+  const handleShareWhatsApp = () => {
+    const message = buildAlumniFeedbackShareMessage({
+      attendeeName: isAnonymous ? '' : attendeeName,
+      batch,
+      isAnonymous,
+      eventName,
+      tagline: eventTagline,
+    });
+    shareToWhatsApp(message);
+  };
+
+  // Copy share message to clipboard
+  const handleCopyShareMessage = () => {
+    const message = buildAlumniFeedbackShareMessage({
+      attendeeName: isAnonymous ? '' : attendeeName,
+      batch,
+      isAnonymous,
+      eventName,
+      tagline: eventTagline,
+    });
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(message).then(() => {
+        setCopiedMessage(true);
+        setTimeout(() => setCopiedMessage(false), 2500);
+      });
+    }
+  };
+
+  // Confetti trigger
   const fireConfetti = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const colors = ['#f59e0b', '#fbbf24', '#f97316', '#22c55e', '#60a5fa', '#e11d48', '#a855f7'];
-    const particles: Array<{
+    const confettiPieces: Array<{
       x: number;
       y: number;
-      vx: number;
-      vy: number;
-      size: number;
+      r: number;
+      d: number;
       color: string;
-      rotation: number;
-      vRot: number;
-      life: number;
+      tilt: number;
+      tiltAngleIncremental: number;
+      tiltAngle: number;
     }> = [];
 
+    const colors = ['#f59e0b', '#fbbf24', '#fde047', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+
     for (let i = 0; i < 90; i++) {
-      particles.push({
-        x: canvas.width * 0.5 + (Math.random() - 0.5) * 80,
-        y: canvas.height * 0.4 + (Math.random() - 0.5) * 50,
-        vx: (Math.random() - 0.5) * 16,
-        vy: -Math.random() * 14 - 4,
-        size: Math.random() * 8 + 4,
+      confettiPieces.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        r: Math.random() * 6 + 4,
+        d: Math.random() * 90 + 10,
         color: colors[Math.floor(Math.random() * colors.length)],
-        rotation: Math.random() * Math.PI * 2,
-        vRot: (Math.random() - 0.5) * 0.25,
-        life: 1,
+        tilt: Math.floor(Math.random() * 10) - 10,
+        tiltAngleIncremental: Math.random() * 0.07 + 0.05,
+        tiltAngle: 0,
       });
     }
 
     let animationFrame: number;
+
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
       let aliveCount = 0;
+      for (let i = 0; i < confettiPieces.length; i++) {
+        const p = confettiPieces[i];
+        p.tiltAngle += p.tiltAngleIncremental;
+        p.y += (Math.cos(p.d) + 3 + p.r / 2) / 1.5;
+        p.x += Math.sin(p.d);
+        p.tilt = Math.sin(p.tiltAngle) * 15;
 
-      for (const p of particles) {
-        if (p.life <= 0) continue;
-        aliveCount++;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.4;
-        p.vx *= 0.98;
-        p.rotation += p.vRot;
-        p.life -= 0.012;
+        if (p.y <= canvas.height) {
+          aliveCount++;
+        }
 
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rotation);
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
-        ctx.restore();
+        ctx.beginPath();
+        ctx.lineWidth = p.r / 2;
+        ctx.strokeStyle = p.color;
+        ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+        ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+        ctx.stroke();
       }
 
       if (aliveCount > 0) {
@@ -358,16 +342,16 @@ export const FeedbackPage: React.FC = () => {
     const val = responses[q.id];
 
     return (
-      <div key={q.id} className="feedback-question-card">
-        <label className="feedback-question-title">
+      <div key={q.id} className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+        <label className="block text-sm sm:text-base font-bold text-white leading-snug">
           {q.title}
           {q.required && <span className="text-amber-400 ml-1">*</span>}
         </label>
-        {q.subtitle && <p className="feedback-question-sub">{q.subtitle}</p>}
+        {q.subtitle && <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">{q.subtitle}</p>}
 
         {/* 1. Emoji Mood Scale */}
         {q.type === 'emoji_scale' && q.options && (
-          <div className="feedback-emoji-grid">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
             {q.options.map((opt: any) => {
               const isSelected = val === opt.value;
               return (
@@ -375,11 +359,15 @@ export const FeedbackPage: React.FC = () => {
                   type="button"
                   key={opt.value}
                   onClick={() => handleOptionChange(q.id, opt.value)}
-                  className={`feedback-emoji-btn ${isSelected ? 'active' : ''}`}
+                  className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all active:scale-95 cursor-pointer min-h-[56px] ${
+                    isSelected
+                      ? 'bg-amber-500/20 border-amber-500 text-white shadow-md shadow-amber-500/20 ring-1 ring-amber-500'
+                      : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  }`}
                   aria-pressed={isSelected}
                 >
-                  <span className="feedback-emoji-icon">{opt.emoji}</span>
-                  <span className="feedback-emoji-label">{opt.label}</span>
+                  <span className="text-2xl sm:text-3xl select-none">{opt.emoji}</span>
+                  <span className="text-xs sm:text-sm font-semibold">{opt.label}</span>
                 </button>
               );
             })}
@@ -388,7 +376,7 @@ export const FeedbackPage: React.FC = () => {
 
         {/* 2. Star Rating (1 to 5) */}
         {q.type === 'rating' && (
-          <div className="feedback-star-row">
+          <div className="flex items-center gap-1.5 flex-wrap pt-1">
             {[1, 2, 3, 4, 5].map((star) => {
               const currentRating = Number(val) || 0;
               const isFilled = star <= currentRating;
@@ -397,22 +385,20 @@ export const FeedbackPage: React.FC = () => {
                   type="button"
                   key={star}
                   onClick={() => handleOptionChange(q.id, star)}
-                  className="feedback-star-btn"
+                  className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-amber-400 hover:scale-110 active:scale-95 transition-transform cursor-pointer"
                   aria-label={`${star} star`}
                 >
-                  <svg
-                    className={`feedback-star-svg ${isFilled ? 'filled' : 'empty'}`}
-                    viewBox="0 0 24 24"
-                    fill={isFilled ? '#fbbf24' : 'none'}
-                    stroke={isFilled ? '#f59e0b' : '#64748b'}
-                    strokeWidth="1.75"
-                  >
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
+                  <Star
+                    className={`w-7 h-7 sm:w-8 sm:h-8 transition-colors ${
+                      isFilled
+                        ? 'fill-amber-400 text-amber-400 filter drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]'
+                        : 'text-slate-600'
+                    }`}
+                  />
                 </button>
               );
             })}
-            <span className="feedback-rating-hint">
+            <span className="text-xs sm:text-sm font-semibold text-amber-300 ml-2">
               {Number(val) === 5
                 ? '⭐ Outstanding!'
                 : Number(val) === 4
@@ -428,7 +414,7 @@ export const FeedbackPage: React.FC = () => {
 
         {/* 3. Tap-to-Select Multi Chips */}
         {q.type === 'chips' && q.options && (
-          <div className="feedback-chips-wrapper">
+          <div className="flex flex-wrap gap-2 pt-1">
             {q.options.map((opt: any) => {
               const isSelected = Array.isArray(val) && val.includes(opt.value);
               return (
@@ -436,10 +422,14 @@ export const FeedbackPage: React.FC = () => {
                   type="button"
                   key={opt.value}
                   onClick={() => handleChipToggle(q.id, opt.value)}
-                  className={`feedback-chip-pill ${isSelected ? 'selected' : ''}`}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-full text-xs sm:text-sm font-semibold border transition-all active:scale-95 cursor-pointer ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/25'
+                      : 'bg-slate-950/70 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                  }`}
                   aria-pressed={isSelected}
                 >
-                  {opt.emoji && <span className="chip-emoji">{opt.emoji}</span>}
+                  {opt.emoji && <span className="select-none">{opt.emoji}</span>}
                   <span>{opt.label}</span>
                 </button>
               );
@@ -449,7 +439,7 @@ export const FeedbackPage: React.FC = () => {
 
         {/* 4. Radio Card Options */}
         {q.type === 'radio' && q.options && (
-          <div className="feedback-radio-list">
+          <div className="space-y-2 pt-1">
             {q.options.map((opt: any) => {
               const isSelected = val === opt.value;
               return (
@@ -457,15 +447,23 @@ export const FeedbackPage: React.FC = () => {
                   type="button"
                   key={opt.value}
                   onClick={() => handleOptionChange(q.id, opt.value)}
-                  className={`feedback-radio-card ${isSelected ? 'selected' : ''}`}
+                  className={`w-full flex items-center justify-between p-3.5 min-h-[48px] rounded-xl border text-left transition-all active:scale-[0.99] cursor-pointer ${
+                    isSelected
+                      ? 'bg-amber-500/15 border-amber-500 text-white shadow-sm shadow-amber-500/15'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  }`}
                   aria-pressed={isSelected}
                 >
-                  <div className="radio-card-leading">
-                    {opt.emoji && <span className="radio-emoji">{opt.emoji}</span>}
-                    <span className="radio-label">{opt.label}</span>
+                  <div className="flex items-center gap-2.5">
+                    {opt.emoji && <span className="text-lg select-none">{opt.emoji}</span>}
+                    <span className="text-xs sm:text-sm font-semibold">{opt.label}</span>
                   </div>
-                  <div className={`radio-dot ${isSelected ? 'checked' : ''}`}>
-                    {isSelected && <div className="radio-dot-inner" />}
+                  <div
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                      isSelected ? 'border-amber-400 bg-amber-400/20' : 'border-slate-600'
+                    }`}
+                  >
+                    {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />}
                   </div>
                 </button>
               );
@@ -476,7 +474,7 @@ export const FeedbackPage: React.FC = () => {
         {/* 5. Textarea / Open Expression */}
         {q.type === 'textarea' && (
           <textarea
-            className="feedback-textarea"
+            className="w-full min-h-[90px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors resize-y"
             rows={3}
             placeholder={q.placeholder || 'Type here...'}
             value={val || ''}
@@ -490,30 +488,36 @@ export const FeedbackPage: React.FC = () => {
   // If feedback portal is not enabled / inactive
   if (!enabled) {
     return (
-      <div className="feedback-page-wrapper">
-        <Header />
-        <main className="feedback-closed-main">
-          <div className="feedback-closed-card">
-            <div className="feedback-closed-icon-ring">
+      <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
+        <Header maxWidth="max-w-3xl" />
+        <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-8 flex-1 flex items-center justify-center">
+          <div className="w-full max-w-md bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl backdrop-blur-md">
+            <div className="w-14 h-14 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl">
               ⏳
             </div>
-            <div className="feedback-closed-pill">
-              <span className="badge-dot" /> Event Experience Portal
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Event Experience Portal
             </div>
-            <h1 className="feedback-closed-title">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
               Feedback Portal Is Currently Inactive
             </h1>
-            <p className="feedback-closed-desc">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               The alumni experience survey for <strong>{eventName}</strong> is not accepting submissions at this time.
             </p>
-            <div className="feedback-closed-notice-box">
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 leading-relaxed text-left">
               📢 <strong>Schedule Notice:</strong> The feedback portal opens during the event closing ceremony and remains accessible for post-event takeaways. Once the submission period ends, further entries are paused.
             </div>
-            <div className="feedback-closed-actions">
-              <Link to="/" className="btn-festive-primary feedback-closed-btn">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2 justify-center">
+              <Link
+                to="/"
+                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-colors inline-flex items-center justify-center gap-2"
+              >
                 <span>🏠</span> Return to Home
               </Link>
-              <Link to="/id-card" className="btn-secondary feedback-closed-btn">
+              <Link
+                to="/id-card"
+                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors inline-flex items-center justify-center gap-2"
+              >
                 <span>🎟️</span> My Digital Pass
               </Link>
             </div>
@@ -524,19 +528,19 @@ export const FeedbackPage: React.FC = () => {
   }
 
   return (
-    <div className="feedback-page-wrapper">
-      <Header />
+    <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
+      <Header maxWidth="max-w-3xl" />
 
       {/* Confetti Canvas */}
-      <canvas ref={canvasRef} className="feedback-confetti-canvas" />
+      <canvas ref={canvasRef} className="fixed inset-0 w-screen h-screen pointer-events-none z-50" />
 
-      <main className="feedback-main-container">
+      <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 space-y-6">
         {/* Campaign Banner Header (Hidden on final step to keep mobile view compact) */}
         {currentStep !== 4 && (
-          <header className="feedback-hero-banner">
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <div className="feedback-badge-pill">
-                <span className="badge-dot" /> 2-Minute Alumni Survey
+          <header className="w-full text-center space-y-2 py-2">
+            <div className="inline-flex items-center gap-2 flex-wrap justify-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> 2-Minute Alumni Survey
               </div>
               {currentStep >= 1 && currentStep <= 3 && (
                 <button
@@ -545,13 +549,7 @@ export const FeedbackPage: React.FC = () => {
                     setCurrentStep(0);
                     window.scrollTo({ top: 100, behavior: 'smooth' });
                   }}
-                  className="feedback-badge-pill"
-                  style={{
-                    background: 'rgba(245, 158, 11, 0.12)',
-                    borderColor: 'rgba(245, 158, 11, 0.35)',
-                    color: '#fbbf24',
-                    cursor: 'pointer',
-                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 cursor-pointer transition-colors"
                   title="Click to edit identity or switch to anonymous"
                 >
                   {isAnonymous ? (
@@ -559,114 +557,124 @@ export const FeedbackPage: React.FC = () => {
                   ) : (
                     <span>👤 {attendeeName ? stripSalutation(attendeeName) : 'Participant'} {regDigits ? `(${eventCode || 'REG'}-${regDigits.padStart((eventCode || 'REG') === 'REG' ? 5 : 4, '0')})` : ''}</span>
                   )}
-                  <span style={{ opacity: 0.7, textDecoration: 'underline', marginLeft: '3px' }}>✎</span>
+                  <span className="opacity-70 underline ml-0.5">✎</span>
                 </button>
               )}
             </div>
-            <h1 className="feedback-hero-title">{campaign.title}</h1>
-            <p className="feedback-hero-tagline">{campaign.tagline}</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{campaign.title}</h1>
+            <p className="text-xs sm:text-sm text-amber-200/80 italic">{campaign.tagline}</p>
           </header>
         )}
 
         {/* ── STEP 4: THANK YOU SCREEN ───────────────────────────── */}
         {currentStep === 4 ? (
-          <div className="feedback-thankyou-card feedback-thankyou-compact">
-            <div className="thankyou-emoji-sparkle">💖</div>
-            <h2 className="thankyou-title">{campaign.closingQuote.title}</h2>
-            <p className="thankyou-message thankyou-message-compact">
+          <div className="w-full bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-6 shadow-2xl shadow-amber-500/10 backdrop-blur-md">
+            <div className="text-4xl animate-bounce">💖</div>
+            <h2 className="text-2xl font-black text-white tracking-tight">{campaign.closingQuote.title}</h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
               {campaign.closingQuote.subMessage}
             </p>
 
             {/* Streamlined Mobile-First WhatsApp Sharing Box */}
-            <div className="feedback-share-highlight-card feedback-share-compact">
-              <div className="share-compact-head">
-                <span className="share-compact-pill">📢 Pass The Mic</span>
-                <h3 className="share-compact-title">Motivate Your Batchmates!</h3>
+            <div className="p-4 sm:p-5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3.5 text-left">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                  📢 Pass The Mic
+                </span>
+                <h3 className="text-base sm:text-lg font-bold text-white">Motivate Your Batchmates!</h3>
               </div>
 
-              <div className="share-compact-quote">
+              <div className="p-3 rounded-lg bg-amber-500/10 border-l-4 border-amber-500 text-xs sm:text-sm italic text-amber-200">
                 &ldquo;Maine feedback submit kar diya! (Hostel Maggi se bhi tez 😂🍜) Ab tumhari baari hai!&rdquo;
               </div>
 
               {/* Action Buttons */}
-              <div className="share-buttons-group">
+              <div className="flex flex-col sm:flex-row gap-2.5">
                 <button
                   type="button"
                   onClick={handleShareWhatsApp}
-                  className="btn-share-whatsapp-festive"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white font-bold text-sm tracking-wide shadow-md shadow-emerald-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                   id="btn-feedback-share-whatsapp"
                   title="Share"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M12.031 2C6.511 2 2.023 6.488 2.023 12.008c0 1.848.508 3.585 1.396 5.088L2 22l5.06-1.328c1.449.809 3.109 1.258 4.967 1.258 5.524 0 10.016-4.488 10.016-10.008S17.555 2 12.031 2zm5.787 14.18c-.244.688-1.229 1.264-1.742 1.344-.472.072-1.074.132-3.153-.728-2.656-1.101-4.354-3.791-4.487-3.967-.13-.176-1.072-1.429-1.072-2.726 0-1.296.677-1.936.918-2.199.24-.264.527-.33.703-.33.176 0 .352.002.506.01.164.009.385-.062.602.46.223.535.757 1.848.824 1.98.067.132.112.287.022.463-.09.176-.134.286-.266.44-.132.154-.277.343-.396.462-.132.132-.27.275-.117.538.154.263.684 1.127 1.47 1.826 1.011.898 1.862 1.177 2.126 1.309.264.132.418.11.572-.066.154-.176.66-.77.836-1.034.176-.264.352-.22.593-.132.242.088 1.54.726 1.804.858.264.132.44.198.506.308.066.11.066.638-.178 1.326z" />
-                  </svg>
-                  <span>Share</span>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Share on WhatsApp</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleCopyShareMessage}
-                  className="btn-share-copy-festive"
+                  className="min-h-[44px] py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-[0.98]"
                   id="btn-feedback-copy-message"
                   title="Copy shoutout message to clipboard"
                 >
-                  <span>{copiedMessage ? '✅ Copied!' : '📋 Copy Text'}</span>
+                  {copiedMessage ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedMessage ? 'Copied!' : 'Copy Text'}</span>
                 </button>
               </div>
 
-              {/* Privacy Reassurance: Clean, highlighted & perfectly aligned */}
-              <div className="share-compact-privacy">
-                <span className="privacy-lock-inline">🔒</span>
+              {/* Privacy Reassurance */}
+              <div className="flex items-center gap-2 text-xs text-slate-400 pt-1">
+                <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>
-                  <strong className="privacy-highlight-title">100% Confidential:</strong> Only invites batchmates — your feedback answers are never shared.
+                  <strong className="text-slate-200 font-semibold">100% Confidential:</strong> Only invites batchmates — your feedback answers are never shared.
                 </span>
               </div>
             </div>
 
-            <div className="thankyou-actions">
-              <Link to="/" className="btn-festive-primary thankyou-btn thankyou-btn-single">
+            <div className="pt-2">
+              <Link
+                to="/"
+                className="w-full min-h-[44px] py-3 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-colors inline-flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+              >
                 <span>🏠</span> Return to Event Home
               </Link>
             </div>
           </div>
         ) : currentStep === 0 ? (
           /* ── STEP 0: WELCOME & IDENTITY LANDING ───────────────────── */
-          <div className="feedback-card-shell feedback-welcome-shell">
+          <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md space-y-6">
             {/* 3 Pillars Overview */}
-            <div className="welcome-pillars-grid">
-              <div className="welcome-pillar-card">
-                <span className="pillar-icon">🎉</span>
-                <div className="pillar-text">
-                  <strong>1. Event Experience</strong>
-                  <span>Venue, food & buddies</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex items-center sm:flex-col sm:text-center gap-3 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                <span className="text-2xl shrink-0">🎉</span>
+                <div>
+                  <strong className="font-bold text-sm text-white block">1. Event Experience</strong>
+                  <span className="text-xs text-slate-400 block">Venue, food & buddies</span>
                 </div>
               </div>
-              <div className="welcome-pillar-card">
-                <span className="pillar-icon">💻</span>
-                <div className="pillar-text">
-                  <strong>2. Digital Experience</strong>
-                  <span>Pass, portal & entry</span>
+              <div className="flex items-center sm:flex-col sm:text-center gap-3 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                <span className="text-2xl shrink-0">💻</span>
+                <div>
+                  <strong className="font-bold text-sm text-white block">2. Digital Experience</strong>
+                  <span className="text-xs text-slate-400 block">Pass, portal & entry</span>
                 </div>
               </div>
-              <div className="welcome-pillar-card">
-                <span className="pillar-icon">❤️</span>
-                <div className="pillar-text">
-                  <strong>3. Future Reunions</strong>
-                  <span>Memories & wishes</span>
+              <div className="flex items-center sm:flex-col sm:text-center gap-3 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                <span className="text-2xl shrink-0">❤️</span>
+                <div>
+                  <strong className="font-bold text-sm text-white block">3. Future Reunions</strong>
+                  <span className="text-xs text-slate-400 block">Memories & wishes</span>
                 </div>
               </div>
             </div>
 
             {/* Registration Details & Anonymous Checkbox */}
-            <div className="feedback-identity-box" style={{ marginBottom: '1.5rem' }}>
-              <div className="identity-header-row">
-                <span className="identity-label">
+            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <span className="flex items-center gap-2 text-sm font-bold text-white">
                   <span>🪪</span>
                   <span>Registration Details</span>
                 </span>
 
                 {/* Direct Checkbox for being anonymous */}
-                <label className={`identity-anon-badge-toggle ${isAnonymous ? 'active' : ''}`}>
+                <label
+                  className={`inline-flex items-center gap-2 cursor-pointer text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors select-none ${
+                    isAnonymous
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                      : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={isAnonymous}
@@ -676,77 +684,78 @@ export const FeedbackPage: React.FC = () => {
                         setLookupSuccess(false);
                       }
                     }}
+                    className="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0"
                   />
-                  <span className="toggle-text">
+                  <span>
                     {isAnonymous ? '🕵️ Keep Me Anonymous (Active)' : '🕵️ Keep Me Anonymous'}
                   </span>
                 </label>
               </div>
 
               {isAnonymous ? (
-                <div className="identity-anon-confirmed-box">
-                  <span style={{ fontSize: '1.25rem' }}>🛡️</span>
+                <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs sm:text-sm text-amber-200 leading-relaxed">
+                  <Shield className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong>100% Anonymous Mode Active:</strong> No name, registration number, or contact details will be recorded with your submission. Express yourself completely freely!
+                    <strong className="font-bold text-white block">100% Anonymous Mode Active:</strong> No name, registration number, or contact details will be recorded with your submission. Express yourself completely freely!
                   </div>
                 </div>
               ) : (
-                <div className="identity-reg-wrapper">
+                <div className="space-y-3">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
                       handleManualLookup();
                     }}
-                    className="identity-reg-input-row"
+                    className="flex items-center rounded-xl bg-slate-900 border border-slate-700 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 overflow-hidden"
                   >
-                    <div className="feedback-reg-input-group" title={`Registration prefix ${eventCode || 'REG'}- is fixed`}>
-                      <span className="feedback-reg-prefix">{eventCode || 'REG'}-</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={5}
-                        placeholder="e.g. 212"
-                        className="feedback-reg-digits-input"
-                        value={regDigits}
-                        onChange={(e) => {
-                          const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 5);
-                          setRegDigits(digitsOnly);
-                          setLookupAttempted(false);
-                          if (lookupSuccess) setLookupSuccess(false);
-                        }}
-                        autoFocus={!initialName}
-                      />
-                      <button
-                        type="submit"
-                        disabled={lookingUp || !regDigits.trim()}
-                        className="feedback-reg-submit-btn"
-                      >
-                        {lookingUp ? 'Finding...' : 'Find →'}
-                      </button>
-                    </div>
+                    <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none">
+                      {eventCode || 'REG'}-
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={5}
+                      placeholder="e.g. 212"
+                      className="flex-1 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
+                      value={regDigits}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 5);
+                        setRegDigits(digitsOnly);
+                        setLookupAttempted(false);
+                        if (lookupSuccess) setLookupSuccess(false);
+                      }}
+                      autoFocus={!initialName}
+                    />
+                    <button
+                      type="submit"
+                      disabled={lookingUp || !regDigits.trim()}
+                      className="px-4 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {lookingUp ? 'Finding...' : 'Find →'}
+                    </button>
                   </form>
 
                   {/* Verified Alumnus Welcome Card */}
                   {lookupSuccess && attendeeName && (
-                    <div className="feedback-welcome-card">
-                      <div className="feedback-welcome-avatar">👋</div>
-                      <div className="feedback-welcome-body">
-                        <div className="feedback-welcome-title">
+                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-white animate-in fade-in">
+                      <div className="text-2xl shrink-0">👋</div>
+                      <div className="space-y-1">
+                        <div className="text-sm sm:text-base font-bold text-white">
                           Hey <strong>{stripSalutation(attendeeName)}</strong>, welcome! 🎉
                         </div>
-                        <div className="feedback-welcome-subtitle">
+                        <div className="text-xs text-slate-300">
                           Great to have you share your {eventName} experience!
                         </div>
-                        <div className="feedback-welcome-meta">
-                          <span className="welcome-reg-pill">
+                        <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-900 border border-slate-700 text-amber-300">
                             {regDigits ? `${eventCode || 'REG'}-${regDigits.padStart((eventCode || 'REG') === 'REG' ? 5 : 4, '0')}` : `${eventCode || 'REG'}-PASS`}
                           </span>
-                          <span className="welcome-verified-badge">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             ✅ Verified Alumnus
                           </span>
                           {batch && (
-                            <span className="welcome-batch-pill">
+                            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300">
                               🎓 Batch of {batch}
                             </span>
                           )}
@@ -756,13 +765,13 @@ export const FeedbackPage: React.FC = () => {
                   )}
 
                   {lookupAttempted && !lookupSuccess && !lookingUp && (
-                    <p className="identity-reg-hint" style={{ color: '#f87171' }}>
+                    <p className="text-xs text-rose-400 leading-relaxed">
                       ⚠️ No registration found for {eventCode || 'REG'}-{regDigits ? regDigits.padStart((eventCode || 'REG') === 'REG' ? 5 : 4, '0') : ''}. Please re-check or choose &ldquo;Keep Me Anonymous&rdquo;.
                     </p>
                   )}
 
                   {!lookupAttempted && !lookupSuccess && !lookingUp && (
-                    <p className="identity-reg-hint">
+                    <p className="text-xs text-slate-400 leading-relaxed">
                       💡 Enter your number (e.g. <strong>3</strong> or <strong>212</strong>) &amp; tap <strong>Find →</strong> to personalize!
                     </p>
                   )}
@@ -771,7 +780,7 @@ export const FeedbackPage: React.FC = () => {
             </div>
 
             {/* Start Survey CTA */}
-            <div className="welcome-start-action">
+            <div className="space-y-2 pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -780,18 +789,19 @@ export const FeedbackPage: React.FC = () => {
                   window.scrollTo({ top: 120, behavior: 'smooth' });
                 }}
                 disabled={!canStartSurvey}
-                className="btn-festive-primary welcome-start-btn"
+                className="w-full min-h-[48px] py-3.5 px-6 rounded-xl font-bold text-base bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-40 cursor-pointer"
                 title={
                   !canStartSurvey
                     ? 'Please enter your REG number & tap Find → or select Keep Me Anonymous'
                     : 'Start the 2-minute survey'
                 }
               >
-                <span>Start 2-Minute Survey →</span>
+                <span>Start 2-Minute Survey</span>
+                <ArrowRight className="w-5 h-5" />
               </button>
-              <p className="welcome-time-note">
+              <p className="text-center text-xs text-slate-400 leading-relaxed">
                 {!canStartSurvey ? (
-                  <span style={{ color: '#fbbf24' }}>
+                  <span className="text-amber-400 font-medium">
                     👉 Enter your REG number &amp; tap <strong>Find →</strong>, or select <strong>Keep Me Anonymous</strong> to proceed
                   </span>
                 ) : (
@@ -802,12 +812,12 @@ export const FeedbackPage: React.FC = () => {
           </div>
         ) : (
           /* ── STEPS 1, 2, 3: PURE QUESTIONS ────────────────────── */
-          <div className="feedback-card-shell">
+          <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md space-y-6">
             {/* Progress Stepper Bar */}
-            <div className="feedback-stepper-header">
-              <div className="stepper-track">
+            <div className="w-full">
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                 <div
-                  className="stepper-progress-bar"
+                  className="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-300"
                   style={{ width: `${(currentStep / 3) * 100}%` }}
                 />
               </div>
@@ -815,20 +825,20 @@ export const FeedbackPage: React.FC = () => {
 
             {/* Prominently Highlighted Step Section Context Banner */}
             {currentStep >= 1 && currentStep <= 3 && (
-              <div className="feedback-step-title-banner">
-                <div className="step-title-icon-badge">
+              <div className="flex items-start gap-3.5 p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl shrink-0 select-none">
                   <span>{STEP_CONTEXT[currentStep as 1 | 2 | 3].emoji}</span>
                 </div>
-                <div className="step-title-content">
-                  <div className="step-title-kicker">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                     <span>{STEP_CONTEXT[currentStep as 1 | 2 | 3].kicker}</span>
-                    <span className="step-time-dot">•</span>
+                    <span className="text-slate-500">•</span>
                     <span>⏱ {STEP_CONTEXT[currentStep as 1 | 2 | 3].time}</span>
                   </div>
-                  <h2 className="step-title-heading">
+                  <h2 className="text-lg font-bold text-white tracking-tight">
                     {STEP_CONTEXT[currentStep as 1 | 2 | 3].title}
                   </h2>
-                  <p className="step-title-description">
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                     {STEP_CONTEXT[currentStep as 1 | 2 | 3].description}
                   </p>
                 </div>
@@ -836,30 +846,31 @@ export const FeedbackPage: React.FC = () => {
             )}
 
             {/* Step Questions */}
-            <div className="feedback-questions-list">
+            <div className="space-y-4">
               {currentStep === 1 && eventQuestions.map(renderQuestion)}
               {currentStep === 2 && digitalQuestions.map(renderQuestion)}
               {currentStep === 3 && heartQuestions.map(renderQuestion)}
             </div>
 
             {submitError && (
-              <div className="feedback-error-banner">
+              <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs sm:text-sm">
                 <span>⚠️</span> {submitError}
               </div>
             )}
 
             {/* Step Footer Navigation Buttons */}
-            <div className="feedback-nav-footer">
+            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => {
                   setCurrentStep((prev) => ((prev - 1) as any));
                   window.scrollTo({ top: 120, behavior: 'smooth' });
                 }}
-                className="btn-secondary feedback-back-btn"
+                className="min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-sm transition-colors cursor-pointer flex items-center gap-2"
                 disabled={submitting}
               >
-                ← Back
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
               </button>
 
               {currentStep < 3 ? (
@@ -869,16 +880,17 @@ export const FeedbackPage: React.FC = () => {
                     setCurrentStep((prev) => ((prev + 1) as any));
                     window.scrollTo({ top: 120, behavior: 'smooth' });
                   }}
-                  className="btn-festive-primary feedback-next-btn"
+                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm transition-colors cursor-pointer flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-[0.98]"
                 >
-                  Continue →
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleSubmit}
                   disabled={submitting || loadingEvent}
-                  className="btn-festive-primary feedback-submit-btn"
+                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm transition-colors cursor-pointer flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-[0.98] disabled:opacity-50"
                 >
                   {submitting ? 'Submitting ❤️...' : 'Send Feedback ❤️'}
                 </button>
