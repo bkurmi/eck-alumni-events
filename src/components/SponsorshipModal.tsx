@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Sponsorship, ECKEvent } from '../types';
 import { getEventUpiConfigs } from '../lib/paymentRotation';
 import { getPublicSponsorshipScreenshotUrl } from '../lib/sponsorships';
+import { X, AlertCircle, Camera, Check, Trash2 } from 'lucide-react';
 
 interface SponsorshipModalProps {
   isOpen: boolean;
@@ -127,7 +128,6 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
     if (fieldId) {
       setErrorFieldId(fieldId);
     }
-    // Scroll modal form to top
     if (formBodyRef.current) {
       formBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -234,71 +234,23 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
 
   return (
     <div
-      className="modal-overlay"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(6px)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '12px',
-        overflowY: 'auto',
-      }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose();
       }}
     >
-      <div
-        className="modal-content"
-        style={{
-          width: '100%',
-          maxWidth: '560px',
-          maxHeight: '90vh',
-          backgroundColor: '#1e293b',
-          borderRadius: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          animation: 'fadeIn 0.2s ease-out',
-        }}
-      >
+      <div className="w-full max-w-lg max-h-[92vh] sm:max-h-[85vh] bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-200">
         {/* Sticky Header */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'linear-gradient(to right, #1e293b, #0f172a)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
-                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
-              }}
-            >
+        <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/70 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-xl shadow-md shadow-amber-500/20">
               💎
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#f8fafc' }}>
+              <h2 className="text-base sm:text-lg font-bold text-slate-100">
                 {initialData ? 'Edit Sponsorship' : 'Add Sponsorship Entry'}
               </h2>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
+              <p className="text-xs text-slate-400">
                 Record sponsor details, amount, screenshot &amp; notes
               </p>
             </div>
@@ -307,22 +259,10 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={saving}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '22px',
-              cursor: 'pointer',
-              width: '44px',
-              height: '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '8px',
-            }}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
             title="Close"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -330,52 +270,22 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
         <form
           ref={formBodyRef}
           onSubmit={handleSubmit}
-          style={{
-            padding: '20px',
-            overflowY: 'auto',
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          }}
+          className="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-4 text-left"
         >
           {/* Scroll-to-top anchor */}
-          <div ref={formTopRef} style={{ height: '1px', width: '100%' }} />
+          <div ref={formTopRef} className="h-px w-full" />
 
           {errorMsg && (
-            <div
-              className="submit-error-banner"
-              style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.45)',
-                borderRadius: '10px',
-                padding: '12px 14px',
-                color: '#fca5a5',
-                fontSize: '0.9rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                animation: 'alertShake 0.35s ease',
-              }}
-            >
-              <span style={{ fontSize: '18px' }}>⚠️</span>
-              <span style={{ flex: 1, fontWeight: 600 }}>{errorMsg}</span>
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs sm:text-sm flex items-start gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span className="flex-1 font-medium">{errorMsg}</span>
               <button
                 type="button"
                 onClick={() => {
                   setErrorMsg(null);
                   setErrorFieldId(null);
                 }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#fca5a5',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  padding: '2px',
-                  lineHeight: 1,
-                }}
-                title="Dismiss"
+                className="text-rose-400 hover:text-rose-200 min-h-[30px] min-w-[30px] flex items-center justify-center"
               >
                 ✕
               </button>
@@ -386,28 +296,12 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
           <div>
             <label
               htmlFor="field-sponsorship-amount"
-              style={{
-                display: 'block',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                color: '#e2e8f0',
-                marginBottom: '6px',
-              }}
+              className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5"
             >
               Sponsorship Amount (₹)
             </label>
-            <div style={{ position: 'relative' }}>
-              <span
-                style={{
-                  position: 'absolute',
-                  left: '14px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: '1.2rem',
-                  fontWeight: '700',
-                  color: '#10b981',
-                }}
-              >
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg font-bold text-emerald-400 font-mono">
                 ₹
               </span>
               <input
@@ -418,71 +312,39 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                 placeholder="e.g. 25000"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '12px 14px 12px 34px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '10px',
-                  color: '#10b981',
-                  fontSize: '1.15rem',
-                  fontWeight: '700',
-                  outline: 'none',
-                }}
+                className="w-full min-h-[44px] pl-8 pr-4 py-2.5 bg-slate-950 text-emerald-400 font-bold font-mono text-lg rounded-xl border border-slate-800 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60"
               />
             </div>
 
             {/* Quick Amount Chips */}
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '6px',
-                marginTop: '8px',
-              }}
-            >
-              {PRESET_AMOUNTS.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => setAmount(String(preset))}
-                  style={{
-                    minHeight: '34px',
-                    padding: '4px 10px',
-                    borderRadius: '20px',
-                    border: amount && Number(amount) === preset ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
-                    backgroundColor: amount && Number(amount) === preset ? 'rgba(16, 185, 129, 0.15)' : '#0f172a',
-                    color: amount && Number(amount) === preset ? '#10b981' : '#cbd5e1',
-                    fontSize: '0.82rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  ₹{preset.toLocaleString('en-IN')}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {PRESET_AMOUNTS.map((preset) => {
+                const isSelected = amount && Number(amount) === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setAmount(String(preset))}
+                    className={`min-h-[34px] px-2.5 py-1 rounded-full text-xs font-semibold font-mono transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/60'
+                        : 'bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:bg-slate-800'
+                    }`}
+                  >
+                    ₹{preset.toLocaleString('en-IN')}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Sponsor / Company / Contributor Name (MANDATORY *) */}
+          {/* Sponsor / Company / Contributor Name */}
           <div>
             <label
               htmlFor="field-sponsor-name"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                color: '#e2e8f0',
-                marginBottom: '6px',
-              }}
+              className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5"
             >
-              <span>
-                Sponsor / Company / Contributor Name <span style={{ color: '#ef4444' }}>*</span>
-              </span>
+              Sponsor / Company / Contributor Name <span className="text-rose-400">*</span>
             </label>
             <input
               id="field-sponsor-name"
@@ -493,38 +355,21 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                 setSponsorName(e.target.value);
                 if (errorFieldId === 'field-sponsor-name') setErrorFieldId(null);
               }}
-              className={errorFieldId === 'field-sponsor-name' ? 'input-error-highlight' : ''}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '12px 14px',
-                backgroundColor: '#0f172a',
-                border: errorFieldId === 'field-sponsor-name' ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                boxShadow: errorFieldId === 'field-sponsor-name' ? '0 0 0 3px rgba(239, 68, 68, 0.32)' : 'none',
-                borderRadius: '10px',
-                color: '#f8fafc',
-                fontSize: '16px',
-                outline: 'none',
-              }}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950 text-slate-100 rounded-xl text-base sm:text-sm border focus:outline-none transition-colors ${
+                errorFieldId === 'field-sponsor-name'
+                  ? 'border-rose-500 ring-2 ring-rose-500/30'
+                  : 'border-slate-800 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60'
+              }`}
             />
           </div>
 
-          {/* Receiving UPI Account (MANDATORY *) */}
+          {/* Receiving UPI Account */}
           <div>
             <label
               htmlFor="field-receiving-upi"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '0.88rem',
-                fontWeight: '600',
-                color: '#e2e8f0',
-                marginBottom: '6px',
-              }}
+              className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5"
             >
-              <span>
-                Receiving UPI Account <span style={{ color: '#ef4444' }}>*</span>
-              </span>
+              Receiving UPI Account <span className="text-rose-400">*</span>
             </label>
             <select
               id="field-receiving-upi"
@@ -533,20 +378,13 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                 setReceivingUpiId(e.target.value);
                 if (errorFieldId === 'field-receiving-upi') setErrorFieldId(null);
               }}
-              className={errorFieldId === 'field-receiving-upi' ? 'input-error-highlight' : ''}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '12px 14px',
-                backgroundColor: '#0f172a',
-                border: errorFieldId === 'field-receiving-upi' ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                boxShadow: errorFieldId === 'field-receiving-upi' ? '0 0 0 3px rgba(239, 68, 68, 0.32)' : 'none',
-                borderRadius: '10px',
-                color: receivingUpiId ? '#f8fafc' : '#94a3b8',
-                fontSize: '16px',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950 rounded-xl text-base sm:text-sm border focus:outline-none cursor-pointer transition-colors ${
+                receivingUpiId ? 'text-slate-100' : 'text-slate-400'
+              } ${
+                errorFieldId === 'field-receiving-upi'
+                  ? 'border-rose-500 ring-2 ring-rose-500/30'
+                  : 'border-slate-800 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60'
+              }`}
             >
               <option value="">-- Select Receiving UPI Account --</option>
               {knownUpiOptions.map((opt) => (
@@ -562,17 +400,9 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
             <div>
               <label
                 htmlFor="field-custom-upi"
-                style={{
-                  display: 'block',
-                  fontSize: '0.88rem',
-                  fontWeight: '600',
-                  color: '#e2e8f0',
-                  marginBottom: '6px',
-                }}
+                className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5"
               >
-                <span>
-                  Custom UPI ID <span style={{ color: '#ef4444' }}>*</span>
-                </span>
+                Custom UPI ID <span className="text-rose-400">*</span>
               </label>
               <input
                 id="field-custom-upi"
@@ -583,51 +413,23 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                   setCustomUpi(e.target.value);
                   if (errorFieldId === 'field-custom-upi') setErrorFieldId(null);
                 }}
-                className={errorFieldId === 'field-custom-upi' ? 'input-error-highlight' : ''}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '12px 14px',
-                  backgroundColor: '#0f172a',
-                  border: errorFieldId === 'field-custom-upi' ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                  boxShadow: errorFieldId === 'field-custom-upi' ? '0 0 0 3px rgba(239, 68, 68, 0.32)' : 'none',
-                  borderRadius: '10px',
-                  color: '#f8fafc',
-                  fontSize: '16px',
-                  outline: 'none',
-                }}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950 text-slate-100 rounded-xl text-base sm:text-sm border focus:outline-none transition-colors ${
+                  errorFieldId === 'field-custom-upi'
+                    ? 'border-rose-500 ring-2 ring-rose-500/30'
+                    : 'border-slate-800 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60'
+                }`}
               />
             </div>
           )}
 
-          {/* Contact Details (Always Visible) */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              padding: '14px',
-              backgroundColor: 'rgba(15, 23, 42, 0.5)',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            {/* Contact Person Name (MANDATORY *) */}
+          {/* Contact Details Card */}
+          <div className="flex flex-col gap-3 p-3.5 rounded-2xl bg-slate-950/50 border border-slate-800/80">
             <div>
               <label
                 htmlFor="field-contact-person"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: '0.82rem',
-                  fontWeight: '600',
-                  color: '#cbd5e1',
-                  marginBottom: '4px',
-                }}
+                className="block text-xs font-semibold text-slate-300 mb-1"
               >
-                <span>
-                  Contact Person Name <span style={{ color: '#ef4444' }}>*</span>
-                </span>
+                Contact Person Name <span className="text-rose-400">*</span>
               </label>
               <input
                 id="field-contact-person"
@@ -638,57 +440,31 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                   setContactPerson(e.target.value);
                   if (errorFieldId === 'field-contact-person') setErrorFieldId(null);
                 }}
-                className={errorFieldId === 'field-contact-person' ? 'input-error-highlight' : ''}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '10px 12px',
-                  backgroundColor: '#0f172a',
-                  border: errorFieldId === 'field-contact-person' ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                  boxShadow: errorFieldId === 'field-contact-person' ? '0 0 0 3px rgba(239, 68, 68, 0.32)' : 'none',
-                  borderRadius: '8px',
-                  color: '#f8fafc',
-                  fontSize: '16px',
-                  outline: 'none',
-                }}
+                className={`w-full min-h-[44px] px-3.5 py-2 bg-slate-900 text-slate-100 rounded-xl text-base sm:text-sm border focus:outline-none transition-colors ${
+                  errorFieldId === 'field-contact-person'
+                    ? 'border-rose-500 ring-2 ring-rose-500/30'
+                    : 'border-slate-800 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60'
+                }`}
               />
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '10px',
-              }}
-            >
-              {/* Mobile / WhatsApp (MANDATORY *) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Mobile / WhatsApp */}
               <div>
                 <label
                   htmlFor="field-contact-phone"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '0.82rem',
-                    fontWeight: '600',
-                    color: '#cbd5e1',
-                    marginBottom: '4px',
-                  }}
+                  className="block text-xs font-semibold text-slate-300 mb-1"
                 >
-                  <span>
-                    Mobile / WhatsApp <span style={{ color: '#ef4444' }}>*</span>
-                  </span>
+                  Mobile / WhatsApp <span className="text-rose-400">*</span>
                 </label>
                 <div
-                  className="input-prefix-wrap"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'stretch',
-                    borderRadius: '8px',
-                    border: errorFieldId === 'field-contact-phone' ? '1px solid #ef4444' : undefined,
-                    boxShadow: errorFieldId === 'field-contact-phone' ? '0 0 0 3px rgba(239, 68, 68, 0.32)' : undefined,
-                  }}
+                  className={`flex items-stretch rounded-xl border bg-slate-900 overflow-hidden ${
+                    errorFieldId === 'field-contact-phone'
+                      ? 'border-rose-500 ring-2 ring-rose-500/30'
+                      : 'border-slate-800 focus-within:border-amber-500/60 focus-within:ring-1 focus-within:ring-amber-500/60'
+                  }`}
                 >
-                  <span className="input-prefix" style={{ minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="min-w-[44px] px-2.5 flex items-center justify-center text-xs font-mono text-slate-400 border-r border-slate-800 bg-slate-950/60">
                     +91
                   </span>
                   <input
@@ -704,38 +480,19 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                       setContactPhone(digits);
                       if (errorFieldId === 'field-contact-phone') setErrorFieldId(null);
                     }}
-                    className={`prefixed-input ${errorFieldId === 'field-contact-phone' ? 'input-error-highlight' : ''}`}
-                    style={{
-                      flex: 1,
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      padding: '10px 12px',
-                      backgroundColor: '#0f172a',
-                      border: errorFieldId === 'field-contact-phone' ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                      borderRadius: '0 8px 8px 0',
-                      color: '#f8fafc',
-                      fontSize: '16px',
-                      outline: 'none',
-                    }}
+                    className="flex-1 w-full min-h-[44px] px-3 py-2 bg-transparent text-slate-100 text-base sm:text-sm font-mono focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Email Address (Optional) */}
+              {/* Email Address */}
               <div>
                 <label
                   htmlFor="field-contact-email"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '0.82rem',
-                    fontWeight: '600',
-                    color: '#cbd5e1',
-                    marginBottom: '4px',
-                  }}
+                  className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1"
                 >
                   <span>Email Address</span>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Optional</span>
+                  <span className="text-[11px] text-slate-500 font-normal">Optional</span>
                 </label>
                 <input
                   id="field-contact-email"
@@ -746,78 +503,35 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                     setContactEmail(e.target.value);
                     if (errorFieldId === 'field-contact-email') setErrorFieldId(null);
                   }}
-                  className={errorFieldId === 'field-contact-email' ? 'input-error-highlight' : ''}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '10px 12px',
-                    backgroundColor: '#0f172a',
-                    border: errorFieldId === 'field-contact-email' ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                    boxShadow: errorFieldId === 'field-contact-email' ? '0 0 0 3px rgba(239, 68, 68, 0.32)' : 'none',
-                    borderRadius: '8px',
-                    color: '#f8fafc',
-                    fontSize: '16px',
-                    outline: 'none',
-                  }}
+                  className={`w-full min-h-[44px] px-3.5 py-2 bg-slate-900 text-slate-100 rounded-xl text-base sm:text-sm border focus:outline-none transition-colors ${
+                    errorFieldId === 'field-contact-email'
+                      ? 'border-rose-500 ring-2 ring-rose-500/30'
+                      : 'border-slate-800 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60'
+                  }`}
                 />
               </div>
             </div>
           </div>
 
-          {/* Payment Screenshot Upload with Mobile Camera / Gallery Picker */}
+          {/* Payment Screenshot Upload */}
           <div>
-            <label
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '0.88rem',
-                fontWeight: '600',
-                color: '#e2e8f0',
-                marginBottom: '6px',
-              }}
-            >
+            <label className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-200 mb-1.5">
               <span>Payment Screenshot / Receipt</span>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Optional</span>
+              <span className="text-xs text-slate-500 font-normal">Optional</span>
             </label>
 
             {screenshotPreview ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '10px',
-                  backgroundColor: '#0f172a',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                }}
-              >
+              <div className="flex items-center gap-3 p-2.5 bg-slate-950 rounded-xl border border-emerald-500/30">
                 <img
                   src={screenshotPreview}
                   alt="Payment Screenshot Preview"
-                  style={{
-                    width: '64px',
-                    height: '64px',
-                    objectFit: 'cover',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                  }}
+                  className="w-14 h-14 object-cover rounded-lg border border-slate-800"
                 />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      color: '#10b981',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-semibold text-emerald-400 truncate">
                     {screenshotFile ? screenshotFile.name : 'Screenshot Attached'}
                   </p>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     {screenshotFile
                       ? `${(screenshotFile.size / 1024).toFixed(1)} KB`
                       : 'Saved in cloud storage'}
@@ -826,46 +540,29 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
                 <button
                   type="button"
                   onClick={handleRemoveScreenshot}
-                  style={{
-                    minHeight: '36px',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    color: '#f87171',
-                    fontSize: '0.8rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                  }}
+                  className="min-h-[36px] px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold cursor-pointer inline-flex items-center gap-1"
                 >
-                  Remove
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove</span>
                 </button>
               </div>
             ) : (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                style={{
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: '2px dashed rgba(255, 255, 255, 0.2)',
-                  backgroundColor: '#0f172a',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.2s ease',
-                }}
+                className="p-4 rounded-xl border-2 border-dashed border-slate-800 hover:border-amber-500/50 bg-slate-950/60 text-center cursor-pointer transition-colors"
               >
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  style={{ display: 'none' }}
+                  className="hidden"
                 />
-                <div style={{ fontSize: '24px', marginBottom: '4px' }}>📸</div>
-                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600', color: '#cbd5e1' }}>
+                <Camera className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
+                <p className="text-xs sm:text-sm font-semibold text-slate-300">
                   Tap to upload payment screenshot
                 </p>
-                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                <p className="text-[11px] text-slate-500 mt-0.5">
                   Camera, Photos or Screenshot (JPG, PNG, WebP)
                 </p>
               </div>
@@ -876,17 +573,10 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
           <div>
             <label
               htmlFor="field-sponsorship-notes"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '0.88rem',
-                fontWeight: '600',
-                color: '#e2e8f0',
-                marginBottom: '6px',
-              }}
+              className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-200 mb-1.5"
             >
               <span>Notes &amp; Commitments</span>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Optional</span>
+              <span className="text-xs text-slate-500 font-normal">Optional</span>
             </label>
             <textarea
               id="field-sponsorship-notes"
@@ -894,78 +584,33 @@ export const SponsorshipModal: React.FC<SponsorshipModalProps> = ({
               placeholder="e.g. Logo display on main stage LED banner, check sent via batch rep, food sponsor..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px 14px',
-                backgroundColor: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '10px',
-                color: '#f8fafc',
-                fontSize: '16px',
-                outline: 'none',
-                resize: 'vertical',
-              }}
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950 text-slate-100 placeholder-slate-500 border border-slate-800 rounded-xl text-base sm:text-sm focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60 transition-colors"
             />
           </div>
 
           {/* Sticky Actions Footer */}
-          <div
-            style={{
-              paddingTop: '12px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-              display: 'flex',
-              gap: '10px',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-            }}
-          >
+          <div className="pt-3 border-t border-slate-800/80 flex items-center justify-end gap-2.5 shrink-0">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              style={{
-                minHeight: '44px',
-                minWidth: '88px',
-                padding: '10px 16px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: 'transparent',
-                color: '#cbd5e1',
-                fontSize: '0.95rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-              }}
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-300 font-semibold text-sm transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              style={{
-                minHeight: '44px',
-                padding: '10px 24px',
-                borderRadius: '10px',
-                border: 'none',
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#ffffff',
-                fontSize: '0.95rem',
-                fontWeight: '700',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)',
-              }}
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold text-sm inline-flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer"
             >
               {saving ? (
                 <>
-                  <span className="spinner" style={{ width: '16px', height: '16px' }} />
+                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                   <span>Saving...</span>
                 </>
               ) : (
                 <>
-                  <span>💾</span>
+                  <Check className="w-4 h-4" />
                   <span>{initialData ? 'Update' : 'Save'}</span>
                 </>
               )}

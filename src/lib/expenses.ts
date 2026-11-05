@@ -245,7 +245,14 @@ export function computeAccountSettlements(
 
     // Untagged collections: genuine UPI IDs get resolved to their coordinator/account; all cash variants go to Cash in Hand
     if (!matched && amount > 0) {
-      const isExplicitCash = !upi || upi.includes('cash') || upi === 'spot';
+      const notes = ((verif?.notes || '') + ' ' + (reg?.notes || '')).toLowerCase();
+      const isExplicitCash =
+        !upi ||
+        upi === 'cash' ||
+        upi.includes('cash') ||
+        upi === 'spot' ||
+        notes.includes('(cash)') ||
+        notes.includes('spot cash');
       if (!isExplicitCash) {
         const upiItem = getOrCreateAccountItem(upi);
         if (upiItem) {
@@ -265,7 +272,7 @@ export function computeAccountSettlements(
 
   // 4. Compute Inflows from Sponsorships
   sponsorships.forEach((sp) => {
-    const upi = (sp.receiving_upi_id || '').toLowerCase().trim();
+    const upi = (sp.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
     const amount = Number(sp.amount || 0);
     let matched = false;
     for (const acc of allKnownAccounts) {
@@ -343,7 +350,7 @@ export function computeAccountSettlements(
       const rawName = (split.account || '').toLowerCase().trim();
       let matchedKey: string | null = null;
 
-      for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+      for (const acc of allKnownAccounts) {
         const accId = acc.id.toLowerCase();
         const accName = acc.accountName.toLowerCase();
         if (

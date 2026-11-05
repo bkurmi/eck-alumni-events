@@ -1,4 +1,19 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  X,
+  Plus,
+  Trash2,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  FileText,
+  AlertTriangle,
+  ExternalLink,
+  Phone,
+  CreditCard,
+  Loader2,
+} from 'lucide-react';
 import type {
   EventExpense,
   ExpensePaymentSplit,
@@ -61,8 +76,8 @@ const CALENDAR_DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const PaymentDatePicker: React.FC<{
   value: string; // YYYY-MM-DD
   onChange: (val: string) => void;
-  style?: React.CSSProperties;
-}> = ({ value, onChange, style }) => {
+  className?: string;
+}> = ({ value, onChange, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -198,111 +213,61 @@ const PaymentDatePicker: React.FC<{
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+    <div ref={containerRef} className="relative w-full">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        style={{
-          ...style,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          textAlign: 'left',
-          userSelect: 'none',
-          gap: '4px',
-        }}
+        className={
+          className ||
+          'w-full min-h-[40px] px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-left text-xs sm:text-sm text-white flex items-center justify-between gap-2 outline-none focus:border-amber-500'
+        }
         title="Click to open calendar"
       >
-        <span
-          style={{
-            color: displayLabel ? '#f8fafc' : '#94a3b8',
-            fontSize: '0.82rem',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
+        <span className={`truncate ${displayLabel ? 'text-white' : 'text-slate-400'}`}>
           {displayLabel || 'Select Date...'}
         </span>
-        <span style={{ fontSize: '0.9rem', opacity: 0.85, flexShrink: 0 }}>📅</span>
+        <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
       </button>
 
       {isOpen && (
         <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            right: 0,
-            zIndex: 9999,
-            width: '240px',
-            backgroundColor: '#0f172a',
-            border: '1px solid rgba(255, 255, 255, 0.18)',
-            borderRadius: '10px',
-            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(99, 102, 241, 0.2)',
-            padding: '10px',
-            boxSizing: 'border-box',
-          }}
+          className="absolute top-[calc(100%+4px)] right-0 z-50 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 text-slate-100"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Calendar Month Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between mb-2">
             <button
               type="button"
               onClick={handlePrevMonth}
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: 'none',
-                color: '#cbd5e1',
-                borderRadius: '5px',
-                width: '26px',
-                height: '26px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.78rem',
-              }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
               title="Previous month"
             >
-              ◀
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: '0.82rem' }}>
+            <span className="text-xs font-bold text-white">
               {CALENDAR_MONTH_NAMES[viewMonth]} {viewYear}
             </span>
             <button
               type="button"
               onClick={handleNextMonth}
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: 'none',
-                color: '#cbd5e1',
-                borderRadius: '5px',
-                width: '26px',
-                height: '26px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.78rem',
-              }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
               title="Next month"
             >
-              ▶
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* Weekday Labels */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', marginBottom: '4px' }}>
+          <div className="grid grid-cols-7 gap-1 text-center mb-1">
             {CALENDAR_DAY_NAMES.map((d) => (
-              <span key={d} style={{ color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>
+              <span key={d} className="text-[10px] font-bold text-slate-400">
                 {d}
               </span>
             ))}
           </div>
 
           {/* Days Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+          <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((cd) => {
               const isSelected = value === cd.dateStr;
               const isToday = cd.dateStr === todayStr;
@@ -314,27 +279,15 @@ const PaymentDatePicker: React.FC<{
                     onChange(cd.dateStr);
                     setIsOpen(false);
                   }}
-                  style={{
-                    height: '26px',
-                    borderRadius: '4px',
-                    border: isToday && !isSelected ? '1px solid #38bdf8' : 'none',
-                    backgroundColor: isSelected ? '#3b82f6' : 'transparent',
-                    color: isSelected ? '#ffffff' : cd.isCurrentMonth ? '#e2e8f0' : '#475569',
-                    fontSize: '0.74rem',
-                    fontWeight: isSelected || isToday ? 700 : 400,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 0,
-                    transition: 'background-color 0.1s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
+                  className={`h-7 rounded-lg text-xs font-semibold flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 font-bold'
+                      : isToday
+                      ? 'border border-amber-400/60 text-amber-300'
+                      : cd.isCurrentMonth
+                      ? 'text-slate-200 hover:bg-slate-800'
+                      : 'text-slate-600 hover:bg-slate-800/40'
+                  }`}
                 >
                   {cd.day}
                 </button>
@@ -342,8 +295,8 @@ const PaymentDatePicker: React.FC<{
             })}
           </div>
 
-          {/* Quick Shortcuts: Today & Clear */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          {/* Shortcuts */}
+          <div className="flex justify-between mt-2 pt-2 border-t border-slate-800 text-xs">
             <button
               type="button"
               onClick={(e) => {
@@ -351,15 +304,7 @@ const PaymentDatePicker: React.FC<{
                 onChange(todayStr);
                 setIsOpen(false);
               }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#38bdf8',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: '2px 4px',
-              }}
+              className="text-amber-400 hover:text-amber-300 font-semibold"
             >
               Today
             </button>
@@ -370,14 +315,7 @@ const PaymentDatePicker: React.FC<{
                 onChange('');
                 setIsOpen(false);
               }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                fontSize: '0.72rem',
-                cursor: 'pointer',
-                padding: '2px 4px',
-              }}
+              className="text-slate-400 hover:text-slate-200"
             >
               Clear
             </button>
@@ -428,9 +366,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
     }>
   >([]);
 
-  // Dynamically resolve available payer account options:
-  // Pre-configured accounts from active event configuration (or defaults)
-  // plus any custom accounts detected in existing transactions/transfers
+  // Dynamically resolve available payer account options
   const availableAccountOptions = useMemo(() => {
     const list = [...KNOWN_EXPENSE_ACCOUNTS];
     const seen = new Set(list.map((a) => a.accountName.toLowerCase().trim()));
@@ -488,7 +424,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       });
     }
     return list;
-  }, [expenses]);
+  }, [expenses, expenseAccountsConfig]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -503,7 +439,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         setVendorPhone(rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone);
         setNotes(initialData.notes || '');
 
-        // Restore Multiple Receipts from comma-separated string
+        // Restore Multiple Receipts
         const rawPaths = (initialData.payment_screenshot_path || '')
           .split(',')
           .map((s) => s.trim())
@@ -535,7 +471,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             })
           );
         } else {
-          // Unassigned / no splits
           setSplits([]);
         }
       } else {
@@ -555,7 +490,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setSaving(false);
       setDeleting(false);
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, availableAccountOptions]);
 
   // Handle multiple receipt file uploads
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -614,9 +549,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       return {
         status: 'planned' as ExpenseStatus,
         label: 'Planned (Estimate)',
-        bg: 'rgba(148, 163, 184, 0.1)',
-        color: '#cbd5e1',
-        border: 'rgba(148, 163, 184, 0.25)',
+        bg: 'bg-slate-800 text-slate-300 border-slate-700',
         icon: '📝',
       };
     }
@@ -627,18 +560,14 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       return {
         status: 'partially_paid' as ExpenseStatus,
         label: 'Advance Paid (Partial)',
-        bg: 'rgba(245, 158, 11, 0.15)',
-        color: '#fbbf24',
-        border: 'rgba(245, 158, 11, 0.35)',
+        bg: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
         icon: '🟡',
       };
     }
     return {
       status: 'paid' as ExpenseStatus,
       label: totalAllocatedSplits >= numExpected && numExpected > 0 ? 'Fully Paid' : 'Paid',
-      bg: 'rgba(16, 185, 129, 0.15)',
-      color: '#34d399',
-      border: 'rgba(16, 185, 129, 0.35)',
+      bg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
       icon: '✅',
     };
   }, [totalAllocatedSplits, numExpected, splits]);
@@ -758,11 +687,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       finalPaymentSplits = [];
     }
 
-    // Actual amount is whatever was disbursed in transactions
     const finalActual = totalDisbursedAmt;
     const finalStatus = computedStatus.status;
 
-    // Resolve summary payment date and mode (uses latest split date & combined modes)
     let resolvedPaymentDate: string | null = null;
     let resolvedPaymentMode = 'UPI';
 
@@ -770,7 +697,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       const dates = finalPaymentSplits.map((s) => s.date).filter(Boolean) as string[];
       if (dates.length > 0) {
         dates.sort();
-        resolvedPaymentDate = dates[dates.length - 1]; // latest
+        resolvedPaymentDate = dates[dates.length - 1];
       }
       const modes = Array.from(new Set(finalPaymentSplits.map((s) => s.mode).filter(Boolean)));
       if (modes.length === 1) {
@@ -842,58 +769,26 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
   return (
     <div
-      className="modal-overlay expense-modal-overlay"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(6px)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-      }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving && !deleting) onClose();
       }}
+      role="dialog"
+      aria-modal="true"
     >
-      <div className="expense-modal-card">
+      <div className="relative w-full max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-slate-900 border-t sm:border border-amber-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden text-slate-100">
         {/* Modal Header */}
-        <div
-          style={{
-            padding: '16px 24px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'linear-gradient(to right, #1e293b, #0f172a)',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '22px',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                flexShrink: 0,
-              }}
-            >
+        <div className="shrink-0 flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-800 bg-slate-950/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-slate-950 flex items-center justify-center font-bold text-lg shadow-md shadow-emerald-950/50 shrink-0">
               💰
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#f8fafc' }}>
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
                 {initialData ? 'Edit Expense Item' : 'Add Expected / Real Expense'}
               </h2>
-              <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
-                Track budget estimates, actual payments &amp; vendor bills
+              <p className="text-xs text-slate-400 mt-0.5">
+                Track budget estimates, actual payments & vendor bills
               </p>
             </div>
           </div>
@@ -901,63 +796,21 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={saving || deleting}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/60 transition-colors"
             aria-label="Close"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '22px',
-              cursor: 'pointer',
-              width: '44px',
-              height: '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '8px',
-              transition: 'color 0.15s, background-color 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#ffffff';
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#94a3b8';
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
         <form
           onSubmit={handleSubmit}
-          className="expense-modal-body"
-          style={{
-            padding: '20px 24px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            flex: 1,
-            boxSizing: 'border-box',
-          }}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 tab-scrollbar space-y-4"
         >
           {errorMsg && (
-            <div
-              style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: '8px',
-                padding: '12px 14px',
-                color: '#fca5a5',
-                fontSize: '0.875rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <span>⚠️</span>
+            <div className="p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-red-300 text-xs sm:text-sm flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -965,10 +818,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           {/* Quick Suggestions (Only when adding new) */}
           {!initialData && (
             <div>
-              <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+              <label className="text-xs font-semibold text-slate-400 block mb-2">
                 Quick Presets:
               </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="flex flex-wrap gap-1.5">
                 {COMMON_ITEM_SUGGESTIONS.map((preset) => (
                   <button
                     key={preset}
@@ -984,18 +837,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                       else if (preset.includes('Photography')) setCategory('Photography & Videography');
                       else setCategory('Venue, Electricity & Logistics');
                     }}
-                    style={{
-                      backgroundColor: itemName === preset ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.05)',
-                      border: itemName === preset ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.1)',
-                      color: itemName === preset ? '#a5b4fc' : '#cbd5e1',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
-                      fontSize: '0.8rem',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      minHeight: '36px',
-                    }}
+                    className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                      itemName === preset
+                        ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300'
+                        : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700/80 text-slate-300'
+                    }`}
                   >
                     + {preset}
                   </button>
@@ -1005,54 +851,32 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           )}
 
           {/* Item Name & Category */}
-          <div className="expense-grid-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Item Name / Description <span style={{ color: '#ef4444' }}>*</span>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                Item Name / Description <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
                 placeholder="e.g. Caterers (Dinner & Snacks)"
-                style={{
-                  width: '100%',
-                  minHeight: '44px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
+                className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950/70 border border-slate-700 text-white placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40"
                 required
               />
             </div>
 
             <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  minHeight: '44px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
+                className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950/70 border border-slate-700 text-white outline-none focus:border-amber-500"
               >
                 {EXPENSE_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
+                  <option key={cat} value={cat} className="bg-slate-900">
                     {cat}
                   </option>
                 ))}
@@ -1061,25 +885,16 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           </div>
 
           {/* Financial Amounts & Status */}
-          <div
-            style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.65)',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}
-          >
-            <div className="expense-grid-3">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/50 border border-slate-800 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                  <span>📌 Expected Budget (₹)</span>
-                  <small style={{ color: '#94a3b8', fontWeight: 400 }}>(Estimated)</small>
+                <label className="block text-xs font-semibold text-sky-300 mb-1.5">
+                  📌 Expected Budget (₹) <span className="text-slate-500 font-normal">(Estimated)</span>
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '14px', top: '12px', color: '#94a3b8', fontSize: '1rem', pointerEvents: 'none' }}>₹</span>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-slate-400 font-bold text-base">
+                    ₹
+                  </span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1087,91 +902,54 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                     value={expectedAmount}
                     onChange={(e) => setExpectedAmount(e.target.value.replace(/\D/g, ''))}
                     placeholder="e.g. 50000"
-                    style={{
-                      width: '100%',
-                      minHeight: '44px',
-                      padding: '10px 14px 10px 32px',
-                      borderRadius: '8px',
-                      backgroundColor: '#1e293b',
-                      border: '1px solid rgba(147, 197, 253, 0.3)',
-                      color: '#f8fafc',
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
+                    className="w-full min-h-[44px] text-base sm:text-sm pl-8 pr-3.5 py-2.5 rounded-xl bg-slate-900 border border-sky-500/30 text-white font-mono font-bold outline-none focus:border-sky-400"
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#86efac', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                  <span>💳 Total Disbursed (₹)</span>
+                <label className="block text-xs font-semibold text-emerald-400 mb-1.5">
+                  💳 Total Disbursed (₹)
                 </label>
-                <span style={{ color: totalAllocatedSplits > 0 ? '#86efac' : '#64748b', fontSize: '1.15rem', fontWeight: 700 }}>
-                  ₹{formatINR(totalAllocatedSplits)}
-                </span>
+                <div className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center">
+                  <span className="text-base sm:text-lg font-mono font-bold text-emerald-400">
+                    ₹{formatINR(totalAllocatedSplits)}
+                  </span>
+                </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
+                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
                   Expense Status
                 </label>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '4px 12px',
-                    borderRadius: '9999px',
-                    backgroundColor: computedStatus.bg,
-                    border: `1px solid ${computedStatus.border}`,
-                    color: computedStatus.color,
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  <span>{computedStatus.icon}</span>
-                  <span>{computedStatus.label}</span>
-                </span>
+                <div className="min-h-[44px] flex items-center">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${computedStatus.bg}`}>
+                    <span>{computedStatus.icon}</span>
+                    <span>{computedStatus.label}</span>
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Variance preview */}
             {(numExpected > 0 || numActual > 0) && (
               <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: numActual === 0
-                    ? 'rgba(148, 163, 184, 0.1)'
+                className={`p-3 rounded-xl border flex items-center justify-between gap-2 flex-wrap text-xs sm:text-sm ${
+                  numActual === 0
+                    ? 'bg-slate-900 border-slate-700/60 text-slate-400'
                     : diff >= 0
-                    ? 'rgba(16, 185, 129, 0.15)'
-                    : 'rgba(239, 68, 68, 0.15)',
-                  border: numActual === 0
-                    ? '1px dashed rgba(148, 163, 184, 0.3)'
-                    : diff >= 0
-                    ? '1px solid rgba(16, 185, 129, 0.3)'
-                    : '1px solid rgba(239, 68, 68, 0.3)',
-                  fontSize: '0.85rem',
-                }}
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-red-500/10 border-red-500/30 text-red-300'
+                }`}
               >
-                <span style={{ color: '#cbd5e1' }}>
+                <span>
                   {numActual === 0
                     ? 'Budget Allocation (Not yet spent)'
                     : numActual < numExpected
                     ? `Advance Paid: ₹${formatINR(numActual)} of ₹${formatINR(numExpected)}`
                     : 'Budget Variance:'}
                 </span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    color: numActual === 0 ? '#94a3b8' : diff >= 0 ? '#34d399' : '#f87171',
-                  }}
-                >
+                <span className="font-bold font-mono">
                   {numActual === 0
                     ? `₹${formatINR(numExpected)} Budgeted`
                     : diff > 0
@@ -1185,48 +963,20 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           </div>
 
           {/* ── PAYMENT TRANSACTIONS (SINGLE ROW PER TRANSACTION) ── */}
-          <div
-            style={{
-              backgroundColor: '#1e293b',
-              borderRadius: '10px',
-              padding: '14px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-            }}
-          >
-            {/* Header: Title and Quick Clear */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '8px',
-              }}
-            >
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/50 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
-                <label
-                  style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    color: '#f8fafc',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    margin: 0,
-                  }}
-                >
-                  <span>💳 Disbursed From / Paid By</span>
+                <label className="text-sm font-bold text-white flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-amber-400" />
+                  <span>Disbursed From / Paid By</span>
                   {splits.length > 1 && (
-                    <span style={{ fontSize: '0.74rem', color: '#86efac', fontWeight: 600 }}>
+                    <span className="text-[11px] text-emerald-400 font-semibold">
                       (Split Across Accounts)
                     </span>
                   )}
                 </label>
-                <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
-                  Log each transaction made to the vendor (advance, part payment, or final settlement)
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Log each transaction made to the vendor (advance, part payment, or settlement)
                 </p>
               </div>
 
@@ -1234,313 +984,163 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 <button
                   type="button"
                   onClick={handleClearAllSplits}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    color: '#fca5a5',
-                    fontSize: '0.74rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
+                  className="px-2.5 py-1 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-semibold hover:bg-red-500/20 transition-colors"
                 >
-                  ✕ Clear All
+                  Clear All
                 </button>
               )}
             </div>
 
-            {/* Transactions Table / List */}
-            <div className="expense-tx-table">
-              {/* Desktop Table Header */}
-              {splits.length > 0 && (
-                <div className="expense-tx-header">
-                  <span style={{ textAlign: 'center' }}>#</span>
-                  <span>Paid By <span style={{ color: '#f87171' }}>*</span></span>
-                  <span>Expense Type <span style={{ color: '#f87171' }}>*</span></span>
-                  <span>Payment Date <span style={{ color: '#f87171' }}>*</span></span>
-                  <span>Spent <span style={{ color: '#f87171' }}>*</span></span>
-                  <span style={{ textAlign: 'center' }}>✕</span>
-                </div>
-              )}
+            {/* Transactions Rows */}
+            <div className="space-y-2.5">
+              {splits.map((s, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2"
+                >
+                  <div className="flex items-center justify-between sm:justify-start gap-2">
+                    <span className="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-300 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                      #{idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSplitRow(idx)}
+                      className="sm:hidden min-h-[36px] min-w-[36px] flex items-center justify-center text-red-400 hover:text-red-300 p-1"
+                      title="Remove row"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
 
-              {/* Transaction Rows */}
-              {splits.map((s, idx) => {
-                const compactSelect = {
-                  width: '100%',
-                  minHeight: '32px',
-                  padding: '3px 8px',
-                  borderRadius: '6px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  color: '#f8fafc',
-                  fontSize: '0.82rem',
-                  outline: 'none',
-                  boxSizing: 'border-box' as const,
-                };
+                  {/* 1. Paid By */}
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="block sm:hidden text-[11px] text-slate-400 mb-1">Paid By *</label>
+                    <select
+                      value={s.account || ''}
+                      onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
+                      className="w-full min-h-[40px] text-base sm:text-xs px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-700 text-white outline-none focus:border-amber-500"
+                    >
+                      <option value="" className="bg-slate-900">Select Account...</option>
+                      {availableAccountOptions.map((acc) => (
+                        <option key={acc.id} value={acc.label} className="bg-slate-900">
+                          {acc.label}
+                        </option>
+                      ))}
+                      <option value="Other" className="bg-slate-900">👤 Other...</option>
+                    </select>
+                    {s.account === 'Other' && (
+                      <input
+                        type="text"
+                        value={s.customAccount || ''}
+                        onChange={(e) => handleSplitChange(idx, 'customAccount', e.target.value)}
+                        placeholder="Coordinator name"
+                        className="w-full min-h-[36px] mt-1.5 text-base sm:text-xs px-3 py-1.5 rounded-lg bg-slate-950 border border-amber-500/50 text-white placeholder-slate-500 outline-none"
+                      />
+                    )}
+                  </div>
 
-                return (
-                  <div key={idx} className="expense-tx-row">
-                    {/* Mobile Header: #1 on left, ✕ button on right */}
-                    <div className="expense-tx-mobile-header">
-                      <span className="expense-tx-num-badge">#{idx + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSplitRow(idx)}
-                        className="expense-tx-remove-btn-mobile"
-                        title="Remove row"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                  {/* 2. Expense Type */}
+                  <div className="w-full sm:w-36">
+                    <label className="block sm:hidden text-[11px] text-slate-400 mb-1">Expense Type *</label>
+                    <select
+                      value={s.note || ''}
+                      onChange={(e) => handleSplitChange(idx, 'note', e.target.value)}
+                      className="w-full min-h-[40px] text-base sm:text-xs px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-700 text-white outline-none focus:border-amber-500"
+                    >
+                      <option value="" className="bg-slate-900">Select Type...</option>
+                      {PAYMENT_TRANSACTION_TYPES.map((t) => (
+                        <option key={t} value={t} className="bg-slate-900">
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                    <div className="expense-tx-fields">
-                      {/* Desktop Row Number */}
-                      <div className="expense-tx-desktop-only expense-tx-cell-num" style={{ alignItems: 'center', justifyContent: 'center' }}>
-                        <span className="expense-tx-num-badge">#{idx + 1}</span>
-                      </div>
+                  {/* 3. Payment Date */}
+                  <div className="w-full sm:w-36">
+                    <label className="block sm:hidden text-[11px] text-slate-400 mb-1">Payment Date *</label>
+                    <PaymentDatePicker
+                      value={s.date || ''}
+                      onChange={(val) => handleSplitChange(idx, 'date', val)}
+                    />
+                  </div>
 
-                      {/* 1. Paid By */}
-                      <div className="expense-tx-cell-paid-by">
-                        <span className="expense-tx-field-label">Paid By <span style={{ color: '#f87171' }}>*</span></span>
-                        <select
-                          value={s.account || ''}
-                          onChange={(e) => handleSplitChange(idx, 'account', e.target.value)}
-                          style={compactSelect}
-                        >
-                          <option value="">Select Account...</option>
-                          {availableAccountOptions.map((acc) => (
-                            <option key={acc.id} value={acc.label}>
-                              {acc.label}
-                            </option>
-                          ))}
-                          <option value="Other">👤 Other...</option>
-                        </select>
-                        {s.account === 'Other' && (
-                          <input
-                            type="text"
-                            value={s.customAccount || ''}
-                            onChange={(e) => handleSplitChange(idx, 'customAccount', e.target.value)}
-                            placeholder="Coordinator name"
-                            style={{
-                              ...compactSelect,
-                              marginTop: '3px',
-                              backgroundColor: '#070c18',
-                              borderColor: 'rgba(245, 158, 11, 0.4)',
-                            }}
-                          />
-                        )}
-                      </div>
-
-                      {/* 2. Expense Type */}
-                      <div className="expense-tx-cell-type">
-                        <span className="expense-tx-field-label">Expense Type <span style={{ color: '#f87171' }}>*</span></span>
-                        <select
-                          value={s.note || ''}
-                          onChange={(e) => handleSplitChange(idx, 'note', e.target.value)}
-                          style={compactSelect}
-                        >
-                          <option value="">Select Type...</option>
-                          {PAYMENT_TRANSACTION_TYPES.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* 3. Payment Date */}
-                      <div className="expense-tx-cell-date">
-                        <span className="expense-tx-field-label">Payment Date <span style={{ color: '#f87171' }}>*</span></span>
-                        <PaymentDatePicker
-                          value={s.date || ''}
-                          onChange={(val) => handleSplitChange(idx, 'date', val)}
-                          style={compactSelect}
-                        />
-                      </div>
-
-                      {/* 4. Amount Spent */}
-                      <div className="expense-tx-cell-spent">
-                        <span className="expense-tx-field-label">Spent <span style={{ color: '#f87171' }}>*</span></span>
-                        <div style={{ position: 'relative' }}>
-                          <span
-                            style={{
-                              position: 'absolute',
-                              left: '8px',
-                              top: '7px',
-                              color: '#94a3b8',
-                              fontSize: '0.82rem',
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            ₹
-                          </span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={s.amount}
-                            onChange={(e) =>
-                              handleSplitChange(idx, 'amount', e.target.value.replace(/\D/g, ''))
-                            }
-                            placeholder="0"
-                            style={{
-                              ...compactSelect,
-                              paddingLeft: '20px',
-                              fontWeight: 700,
-                              color: '#f8fafc',
-                              borderColor: 'rgba(134, 239, 172, 0.3)',
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* 6. Desktop Remove Button */}
-                      <div className="expense-tx-desktop-only expense-tx-cell-remove" style={{ alignItems: 'center', justifyContent: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSplitRow(idx)}
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            minHeight: '28px',
-                            minWidth: '28px',
-                            borderRadius: '6px',
-                            backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                            border: '1px solid rgba(239, 68, 68, 0.35)',
-                            color: '#f87171',
-                            fontSize: '13px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          title="Remove row"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                  {/* 4. Amount Spent */}
+                  <div className="w-full sm:w-32">
+                    <label className="block sm:hidden text-[11px] text-slate-400 mb-1">Spent (₹) *</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-slate-400 text-xs">₹</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={s.amount}
+                        onChange={(e) =>
+                          handleSplitChange(idx, 'amount', e.target.value.replace(/\D/g, ''))
+                        }
+                        placeholder="0"
+                        className="w-full min-h-[40px] text-base sm:text-xs pl-7 pr-3 py-2 rounded-xl bg-slate-950/80 border border-emerald-500/40 text-emerald-400 font-mono font-bold outline-none focus:border-emerald-400"
+                      />
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Desktop Remove Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSplitRow(idx)}
+                    className="hidden sm:flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition-colors shrink-0"
+                    title="Remove row"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
 
               {splits.length === 0 && (
-                <div
-                  style={{
-                    padding: '20px 14px',
-                    textAlign: 'center',
-                    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                    borderRadius: '8px',
-                    border: '1px dashed rgba(255, 255, 255, 0.1)',
-                    color: '#94a3b8',
-                    fontSize: '0.85rem',
-                  }}
-                >
+                <div className="p-6 text-center rounded-xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400 text-xs sm:text-sm">
                   No payment transactions logged yet. Click below to add an advance or full payment.
                 </div>
               )}
             </div>
 
-            {/* Centered Add Another Row Button matching user mockup */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '10px' }}>
+            {/* Add Another Row */}
+            <div className="flex justify-center pt-1">
               <button
                 type="button"
                 onClick={handleAddSplitRow}
-                style={{
-                  minHeight: '40px',
-                  padding: '8px 24px',
-                  borderRadius: '8px',
-                  backgroundColor: 'rgba(99, 102, 241, 0.12)',
-                  border: '1.5px dashed rgba(99, 102, 241, 0.45)',
-                  color: '#c7d2fe',
-                  fontSize: '0.86rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s ease',
-                }}
+                className="min-h-[44px] px-6 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-dashed border-indigo-500/40 text-indigo-300 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors"
               >
-                <span>➕</span>
-                <span>Add Another Row</span>
+                <Plus className="w-4 h-4" />
+                <span>Add Another Payment Row</span>
               </button>
             </div>
           </div>
 
           {/* Vendor Details */}
-          <div className="expense-grid-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Vendor / Payee Name <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                Vendor / Payee Name <span className="text-slate-500 font-normal">(Optional)</span>
               </label>
               <input
                 type="text"
                 value={vendorName}
                 onChange={(e) => setVendorName(e.target.value)}
                 placeholder="e.g. Royal Caterers / Sharma Tent"
-                style={{
-                  width: '100%',
-                  minHeight: '44px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
+                className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950/70 border border-slate-700 text-white placeholder-slate-500 outline-none focus:border-amber-500"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="field-vendor-phone"
-                style={{
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  color: '#f1f5f9',
-                  display: 'block',
-                  marginBottom: '6px',
-                }}
-              >
-                Vendor Contact / Phone <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5 flex items-center gap-1">
+                <Phone className="w-3 h-3 text-slate-400" /> Vendor Phone{' '}
+                <span className="text-slate-500 font-normal">(Optional)</span>
               </label>
-              <div
-                className="input-prefix-wrap"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  backgroundColor: '#0f172a',
-                  minHeight: '44px',
-                }}
-              >
-                <span
-                  className="input-prefix"
-                  style={{
-                    minWidth: '48px',
-                    alignSelf: 'stretch',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                    borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#38bdf8',
-                    fontWeight: 700,
-                    fontSize: '0.92rem',
-                    userSelect: 'none',
-                    padding: '0 12px',
-                  }}
-                >
+              <div className="relative flex items-stretch rounded-xl overflow-hidden border border-slate-700 focus-within:border-amber-500">
+                <span className="px-3 bg-slate-800 text-sky-400 font-bold text-xs sm:text-sm flex items-center justify-center select-none border-r border-slate-700">
                   +91
                 </span>
                 <input
-                  id="field-vendor-phone"
                   type="tel"
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -1548,328 +1148,106 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   value={vendorPhone}
                   onChange={(e) => {
                     let digits = e.target.value.replace(/\D/g, '');
-                    if (digits.length > 10) {
-                      digits = digits.slice(-10);
-                    }
+                    if (digits.length > 10) digits = digits.slice(-10);
                     setVendorPhone(digits);
                     if (errorMsg) setErrorMsg(null);
                   }}
                   placeholder="10-digit mobile number"
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    minHeight: '44px',
-                    padding: '10px 12px',
-                    border: 'none',
-                    backgroundColor: 'transparent',
-                    color: '#f8fafc',
-                    fontSize: '1rem',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
+                  className="w-full min-h-[44px] text-base sm:text-sm px-3 py-2.5 bg-slate-950/70 text-white placeholder-slate-500 outline-none"
                 />
-                {vendorPhone.length > 0 && (
-                  <div style={{ padding: '0 10px', flexShrink: 0 }}>
-                    {vendorPhone.length === 10 ? (
-                      <span
-                        style={{
-                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
-                          color: '#34d399',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        ✓ 10 digits
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                          border: '1px solid rgba(245, 158, 11, 0.4)',
-                          color: '#fbbf24',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {vendorPhone.length}/10
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
           {/* Bill / Receipt Upload & Notes */}
-          <div className="expense-grid-bottom">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '6px',
-                }}
-              >
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9' }}>
-                  Bills / Receipts / Screenshots{' '}
-                  <span style={{ color: '#94a3b8', fontWeight: 400 }}>
-                    ({existingReceiptPaths.length + newReceiptPreviews.length})
-                  </span>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Bills / Receipts ({existingReceiptPaths.length + newReceiptPreviews.length})</span>
                 </label>
                 {(existingReceiptPaths.length > 0 || newReceiptPreviews.length > 0) && (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#93c5fd',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      padding: '2px 6px',
-                    }}
+                    className="text-xs text-sky-400 hover:text-sky-300 font-semibold"
                   >
-                    ➕ Add More
+                    + Add More
                   </button>
                 )}
               </div>
 
-              {/* Multiple Receipts Gallery */}
               {existingReceiptPaths.length === 0 && newReceiptPreviews.length === 0 ? (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    border: '2px dashed rgba(255, 255, 255, 0.2)',
-                    borderRadius: '10px',
-                    padding: '16px 14px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                    transition: 'border-color 0.2s',
-                    height: '110px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxSizing: 'border-box',
-                  }}
+                  className="min-h-[110px] p-4 rounded-xl bg-slate-950/50 border-2 border-dashed border-slate-800 hover:border-amber-500/50 transition-colors cursor-pointer flex flex-col items-center justify-center text-center"
                 >
-                  <span style={{ fontSize: '22px', display: 'block', marginBottom: '2px' }}>📄</span>
-                  <span style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 500 }}>
+                  <Upload className="w-6 h-6 text-slate-500 mb-1" />
+                  <span className="text-xs font-semibold text-slate-300">
                     Upload Bills / Receipts / Screenshots
                   </span>
-                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                    Tap to select one or multiple photos (PNG, JPG, WebP)
+                  <span className="text-[11px] text-slate-500 mt-0.5">
+                    Select one or multiple photos (PNG, JPG, WebP)
                   </span>
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    maxHeight: '190px',
-                    overflowY: 'auto',
-                    paddingRight: '4px',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
-                      gap: '8px',
-                    }}
-                  >
-                    {/* Existing Saved Receipts */}
+                <div className="space-y-2 max-h-48 overflow-y-auto tab-scrollbar">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {/* Existing Receipts */}
                     {existingReceiptPaths.map((path, idx) => {
                       const url = getPublicExpenseScreenshotUrl(path);
                       return (
                         <div
                           key={`existing-${idx}`}
-                          style={{
-                            position: 'relative',
-                            backgroundColor: '#0f172a',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                            borderRadius: '8px',
-                            padding: '6px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                          }}
+                          className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1 relative"
                         >
                           <div
                             onClick={() => url && setLightboxUrl(url)}
-                            style={{
-                              height: '64px',
-                              width: '100%',
-                              backgroundColor: '#1e293b',
-                              borderRadius: '4px',
-                              overflow: 'hidden',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
+                            className="h-16 w-full rounded bg-slate-900 overflow-hidden cursor-pointer flex items-center justify-center"
                             title="Click to enlarge"
                           >
                             {url ? (
-                              <img
-                                src={url}
-                                alt={`Receipt ${idx + 1}`}
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover',
-                                }}
-                              />
+                              <img src={url} alt={`Bill ${idx + 1}`} className="w-full h-full object-cover" />
                             ) : (
-                              <span style={{ fontSize: '20px' }}>📄</span>
+                              <FileText className="w-5 h-5 text-slate-500" />
                             )}
                           </div>
-
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '4px',
-                              fontSize: '0.72rem',
-                            }}
-                          >
-                            {url ? (
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  color: '#93c5fd',
-                                  textDecoration: 'none',
-                                  fontWeight: 600,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}
-                                title="Open original in new tab"
-                              >
-                                🔗 Bill #{idx + 1} ↗
-                              </a>
-                            ) : (
-                              <span style={{ color: '#94a3b8' }}>Bill #{idx + 1}</span>
-                            )}
-
+                          <div className="flex items-center justify-between text-[11px] px-0.5">
+                            <span className="text-slate-400 truncate">Bill #{idx + 1}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveExistingReceipt(idx)}
-                              style={{
-                                border: 'none',
-                                background: 'rgba(239, 68, 68, 0.15)',
-                                color: '#fca5a5',
-                                borderRadius: '4px',
-                                padding: '2px 5px',
-                                cursor: 'pointer',
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                              }}
-                              title="Delete receipt"
+                              className="text-red-400 hover:text-red-300 p-0.5"
                             >
-                              ✕
+                              <X className="w-3 h-3" />
                             </button>
                           </div>
                         </div>
                       );
                     })}
 
-                    {/* Newly Selected Receipts */}
+                    {/* New Previews */}
                     {newReceiptPreviews.map((item, idx) => (
                       <div
                         key={`new-${idx}`}
-                        style={{
-                          position: 'relative',
-                          backgroundColor: '#0f172a',
-                          border: '1px solid rgba(56, 189, 248, 0.3)',
-                          borderRadius: '8px',
-                          padding: '6px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                        }}
+                        className="p-1.5 rounded-lg bg-slate-950 border border-sky-500/30 space-y-1 relative"
                       >
                         <div
                           onClick={() => setLightboxUrl(item.url)}
-                          style={{
-                            height: '64px',
-                            width: '100%',
-                            backgroundColor: '#1e293b',
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
+                          className="h-16 w-full rounded bg-slate-900 overflow-hidden cursor-pointer flex items-center justify-center"
                           title="Click to enlarge"
                         >
-                          <img
-                            src={item.url}
-                            alt={item.name}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
-                          />
+                          <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
                         </div>
-
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '4px',
-                            fontSize: '0.72rem',
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: '#38bdf8',
-                              fontWeight: 600,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={`${item.name} (${Math.round(item.size / 1024)} KB)`}
-                          >
-                            ✨ New ({Math.round(item.size / 1024)}K)
-                          </span>
-
+                        <div className="flex items-center justify-between text-[11px] px-0.5">
+                          <span className="text-sky-400 truncate">✨ New</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveNewReceipt(idx)}
-                            style={{
-                              border: 'none',
-                              background: 'rgba(239, 68, 68, 0.15)',
-                              color: '#fca5a5',
-                              borderRadius: '4px',
-                              padding: '2px 5px',
-                              cursor: 'pointer',
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                            }}
-                            title="Remove file"
+                            className="text-red-400 hover:text-red-300 p-0.5"
                           >
-                            ✕
+                            <X className="w-3 h-3" />
                           </button>
                         </div>
                       </div>
@@ -1879,19 +1257,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px dashed rgba(255, 255, 255, 0.2)',
-                      color: '#93c5fd',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      alignSelf: 'flex-start',
-                    }}
+                    className="text-xs text-sky-400 hover:underline font-semibold block pt-1"
                   >
-                    ➕ Add Another Bill / Screenshot
+                    + Add Another Bill / Screenshot
                   </button>
                 </div>
               )}
@@ -1902,212 +1270,102 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 multiple
                 accept="image/*"
                 onChange={handleFilesChange}
-                style={{ display: 'none' }}
+                className="hidden"
               />
             </div>
 
             <div>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', display: 'block', marginBottom: '6px' }}>
-                Notes / Line Item Details <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                Notes / Line Item Details <span className="text-slate-500 font-normal">(Optional)</span>
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="e.g. Rate: ₹320/plate for 300 alumni, ₹10k advance paid on 15 Oct"
-                style={{
-                  width: '100%',
-                  height: '110px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '0.92rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  resize: 'none',
-                }}
+                className="w-full min-h-[110px] text-base sm:text-xs px-3.5 py-2.5 rounded-xl bg-slate-950/70 border border-slate-700 text-white placeholder-slate-500 outline-none focus:border-amber-500 resize-none"
               />
             </div>
           </div>
 
-          {/* Modal Actions */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: initialData?.id && onDelete ? 'space-between' : 'flex-end',
-              gap: '12px',
-              paddingTop: '12px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              marginTop: '4px',
-              flexWrap: 'wrap',
-            }}
-          >
-            {initialData?.id && onDelete && (
+          {/* Sticky Modal Actions */}
+          <div className="sticky bottom-0 z-10 pt-3 pb-1 bg-slate-900/95 backdrop-blur border-t border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+            {initialData?.id && onDelete ? (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={saving || deleting}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                  color: '#f87171',
-                  padding: '10px 18px',
-                  borderRadius: '8px',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                  transition: 'background-color 0.15s',
-                }}
+                className="min-h-[44px] px-4 py-2.5 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
               >
-                {deleting ? 'Deleting...' : '🗑️ Delete Item'}
+                <Trash2 className="w-4 h-4" />
+                <span>{deleting ? 'Deleting...' : 'Delete Item'}</span>
               </button>
+            ) : (
+              <div />
             )}
 
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div className="flex items-center gap-2.5 ml-auto">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={saving || deleting}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  border: 'none',
-                  color: '#cbd5e1',
-                  padding: '10px 18px',
-                  borderRadius: '8px',
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                  transition: 'background-color 0.15s',
-                }}
+                className="min-h-[44px] px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
-
               <button
                 type="submit"
                 disabled={saving || deleting}
-                style={{
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  border: 'none',
-                  color: '#ffffff',
-                  padding: '10px 22px',
-                  borderRadius: '8px',
-                  fontSize: '0.95rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'transform 0.1s, box-shadow 0.15s',
-                }}
+                className="min-h-[44px] px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               >
-                {saving ? 'Saving...' : initialData ? 'Update Expense' : 'Save Expense'}
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{initialData ? 'Update Expense' : 'Save Expense'}</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </form>
       </div>
 
-      {/* Fullscreen Lightbox Modal for Receipts */}
+      {/* Lightbox Modal */}
       {lightboxUrl && (
         <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setLightboxUrl(null)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.88)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-            zIndex: 99999,
-            cursor: 'zoom-out',
-          }}
         >
           <div
+            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              maxWidth: '92vw',
-              maxHeight: '88vh',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              cursor: 'default',
-            }}
           >
-            <div
-              style={{
-                width: '100%',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '10px',
-                gap: '8px',
-                flexWrap: 'wrap',
-              }}
-            >
+            <img
+              src={lightboxUrl}
+              alt="Bill View"
+              className="max-w-full max-h-[75vh] rounded-xl object-contain shadow-2xl border border-slate-800"
+            />
+            <div className="flex gap-3 mt-4 flex-wrap justify-center">
               <a
                 href={lightboxUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  color: '#93c5fd',
-                  fontSize: '0.85rem',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  minHeight: '40px',
-                }}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-300 text-sm font-semibold inline-flex items-center gap-1.5 hover:bg-sky-500/30 transition-colors"
               >
-                🔗 Open Original in New Tab ↗
+                <span>Open in New Tab</span>
+                <ExternalLink className="w-4 h-4" />
               </a>
               <button
                 type="button"
                 onClick={() => setLightboxUrl(null)}
-                style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.85)',
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: '6px',
-                  padding: '6px 14px',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  minHeight: '40px',
-                }}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition-colors"
               >
-                ✕ Close
+                Close Preview
               </button>
             </div>
-
-            <img
-              src={lightboxUrl}
-              alt="Expense Receipt Full View"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '78vh',
-                objectFit: 'contain',
-                borderRadius: '8px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-              }}
-            />
           </div>
         </div>
       )}
