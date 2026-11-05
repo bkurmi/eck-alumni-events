@@ -2,30 +2,40 @@
 
 ## Mobile-First & Responsive Design Standards
 
-### 1. Mobile-First Philosophy
-- **Design & build for mobile viewports first** (360px – 414px width), then progressively enhance for tablet (`md:` 768px) and desktop (`lg:` 1024px+).
-- Never assume a desktop resolution or wide viewport.
-- Modals, drawers, dropdowns, popups, and dialogs must fit cleanly on small screens without cut-offs or overflow.
+### 1. Mobile-First Philosophy & Architecture
+- **Base CSS is 360px by Default**: All base CSS rules must be written for mobile viewports first (360px – 414px width) without media queries. Larger screen enhancements are ONLY permitted inside progressive `@media (min-width: 640px)` or `@media (min-width: 768px)` blocks.
+- Never write desktop styles first and attempt to "fix" or shrink them with `max-width` media queries later.
+- Modals, drawers, dropdowns, popups, and dialogs must fit cleanly on small screens (360px) without cut-offs, jagged line breaks, or overflow.
 
-### 2. Layout & Spacing Rules
+### 2. Layout, Spacing & Container Rules
 - **No Hardcoded Widths**: Avoid fixed pixel widths (e.g. `width: 600px`, `w-[500px]`). Instead, use fluid widths with constraints: `w-full max-w-md`, percentages, `clamp()`, and `rem`.
 - **Zero Body Horizontal Overflow**: Horizontal scrolling on the page body is strictly prohibited. Keep layouts cleanly bounded (`overflow-x-hidden` or container constraints).
+- **Mobile Container Padding**: On screens `<640px`, container horizontal padding must not exceed `0.75rem` (12px) to `1rem` (16px). High desktop paddings (`1.5rem–2rem`) steal crucial real estate and crush mobile cards.
 - **Tables & Dense Data**: Never render wide static tables directly on mobile. Wrap tables in dedicated scrollable containers (`overflow-x-auto`) or transform tabular rows into vertical card layouts on small screens.
 - **Flex & Grid Wrapping**: Always specify wrapping (`flex-wrap`) or responsive grid templates (e.g., `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) when arranging actions, forms, or navigation items.
 
-### 3. Touch Targets & Form Inputs
-- **Touch Target Size**: All buttons, icon buttons, tabs, links, and actionable items must have a minimum tap area of at least 44×44px (`min-h-[44px] min-w-[44px]`, with proper padding `p-2.5` to `p-3.5`).
+### 3. No Dual-Label Compression on Mobile (<400px)
+- **Forbidden Pattern**: Never pair a long flexible title/name with wide static badges side-by-side in a single row without responsive abbreviation or clean vertical stacking.
+- **Responsive Abbreviation**: When badges sit in card headers, render compact variants on mobile (e.g. `'24` on mobile via `.batch-short`, and `Batch of 2024` on desktop via `.batch-full`) or stack them below the title to prevent truncating user names into unreadable ellipses.
+
+### 4. Touch Targets & Form Inputs
+- **Touch Target Size**: All buttons, icon buttons, tabs, links, combobox options, and actionable items must have a minimum tap area of at least 44×44px (`min-h-[44px] min-w-[44px]`, with proper padding `p-2.5` to `p-3.5`).
 - **Input Font Size**: Text inputs, selects, and textareas must have a font size of at least `16px` (`text-base` in Tailwind or `1rem`) to prevent automatic browser zoom on mobile devices (e.g., iOS Safari).
 - **Responsive Padding**: Ensure mobile containers have sufficient horizontal padding (`px-3` to `px-4`) so text and cards do not collide with screen edges.
 - **Safe Area Insets**: Account for bottom navigation bars, virtual keyboards, and notch/safe-areas where applicable (`pb-safe` or bottom spacing for fixed action bars).
 
-### 4. Typography & Visual Hierarchy
+### 5. Typography & Visual Hierarchy
 - Use responsive font sizing (e.g., `text-xl sm:text-2xl md:text-3xl`).
 - Maintain legible line-height and adequate contrast across both light and dark themes.
 - Truncate or wrap long user names, email addresses, and badge text gracefully (`truncate`, `break-words`, `line-clamp-2`).
 
-### 5. Verification & Testing
-- When creating, editing, or validating UI components with browser or preview tools, always test and inspect at mobile screen dimensions (e.g. 375×667 or 390×844) before verifying desktop layouts.
+### 6. Mandatory Mobile Pre-Completion Verification Checklist
+- **Mandatory Reporting in Every UI Response**: Whenever modifying or adding any UI component, page, or CSS, the agent MUST explicitly include a **"Mobile Viewport (360px) Verification"** section in the response confirming:
+  1. **360px Width Test**: Verified that cards, headers, and text fit on a 360px viewport without clipping or text collisions.
+  2. **Touch Target Test**: Verified that all clickable elements have $\ge$44px height/width.
+  3. **Input Font Size Test**: Verified inputs use $\ge$16px font to prevent mobile auto-zoom.
+  4. **Progressive Enhancement**: Verified that desktop styles exist only inside `@media (min-width: ...)` blocks.
+- **No UI task is complete without this verification.**
 
 
 ---
