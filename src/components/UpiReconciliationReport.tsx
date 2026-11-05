@@ -7,6 +7,7 @@ import {
   CreditCard,
   Edit2,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import type { EventRegistration, PaymentVerification, Sponsorship, ECKEvent } from '../types';
 import { getUpiAccountName, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
@@ -42,9 +43,12 @@ interface KnownAccount {
 
 const getPublicScreenshotUrl = (path: string | null | undefined) => {
   if (!path) return null;
-  const cleanPath = path.trim();
+  let cleanPath = path.trim().replace(/^["']|["']$/g, '');
   if (!cleanPath || cleanPath === 'manual-admin-entry') return null;
   if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
+  if (cleanPath.startsWith('payment-screenshots/')) {
+    cleanPath = cleanPath.replace(/^payment-screenshots\//, '');
+  }
   const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
   return data?.publicUrl || null;
 };
@@ -1153,6 +1157,100 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   <span>{editingReg.verification.notes}</span>
                 </div>
               )}
+
+              {/* Payment Screenshot Display */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-200">
+                    📄 Attached Payment Screenshot(s)
+                  </label>
+                  {editingReg.registration.payment_screenshot_path && (
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {(editingReg.registration.payment_screenshot_path || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean).length}{' '}
+                      receipt(s)
+                    </span>
+                  )}
+                </div>
+
+                {editingReg.registration.payment_screenshot_path ? (
+                  <div className="space-y-3">
+                    {(editingReg.registration.payment_screenshot_path || '')
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                      .map((singlePath, idx, arr) => {
+                        if (singlePath === 'manual-admin-entry') {
+                          return (
+                            <div
+                              key={idx}
+                              className="p-3 rounded-xl bg-indigo-500/10 border border-dashed border-indigo-500/30 text-indigo-300 text-xs text-center"
+                            >
+                              ⚡ Manual Admin Entry (Direct verification, no screenshot uploaded)
+                            </div>
+                          );
+                        }
+
+                        const url = getPublicScreenshotUrl(singlePath);
+
+                        return (
+                          <div
+                            key={idx}
+                            className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-amber-400">
+                                {arr.length > 1
+                                  ? idx === 0
+                                    ? 'Receipt 1 (Initial Payment)'
+                                    : `Receipt ${idx + 1} (Additional / Top-up)`
+                                  : 'Payment Receipt'}
+                              </span>
+                              {url && (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  <span>Open Full Image</span>
+                                </a>
+                              )}
+                            </div>
+
+                            {url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block rounded-lg overflow-hidden border border-slate-800 bg-black/40 hover:border-amber-500/50 transition-colors group cursor-zoom-in"
+                                title="Click to open full screenshot in new tab"
+                              >
+                                <img
+                                  src={url}
+                                  alt={`Payment screenshot ${idx + 1}`}
+                                  className="w-full max-h-72 object-contain rounded-lg group-hover:scale-[1.01] transition-transform duration-200"
+                                  loading="lazy"
+                                />
+                              </a>
+                            ) : (
+                              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
+                                ⚠️ Could not resolve receipt image URL
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400 text-xs text-center">
+                    ℹ️ No payment screenshot attached to this registration.
+                  </div>
+                )}
+              </div>
 
               {/* Form fields */}
               <div className="space-y-3">
