@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronDown, Check, Search, X } from 'lucide-react';
 
 export interface SearchableSelectOption {
   value: string;
@@ -92,9 +93,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   };
 
   return (
-    <div className={`searchable-select-wrap ${className}`} ref={containerRef}>
+    <div className={`relative flex flex-col gap-1.5 w-full ${className}`} ref={containerRef}>
       {label && (
-        <label htmlFor={id} className="filter-label">
+        <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wider text-slate-400">
           {label}
         </label>
       )}
@@ -103,21 +104,25 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       <button
         id={id}
         type="button"
-        className={`searchable-select-trigger ${isOpen ? 'open' : ''} ${isSelectedActive ? 'has-value' : ''}`}
+        className={`flex min-h-[44px] w-full items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition-all cursor-pointer ${
+          isSelectedActive
+            ? 'border-amber-500/50 bg-amber-500/10 text-amber-200'
+            : 'border-slate-800 bg-slate-900/90 text-slate-200 hover:border-slate-700 hover:bg-slate-800/80'
+        } ${isOpen ? 'ring-2 ring-amber-500/30 border-amber-500/60' : ''}`}
         onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className="trigger-text" title={displayLabel}>
+        <span className="truncate" title={displayLabel}>
           {displayLabel || placeholder}
         </span>
 
-        <div className="trigger-icons">
+        <div className="flex items-center gap-1.5 shrink-0 text-slate-400">
           {isSelectedActive && (
             <span
               role="button"
               tabIndex={0}
-              className="trigger-clear-btn"
+              className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-amber-500/20 hover:text-amber-300 text-slate-400 transition-colors"
               onClick={handleClear}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -127,23 +132,28 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
               title="Reset to All"
               aria-label="Clear filter"
             >
-              ✕
+              <X className="h-3.5 w-3.5" />
             </span>
           )}
-          <span className="trigger-arrow">{isOpen ? '▲' : '▼'}</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-amber-400' : ''}`}
+          />
         </div>
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="searchable-select-menu" role="listbox">
+        <div
+          className="absolute top-full left-0 z-50 mt-1.5 w-full min-w-[240px] max-w-[360px] rounded-2xl border border-amber-500/30 bg-slate-900/98 p-2 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150"
+          role="listbox"
+        >
           {/* Search Input Box */}
-          <div className="searchable-menu-search">
-            <span className="menu-search-icon">🔍</span>
+          <div className="relative mb-2 flex items-center">
+            <Search className="absolute left-3 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
-              className="searchable-menu-input"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2 pl-9 pr-8 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -152,28 +162,32 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             {searchQuery && (
               <button
                 type="button"
-                className="menu-search-clear"
+                className="absolute right-2.5 flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:text-white"
                 onClick={() => setSearchQuery('')}
                 title="Clear text"
               >
-                ✕
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
           {/* Options List */}
-          <div className="searchable-menu-options-list">
+          <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
             {/* "All" Option */}
             {!searchQuery.trim() && (
               <button
                 type="button"
-                className={`searchable-option-item ${value === 'ALL' || !value ? 'active' : ''}`}
+                className={`flex min-h-[40px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer ${
+                  value === 'ALL' || !value
+                    ? 'bg-amber-500/20 text-amber-300 font-semibold'
+                    : 'text-slate-300 hover:bg-slate-800'
+                }`}
                 onClick={() => handleSelect('ALL')}
                 role="option"
                 aria-selected={value === 'ALL' || !value}
               >
-                <span className="option-label">{allOptionLabel}</span>
-                {(value === 'ALL' || !value) && <span className="option-check">✓</span>}
+                <span className="truncate">{allOptionLabel}</span>
+                {(value === 'ALL' || !value) && <Check className="h-4 w-4 text-amber-400 shrink-0" />}
               </button>
             )}
 
@@ -184,18 +198,22 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   <button
                     key={opt.value}
                     type="button"
-                    className={`searchable-option-item ${isSelected ? 'active' : ''}`}
+                    className={`flex min-h-[40px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-500/20 text-amber-300 font-semibold'
+                        : 'text-slate-300 hover:bg-slate-800'
+                    }`}
                     onClick={() => handleSelect(opt.value)}
                     role="option"
                     aria-selected={isSelected}
                   >
-                    <span className="option-label">{opt.label}</span>
-                    {isSelected && <span className="option-check">✓</span>}
+                    <span className="truncate">{opt.label}</span>
+                    {isSelected && <Check className="h-4 w-4 text-amber-400 shrink-0" />}
                   </button>
                 );
               })
             ) : (
-              <div className="searchable-empty-options">
+              <div className="py-4 text-center text-xs text-slate-400">
                 <span>No options matching "<strong>{searchQuery}</strong>"</span>
               </div>
             )}
@@ -205,4 +223,3 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     </div>
   );
 };
-

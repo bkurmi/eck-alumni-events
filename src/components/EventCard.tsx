@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import type { ECKEvent } from '../types';
 import { getRegistrationDeadline } from '../lib/eventStatus';
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  IndianRupee,
+  ArrowRight,
+  Search,
+  Lock,
+} from 'lucide-react';
 
 interface EventCardProps {
   event: ECKEvent;
@@ -82,154 +91,168 @@ export const EventCard: React.FC<EventCardProps> = ({
   });
 
   const bannerImg = event.banner_image_url || '/diwali-banner.jpg';
+  const isEventOpen = event.status === 'OPEN';
 
   return (
-    <section className="event-hero-card">
+    <section className="w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-500/35 bg-slate-900/90 shadow-[0_12px_40px_rgba(0,0,0,0.6),0_0_25px_rgba(245,158,11,0.22)] backdrop-blur-md">
       {/* Festive Banner Container */}
-      <div className="event-banner-wrap">
+      <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] max-h-[360px] overflow-hidden bg-[#060810]">
         <img
           src={bannerImg}
-          alt="ECK-RTU Alumni DeepAura 2K26"
-          className="event-banner-img"
+          alt={event.event_name}
+          className="h-full w-full object-cover object-center transition-transform duration-700 hover:scale-105"
           loading="eager"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent" />
       </div>
 
-      <div className="event-hero-body">
-        {/* Status and College Insignia Header */}
-        <div className="event-badge-row">
-          <span className="badge badge-festive">
-            <span className="badge-dot pulse-gold">●</span> Annual Alumni Meet
-          </span>
-          <span className={`badge ${event.status === 'OPEN' ? 'badge-open' : 'badge-closed'}`}>
-            {event.status === 'OPEN' ? 'Registrations Open' : event.status === 'CLOSED' ? 'Registrations Closed' : event.status}
+      <div className="flex flex-col gap-5 p-4 sm:p-6 md:p-8">
+        {/* Status and Badges Row */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Annual Alumni Meet
           </span>
 
-          {event.status === 'OPEN' && timeLeft && !timeLeft.isClosed && (
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              isEventOpen
+                ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                : 'border border-rose-500/30 bg-rose-500/10 text-rose-300'
+            }`}
+          >
+            {isEventOpen
+              ? 'Registrations Open'
+              : event.status === 'CLOSED'
+              ? 'Registrations Closed'
+              : event.status}
+          </span>
+
+          {isEventOpen && timeLeft && !timeLeft.isClosed && (
             <span
-              className={`badge badge-countdown ${timeLeft.totalHours < 24 ? 'badge-countdown-urgent' : ''}`}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+                timeLeft.totalHours < 24
+                  ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                  : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+              }`}
               title={`Online registration closes on ${timeLeft.formattedDeadline} IST`}
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                className="countdown-clock-icon"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              <span className="countdown-label">
-                {timeLeft.totalHours < 24 ? 'Ends in' : 'Closes in'}
-              </span>
-              <span className="countdown-time-digits">
-                {timeLeft.days > 0 && <span className="time-unit">{timeLeft.days}d</span>}
-                <span className="time-unit">{String(timeLeft.hours).padStart(2, '0')}h</span>
-                <span className="time-unit">{String(timeLeft.minutes).padStart(2, '0')}m</span>
-                <span className="time-unit time-unit-sec">{String(timeLeft.seconds).padStart(2, '0')}s</span>
+              <Clock className="h-3.5 w-3.5" />
+              <span>{timeLeft.totalHours < 24 ? 'Ends in' : 'Closes in'}</span>
+              <span className="font-mono font-bold tracking-tight">
+                {timeLeft.days > 0 && `${timeLeft.days}d `}
+                {String(timeLeft.hours).padStart(2, '0')}h {String(timeLeft.minutes).padStart(2, '0')}m {String(timeLeft.seconds).padStart(2, '0')}s
               </span>
             </span>
           )}
         </div>
 
-        <h1 className="event-title">{event.event_name}</h1>
+        {/* Title & Authentic Hindi Tagline */}
+        <div className="space-y-1.5">
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
+            {event.event_name}
+          </h1>
 
-        {event.tagline && (
-          <p className="event-tagline hindi-tagline-hero">
-            <span className="tagline-flourish">✦</span> {event.tagline}{' '}
-            <span className="tagline-flourish">✦</span>
-          </p>
-        )}
+          {event.tagline && (
+            <p className="text-sm sm:text-base font-semibold text-amber-400">
+              <span className="text-amber-500">✦</span> {event.tagline}{' '}
+              <span className="text-amber-500">✦</span>
+            </p>
+          )}
+        </div>
 
-        {/* Aligned 2x2 or 4x1 Key Info Grid */}
-        <div className="event-meta-grid">
+        {/* Aligned Key Info Grid - 2 columns on tablet/desktop prevents text truncation */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
           {/* Date */}
-          <div className="meta-card">
-            <div className="meta-icon-badge">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
+          <div className="flex items-start gap-3 rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 sm:p-3.5 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <Calendar className="h-5 w-5" />
             </div>
-            <div className="meta-text-col">
-              <span className="meta-label">Event Date</span>
-              <span className="meta-value">{formattedDate}</span>
+            <div className="min-w-0">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Event Date
+              </span>
+              <span className="block text-xs sm:text-sm font-bold text-slate-100">
+                {formattedDate}
+              </span>
             </div>
           </div>
 
           {/* Time */}
           {event.event_time && (
-            <div className="meta-card">
-              <div className="meta-icon-badge">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
-                </svg>
+            <div className="flex items-start gap-3 rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 sm:p-3.5 shadow-sm">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <Clock className="h-5 w-5" />
               </div>
-              <div className="meta-text-col">
-                <span className="meta-label">Timings</span>
-                <span className="meta-value">{event.event_time}</span>
+              <div className="min-w-0">
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Timings
+                </span>
+                <span className="block text-xs sm:text-sm font-bold text-slate-100">
+                  {event.event_time}
+                </span>
               </div>
             </div>
           )}
 
           {/* Venue */}
-          <div className="meta-card">
-            <div className="meta-icon-badge">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
+          <div className="flex items-start gap-3 rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 sm:p-3.5 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <MapPin className="h-5 w-5" />
             </div>
-            <div className="meta-text-col">
-              <span className="meta-label">Venue</span>
-              <span className="meta-value">{event.location}</span>
+            <div className="min-w-0">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Venue
+              </span>
+              <span className="block text-xs sm:text-sm font-bold text-slate-100 line-clamp-2">
+                {event.location}
+              </span>
             </div>
           </div>
 
-          {/* Contribution */}
-          <div className="meta-card meta-card-highlight">
-            <div className="meta-icon-badge gold-badge">
-              <span className="currency-symbol">₹</span>
+          {/* Contribution Fee */}
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 sm:p-3.5 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              <IndianRupee className="h-5 w-5" />
             </div>
-            <div className="meta-text-col">
-              <span className="meta-label">Contribution</span>
-              <span className="meta-value fee-highlight">
-                {event.status === 'CLOSED' ? (
-                  <>₹1,000 <span className="fee-sub">Spot Entry / Adult</span></>
-                ) : (
-                  <>₹800 <span className="fee-sub">Single / ₹1,500 Couple</span></>
-                )}
+            <div className="min-w-0">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-amber-400">
+                Contribution
               </span>
+              <div className="text-xs sm:text-sm font-extrabold text-amber-200">
+                {event.status === 'CLOSED' ? (
+                  <span>
+                    ₹1,000 <span className="text-[11px] font-normal text-slate-300">Spot Entry / Adult</span>
+                  </span>
+                ) : (
+                  <span>
+                    ₹800 <span className="text-[11px] font-normal text-slate-300">Single</span> • ₹1,500 <span className="text-[11px] font-normal text-slate-300">Couple</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Description Box with Gold Accent Left Border */}
         {event.description && (
-          <div className="event-desc-box">
+          <div className="rounded-xl border-l-4 border-amber-500 bg-slate-950/50 p-3.5 sm:p-4 text-xs sm:text-sm text-slate-300 leading-relaxed shadow-sm">
             <p>{event.description}</p>
           </div>
         )}
 
-        {event.status === 'OPEN' ? (
-          <div className="event-action-bar">
+        {/* Action Buttons & Notice */}
+        {isEventOpen ? (
+          <div className="space-y-3 pt-1">
             {onRegisterClick && (
               <button
                 type="button"
                 onClick={onRegisterClick}
-                className="btn btn-festive-primary btn-large btn-block"
+                className="group relative flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-3.5 text-base font-bold text-slate-950 shadow-lg shadow-amber-500/25 transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer"
                 id="btn-register-now"
               >
                 <span>Join {event.short_name || event.event_name} • Register Now</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </button>
             )}
 
@@ -237,37 +260,49 @@ export const EventCard: React.FC<EventCardProps> = ({
               <button
                 type="button"
                 onClick={onManageRegistrationClick}
-                className="btn btn-lookup-trigger btn-block"
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm font-medium text-slate-200 transition-all hover:bg-slate-800 hover:text-white cursor-pointer active:bg-slate-700"
                 id="btn-lookup-registration"
               >
-                <span>🔍 Already Registered? View / Update Details</span>
+                <Search className="h-4 w-4 text-amber-400" />
+                <span>Already Registered? View / Update Details</span>
               </button>
             )}
 
-            <p className="cta-subtext">✨ Limited capacity • Family &amp; batchmates welcome ✨</p>
+            <p className="text-center text-xs text-slate-400 font-medium pt-1">
+              ✨ Limited capacity • Family &amp; batchmates welcome ✨
+            </p>
           </div>
         ) : (
-          <div className="event-action-bar event-closed-bar">
-            <div className="registration-closed-card">
-              <div className="closed-card-header">
-                <span className="closed-icon">🔒</span>
+          <div className="space-y-4 pt-1">
+            <div className="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-4 sm:p-5 space-y-3 shadow-md">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                  <Lock className="h-5 w-5" />
+                </div>
                 <div>
-                  <h3 className="closed-title">Online Registrations Closed</h3>
-                  <p className="closed-subtitle">
+                  <h3 className="text-sm sm:text-base font-bold text-white">Online Registrations Closed</h3>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
                     Online registration closed post deadline. Spot walk-in entries are open at the gate!
                   </p>
                 </div>
               </div>
-              <div className="closed-card-body">
-                <p>
-                  <strong>Spot Walk-in Registration Desk:</strong>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4 text-xs sm:text-sm space-y-2">
+                <p className="text-slate-200">
+                  <strong className="text-amber-400">Spot Walk-in Registration Desk:</strong>
                   <br />
                   Missed online registration? No worries! Visit the Spot Registration Desk at the ECK Campus Gate on the event day.
                 </p>
-                <div className="spot-summary-pills">
-                  <span className="spot-rate-chip">Adults: ₹1,000 / person</span>
-                  <span className="spot-rate-chip">Kids (10+ yrs): ₹500</span>
-                  <span className="spot-rate-chip chip-free">Kids (&lt;10 yrs): Free</span>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 text-xs font-semibold text-amber-300">
+                    Adults: ₹1,000 / person
+                  </span>
+                  <span className="rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-300">
+                    Kids (10+ yrs): ₹500
+                  </span>
+                  <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-400">
+                    Kids (&lt;10 yrs): Free
+                  </span>
                 </div>
               </div>
             </div>
@@ -276,14 +311,17 @@ export const EventCard: React.FC<EventCardProps> = ({
               <button
                 type="button"
                 onClick={onManageRegistrationClick}
-                className="btn btn-lookup-trigger btn-block"
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm font-medium text-slate-200 transition-all hover:bg-slate-800 hover:text-white cursor-pointer active:bg-slate-700"
                 id="btn-lookup-registration"
               >
-                <span>🔍 Already Registered? View / Update Details &amp; Pass</span>
+                <Search className="h-4 w-4 text-amber-400" />
+                <span>Already Registered? View / Update Details &amp; Pass</span>
               </button>
             )}
 
-            <p className="cta-subtext">✨ We look forward to welcoming you at ECK-RTU Campus Kota! ✨</p>
+            <p className="text-center text-xs text-slate-400 font-medium pt-1">
+              ✨ We look forward to welcoming you at ECK-RTU Campus Kota! ✨
+            </p>
           </div>
         )}
       </div>

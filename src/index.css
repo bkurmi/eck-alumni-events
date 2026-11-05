@@ -1,3 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #f59e0b;
+  --color-brand-primary-light: #fbbf24;
+  --color-brand-primary-dark: #d97706;
+  --color-brand-accent: #f97316;
+  --color-brand-accent-crimson: #e11d48;
+  --color-brand-bg-base: #0a0c16;
+  --color-brand-bg-surface: #111425;
+  --color-brand-bg-elevated: #1a1e36;
+}
+
 /* ============================================================
    ECK Alumni Events — Premium Diwali Celebratory Design System
    Mobile-First • Harmonious Gold & Royal Navy • Pixel Aligned
@@ -68,14 +81,7 @@
   --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Reset & Base Styles ── */
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* ── Reset & Base Styles handled by Tailwind ── */
 
 html {
   font-size: 16px;
@@ -7570,3 +7576,640 @@ h6 {
     min-height: 44px;
   }
 }
+
+
+/* ── Alumni Profile Modal Styles ── */
+.alumni-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.alumni-modal-container {
+  background: #111425;
+  border: 1px solid var(--border-gold, #f59e0b);
+  border-radius: var(--radius-lg, 16px);
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7);
+}
+
+.alumni-modal-header {
+  padding: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 12, 22, 0.5);
+}
+
+.alumni-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 0.25rem;
+  color: #fff;
+}
+
+.alumni-modal-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #cbd5e1);
+  margin: 0;
+}
+
+.alumni-modal-close-btn {
+  min-height: 44px;
+  min-width: 44px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alumni-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Search Tabs inside Modal */
+.alumni-search-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.alumni-tab-btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.alumni-tab-btn.active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--primary, #f59e0b);
+  color: var(--primary, #f59e0b);
+}
+
+.tab-pill-badge {
+  font-size: 0.72rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.alumni-search-box .form-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.alumni-form-input,
+.alumni-form-select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.65rem 0.85rem;
+  background: #0a0c16;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 16px; /* Prevents auto zoom */
+  box-sizing: border-box;
+}
+
+.alumni-form-input:focus,
+.alumni-form-select:focus {
+  outline: none;
+  border-color: var(--primary, #f59e0b);
+}
+
+.input-disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted, #94a3b8);
+  cursor: not-allowed;
+}
+
+.read-only-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.search-input-wrap {
+  display: flex;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.btn-search-mobile {
+  min-height: 46px;
+  padding: 0 1.25rem;
+  background: var(--primary, #f59e0b);
+  color: #0a0c16;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Modal Suggestions List */
+.suggestions-container {
+  margin-top: 0.85rem;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.suggestion-item {
+  min-height: 54px;
+  padding: 0.65rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.suggestion-item:hover {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: var(--border-gold, #f59e0b);
+}
+
+.suggestion-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1a1e36;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.suggestion-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.suggestion-batch {
+  font-size: 0.8rem;
+  color: var(--primary, #f59e0b);
+}
+
+.suggestion-meta-row {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #cbd5e1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-action-arrow {
+  color: var(--primary, #f59e0b);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.suggestions-empty {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 0.9rem;
+}
+
+.empty-tip {
+  font-size: 0.82rem;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 0.25rem;
+}
+
+/* Discovery Hints & Instant Search Chips */
+.name-search-discovery-hints {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.discovery-hint-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #cbd5e1);
+  margin: 0 0 0.65rem;
+}
+
+.discovery-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.discovery-chip {
+  min-height: 38px;
+  padding: 0.35rem 0.75rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 9999px;
+  color: #fbbf24;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.discovery-chip:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: var(--primary, #f59e0b);
+  transform: translateY(-1px);
+}
+
+/* ── Profile Edit Form Styles ── */
+.btn-back-to-search {
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--primary, #f59e0b);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Profile Sections & Cards ── */
+.profile-section-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.section-title-row h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.section-icon {
+  font-size: 1.25rem;
+}
+
+/* Profile Photo Hero Card in Modal */
+.profile-photo-hero-card {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.profile-photo-editor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+@media (min-width: 600px) {
+  .profile-photo-editor-row {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+}
+
+.photo-preview-wrap.rectangular {
+  position: relative;
+  width: 130px;
+  height: 165px;
+  min-width: 130px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--border-gold, #f59e0b);
+  background: #0a0c16;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  margin: 0 auto;
+}
+
+@media (min-width: 600px) {
+  .photo-preview-wrap.rectangular {
+    margin: 0;
+  }
+}
+
+.rectangular-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rectangular-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #191d33 0%, #0d0f1e 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.placeholder-icon {
+  font-size: 2.2rem;
+  opacity: 0.6;
+}
+
+.placeholder-initials {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--primary, #f59e0b);
+  letter-spacing: 0.05em;
+}
+
+.profile-photo-details-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.photo-identity-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.65rem;
+}
+
+.photo-identity-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.45rem;
+}
+
+.photo-identity-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.photo-meta-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary, #cbd5e1);
+}
+
+.badge-batch {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.badge-discipline {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.badge-city {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.badge-phone {
+  color: var(--text-muted, #94a3b8);
+}
+
+.photo-format-note {
+  font-size: 0.78rem;
+  color: var(--text-muted, #94a3b8);
+  align-self: center;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.photo-preview-wrap {
+  position: relative;
+  width: 120px;
+  height: 150px;
+  min-width: 120px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--primary, #f59e0b);
+}
+
+.profile-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #1a1e36;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+
+.photo-uploading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #fff;
+  text-align: center;
+}
+
+.photo-actions-wrap h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.98rem;
+  color: #fff;
+}
+
+.photo-hint {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #cbd5e1);
+  margin: 0 0 0.65rem;
+}
+
+.photo-buttons-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-photo-action {
+  min-height: 44px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-camera {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0a0c16;
+  border: none;
+  font-weight: 700;
+}
+
+.btn-gallery {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.alumni-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 600px) {
+  .alumni-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.required-star {
+  color: #ef4444;
+}
+
+.form-error-text {
+  color: #ef4444;
+  font-size: 0.82rem;
+  margin: 0.35rem 0 0;
+}
+
+.alumni-alert-success {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86efac;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.alumni-alert-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.alumni-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-cancel {
+  min-height: 46px;
+  padding: 0.65rem 1.25rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-secondary, #cbd5e1);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.btn-save-profile {
+  min-height: 46px;
+  padding: 0.65rem 1.5rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0a0c16;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+

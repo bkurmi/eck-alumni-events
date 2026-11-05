@@ -382,8 +382,8 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="alumni-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="alumni-modal-container" onClick={(e) => e.stopPropagation()}>
+    <div className="alumni-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="alumni-modal-container relative w-full max-w-2xl bg-[#111425] border border-amber-500/40 rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl my-auto" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="alumni-modal-header">
           <div>
