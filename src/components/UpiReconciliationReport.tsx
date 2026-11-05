@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { EventRegistration, PaymentVerification, Sponsorship, ECKEvent } from '../types';
-import { getUpiAccountName } from '../lib/paymentRotation';
+import { getUpiAccountName, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 
@@ -50,7 +50,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   onEditSponsorship,
   currentUserEmail,
 }) => {
-  // Known accounts list dynamically merged from active event configs and actual recorded transactions
+  // Known accounts list dynamically merged from active event configs and actual recorded transactions (genuine UPI only)
   const knownAccounts: KnownAccount[] = useMemo(() => {
     const list: KnownAccount[] = [];
     const seen = new Set<string>();
@@ -59,7 +59,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     if (event?.upi_rotation_configs && Array.isArray(event.upi_rotation_configs)) {
       event.upi_rotation_configs.forEach((c) => {
         const upi = (c.upi_id || '').toLowerCase().trim();
-        if (upi && !seen.has(upi)) {
+        if (upi && !seen.has(upi) && !isCashAccount(upi)) {
           seen.add(upi);
           let bank = 'UPI';
           if (upi.includes('sbi')) bank = 'SBI';
@@ -79,10 +79,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       });
     }
 
-    // 2. Add any accounts recorded in verifications
+    // 2. Add genuine UPI accounts recorded in verifications (exclude cash variants)
     verifications.forEach((v) => {
       const upi = (v.upi_id || '').toLowerCase().trim();
-      if (upi && !seen.has(upi)) {
+      if (upi && !seen.has(upi) && !isCashAccount(upi)) {
         seen.add(upi);
         const accName = getUpiAccountName(upi, event) || 'UPI Account';
         list.push({
@@ -96,10 +96,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       }
     });
 
-    // 3. Add any accounts recorded in sponsorships
+    // 3. Add genuine UPI accounts recorded in sponsorships (exclude cash variants)
     sponsorships.forEach((s) => {
       const upi = (s.receiving_upi_id || '').toLowerCase().trim();
-      if (upi && !seen.has(upi)) {
+      if (upi && !seen.has(upi) && !isCashAccount(upi)) {
         seen.add(upi);
         const accName = getUpiAccountName(upi, event) || 'Sponsor Account';
         list.push({
@@ -116,9 +116,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     return list;
   }, [event, verifications, sponsorships]);
 
-  // All filterable account keys: known accounts + 'unassigned'
+  // All filterable account keys: genuine known UPI accounts + canonical 'Cash in Hand'
   const allAccountKeys = useMemo(() => {
-    return [...knownAccounts.map((a) => a.upi_id), 'unassigned'];
+    return [...knownAccounts.map((a) => a.upi_id), CANONICAL_CASH_ACCOUNT];
   }, [knownAccounts]);
 
   // Selected QR Checkbox accounts (Multi-select)
@@ -174,24 +174,38 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   const enrichedList = useMemo(() => {
     return registrations.map((reg) => {
       const verif = verifByRegId.get(reg.id) || reg.payment_verifications?.[0];
-      const rawUpi = verif?.upi_id ? verif.upi_id.toLowerCase().trim() : null;
-      // If mapped to an official receiving UPI account, assign it; otherwise it's unassigned
-      const isKnown = rawUpi ? knownAccounts.some((a) => a.upi_id === rawUpi) : false;
-      const assignedUpi = isKnown ? rawUpi : null;
+      const rawUpi = verif?.upi_id ? verif.upi_id.trim() : null;
+
+      let assignedUpi: string;
+      let qrLabel: string;
+      if (isCashAccount(rawUpi)) {
+        assignedUpi = CANONICAL_CASH_ACCOUNT;
+        qrLabel = '💵 Cash in Hand';
+      } else if (rawUpi) {
+        const norm = rawUpi.toLowerCase();
+        const matchedAccount = knownAccounts.find((a) => a.upi_id === norm);
+        if (matchedAccount) {
+          assignedUpi = matchedAccount.upi_id;
+          qrLabel = matchedAccount.label;
+        } else {
+          assignedUpi = norm;
+          qrLabel = `${getUpiAccountName(norm, event)} (${norm})`;
+        }
+      } else {
+        // Untagged payment awaiting verification (grouped under Cash in Hand / Untagged)
+        assignedUpi = CANONICAL_CASH_ACCOUNT;
+        qrLabel = '⚠️ Not Tagged';
+      }
+
       const paymentDate = reg.created_at.slice(0, 10);
       const amount = verif ? Number(verif.amount) : Number(reg.amount || 0);
-
-      // Match friendly QR label
-      const matchedAccount = knownAccounts.find((a) => a.upi_id === assignedUpi);
-      const qrLabel = matchedAccount
-        ? matchedAccount.label
-        : '⚠️ Not Tagged';
 
       return {
         registration: reg,
         verification: verif,
         assignedUpi,
         qrLabel,
+        isCash: isCashAccount(rawUpi) || assignedUpi === CANONICAL_CASH_ACCOUNT,
         paymentDate,
         amount,
         verifiedBy: verif?.verified_by || null,
@@ -211,7 +225,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
       return timeB - timeA;
     });
-  }, [registrations, verifByRegId, knownAccounts]);
+  }, [registrations, verifByRegId, knownAccounts, event]);
 
   // Attendance Counts for the filter chips
   const attendanceCounts = useMemo(() => {
@@ -241,13 +255,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     knownAccounts.forEach((acc) => {
       stats[acc.upi_id] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
     });
-    stats['unassigned'] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
+    stats[CANONICAL_CASH_ACCOUNT] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
 
     enrichedList.forEach((item) => {
       if (attendanceFilter !== 'all' && item.registration.attendance_status !== attendanceFilter) {
         return;
       }
-      const key = item.assignedUpi || 'unassigned';
+      const key = item.assignedUpi || CANONICAL_CASH_ACCOUNT;
       if (!stats[key]) {
         stats[key] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
       }
@@ -256,7 +270,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     });
 
     sponsorships.forEach((s) => {
-      const key = (s.receiving_upi_id || 'unassigned').toLowerCase().trim();
+      const raw = (s.receiving_upi_id || '').trim();
+      const key = isCashAccount(raw) || !raw ? CANONICAL_CASH_ACCOUNT : raw.toLowerCase();
       if (!stats[key]) {
         stats[key] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
       }
@@ -297,8 +312,11 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       }
 
       // QR account filter
-      const key = item.assignedUpi || 'unassigned';
-      if (!selectedAccounts.includes(key)) {
+      const key = item.assignedUpi || CANONICAL_CASH_ACCOUNT;
+      const isSelected =
+        selectedAccounts.includes(key) ||
+        (key === CANONICAL_CASH_ACCOUNT && selectedAccounts.includes('unassigned'));
+      if (!isSelected) {
         return false;
       }
 
@@ -337,10 +355,15 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   // Filtered sponsorships based on selected UPI accounts, search, and date
   const filteredSponsorships = useMemo(() => {
     return (sponsorships || []).filter((s) => {
-      const rawUpi = (s.receiving_upi_id || 'unassigned').toLowerCase().trim();
-      const isKnown = knownAccounts.some((a) => a.upi_id === rawUpi);
-      const upi = isKnown ? rawUpi : 'unassigned';
-      if (!selectedAccounts.includes(upi)) {
+      const rawUpi = (s.receiving_upi_id || '').trim();
+      const isCash = isCashAccount(rawUpi) || !rawUpi;
+      const norm = rawUpi.toLowerCase();
+      const isKnown = knownAccounts.some((a) => a.upi_id === norm);
+      const upi = isCash ? CANONICAL_CASH_ACCOUNT : isKnown ? norm : CANONICAL_CASH_ACCOUNT;
+      const isSelected =
+        selectedAccounts.includes(upi) ||
+        (upi === CANONICAL_CASH_ACCOUNT && selectedAccounts.includes('unassigned'));
+      if (!isSelected) {
         return false;
       }
 
@@ -429,15 +452,25 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
   // Open Edit Modal
   const handleOpenEdit = (item: (typeof enrichedList)[0]) => {
-    const initialUpi = item.assignedUpi || '';
-    const isKnown = knownAccounts.some((a) => a.upi_id === initialUpi);
+    const raw = item.assignedUpi || item.verification?.upi_id || '';
+    const isCash = isCashAccount(raw) || item.assignedUpi === CANONICAL_CASH_ACCOUNT || isCashAccount(item.verification?.notes);
+    const norm = raw.toLowerCase().trim();
+    const isKnown = norm ? knownAccounts.some((a) => a.upi_id === norm) : false;
 
     setEditingReg({
       registration: item.registration,
       verification: item.verification,
     });
-    setEditUpiId(isKnown ? initialUpi : initialUpi ? 'custom' : knownAccounts[0]?.upi_id || '');
-    setEditCustomUpi(isKnown ? '' : initialUpi);
+    setEditUpiId(
+      isCash
+        ? CANONICAL_CASH_ACCOUNT
+        : isKnown
+          ? norm
+          : raw
+            ? 'custom'
+            : knownAccounts[0]?.upi_id || CANONICAL_CASH_ACCOUNT
+    );
+    setEditCustomUpi(isCash || isKnown ? '' : raw);
     setEditAmount(item.amount || item.registration.amount || 800);
     setEditNotes(item.verification?.notes || '');
   };
@@ -445,10 +478,15 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   // Save Edit
   const handleSaveEdit = async () => {
     if (!editingReg) return;
-    const finalUpi = editUpiId === 'custom' ? editCustomUpi.trim().toLowerCase() : editUpiId.trim().toLowerCase();
+    const finalUpi =
+      editUpiId === 'custom'
+        ? editCustomUpi.trim()
+        : isCashAccount(editUpiId)
+          ? CANONICAL_CASH_ACCOUNT
+          : editUpiId.trim();
 
     if (!finalUpi) {
-      alert('Please select or specify a UPI ID');
+      alert('Please select or specify a UPI ID or Cash in Hand');
       return;
     }
 
@@ -929,28 +967,45 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             );
           })}
 
-          {/* Unassigned Checkbox */}
-          <label className={`qr-checkbox-card unassigned ${selectedAccounts.includes('unassigned') ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={selectedAccounts.includes('unassigned')}
-              onChange={() => toggleAccount('unassigned')}
-              className="qr-native-checkbox"
-            />
-            <div className="qr-checkbox-info">
-              <div className="qr-checkbox-top">
-                <span className="qr-checkbox-badge badge-unassigned">💵 Cash</span>
-                <span className="qr-checkbox-count">{accountStats['unassigned']?.count || 0} Regs</span>
-              </div>
-              <div className="qr-checkbox-account-label">
-                <strong className="qr-checkbox-name">Cash in Hand</strong>
-              </div>
-              <span className="qr-checkbox-upi font-mono">Spot Cash / Untagged</span>
-              <span className="qr-checkbox-amount font-accent">
-                ₹{(accountStats['unassigned']?.totalAmount || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-          </label>
+          {/* Canonical Cash in Hand Checkbox Card */}
+          {(() => {
+            const isChecked = selectedAccounts.includes(CANONICAL_CASH_ACCOUNT) || selectedAccounts.includes('unassigned');
+            const stats = accountStats[CANONICAL_CASH_ACCOUNT] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
+            return (
+              <label className={`qr-checkbox-card unassigned ${isChecked ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => {
+                    toggleAccount(CANONICAL_CASH_ACCOUNT);
+                    if (selectedAccounts.includes('unassigned')) {
+                      toggleAccount('unassigned');
+                    }
+                  }}
+                  className="qr-native-checkbox"
+                />
+                <div className="qr-checkbox-info">
+                  <div className="qr-checkbox-top">
+                    <span className="qr-checkbox-badge badge-unassigned">💵 Cash</span>
+                    <span className="qr-checkbox-count">
+                      {stats.sponsorCount > 0 && stats.count > 0
+                        ? `${stats.count} Reg + ${stats.sponsorCount} Spons`
+                        : stats.sponsorCount > 0
+                          ? `${stats.sponsorCount} Spons`
+                          : `${stats.count} Regs`}
+                    </span>
+                  </div>
+                  <div className="qr-checkbox-account-label">
+                    <strong className="qr-checkbox-name">Cash in Hand</strong>
+                  </div>
+                  <span className="qr-checkbox-upi font-mono">Spot Cash / Handover</span>
+                  <span className="qr-checkbox-amount font-accent">
+                    ₹{stats.totalAmount.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </label>
+            );
+          })()}
         </div>
       </div>
 
@@ -962,8 +1017,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             <div>
               <span className="live-banner-title">
                 {selectedAccounts.length === allAccountKeys.length
-                  ? `All (${selectedAccounts.length}) UPI Accounts Selected`
-                  : `${selectedAccounts.length} UPI Account${selectedAccounts.length === 1 ? '' : 's'} Selected`}
+                  ? `All (${selectedAccounts.length}) Receiving Accounts Selected`
+                  : `${selectedAccounts.length} Receiving Account${selectedAccounts.length === 1 ? '' : 's'} Selected`}
               </span>
               <span className="live-banner-sub">
                 {currentTotals.totalRegCount} matching registrations
@@ -978,14 +1033,18 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
         <div className="live-banner-chips-row">
           {selectedAccounts.length === allAccountKeys.length ? (
-            <span className="live-chip-all">✓ Showing all {allAccountKeys.length} receiving accounts (including Sponsorships)</span>
+            <span className="live-chip-all">✓ Showing all {allAccountKeys.length} receiving accounts (including Cash in Hand &amp; Sponsorships)</span>
           ) : selectedAccounts.length === 0 ? (
             <span className="live-chip-none">⚠️ No accounts selected (showing 0)</span>
           ) : (
             <div className="live-chips-container">
               {selectedAccounts.map((key) => {
                 const match = knownAccounts.find((a) => a.upi_id === key);
-                const label = match ? `${match.bankName} (${match.accountName})` : 'Untagged';
+                const label = match
+                  ? `${match.bankName} (${match.accountName})`
+                  : isCashAccount(key) || key === CANONICAL_CASH_ACCOUNT || key === 'unassigned'
+                    ? '💵 Cash in Hand'
+                    : 'Untagged';
                 return (
                   <span key={key} className="live-account-chip">
                     {label}
@@ -1687,27 +1746,36 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
               <div className="upi-modal-form">
                 <div className="upi-form-group">
-                  <label className="upi-form-label">Receiving UPI Account *</label>
+                  <label className="upi-form-label">Receiving Account / Payment Mode *</label>
                   <select
                     value={editUpiId}
                     onChange={(e) => setEditUpiId(e.target.value)}
                     className="upi-form-select"
                   >
-                    {knownAccounts.map((acc) => {
-                      const name = acc.accountName || '';
-                      const hasName = name && name.toLowerCase().trim() !== acc.upi_id.toLowerCase().trim();
-                      const bankLabel = acc.bankName && acc.bankName !== 'UPI' ? ` (${acc.bankName})` : '';
-                      const displayText = hasName
-                        ? `${name} — ${acc.upi_id}${bankLabel}`
-                        : `${acc.upi_id}${bankLabel}`;
+                    <optgroup label="🏦 Receiving UPI Accounts">
+                      {knownAccounts.map((acc) => {
+                        const name = acc.accountName || '';
+                        const hasName = name && name.toLowerCase().trim() !== acc.upi_id.toLowerCase().trim();
+                        const bankLabel = acc.bankName && acc.bankName !== 'UPI' ? ` (${acc.bankName})` : '';
+                        const displayText = hasName
+                          ? `${name} — ${acc.upi_id}${bankLabel}`
+                          : `${acc.upi_id}${bankLabel}`;
 
-                      return (
-                        <option key={acc.upi_id} value={acc.upi_id}>
-                          {displayText}
-                        </option>
-                      );
-                    })}
-                    <option value="custom">✏️ Other / Custom UPI ID...</option>
+                        return (
+                          <option key={acc.upi_id} value={acc.upi_id}>
+                            {displayText}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                    <optgroup label="💵 Cash Collections">
+                      <option value={CANONICAL_CASH_ACCOUNT}>
+                        💵 Cash in Hand (Physical / Handover / Spot Cash)
+                      </option>
+                    </optgroup>
+                    <optgroup label="✏️ Custom">
+                      <option value="custom">✏️ Other / Custom UPI ID...</option>
+                    </optgroup>
                   </select>
                 </div>
 

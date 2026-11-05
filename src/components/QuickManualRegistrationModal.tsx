@@ -4,7 +4,7 @@ import { ENGINEERING_DISCIPLINES, INDIAN_STATES } from '../types';
 import { supabase } from '../lib/supabase';
 import { calculateContribution } from '../lib/pricing';
 import { lookupRegistrationByMobile, cleanMobileNumber } from '../lib/registrations';
-import { getEventUpiConfigs } from '../lib/paymentRotation';
+import { getEventUpiConfigs, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 
 interface QuickManualRegistrationModalProps {
   isOpen: boolean;
@@ -110,7 +110,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
   const [amountOverride, setAmountOverride] = useState<string>('');
   const [isCustomAmount, setIsCustomAmount] = useState<boolean>(false);
   const [markAsVerified, setMarkAsVerified] = useState<boolean>(true);
-  const defaultEventUpi = event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || 'cash_handover';
+  const defaultEventUpi = event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || CANONICAL_CASH_ACCOUNT;
   const [selectedUpiId, setSelectedUpiId] = useState<string>(defaultEventUpi);
   const [customUpiInput, setCustomUpiInput] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState<string>('Paid directly via QR (Manual Admin Entry)');
@@ -166,8 +166,8 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         label: `${c.account_name || 'Organizer'} (${c.upi_id})`,
       })),
       {
-        upi_id: 'cash_handover',
-        label: '💵 Cash Handover / Direct',
+        upi_id: CANONICAL_CASH_ACCOUNT,
+        label: '💵 Cash in Hand / Spot Cash',
       },
       {
         upi_id: 'other',
@@ -178,7 +178,8 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     if (
       selectedUpiId &&
       selectedUpiId !== 'other' &&
-      selectedUpiId !== 'cash_handover'
+      selectedUpiId !== CANONICAL_CASH_ACCOUNT &&
+      !isCashAccount(selectedUpiId)
     ) {
       const norm = selectedUpiId.toLowerCase().trim();
       if (!list.some((item) => item.upi_id === norm)) {
@@ -426,7 +427,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     setAmountOverride('800');
     setIsCustomAmount(false);
     setMarkAsVerified(true);
-    setSelectedUpiId(event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || 'cash_handover');
+    setSelectedUpiId(event?.upi_rotation_configs?.[0]?.upi_id || event?.upi_id || CANONICAL_CASH_ACCOUNT);
     setCustomUpiInput('');
     setPaymentNotes('Paid directly via QR (Manual Admin Entry)');
     setScreenshotFile(null);
@@ -498,7 +499,9 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
     const effectiveUpi =
       selectedUpiId === 'other'
         ? (customUpiInput.trim().toLowerCase() || 'manual_upi')
-        : selectedUpiId.toLowerCase().trim();
+        : isCashAccount(selectedUpiId)
+          ? CANONICAL_CASH_ACCOUNT
+          : selectedUpiId.toLowerCase().trim();
 
     setSubmitting(true);
 

@@ -324,37 +324,9 @@ export function computeAccountSettlements(
       return;
     }
 
-    // Handle Campus Legacy Fund (Corpus Inflow vs Disbursement)
+    // Campus Legacy Fund is a permanent institutional endowment corpus managed exclusively
+    // in Central Treasury and must never be counted as event operational inflow or expense.
     if (expense.category === 'Campus Legacy Fund') {
-      const note = (expense.notes || '').toLowerCase();
-      const item = (expense.item_name || '').toLowerCase();
-      const isDisbursement =
-        item.includes('disbursement') ||
-        item.includes('scholarship') ||
-        item.includes('payout') ||
-        item.includes('grant') ||
-        note.includes('disbursement') ||
-        note.includes('scholarship') ||
-        note.includes('payout') ||
-        note.includes('grant');
-
-      const splits = getExpenseSplits(expense);
-      const targetAccounts = splits.length > 0
-        ? splits.map((s) => ({ rawName: s.account, amount: Number(s.amount || 0) }))
-        : [{ rawName: expense.paid_from_account || 'Unassigned', amount: actualAmt }];
-
-      targetAccounts.forEach(({ rawName, amount }) => {
-        const accItem = getOrCreateAccountItem(rawName);
-        if (accItem && amount > 0) {
-          if (isDisbursement) {
-            accItem.outflow += amount;
-            accItem.expenseCount += 1;
-          } else {
-            // Corpus addition / Inflow held by designated custodian
-            accItem.inflow += amount;
-          }
-        }
-      });
       return;
     }
 
@@ -751,8 +723,10 @@ export function buildExpensesWhatsAppMessage(
     ? `\n💰 *FUNDS & BUDGET FEASIBILITY:*\n• *Available Inflow:* ₹${formatINR(totalAvailableFunds)} (Regs: ₹${formatINR(registrationAmount)}${attendingDetails} + Sponsors: ₹${formatINR(sponsorshipAmount)})\n• *Planned Budget:* ₹${formatINR(totalExpected)}${costPerHead}\n• *Funding Status:* ${isDeficit ? `🚨 Deficit of -₹${formatINR(Math.abs(fundingGap))} (${coveragePct}% funded)` : `✅ Fully Funded (+₹${formatINR(fundingGap)} surplus)`}\n• *Real Paid Outflow:* ₹${formatINR(totalActual)}\n• *Live Cash Balance:* ₹${formatINR(liveCash)}`
     : `\n💰 *EXPENSE OVERVIEW:*\n• *Expected Budget:* ₹${formatINR(totalExpected)}\n• *Actual Paid:* ₹${formatINR(totalActual)}`;
 
-  // Real vendor expenses vs inter-account transfers
-  const realExpenses = expenses.filter((e) => e.category !== 'Internal Transfer');
+  // Real vendor expenses vs inter-account transfers (excludes institutional legacy fund)
+  const realExpenses = expenses.filter(
+    (e) => e.category !== 'Internal Transfer' && e.category !== 'Campus Legacy Fund'
+  );
   const transferItems = expenses.filter((e) => e.category === 'Internal Transfer');
 
   // Itemized listing

@@ -92,9 +92,11 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
     );
   }, [expenses, registrations, verifications, sponsorships, expenseAccountsConfig, event]);
 
-  // Aggregated Financial Metrics & Feasibility (excludes internal transfers so real budget is not distorted)
+  // Aggregated Financial Metrics & Feasibility (excludes internal transfers & campus legacy fund so real event budget is not distorted)
   const stats = useMemo(() => {
-    const realExpenses = expenses.filter((e) => e.category !== 'Internal Transfer');
+    const realExpenses = expenses.filter(
+      (e) => e.category !== 'Internal Transfer' && e.category !== 'Campus Legacy Fund'
+    );
     const totalItems = realExpenses.length;
     const totalExpected = realExpenses.reduce((sum, e) => sum + Number(e.expected_amount || 0), 0);
     const totalActual = realExpenses.reduce((sum, e) => sum + Number(e.actual_amount || 0), 0);
@@ -137,6 +139,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   // Filtered expenses based on active ledger tab, search, status & paying account
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
+      // Exclude Campus Legacy Fund from Event Expenses list (it is managed exclusively in Central Treasury)
+      if (e.category === 'Campus Legacy Fund') return false;
       const isTransfer = e.category === 'Internal Transfer';
 
       // 1. Filter by Active Ledger Tab (Expenses vs Transfers)

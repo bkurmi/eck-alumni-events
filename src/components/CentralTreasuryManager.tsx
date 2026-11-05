@@ -46,20 +46,7 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
     );
   }, [expenses, registrations, verifications, sponsorships, (activeEvent as any)?.expense_accounts_config]);
 
-  // 2. Total Liquid Cash across all coordinators
-  const totalLiquidAssets = useMemo(() => {
-    return settlementData.accounts.reduce((sum, a) => sum + a.netBalance, 0);
-  }, [settlementData.accounts]);
-
-  const cashInHandBalance = useMemo(() => {
-    return settlementData.accounts.find((a) => a.isCash)?.netBalance || 0;
-  }, [settlementData.accounts]);
-
-  const bankBalancesTotal = useMemo(() => {
-    return totalLiquidAssets - cashInHandBalance;
-  }, [totalLiquidAssets, cashInHandBalance]);
-
-  // 3. Campus Legacy Fund Ledger & Custodians
+  // 2. Campus Legacy Fund Ledger & Custodians (Independent Permanent Corpus)
   const legacyFund = useMemo(() => {
     const legacyRecords = expenses.filter(
       (e) => e.category === 'Campus Legacy Fund' && e.status !== 'cancelled'
@@ -155,6 +142,20 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
     };
   }, [expenses, settlementData.accounts]);
 
+  // 3. Total Liquid Cash across all coordinators (Event operational surplus + Campus Legacy Fund corpus)
+  const totalLiquidAssets = useMemo(() => {
+    const eventLiquid = settlementData.accounts.reduce((sum, a) => sum + a.netBalance, 0);
+    return eventLiquid + (legacyFund?.netBalance || 0);
+  }, [settlementData.accounts, legacyFund?.netBalance]);
+
+  const cashInHandBalance = useMemo(() => {
+    return settlementData.accounts.find((a) => a.isCash)?.netBalance || 0;
+  }, [settlementData.accounts]);
+
+  const bankBalancesTotal = useMemo(() => {
+    return totalLiquidAssets - cashInHandBalance;
+  }, [totalLiquidAssets, cashInHandBalance]);
+
   // 4. Operational Events (DeepAura 2026 + any other events) & their active Custodians
   const eventBlocks = useMemo(() => {
     // List all events (active event first)
@@ -202,34 +203,16 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
       const netSurplus = totalInflow - totalExpenses;
 
       // Find who holds this event's funds:
-      // Any coordinator with positive netBalance (excluding their legacy allocation if they are a legacy custodian)
-      const legacyCustodianNames = new Set(
-        legacyFund.custodians.map((c) => c.name.toLowerCase().trim())
-      );
-
+      // Any coordinator with positive net operational balance
       const eventCustodians = settlementData.accounts
-        .filter((a) => {
-          const isLegacy = legacyCustodianNames.has(a.accountName.toLowerCase().trim());
-          if (isLegacy) {
-            const operationalSurplus = Math.max(0, a.netBalance - legacyFund.netBalance);
-            return operationalSurplus > 0;
-          }
-          return a.netBalance > 0;
-        })
-        .map((a) => {
-          const isLegacy = legacyCustodianNames.has(a.accountName.toLowerCase().trim());
-          const holdingAmt = isLegacy
-            ? Math.max(0, a.netBalance - legacyFund.netBalance)
-            : a.netBalance;
-
-          return {
-            name: a.accountName,
-            bank: a.bankName,
-            upiId: a.upiId,
-            amount: holdingAmt,
-            isCash: a.isCash,
-          };
-        })
+        .filter((a) => a.netBalance > 0)
+        .map((a) => ({
+          name: a.accountName,
+          bank: a.bankName,
+          upiId: a.upiId,
+          amount: a.netBalance,
+          isCash: a.isCash,
+        }))
         .filter((c) => c.amount > 0);
 
       const deadlineInfo = getRegistrationStatusInfo(ev);

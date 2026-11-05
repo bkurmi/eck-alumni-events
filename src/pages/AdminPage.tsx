@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Header } from '../components/Header';
 import { AdminLogin } from '../components/AdminLogin';
 import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
@@ -25,6 +25,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { isAdminGatePortalEnabled } from '../lib/gate';
+import { isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 import { getRegistrationStatusInfo, syncEventRegistrationStatus } from '../lib/eventStatus';
 import type { EventRegistration, ECKEvent, PaymentVerification, Sponsorship, EventExpense } from '../types';
 
@@ -91,6 +92,96 @@ export const AdminPage: React.FC = () => {
   const [allEvents, setAllEvents] = useState<ECKEvent[]>([DEFAULT_EVENT]);
   const [singleCopied, setSingleCopied] = useState(false);
 
+  // Tab navigation scroll controls
+  const tabNavRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const isPointerDownRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftStartRef = useRef(0);
+  const hasMovedRef = useRef(false);
+
+  const checkTabScrollState = useCallback(() => {
+    const el = tabNavRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 6);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
+  }, []);
+
+  useEffect(() => {
+    const el = tabNavRef.current;
+    if (!el) return;
+
+    checkTabScrollState();
+
+    // Wheel listener translates vertical mouse wheel into horizontal tab scroll
+    const handleWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+        checkTabScrollState();
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('resize', checkTabScrollState);
+
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('resize', checkTabScrollState);
+    };
+  }, [checkTabScrollState, allEvents, registrations.length, verifications.length, sponsorships.length, expenses.length]);
+
+  // When activeTab changes, auto scroll the active button into view
+  useEffect(() => {
+    const el = tabNavRef.current;
+    if (!el) return;
+    const activeBtn = el.querySelector(`[data-tab="${activeTab}"]`) as HTMLElement | null;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+    }
+    const timer = setTimeout(checkTabScrollState, 350);
+    return () => clearTimeout(timer);
+  }, [activeTab, checkTabScrollState]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    const el = tabNavRef.current;
+    if (!el) return;
+    const offset = direction === 'left' ? -240 : 240;
+    el.scrollBy({ left: offset, behavior: 'smooth' });
+    setTimeout(checkTabScrollState, 300);
+  };
+
+  const handleTabPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const el = tabNavRef.current;
+    if (!el) return;
+    isPointerDownRef.current = true;
+    startXRef.current = e.clientX;
+    scrollLeftStartRef.current = el.scrollLeft;
+    hasMovedRef.current = false;
+  };
+
+  const handleTabPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPointerDownRef.current || !tabNavRef.current) return;
+    const dx = e.clientX - startXRef.current;
+    if (Math.abs(dx) > 4) {
+      hasMovedRef.current = true;
+      tabNavRef.current.scrollLeft = scrollLeftStartRef.current - dx;
+      checkTabScrollState();
+    }
+  };
+
+  const handleTabPointerUpOrLeave = () => {
+    isPointerDownRef.current = false;
+    setTimeout(checkTabScrollState, 100);
+  };
+
+  const selectTab = (tab: typeof activeTab) => {
+    if (hasMovedRef.current) return;
+    setActiveTab(tab);
+  };
+
   // Check auth
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -144,6 +235,27 @@ export const AdminPage: React.FC = () => {
       });
       if (eventsData.length > 0) {
         setAllEvents(eventsData);
+      }
+
+      // Normalize any cash variants in verifications in-memory
+      verifList.forEach((v: any) => {
+        if (isCashAccount(v.upi_id)) {
+          v.upi_id = CANONICAL_CASH_ACCOUNT;
+        }
+      });
+
+      // Opportunistically migrate any legacy 'cash' verifications to canonical 'Cash in Hand' in database
+      const legacyCashVerifs = verifList.filter(
+        (v: any) => v.id && v.upi_id && isCashAccount(v.upi_id) && v.upi_id !== CANONICAL_CASH_ACCOUNT
+      );
+      if (legacyCashVerifs.length > 0) {
+        supabase
+          .from('payment_verifications')
+          .update({ upi_id: CANONICAL_CASH_ACCOUNT })
+          .in('id', legacyCashVerifs.map((v: any) => v.id))
+          .then(({ error }: any) => {
+            if (error) console.warn('Could not auto-migrate legacy cash verifications:', error);
+          });
       }
 
       // Attach payment verification entries to each registration
@@ -246,15 +358,19 @@ export const AdminPage: React.FC = () => {
   ): Promise<boolean> => {
     try {
       const verifiedBy = session?.user?.email || 'admin';
+      const cleanUpi = upiId.trim();
+      const isCash = isCashAccount(cleanUpi);
+      const canonicalUpi = isCash ? CANONICAL_CASH_ACCOUNT : cleanUpi.toLowerCase();
+
       const { error } = await supabase
         .from('payment_verifications')
         .upsert(
           {
             registration_id: registrationId,
-            upi_id: upiId.toLowerCase().trim(),
+            upi_id: canonicalUpi,
             amount: amount,
             verified_status: 'VERIFIED',
-            notes: notes || null,
+            notes: notes || (isCash ? 'Physical Cash in Hand' : null),
             verified_by: verifiedBy,
           },
           { onConflict: 'registration_id' }
@@ -748,127 +864,186 @@ export const AdminPage: React.FC = () => {
             </div>
 
             {/* View Mode Navigation Tabs */}
-            <div className="flex overflow-x-auto no-scrollbar gap-1.5 sm:gap-2 pb-2 border-b border-slate-800">
-              <button
-                type="button"
-                className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
-                  activeTab === 'registrations'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
-                }`}
-                onClick={() => setActiveTab('registrations')}
-              >
-                <span>📋</span>
-                <span className="hidden sm:inline">Registrations Directory</span>
-                <span className="sm:hidden">Directory</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'registrations' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  {scopedRegistrations.length}
-                </span>
-              </button>
+            <div className="relative group border-b border-slate-800 pb-1">
+              {/* Left Scroll Indicator Arrow */}
+              {canScrollLeft && (
+                <div className="absolute left-0 top-0 bottom-2 z-10 flex items-center pr-2 pl-0.5 bg-gradient-to-r from-slate-950 via-slate-950/90 to-transparent">
+                  <button
+                    type="button"
+                    onClick={() => scrollTabs('left')}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-900/95 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/40 shadow-lg shadow-black/80 transition-all cursor-pointer active:scale-95"
+                    aria-label="Scroll tabs left"
+                    title="Scroll left"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                </div>
+              )}
 
-              <button
-                type="button"
-                className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
-                  activeTab === 'sponsorships'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
-                }`}
-                onClick={() => setActiveTab('sponsorships')}
-              >
-                <span>💎</span>
-                <span className="hidden sm:inline">Sponsorships</span>
-                <span className="sm:hidden">Sponsors</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'sponsorships' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  {sponsorships.length}
-                </span>
-              </button>
+              {/* Right Scroll Indicator Arrow */}
+              {canScrollRight && (
+                <div className="absolute right-0 top-0 bottom-2 z-10 flex items-center pl-2 pr-0.5 bg-gradient-to-l from-slate-950 via-slate-950/90 to-transparent">
+                  <button
+                    type="button"
+                    onClick={() => scrollTabs('right')}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-900/95 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/40 shadow-lg shadow-black/80 transition-all cursor-pointer active:scale-95"
+                    aria-label="Scroll tabs right"
+                    title="Scroll right"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </div>
+              )}
 
-              <button
-                type="button"
-                className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
-                  activeTab === 'upi_report'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
-                }`}
-                onClick={() => setActiveTab('upi_report')}
+              {/* Scrollable Container with grab, wheel & touch support */}
+              <div
+                ref={tabNavRef}
+                onScroll={checkTabScrollState}
+                onPointerDown={handleTabPointerDown}
+                onPointerMove={handleTabPointerMove}
+                onPointerUp={handleTabPointerUpOrLeave}
+                onPointerLeave={handleTabPointerUpOrLeave}
+                className="flex overflow-x-auto tab-scrollbar gap-1.5 sm:gap-2 pb-2 px-0.5 select-none touch-pan-x cursor-grab active:cursor-grabbing"
               >
-                <span>💳</span>
-                <span className="hidden sm:inline">UPI Reconciliation Ledger</span>
-                <span className="sm:hidden">UPI Ledger</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'upi_report' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  {verifications.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
-                  activeTab === 'expenses'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
-                }`}
-                onClick={() => setActiveTab('expenses')}
-              >
-                <span>📊</span>
-                <span className="hidden sm:inline">Budget &amp; Expenses</span>
-                <span className="sm:hidden">Expenses</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'expenses' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  {expenses.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
-                  activeTab === 'treasury'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
-                }`}
-                onClick={() => setActiveTab('treasury')}
-              >
-                <span>🏛️</span>
-                <span className="hidden sm:inline">Treasury &amp; Legacy Fund</span>
-                <span className="sm:hidden">Treasury</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'treasury' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  Ledger
-                </span>
-              </button>
-
-              {isAdminGatePortalEnabled() && (
                 <button
                   type="button"
-                  className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
-                    activeTab === 'gate_portal'
+                  data-tab="registrations"
+                  data-active={activeTab === 'registrations'}
+                  className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                    activeTab === 'registrations'
                       ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                       : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
                   }`}
-                  onClick={() => setActiveTab('gate_portal')}
+                  onClick={() => selectTab('registrations')}
                 >
-                  <span>⚡</span>
-                  <span className="hidden sm:inline">Gate Verification & Scanner</span>
-                  <span className="sm:hidden">Gate Desk</span>
-                  <span className="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Live
+                  <span>📋</span>
+                  <span className="hidden sm:inline">Registrations Directory</span>
+                  <span className="sm:hidden">Directory</span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'registrations' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                    {scopedRegistrations.length}
                   </span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
-                  activeTab === 'feedback'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
-                }`}
-                onClick={() => setActiveTab('feedback')}
-              >
-                <span>❤️</span>
-                <span className="hidden sm:inline">Alumni Survey</span>
-                <span className="sm:hidden">Survey</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'feedback' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  Survey
-                </span>
-              </button>
+                <button
+                  type="button"
+                  data-tab="sponsorships"
+                  data-active={activeTab === 'sponsorships'}
+                  className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                    activeTab === 'sponsorships'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                  }`}
+                  onClick={() => selectTab('sponsorships')}
+                >
+                  <span>💎</span>
+                  <span className="hidden sm:inline">Sponsorships</span>
+                  <span className="sm:hidden">Sponsors</span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'sponsorships' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                    {sponsorships.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  data-tab="upi_report"
+                  data-active={activeTab === 'upi_report'}
+                  className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                    activeTab === 'upi_report'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                  }`}
+                  onClick={() => selectTab('upi_report')}
+                >
+                  <span>💳</span>
+                  <span className="hidden sm:inline">UPI Reconciliation Ledger</span>
+                  <span className="sm:hidden">UPI Ledger</span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'upi_report' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                    {verifications.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  data-tab="expenses"
+                  data-active={activeTab === 'expenses'}
+                  className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                    activeTab === 'expenses'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                  }`}
+                  onClick={() => selectTab('expenses')}
+                >
+                  <span>📊</span>
+                  <span className="hidden sm:inline">Budget &amp; Expenses</span>
+                  <span className="sm:hidden">Expenses</span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'expenses' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                    {expenses.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  data-tab="treasury"
+                  data-active={activeTab === 'treasury'}
+                  className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                    activeTab === 'treasury'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                  }`}
+                  onClick={() => selectTab('treasury')}
+                >
+                  <span>🏛️</span>
+                  <span className="hidden sm:inline">Treasury &amp; Legacy Fund</span>
+                  <span className="sm:hidden">Treasury</span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'treasury' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                    Ledger
+                  </span>
+                </button>
+
+                {isAdminGatePortalEnabled() && (
+                  <button
+                    type="button"
+                    data-tab="gate_portal"
+                    data-active={activeTab === 'gate_portal'}
+                    className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                      activeTab === 'gate_portal'
+                        ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                        : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                    }`}
+                    onClick={() => selectTab('gate_portal')}
+                  >
+                    <span>⚡</span>
+                    <span className="hidden sm:inline">Gate Verification & Scanner</span>
+                    <span className="sm:hidden">Gate Desk</span>
+                    <span className="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      Live
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  data-tab="feedback"
+                  data-active={activeTab === 'feedback'}
+                  className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                    activeTab === 'feedback'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                  }`}
+                  onClick={() => selectTab('feedback')}
+                >
+                  <span>❤️</span>
+                  <span className="hidden sm:inline">Alumni Survey</span>
+                  <span className="sm:hidden">Survey</span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'feedback' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                    Survey
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* TAB CONTENTS */}

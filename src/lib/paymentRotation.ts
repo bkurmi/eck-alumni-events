@@ -22,6 +22,30 @@ export function getEventUpiConfigs(event?: Partial<ECKEvent> | null): UpiPayment
   return [];
 }
 
+export const CANONICAL_CASH_ACCOUNT = 'Cash in Hand';
+
+/**
+ * Checks if a given payment identifier represents physical cash collections or spot cash.
+ */
+export function isCashAccount(upiId?: string | null): boolean {
+  if (!upiId) return false;
+  const lower = upiId.toLowerCase().trim();
+  return (
+    lower === 'cash' ||
+    lower === 'cash in hand' ||
+    lower === 'cash_in_hand' ||
+    lower === 'cash_handover' ||
+    lower === 'cash handover' ||
+    lower === 'spot cash' ||
+    lower === 'spot_cash' ||
+    lower === 'spot' ||
+    lower === 'cash in hand / spot cash' ||
+    lower === 'cash handover / direct' ||
+    lower.includes('cash in hand') ||
+    lower === 'cash_direct'
+  );
+}
+
 /**
  * Resolves a human-friendly display name for an event's receiving UPI ID.
  * Looks inside the event's upi_rotation_configs or formats the handle before @.
@@ -31,6 +55,7 @@ export function getUpiAccountName(
   event?: Partial<ECKEvent> | null
 ): string {
   if (!upiId) return '';
+  if (isCashAccount(upiId)) return CANONICAL_CASH_ACCOUNT;
   const normalized = upiId.toLowerCase().trim();
 
   // 1. Check if event has a custom account_name for this UPI ID in upi_rotation_configs

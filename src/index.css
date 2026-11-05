@@ -8,6 +8,24 @@
   }
 }
 
+@utility tab-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.35) transparent;
+  &::-webkit-scrollbar {
+    height: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(245, 158, 11, 0.3);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(245, 158, 11, 0.6);
+  }
+}
+
 @theme {
   --color-brand-primary: #f59e0b;
   --color-brand-primary-light: #fbbf24;
