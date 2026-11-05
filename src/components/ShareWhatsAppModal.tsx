@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { EventRegistration, ECKEvent } from '../types';
+import { X, Copy, Check, MessageCircle, Share2 } from 'lucide-react';
 
 interface ShareWhatsAppModalProps {
   isOpen: boolean;
@@ -34,7 +35,6 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
 
   // Helper to compare registrations in chronological order (earliest/first registration comes first)
   const compareFirstRegistered = (a: EventRegistration, b: EventRegistration): number => {
-    // 1. Try registration_number numeric sequence (e.g. REG-00001 before REG-00002)
     const matchA = (a.registration_number || '').match(/\d+/);
     const matchB = (b.registration_number || '').match(/\d+/);
     if (matchA && matchB) {
@@ -45,14 +45,12 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
       }
     }
 
-    // 2. Try created_at timestamp
     const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
     const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
     if (timeA && timeB && timeA !== timeB) {
       return timeA - timeB;
     }
 
-    // 3. Fallback alphanumeric comparison
     return (a.registration_number || a.id || '').localeCompare(
       b.registration_number || b.id || '',
       undefined,
@@ -60,7 +58,7 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     );
   };
 
-  // Determine active registrations based on filterOption and sortOrder (default: first registration first)
+  // Determine active registrations based on filterOption and sortOrder
   const activeList = useMemo(() => {
     let list: EventRegistration[] = [];
     if (filterOption === 'all') {
@@ -68,7 +66,6 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     } else if (filterOption === 'filtered') {
       list = [...filteredRegistrations];
     } else {
-      // Default: 'attending'
       list = registrations.filter((r) => r.attendance_status === 'yes');
     }
 
@@ -99,191 +96,103 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     return { totalCount, totalAttendees, minBatch, maxBatch };
   }, [activeList]);
 
-  // Format attendee string for an alumnus
-  const formatAttendeeDetail = (reg: EventRegistration): string => {
-    const total = reg.number_of_attendees || 1;
-    if (total <= 1) {
-      return '1 (Self)';
-    }
-
-    const adults = reg.adults_count ?? total;
-    const kids7Plus = reg.children_above_7_count ?? 0;
-    const kidsUnder7 = reg.children_under_7_count ?? 0;
-
-    const parts: string[] = [];
-    if (adults > 0) parts.push(`${adults} Adults`);
-    if (kids7Plus > 0) parts.push(`${kids7Plus} Kids (10+)`);
-    if (kidsUnder7 > 0) parts.push(`${kidsUnder7} Kids (<10)`);
-
-    if (parts.length > 1) {
-      return `${total} Total (${parts.join(', ')})`;
-    }
-    return `${total} Total (Self + ${total - 1} accompanying)`;
-  };
-
-  // Generate the formatted WhatsApp message
+  // Generate WhatsApp formatted text
   const generatedMessage = useMemo(() => {
-    const eventName = event?.event_name || 'ECK-RTU Alumni DeepAura 2K26';
-    const rawDate = event?.event_date || '2026-11-01';
-    let eventDate = rawDate;
-    const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (dateMatch) {
-      eventDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
-    }
-    const eventVenue = event?.location || 'ECK Campus, Kota';
-    const websiteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
-
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
     const lines: string[] = [];
 
-    // Festive Header
-    lines.push(`✨ *${eventName.toUpperCase()}* ✨`);
-    lines.push('🏛️ *Organised By:* ECK-RTU Alumni Kota Chapter');
-    if (event?.tagline) {
-      lines.push(`✨ *${event.tagline}*`);
-    } else {
-      lines.push('✨ *“दीप जले, यादें मुस्कुराएँ।”*');
-    }
-    lines.push('🎉 *Registered Alumni & Attendees List* 🎉');
+    lines.push('🪔✨ *ECK-RTU Alumni DeepAura 2K26* ✨🪔');
+    lines.push('✨✨ *दीप जले, यादें मुस्कुराएँ।* ✨✨');
     lines.push('');
-    lines.push('Dear ECK-RTU Alumni & Friends,');
-    lines.push(`The celebration is getting bigger and brighter! ✨ Here is the latest list of our enthusiastic alumni who have registered for ${eventName}:`);
-    lines.push('');
+    lines.push(`📢 *Confirmed Attendee List (${listStats.totalCount} Alumni • ${listStats.totalAttendees} Total Attendees)*`);
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // Summary Highlights
-    lines.push('━━━━━━━━━━━━━━━━━━━━━');
-    lines.push(`✨ *Total Alumni Registered:* ${listStats.totalCount}`);
-    lines.push(`👥 *Total Gathering (with family):* ${listStats.totalAttendees} members`);
-    if (listStats.minBatch && listStats.maxBatch) {
-      if (listStats.minBatch === listStats.maxBatch) {
-        lines.push(`🎓 *Batch Represented:* Class of ${listStats.minBatch}`);
-      } else {
-        lines.push(`🎓 *Batches Represented:* ${listStats.minBatch} to ${listStats.maxBatch}`);
-      }
-    }
-    lines.push('━━━━━━━━━━━━━━━━━━━━━');
-    lines.push('');
-
-    if (activeList.length === 0) {
-      lines.push('*(No registrations found for this filter)*');
-    } else if (groupOption === 'grouped') {
-      // Group by Batch / Year of Passing
-      const groupedByYear = new Map<number, EventRegistration[]>();
-      const noYearList: EventRegistration[] = [];
-
-      activeList.forEach((reg) => {
-        const year = reg.alumni?.year_of_passing;
-        if (year) {
-          const arr = groupedByYear.get(year) || [];
-          arr.push(reg);
-          groupedByYear.set(year, arr);
-        } else {
-          noYearList.push(reg);
-        }
+    if (groupOption === 'grouped') {
+      const batchMap = new Map<string, EventRegistration[]>();
+      activeList.forEach((r) => {
+        const batchKey = r.alumni?.year_of_passing ? `Class of ${r.alumni.year_of_passing}` : 'Distinguished Alumni / Faculty';
+        const arr = batchMap.get(batchKey) || [];
+        arr.push(r);
+        batchMap.set(batchKey, arr);
       });
 
-      // Sort batches ascending
-      const sortedYears = Array.from(groupedByYear.keys()).sort((a, b) => a - b);
+      const sortedBatches = Array.from(batchMap.keys()).sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, ''), 10) || 9999;
+        const numB = parseInt(b.replace(/\D/g, ''), 10) || 9999;
+        return numA - numB;
+      });
 
-      sortedYears.forEach((year) => {
-        const batchRegs = groupedByYear.get(year) || [];
-        lines.push(`🎓 *BATCH OF ${year}* (${batchRegs.length})`);
-
-        batchRegs.forEach((reg) => {
-          const name = reg.alumni?.name || 'Alumnus';
-          const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
-          const discipline = includeDiscipline && reg.alumni?.engineering_discipline ? ` • ${reg.alumni.engineering_discipline}` : '';
-          const location = includeLocation && reg.alumni?.city ? `📍 ${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
-          const attendees = includeAttendees ? `👥 ${formatAttendeeDetail(reg)}` : '';
-
-          lines.push(`  • *${name}*${regCode}${discipline}`);
-          if (location && attendees) {
-            lines.push(`    ${location} | ${attendees}`);
-          } else if (location) {
-            lines.push(`    ${location}`);
-          } else if (attendees) {
-            lines.push(`    ${attendees}`);
-          }
-        });
+      sortedBatches.forEach((batch) => {
+        const members = batchMap.get(batch) || [];
         lines.push('');
-      });
+        lines.push(`🎓 *${batch}* (${members.length})`);
 
-      if (noYearList.length > 0) {
-        lines.push(`🎓 *OTHER BATCHES* (${noYearList.length})`);
-        noYearList.forEach((reg) => {
-          const name = reg.alumni?.name || 'Alumnus';
-          const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
-          const discipline = includeDiscipline && reg.alumni?.engineering_discipline ? ` • ${reg.alumni.engineering_discipline}` : '';
-          const location = includeLocation && reg.alumni?.city ? `📍 ${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
-          const attendees = includeAttendees ? `👥 ${formatAttendeeDetail(reg)}` : '';
+        members.forEach((r, idx) => {
+          const a = r.alumni;
+          const name = a?.name ? `*${a.name}*` : '*Alumnus*';
+          const parts: string[] = [name];
 
-          lines.push(`  • *${name}*${regCode}${discipline}`);
-          if (location && attendees) {
-            lines.push(`    ${location} | ${attendees}`);
-          } else if (location) {
-            lines.push(`    ${location}`);
-          } else if (attendees) {
-            lines.push(`    ${attendees}`);
+          if (includeDiscipline && a?.engineering_discipline) {
+            parts.push(`_${a.engineering_discipline}_`);
           }
+          if (includeLocation && a?.city) {
+            parts.push(`📍 ${a.city}${a.state ? `, ${a.state}` : ''}`);
+          }
+          if (includeAttendees && r.number_of_attendees && r.number_of_attendees > 1) {
+            parts.push(`👥 (${r.number_of_attendees} persons)`);
+          }
+          if (includeRegNumber && r.registration_number) {
+            parts.push(`🎫 ${r.registration_number}`);
+          }
+
+          lines.push(`  ${idx + 1}. ${parts.join(' | ')}`);
         });
-        lines.push('');
-      }
-    } else if (groupOption === 'compact') {
-      // Compact one-liner list
-      activeList.forEach((reg, idx) => {
-        const name = reg.alumni?.name || 'Alumnus';
-        const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
-        const year = reg.alumni?.year_of_passing ? `'${String(reg.alumni.year_of_passing).slice(-2)}` : '';
-        const disc = includeDiscipline && reg.alumni?.engineering_discipline ? ` (${reg.alumni.engineering_discipline})` : '';
-        const loc = includeLocation && reg.alumni?.city ? ` - ${reg.alumni.city}` : '';
-        const att = includeAttendees ? ` [👥 ${reg.number_of_attendees || 1}]` : '';
-
-        lines.push(`${idx + 1}. *${name}*${regCode} ${year ? `(${year})` : ''}${disc}${loc}${att}`);
       });
+    } else if (groupOption === 'numbered') {
       lines.push('');
-    } else {
-      // Numbered sequential list
-      activeList.forEach((reg, idx) => {
-        const name = reg.alumni?.name || 'Alumnus';
-        const regCode = includeRegNumber && reg.registration_number ? ` [${reg.registration_number}]` : '';
-        const batch = reg.alumni?.year_of_passing ? `Batch ${reg.alumni.year_of_passing}` : '';
-        const disc = includeDiscipline && reg.alumni?.engineering_discipline ? reg.alumni.engineering_discipline : '';
-        const batchDisc = [batch, disc].filter(Boolean).join(' • ');
+      activeList.forEach((r, idx) => {
+        const a = r.alumni;
+        const name = a?.name ? `*${a.name}*` : '*Alumnus*';
+        const batch = a?.year_of_passing ? `'${String(a.year_of_passing).slice(-2)}` : '';
+        const parts: string[] = [name];
 
-        lines.push(`${idx + 1}. *${name}*${regCode} ${batchDisc ? `(${batchDisc})` : ''}`);
-
-        const loc = includeLocation && reg.alumni?.city ? `📍 ${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
-        const att = includeAttendees ? `👥 ${formatAttendeeDetail(reg)}` : '';
-
-        if (loc && att) {
-          lines.push(`   ${loc} | ${att}`);
-        } else if (loc) {
-          lines.push(`   ${loc}`);
-        } else if (att) {
-          lines.push(`   ${att}`);
+        if (batch) parts.push(`🎓 ${batch}`);
+        if (includeDiscipline && a?.engineering_discipline) parts.push(`_${a.engineering_discipline}_`);
+        if (includeLocation && a?.city) parts.push(`📍 ${a.city}`);
+        if (includeAttendees && r.number_of_attendees && r.number_of_attendees > 1) {
+          parts.push(`👥 (${r.number_of_attendees})`);
         }
+        if (includeRegNumber && r.registration_number) {
+          parts.push(`🎫 ${r.registration_number}`);
+        }
+
+        lines.push(`${idx + 1}. ${parts.join(' | ')}`);
       });
+    } else {
       lines.push('');
+      activeList.forEach((r) => {
+        const a = r.alumni;
+        const name = a?.name || 'Alumnus';
+        const batch = a?.year_of_passing ? `(${a.year_of_passing})` : '';
+        const loc = includeLocation && a?.city ? ` • ${a.city}` : '';
+        const count = includeAttendees && r.number_of_attendees && r.number_of_attendees > 1 ? ` (+${r.number_of_attendees - 1})` : '';
+        lines.push(`• ${name} ${batch}${loc}${count}`);
+      });
     }
 
-    // Festive Outro & Event Details
-    lines.push('━━━━━━━━━━━━━━━━━━━━━');
-    if (event?.tagline) {
-      lines.push(`*${event.tagline} Let’s celebrate this reunion together!*`);
-    } else {
-      lines.push('🪔 *“दीप जले, यादें मुस्कुराएँ।” Let’s illuminate this reunion together!*');
-    }
-    lines.push(`📅 *Date:* ${eventDate}`);
-    lines.push(`📍 *Venue:* ${eventVenue}`);
+    lines.push('');
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines.push('🎉 Looking forward to seeing everyone at Kota campus!');
+
     if (includeEventLink) {
-      lines.push(`🔗 *Register / Update Details:* ${websiteUrl}`);
+      lines.push('');
+      lines.push(`🔗 Register / View Passes: ${siteUrl}`);
     }
-    lines.push(`✨ *See you all at ${eventName}!* ✨`);
 
     return lines.join('\n');
   }, [
     activeList,
     listStats,
-    event,
     groupOption,
     includeLocation,
     includeDiscipline,
@@ -292,25 +201,19 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     includeEventLink,
   ]);
 
-  if (!isOpen) return null;
-
   const characterCount = generatedMessage.length;
   const isLargeMessage = characterCount > 2500;
-
-  // Determine if device is mobile
   const isMobile =
     typeof navigator !== 'undefined' &&
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // Copy to clipboard
+  if (!isOpen) return null;
+
   const handleCopy = async () => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(generatedMessage);
       } else {
-        // Fallback for older browsers
         const textarea = document.createElement('textarea');
         textarea.value = generatedMessage;
         textarea.style.position = 'fixed';
@@ -321,42 +224,31 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
         document.body.removeChild(textarea);
       }
       setCopied(true);
-      setShareStatus('Copied to clipboard! Ready to paste into WhatsApp.');
-      setTimeout(() => {
-        setCopied(false);
-        setShareStatus(null);
-      }, 3000);
+      setShareStatus('Message copied to clipboard! Paste directly into WhatsApp.');
+      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setShareStatus(null), 3500);
     } catch (err) {
       console.error('Failed to copy message:', err);
       setShareStatus('Failed to copy. Please select and copy manually.');
     }
   };
 
-  // Open WhatsApp directly
   const handleOpenWhatsApp = () => {
     const encoded = encodeURIComponent(generatedMessage);
 
     if (isMobile) {
-      // On mobile devices, whatsapp:// protocol launches the native app immediately
-      // If it fails or isn't handled, fallback to standard https api
       const appUrl = `whatsapp://send?text=${encoded}`;
       const webFallback = `https://api.whatsapp.com/send?text=${encoded}`;
-
-      // Open mobile app directly
       window.open(appUrl, '_self');
-
-      // Fallback timer in case the protocol didn't launch
       setTimeout(() => {
         window.open(webFallback, '_blank');
       }, 700);
     } else {
-      // On desktop / laptop, open WhatsApp Web
       const webUrl = `https://web.whatsapp.com/send?text=${encoded}`;
       window.open(webUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
-  // Mobile Native OS Share (Web Share API)
   const handleNativeShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
@@ -378,47 +270,57 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4" onClick={onClose} role="dialog" aria-modal="true">
       <div
-        className="modal-content share-modal-container"
+        className="w-full max-w-2xl bg-slate-900 border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-left"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="modal-header">
-          <div className="share-header-title-box">
-            <span className="share-diwali-badge">🪔 WhatsApp Broadcast</span>
-            <h2 className="modal-title">Share Attendee List</h2>
-            <p className="share-header-subtitle">
+        <div className="flex items-start justify-between gap-3 p-4 sm:p-5 border-b border-slate-800 bg-slate-950/40">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+              🪔 WhatsApp Broadcast
+            </span>
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Share Attendee List</h2>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-lg">
               Format and forward confirmed alumni &amp; accompanying guests to WhatsApp groups with festive Diwali greetings.
             </p>
           </div>
           <button
             type="button"
-            className="modal-close-btn"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
             onClick={onClose}
             aria-label="Close share modal"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="modal-body share-modal-body">
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
           {/* Controls & Filter Bar */}
-          <div className="share-controls-card">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3.5">
             {/* Filter selection */}
-            <div className="share-control-group">
-              <label className="share-control-label">Select Attendees:</label>
-              <div className="share-pill-group">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-300">Select Attendees:</label>
+              <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
-                  className={`share-pill-btn ${filterOption === 'attending' ? 'active' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    filterOption === 'attending'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
                   onClick={() => setFilterOption('attending')}
                 >
                   Confirmed Attending ({registrations.filter((r) => r.attendance_status === 'yes').length})
                 </button>
                 <button
                   type="button"
-                  className={`share-pill-btn ${filterOption === 'all' ? 'active' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    filterOption === 'all'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
                   onClick={() => setFilterOption('all')}
                 >
                   All Registered ({registrations.length})
@@ -426,7 +328,11 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
                 {filteredRegistrations.length !== registrations.length && (
                   <button
                     type="button"
-                    className={`share-pill-btn ${filterOption === 'filtered' ? 'active' : ''}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                      filterOption === 'filtered'
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                        : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                    }`}
                     onClick={() => setFilterOption('filtered')}
                   >
                     Current Table Filter ({filteredRegistrations.length})
@@ -436,12 +342,16 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
             </div>
 
             {/* Layout Style */}
-            <div className="share-control-group">
-              <label className="share-control-label">Message Layout Style:</label>
-              <div className="share-pill-group">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-300">Message Layout Style:</label>
+              <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
-                  className={`share-pill-btn ${groupOption === 'grouped' ? 'active' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    groupOption === 'grouped'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
                   onClick={() => setGroupOption('grouped')}
                   title="Group members by passing year"
                 >
@@ -449,7 +359,11 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  className={`share-pill-btn ${groupOption === 'numbered' ? 'active' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    groupOption === 'numbered'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
                   onClick={() => setGroupOption('numbered')}
                   title="1, 2, 3 ordered list"
                 >
@@ -457,7 +371,11 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  className={`share-pill-btn ${groupOption === 'compact' ? 'active' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    groupOption === 'compact'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
                   onClick={() => setGroupOption('compact')}
                   title="Compact format for very large groups"
                 >
@@ -467,20 +385,28 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
             </div>
 
             {/* Order of Registrations */}
-            <div className="share-control-group">
-              <label className="share-control-label">Order of Registrations:</label>
-              <div className="share-pill-group">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-300">Order of Registrations:</label>
+              <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
-                  className={`share-pill-btn ${sortOrder === 'first_registered' ? 'active' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    sortOrder === 'first_registered'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
                   onClick={() => setSortOrder('first_registered')}
                   title="First registered person comes first (#1, #2...)"
                 >
-                  ⏳ First Registered First (Oldest to Newest)
+                  ⏳ First Registered First
                 </button>
                 <button
                   type="button"
-                  className={`share-pill-btn ${sortOrder === 'latest_registered' ? 'active' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    sortOrder === 'latest_registered'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-sm'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
+                  }`}
                   onClick={() => setSortOrder('latest_registered')}
                   title="Most recently registered person comes first"
                 >
@@ -490,51 +416,51 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
             </div>
 
             {/* Field Toggles */}
-            <div className="share-control-group">
-              <label className="share-control-label">Include in Message:</label>
-              <div className="share-checkboxes-grid">
-                <label className="share-checkbox-label">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-300">Include in Message:</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
                   <input
                     type="checkbox"
                     checked={includeLocation}
                     onChange={(e) => setIncludeLocation(e.target.checked)}
-                    className="share-checkbox"
+                    className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0"
                   />
                   <span>📍 City &amp; State</span>
                 </label>
-                <label className="share-checkbox-label">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
                   <input
                     type="checkbox"
                     checked={includeDiscipline}
                     onChange={(e) => setIncludeDiscipline(e.target.checked)}
-                    className="share-checkbox"
+                    className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0"
                   />
                   <span>⚙️ Branch / Discipline</span>
                 </label>
-                <label className="share-checkbox-label">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
                   <input
                     type="checkbox"
                     checked={includeAttendees}
                     onChange={(e) => setIncludeAttendees(e.target.checked)}
-                    className="share-checkbox"
+                    className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0"
                   />
                   <span>👥 Accompanying Count</span>
                 </label>
-                <label className="share-checkbox-label">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
                   <input
                     type="checkbox"
                     checked={includeRegNumber}
                     onChange={(e) => setIncludeRegNumber(e.target.checked)}
-                    className="share-checkbox"
+                    className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0"
                   />
                   <span>🎫 Registration ID</span>
                 </label>
-                <label className="share-checkbox-label">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
                   <input
                     type="checkbox"
                     checked={includeEventLink}
                     onChange={(e) => setIncludeEventLink(e.target.checked)}
-                    className="share-checkbox"
+                    className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0"
                   />
                   <span>🔗 Registration Link</span>
                 </label>
@@ -543,96 +469,92 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
           </div>
 
           {/* Quick Metrics Bar */}
-          <div className="share-metrics-strip">
-            <div className="share-metric-item">
-              <span className="share-metric-val">{listStats.totalCount}</span>
-              <span className="share-metric-lbl">Alumni</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-base font-bold text-white block">{listStats.totalCount}</span>
+              <span className="text-[11px] text-slate-400 block uppercase">Alumni</span>
             </div>
-            <div className="share-metric-item">
-              <span className="share-metric-val">{listStats.totalAttendees}</span>
-              <span className="share-metric-lbl">Total People</span>
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-base font-bold text-emerald-400 block">{listStats.totalAttendees}</span>
+              <span className="text-[11px] text-slate-400 block uppercase">Total People</span>
             </div>
-            <div className="share-metric-item">
-              <span className="share-metric-val">
-                {listStats.minBatch && listStats.maxBatch
-                  ? `${listStats.minBatch} - ${listStats.maxBatch}`
-                  : '—'}
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-base font-bold text-amber-300 block">
+                {listStats.minBatch && listStats.maxBatch ? `${listStats.minBatch} - ${listStats.maxBatch}` : '—'}
               </span>
-              <span className="share-metric-lbl">Batches</span>
+              <span className="text-[11px] text-slate-400 block uppercase">Batches</span>
             </div>
-            <div className="share-metric-item">
-              <span className="share-metric-val">{characterCount}</span>
-              <span className="share-metric-lbl">Characters</span>
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-base font-bold text-slate-300 block">{characterCount}</span>
+              <span className="text-[11px] text-slate-400 block uppercase">Characters</span>
             </div>
           </div>
 
           {/* Large message recommendation notice */}
           {isLargeMessage && (
-            <div className="share-alert-notice">
-              <span className="alert-icon">💡</span>
-              <div className="alert-text">
-                <strong>Pro-Tip for large lists:</strong> Because this message is {characterCount} characters long, WhatsApp URL links may sometimes truncate on some mobile browsers. Use <strong>"📋 Copy Message"</strong> and paste directly into WhatsApp for 100% complete text!
-              </div>
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs leading-relaxed">
+              💡 <strong>Pro-Tip for large lists:</strong> Because this message is {characterCount} characters long, WhatsApp URL links may sometimes truncate on some mobile browsers. Use <strong>"📋 Copy Full Message"</strong> and paste directly into WhatsApp for 100% complete text!
             </div>
           )}
 
           {/* Status Toast */}
           {shareStatus && (
-            <div className="share-toast-notification">
+            <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs font-semibold text-center">
               ✨ {shareStatus}
             </div>
           )}
 
           {/* Live Message Preview */}
-          <div className="share-preview-container">
-            <div className="share-preview-header">
-              <span className="preview-label">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300">
                 📱 Message Preview (WhatsApp Markdown)
               </span>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="btn-preview-copy"
+                className="text-xs text-amber-400 hover:underline font-semibold cursor-pointer flex items-center gap-1"
                 title="Copy text"
               >
-                {copied ? '✓ Copied!' : '📋 Copy Text'}
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied!' : 'Copy Text'}</span>
               </button>
             </div>
-            <pre className="share-preview-box">{generatedMessage}</pre>
+            <pre className="w-full p-3 bg-slate-950/90 border border-slate-800 rounded-xl font-mono text-xs text-slate-200 overflow-x-auto max-h-48 whitespace-pre-wrap select-all">
+              {generatedMessage}
+            </pre>
           </div>
         </div>
 
-        {/* Modal Footer / Sticky Actions (Mobile First) */}
-        <div className="modal-footer share-modal-footer">
-          <div className="share-footer-actions">
-            {/* Copy Button */}
+        {/* Modal Footer Actions */}
+        <div className="p-3.5 sm:p-4 border-t border-slate-800 bg-slate-950/40">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <button
               type="button"
               onClick={handleCopy}
-              className={`btn btn-secondary share-action-btn ${copied ? 'btn-copied' : ''}`}
+              className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
             >
-              {copied ? '✓ Copied to Clipboard!' : '📋 Copy Full Message'}
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              <span>{copied ? 'Copied to Clipboard!' : 'Copy Full Message'}</span>
             </button>
 
-            {/* Direct WhatsApp Share */}
             <button
               type="button"
               onClick={handleOpenWhatsApp}
-              className="btn btn-whatsapp-primary share-action-btn"
+              className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white font-bold text-sm shadow-md shadow-emerald-950/40 flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
             >
-              <span className="whatsapp-icon">💬</span>
-              {isMobile ? 'Open in WhatsApp App' : 'Share on WhatsApp Web'}
+              <MessageCircle className="w-4 h-4" />
+              <span>{isMobile ? 'Open in WhatsApp App' : 'Share on WhatsApp Web'}</span>
             </button>
 
-            {/* Mobile Native OS Share (if supported) */}
             {typeof navigator !== 'undefined' && 'share' in navigator && (
               <button
                 type="button"
                 onClick={handleNativeShare}
-                className="btn btn-ghost share-action-btn"
+                className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
                 title="Share via other mobile apps"
               >
-                📤 More Share Options
+                <Share2 className="w-4 h-4" />
               </button>
             )}
           </div>
