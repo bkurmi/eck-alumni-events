@@ -239,7 +239,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
 
   return (
     <div className="min-h-screen w-full bg-[#0a0c16] text-slate-100 flex flex-col overflow-x-hidden selection:bg-amber-500 selection:text-slate-950">
-      <Header maxWidth="max-w-7xl" />
+      <Header maxWidth="max-w-3xl" />
 
       <main className="flex-1 w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6">
         {/* Top Hero Section */}

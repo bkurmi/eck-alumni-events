@@ -295,7 +295,7 @@ export const EventPage: React.FC = () => {
         title="ECK-RTU Alumni Kota Chapter"
         tagline={event.tagline || '“दीप जले, यादें मुस्कुराएँ।”'}
         currentEventSlug={event.event_slug}
-        maxWidth="max-w-7xl"
+        maxWidth="max-w-3xl"
       />
 
       <main className="flex-1 w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6">

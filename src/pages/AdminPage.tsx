@@ -791,7 +791,7 @@ export const AdminPage: React.FC = () => {
   if (loadingAuth) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-        <Header title="Organizer Portal" maxWidth="max-w-7xl" />
+        <Header title="Organizer Portal" maxWidth="max-w-3xl" />
         <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-4 py-16 flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
         </main>
@@ -802,7 +802,7 @@ export const AdminPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Header title="Organizer Portal" tagline="ECK-RTU Alumni Registrations" maxWidth="max-w-7xl" />
+      <Header title="Organizer Portal" tagline="ECK-RTU Alumni Registrations" maxWidth="max-w-3xl" />
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {!session ? (

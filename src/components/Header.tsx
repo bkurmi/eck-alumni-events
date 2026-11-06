@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   title = 'ECK-RTU Alumni Kota Chapter',
   tagline = '“दीप जले, यादें मुस्कुराएँ।”',
   currentEventSlug,
-  maxWidth = 'max-w-7xl',
+  maxWidth = 'max-w-3xl',
 }) => {
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-amber-500/25 bg-[#0a0c16]/95 backdrop-blur-md shadow-lg shadow-black/40">
-      <div className={`mx-auto flex h-16 w-full ${maxWidth} items-center justify-between px-3 sm:px-6 lg:px-8 gap-3 sm:gap-6`}>
+      <div className={`mx-auto flex h-16 w-full ${maxWidth} items-center justify-between px-3 sm:px-4 gap-2 sm:gap-4`}>
         {/* Brand logo & titles */}
         <Link
           to="/"
@@ -205,26 +205,19 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             to="/directory"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors shrink-0"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-2 text-sm font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors shrink-0"
           >
             <Users className="h-4 w-4 text-amber-400 shrink-0" />
             <span className="whitespace-nowrap">Directory</span>
           </Link>
 
-          <Link
-            to="/profile"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors shrink-0"
-          >
-            <User className="h-4 w-4 text-amber-400 shrink-0" />
-            <span className="whitespace-nowrap">My Profile</span>
-          </Link>
-
           <a
             href="/admin"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium whitespace-nowrap text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all shadow-sm shrink-0"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2.5 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all shadow-sm shrink-0 active:scale-95"
+            title="Organizer Admin Portal"
+            aria-label="Organizer Admin Portal"
           >
-            <ShieldCheck className="h-4 w-4 text-amber-400 shrink-0" />
-            <span className="whitespace-nowrap">Admin</span>
+            <ShieldCheck className="h-5 w-5 text-amber-400 shrink-0" />
           </a>
         </nav>
 

@@ -143,7 +143,7 @@ export const IdCardPage: React.FC = () => {
   if (!isEnabled) {
     return (
       <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
-        <Header currentEventSlug={activeEvent.event_slug} maxWidth="max-w-7xl" />
+        <Header currentEventSlug={activeEvent.event_slug} maxWidth="max-w-3xl" />
         <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-6 flex-1 flex flex-col items-center">
           <div className="w-full mb-4">
             <Link to="/" className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-amber-400 hover:text-amber-300 transition-colors">
@@ -847,7 +847,7 @@ export const IdCardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
-      <Header currentEventSlug={activeEvent.event_slug} maxWidth="max-w-7xl" />
+      <Header currentEventSlug={activeEvent.event_slug} maxWidth="max-w-3xl" />
 
       <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 space-y-6">
         {/* Back navigation to Event Details */}
