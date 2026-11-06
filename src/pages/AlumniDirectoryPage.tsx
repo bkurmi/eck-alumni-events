@@ -303,7 +303,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
         </section>
 
         {/* Filter and Search Bar Section */}
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 sm:p-5 space-y-4 shadow-xl backdrop-blur-md">
+        <section className="relative z-20 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 sm:p-5 space-y-4 shadow-xl backdrop-blur-md">
           {/* Search Input with Auto-suggestion */}
           <div className="relative" ref={searchContainerRef}>
             <div className="relative flex items-center">
@@ -354,8 +354,19 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
             )}
           </div>
 
-          {/* Dropdown Filters Grid with Text Search */}
+          {/* Dropdown Filters Grid with Text Search - Ordered: Batch -> Branch -> City */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <SearchableSelect
+              id="batch-filter"
+              label="Passing Batch"
+              value={selectedBatch}
+              onChange={setSelectedBatch}
+              options={batchOptions}
+              allOptionLabel="All Batches"
+              searchPlaceholder="Search batch (e.g. 2024, 2012)..."
+              align="left"
+            />
+
             <SearchableSelect
               id="dept-filter"
               label="Department / Branch"
@@ -364,6 +375,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
               options={disciplineOptions}
               allOptionLabel="All Departments"
               searchPlaceholder="Search branch (e.g. Computer, Civil)..."
+              align="left"
             />
 
             <SearchableSelect
@@ -374,16 +386,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
               options={cityOptions}
               allOptionLabel={`All Cities (${availableCities.length})`}
               searchPlaceholder="Search city (e.g. Kota, Bengaluru)..."
-            />
-
-            <SearchableSelect
-              id="batch-filter"
-              label="Passing Batch"
-              value={selectedBatch}
-              onChange={setSelectedBatch}
-              options={batchOptions}
-              allOptionLabel="All Batches"
-              searchPlaceholder="Search batch (e.g. 2024, 2012)..."
+              align="right"
             />
           </div>
 
@@ -391,8 +394,9 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs sm:text-sm text-slate-400">
             <span>
               Showing <strong className="text-amber-400">{filteredAlumni.length}</strong> alumni
-              {selectedDiscipline !== 'ALL' && ` in ${selectedDiscipline}`}
-              {selectedCity !== 'ALL' && ` in ${selectedCity}`}
+              {selectedBatch !== 'ALL' && ` • Batch ${selectedBatch}`}
+              {selectedDiscipline !== 'ALL' && ` • ${selectedDiscipline}`}
+              {selectedCity !== 'ALL' && ` • ${selectedCity}`}
             </span>
 
             {hasActiveFilters && (
@@ -409,7 +413,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
         </section>
 
         {/* Alumni Cards Directory Grid */}
-        <section>
+        <section className="relative z-10">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3 text-amber-400">
               <Loader2 className="h-8 w-8 animate-spin" />

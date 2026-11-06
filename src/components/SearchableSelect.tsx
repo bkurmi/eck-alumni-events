@@ -16,6 +16,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   searchPlaceholder?: string;
   className?: string;
+  align?: 'left' | 'right';
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -28,6 +29,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   placeholder = 'Select option...',
   searchPlaceholder = 'Search options...',
   className = '',
+  align = 'left',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,7 +95,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   };
 
   return (
-    <div className={`relative flex flex-col gap-1.5 w-full ${className}`} ref={containerRef}>
+    <div className={`relative flex flex-col gap-1.5 w-full ${isOpen ? 'z-30' : 'z-10'} ${className}`} ref={containerRef}>
       {label && (
         <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wider text-slate-400">
           {label}
@@ -144,7 +146,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       {/* Dropdown Menu */}
       {isOpen && (
         <div
-          className="absolute top-full left-0 z-50 mt-1.5 w-full min-w-[240px] max-w-[360px] rounded-2xl border border-amber-500/30 bg-slate-900/98 p-2 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150"
+          className={`absolute top-full z-50 mt-1.5 w-full min-w-full sm:min-w-[240px] sm:max-w-[360px] rounded-2xl border border-amber-500/30 bg-slate-900/98 p-2 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150 ${
+            align === 'right' ? 'left-0 sm:left-auto sm:right-0' : 'left-0'
+          }`}
           role="listbox"
         >
           {/* Search Input Box */}
@@ -153,7 +157,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             <input
               ref={searchInputRef}
               type="text"
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2 pl-9 pr-8 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2 pl-9 pr-8 text-base text-slate-100 placeholder-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -177,7 +181,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             {!searchQuery.trim() && (
               <button
                 type="button"
-                className={`flex min-h-[40px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer ${
+                className={`flex min-h-[44px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer ${
                   value === 'ALL' || !value
                     ? 'bg-amber-500/20 text-amber-300 font-semibold'
                     : 'text-slate-300 hover:bg-slate-800'
@@ -198,7 +202,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   <button
                     key={opt.value}
                     type="button"
-                    className={`flex min-h-[40px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer ${
+                    className={`flex min-h-[44px] w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-amber-500/20 text-amber-300 font-semibold'
                         : 'text-slate-300 hover:bg-slate-800'
