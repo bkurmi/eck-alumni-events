@@ -8,6 +8,7 @@ import type {
 import {
   EMPLOYMENT_TYPES,
   INDUSTRY_DOMAINS,
+  COMMON_ORGANIZATIONS,
   ENGINEERING_DISCIPLINES,
   INDIAN_STATES,
   COUNTRY_OPTIONS,
@@ -16,6 +17,7 @@ import { PaymentSection } from './PaymentSection';
 import { UpiPaymentFlowModal } from './UpiPaymentFlowModal';
 import { supabase } from '../lib/supabase';
 import { calculateContribution, formatPricingPillSummary } from '../lib/pricing';
+import { fetchOrganizationSuggestions } from '../lib/directory';
 import {
   lookupRegistrationByMobile,
   convertLookupToFormData,
@@ -62,6 +64,7 @@ const INITIAL_FORM_DATA: RegistrationFormData = {
   engineering_discipline: '',
   engineering_discipline_other: '',
   organization: '',
+  designation: '',
   employment_type: '',
   employment_type_other: '',
   industry_domain: '',
@@ -102,6 +105,20 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   // UPI Flow & Return Prompt State
   const [showWelcomeBackModal, setShowWelcomeBackModal] = useState(false);
   const [isPreSavingUpi, setIsPreSavingUpi] = useState(false);
+  const [orgSuggestions, setOrgSuggestions] = useState<string[]>(() => Array.from(COMMON_ORGANIZATIONS));
+
+  // Dynamically load organization suggestions previously entered by other alumni
+  useEffect(() => {
+    let isMounted = true;
+    fetchOrganizationSuggestions().then((suggestions) => {
+      if (isMounted && suggestions && suggestions.length > 0) {
+        setOrgSuggestions(suggestions);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Clear any residual drafts on mount to prevent stale form data
   useEffect(() => {
@@ -451,7 +468,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         formData.industry_domain === 'Other'
           ? (formData.industry_domain_other?.trim() || 'Other')
           : formData.industry_domain;
-      const combinedCategory = `${resolvedEmploymentType} • ${resolvedIndustryDomain}`;
+      const combinedCategory = `${resolvedEmploymentType} | ${resolvedIndustryDomain}`;
 
       // Pre-save to Supabase RPC with status 'payment_pending' (unless already confirmed with screenshot)
       const preSaveStatus = activeExistingReg?.payment_screenshot_path ? formData.attendance_status : 'payment_pending';
@@ -754,7 +771,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           ? (formData.industry_domain_other?.trim() || 'Other')
           : formData.industry_domain;
 
-      const combinedCategory = `${resolvedEmploymentType} • ${resolvedIndustryDomain}`;
+      const combinedCategory = `${resolvedEmploymentType} | ${resolvedIndustryDomain}`;
 
       const resolvedFormData: RegistrationFormData = {
         ...formData,
@@ -961,6 +978,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           } catch (syncErr) {
             console.warn('Sync registration amount note:', syncErr);
           }
+        }
+      }
+
+      if (formData.designation?.trim()) {
+        try {
+          await supabase.from('alumni').update({ designation: formData.designation.trim() }).eq('mobile', cleanMobile);
+        } catch (desigErr) {
+          console.warn('Optional designation update note:', desigErr);
         }
       }
 
@@ -1512,11 +1537,34 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               id="field-organization"
               type="text"
               name="organization"
+              list="organization-suggestions"
               value={formData.organization}
               onChange={handleChange}
-              placeholder="e.g. NTPC, Infosys, Entrepreneur"
+              placeholder="e.g. Allen, RVUNL / KTPS, Indian Railways, Infosys..."
               className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
             />
+            <datalist id="organization-suggestions">
+              {orgSuggestions.map((org) => (
+                <option key={org} value={org} />
+              ))}
+            </datalist>
+          </div>
+
+          {/* Current Designation / Role */}
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200" htmlFor="field-designation">
+              Current Designation / Role <span className="text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <input
+              id="field-designation"
+              type="text"
+              name="designation"
+              value={formData.designation || ''}
+              onChange={handleChange}
+              placeholder="e.g. Executive Engineer (XEN), Director, Senior Manager"
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
+            />
+            <p className="text-[11px] text-slate-400">Keeps your company name clean for search and ID badges.</p>
           </div>
 
           {/* Work Location */}
@@ -1530,9 +1578,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               name="work_location"
               value={formData.work_location}
               onChange={handleChange}
-              placeholder="e.g. New Delhi, Mumbai, Bengaluru, Abroad"
+              placeholder="e.g. Kota, Jaipur, Delhi NCR, Bengaluru, Abroad"
               className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
             />
+            <p className="text-[11px] text-slate-400">Enter City &amp; State only (do not enter street address or office branch).</p>
           </div>
         </div>
       </div>

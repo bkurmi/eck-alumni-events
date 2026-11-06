@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { cleanMobileNumber } from './registrations';
 import { compressAttendeePhoto } from './gate';
 import { getBatchFromPassingYear } from './batchUtils';
+import { COMMON_ORGANIZATIONS } from '../types';
 import type { AlumniDirectoryItem, UpdateAlumniPayload, Alumni } from '../types';
 
 /**
@@ -44,6 +45,7 @@ function normalizeAlumniWithPhoto(record: any): AlumniDirectoryItem {
     year_of_passing: passingYear,
     engineering_discipline: record.engineering_discipline || 'Other',
     organization: record.organization || null,
+    designation: record.designation || null,
     employment_type: record.employment_type || undefined,
     industry_domain: record.industry_domain || undefined,
     professional_category: record.professional_category || '',
@@ -131,6 +133,63 @@ export async function searchAlumniSuggestions(
     console.warn('Alumni suggestions error:', err);
   }
   return [];
+}
+
+let cachedOrganizations: string[] | null = null;
+
+/**
+ * Fetch distinct organizations previously entered by other alumni from the database.
+ * Results are frequency-sorted (most popular first) and deduplicated.
+ */
+export async function fetchOrganizationSuggestions(): Promise<string[]> {
+  if (cachedOrganizations && cachedOrganizations.length > 0) {
+    return cachedOrganizations;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('alumni')
+      .select('organization')
+      .not('organization', 'is', null);
+
+    if (!error && Array.isArray(data)) {
+      const frequencyMap = new Map<string, { count: number; canonical: string }>();
+
+      for (const item of data) {
+        const raw = (item.organization || '').trim();
+        if (
+          raw.length >= 2 &&
+          raw.toLowerCase() !== 'not provided' &&
+          raw.toLowerCase() !== 'null' &&
+          raw.toLowerCase() !== 'undefined'
+        ) {
+          const key = raw.toLowerCase();
+          const existing = frequencyMap.get(key);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            frequencyMap.set(key, { count: 1, canonical: raw });
+          }
+        }
+      }
+
+      const dbOrgs = Array.from(frequencyMap.values())
+        .sort((a, b) => b.count - a.count)
+        .map((item) => item.canonical);
+
+      const mergedSet = new Set<string>();
+      dbOrgs.forEach((org) => mergedSet.add(org));
+      (COMMON_ORGANIZATIONS as readonly string[]).forEach((org) => mergedSet.add(org));
+
+      cachedOrganizations = Array.from(mergedSet);
+      return cachedOrganizations;
+    }
+  } catch (err) {
+    console.warn('Organization suggestions fetch note:', err);
+  }
+
+  cachedOrganizations = Array.from(COMMON_ORGANIZATIONS);
+  return cachedOrganizations;
 }
 
 /**
@@ -265,6 +324,7 @@ export async function saveAlumniProfile(
       country: payload.country?.trim() || 'India',
       address: payload.address?.trim() || '',
       organization: payload.organization?.trim() || null,
+      designation: payload.designation?.trim() || null,
       work_location: payload.work_location?.trim() || null,
       updated_at: new Date().toISOString(),
     };

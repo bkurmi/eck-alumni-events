@@ -5,6 +5,7 @@ import {
   INDIAN_STATES,
   EMPLOYMENT_TYPES,
   INDUSTRY_DOMAINS,
+  COMMON_ORGANIZATIONS,
   COUNTRY_OPTIONS,
 } from '../types';
 import {
@@ -12,6 +13,7 @@ import {
   lookupAlumniByMobile,
   uploadAlumniPhoto,
   saveAlumniProfile,
+  fetchOrganizationSuggestions,
 } from '../lib/directory';
 import { cleanMobileNumber } from '../lib/registrations';
 import {
@@ -77,6 +79,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
     industry_domain: 'Information Technology & Services',
     industry_domain_other: '',
     organization: '',
+    designation: '',
     work_location: '',
     linkedin_url: '',
   });
@@ -90,6 +93,22 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
+  const [orgSuggestions, setOrgSuggestions] = useState<string[]>(() => Array.from(COMMON_ORGANIZATIONS));
+
+  // Dynamically load organization suggestions from database on open
+  useEffect(() => {
+    if (isOpen) {
+      let isMounted = true;
+      fetchOrganizationSuggestions().then((suggestions) => {
+        if (isMounted && suggestions && suggestions.length > 0) {
+          setOrgSuggestions(suggestions);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isOpen]);
 
   // File input refs
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +192,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
       industry_domain: isStdDomain ? indDomain : 'Other',
       industry_domain_other: isStdDomain ? '' : indDomain,
       organization: alumnus.organization || '',
+      designation: alumnus.designation || '',
       work_location: alumnus.work_location || '',
       linkedin_url: alumnus.linkedin_url || '',
     });
@@ -329,7 +349,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
           ? (formData.industry_domain_other.trim() || 'Other')
           : formData.industry_domain;
 
-      const combinedCategory = `${resolvedEmploymentType} • ${resolvedIndustryDomain}`;
+      const combinedCategory = `${resolvedEmploymentType} | ${resolvedIndustryDomain}`;
 
       const payload: UpdateAlumniPayload = {
         alumni_id: selectedAlumnus.id,
@@ -343,6 +363,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
         industry_domain: resolvedIndustryDomain,
         professional_category: combinedCategory,
         organization: formData.organization.trim() || null,
+        designation: formData.designation.trim() || null,
         city: formData.city.trim() || 'Kota',
         state: resolvedState,
         country: resolvedCountry,
@@ -1045,26 +1066,49 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                     <input
                       id="edit-org"
                       type="text"
+                      list="edit-org-suggestions"
                       className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
-                      placeholder="e.g. Infosys, NTPC, Indian Railways, Own Venture..."
+                      placeholder="e.g. Allen, RVUNL / KTPS, Indian Railways, Infosys..."
                       value={formData.organization}
                       onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                     />
+                    <datalist id="edit-org-suggestions">
+                      {orgSuggestions.map((org) => (
+                        <option key={org} value={org} />
+                      ))}
+                    </datalist>
                   </div>
 
-                  {/* Work Location / Neighborhood */}
+                  {/* Current Designation / Role */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-designation" className="block text-xs font-semibold text-slate-200">
+                      Current Designation / Role <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      id="edit-designation"
+                      type="text"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
+                      placeholder="e.g. Executive Engineer (XEN), Director, Senior Manager"
+                      value={formData.designation}
+                      onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                    />
+                    <p className="text-[11px] text-slate-400">Keeps your company name clean for search and ID badges.</p>
+                  </div>
+
+                  {/* Work Location (City, State) */}
                   <div className="space-y-1.5">
                     <label htmlFor="edit-work-location" className="block text-xs font-semibold text-slate-200">
-                      Work Location / Office Neighborhood
+                      Work Location (City, State)
                     </label>
                     <input
                       id="edit-work-location"
                       type="text"
                       className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
-                      placeholder="e.g. Whitefield, Gurgaon DLF, Hinjewadi, Vigyan Nagar..."
+                      placeholder="e.g. Kota, Jaipur, Delhi NCR, Bengaluru, Abroad..."
                       value={formData.work_location}
                       onChange={(e) => setFormData({ ...formData, work_location: e.target.value })}
                     />
+                    <p className="text-[11px] text-slate-400">Enter City &amp; State only (do not enter street address or office branch).</p>
                   </div>
                 </div>
               </div>

@@ -477,10 +477,17 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
                           <p className="text-xs font-medium text-amber-400/90 truncate" title={alumnus.engineering_discipline}>
                             {alumnus.engineering_discipline}
                           </p>
-                          {alumnus.organization && (
-                            <p className="text-xs text-slate-300 truncate flex items-center gap-1" title={alumnus.organization}>
+                          {(alumnus.organization || alumnus.designation) && (
+                            <p
+                              className="text-xs text-slate-300 truncate flex items-center gap-1"
+                              title={[alumnus.designation, alumnus.organization].filter(Boolean).join(', ')}
+                            >
                               <Building className="h-3 w-3 text-slate-500 shrink-0" />
-                              <span className="truncate">{alumnus.organization}</span>
+                              <span className="truncate">
+                                {alumnus.designation && alumnus.organization
+                                  ? `${alumnus.designation}, ${alumnus.organization}`
+                                  : alumnus.organization || alumnus.designation}
+                              </span>
                             </p>
                           )}
                         </div>

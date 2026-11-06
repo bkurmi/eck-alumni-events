@@ -72,6 +72,7 @@ export interface Alumni {
   year_of_passing: number;
   engineering_discipline: string;
   organization: string | null;
+  designation?: string | null;
   employment_type?: string;
   industry_domain?: string;
   professional_category: string;
@@ -96,6 +97,7 @@ export interface UpdateAlumniPayload {
   year_of_passing?: number | null;
   engineering_discipline?: string | null;
   organization?: string | null;
+  designation?: string | null;
   employment_type?: string | null;
   industry_domain?: string | null;
   professional_category?: string | null;
@@ -202,6 +204,7 @@ export interface RegistrationFormData {
   engineering_discipline: string;
   engineering_discipline_other?: string;
   organization: string;
+  designation?: string;
   // Professional info (Employment Type + Industry / Domain)
   employment_type: string;
   employment_type_other?: string;
@@ -250,6 +253,7 @@ export const EMPLOYMENT_TYPES = [
   'Full-time (Private)',
   'Full-time (Government / Public Sector)',
   'Self-Employed / Business Owner',
+  'Practicing Professional / Consultant',
   'Freelancer / Independent Contractor',
   'Student',
   'Retired',
@@ -258,6 +262,7 @@ export const EMPLOYMENT_TYPES = [
 ] as const;
 
 export const INDUSTRY_DOMAINS = [
+  // Existing options (100% preserved for complete backward compatibility)
   'Information Technology & Services',
   'Banking, Financial Services & Insurance (BFSI)',
   'Healthcare & Pharmaceuticals',
@@ -265,7 +270,37 @@ export const INDUSTRY_DOMAINS = [
   'Education & Academia',
   'Retail & E-Commerce',
   'Government & Public Administration',
+
+  // New additions derived directly from production alumni data
+  'Energy, Power & Utilities',
+  'Civil, Construction & Real Estate',
+  'Defense & Aerospace',
+  'Telecommunications & Networking',
+  'Automotive & Aviation',
+  'Mining, Minerals & Metallurgy',
+  'Chemicals, Petrochemicals, Oil & Gas',
+  'Consulting, Legal & Professional Services',
+
   'Other',
+] as const;
+
+export const COMMON_ORGANIZATIONS = [
+  'Allen Career Institute',
+  'RVUNL (Rajasthan Rajya Vidyut Utpadan Nigam)',
+  'KTPS Kota (Kota Thermal Power Station)',
+  'RRVPNL (Rajasthan Rajya Vidyut Prasaran Nigam)',
+  'JVVNL (Jaipur Vidyut Vitran Nigam)',
+  'Indian Railways',
+  'PWD Rajasthan (Public Works Department)',
+  'PHED Rajasthan (Public Health Engineering)',
+  'Rajasthan Technical University (RTU)',
+  'Government Polytechnic College Kota',
+  'BSNL',
+  'DCM Shriram',
+  'CFCL (Chambal Fertilisers and Chemicals)',
+  'Airports Authority of India (AAI)',
+  'UIT / KDA Kota',
+  'State Government of Rajasthan',
 ] as const;
 
 export const PROFESSIONAL_CATEGORIES = [

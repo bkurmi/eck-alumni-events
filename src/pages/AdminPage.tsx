@@ -28,6 +28,7 @@ import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { isAdminGatePortalEnabled } from '../lib/gate';
 import { isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 import { getRegistrationStatusInfo, syncEventRegistrationStatus } from '../lib/eventStatus';
+import { formatCategory } from '../lib/utils';
 import type { EventRegistration, ECKEvent, PaymentVerification, Sponsorship, EventExpense } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
@@ -1648,7 +1649,7 @@ export const AdminPage: React.FC = () => {
                                                                                 </p>
                                                                                 {reg.alumni?.organization && (
                                                                                   <p className="text-xs text-slate-400 mt-1 line-clamp-1">
-                                                                                    💼 {reg.alumni.organization}{reg.alumni.professional_category ? ` (${reg.alumni.professional_category})` : ''}
+                                                                                    💼 {reg.alumni.organization}{reg.alumni.professional_category ? ` (${formatCategory(reg.alumni.professional_category)})` : ''}
                                                                                   </p>
                                                                                 )}
                                                                               </div>
@@ -1805,7 +1806,7 @@ export const AdminPage: React.FC = () => {
                                                                   <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex flex-col gap-0.5">
                                                                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Employment Type</span>
                                                                     <span className="text-sm text-slate-200">
-                                                                      {selectedReg.alumni?.employment_type || selectedReg.alumni?.professional_category || '—'}
+                                                                      {selectedReg.alumni?.employment_type || formatCategory(selectedReg.alumni?.professional_category) || '—'}
                                                                     </span>
                                                                   </div>
 
