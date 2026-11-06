@@ -10,14 +10,10 @@ import {
   Phone,
   FileText,
   Edit2,
-  Users,
-  TrendingDown,
-  TrendingUp,
   Receipt,
   PlusCircle,
   MinusCircle,
   CheckCircle2,
-  CreditCard,
 } from 'lucide-react';
 import type {
   EventExpense,
@@ -259,115 +255,87 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       {/* 3 Stats Cards — responsive 1 col mobile, 3 cols desktop */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Card 1: Total Available Funds */}
-        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col justify-between">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-              TOTAL AVAILABLE FUNDS
-            </span>
-            <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              ₹{formatINR(stats.totalAvailableFunds)}
-            </span>
+        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col items-center justify-center text-center gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+            TOTAL AVAILABLE FUNDS
+          </span>
+          <span className="text-3xl font-black text-white tracking-tight">
+            ₹{formatINR(stats.totalAvailableFunds)}
+          </span>
+          <div className="text-amber-400 font-medium text-xs">
+            ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount} attending)` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-800/80 text-xs space-y-1">
-            <div className="text-amber-400 font-medium line-clamp-1">
-              ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount} attending)` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
+          {totalHeadcount > 0 && (
+            <div className="text-sky-400 font-medium text-xs flex items-center justify-center gap-1">
+              <span>👥</span>
+              <span>
+                {totalHeadcount} Total Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
+              </span>
             </div>
-            {totalHeadcount > 0 && (
-              <div className="text-sky-400 font-medium flex items-center gap-1">
-                <Users className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
-                <span>
-                  {totalHeadcount} Total Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
-                </span>
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Card 2: Expected Budget (Plan) with Projected Surplus/Deficit */}
         <div
-          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col justify-between ${
+          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center gap-1.5 ${
             stats.isDeficit ? 'border-red-500/40' : 'border-slate-800'
           }`}
         >
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-              EXPECTED BUDGET (PLAN)
-            </span>
-            <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              ₹{formatINR(stats.totalExpected)}
-            </span>
-          </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-col items-start gap-1 text-xs">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                stats.isDeficit
-                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-              }`}
-            >
-              {stats.isDeficit ? (
-                <>
-                  <TrendingDown className="w-3 h-3" />
-                  <span>Projected Deficit: -₹{formatINR(Math.abs(stats.fundingGap))}</span>
-                </>
-              ) : (
-                <>
-                  <TrendingUp className="w-3 h-3" />
-                  <span>Projected Surplus: +₹{formatINR(stats.fundingGap)}</span>
-                </>
-              )}
-            </span>
-            <span className="text-amber-400 font-medium">
-              {stats.totalItems} planned line items
-              {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
-            </span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+            EXPECTED BUDGET (PLAN)
+          </span>
+          <span className="text-3xl font-black text-white tracking-tight">
+            ₹{formatINR(stats.totalExpected)}
+          </span>
+          <span
+            className={`inline-flex items-center justify-center px-3 py-0.5 rounded-full text-xs font-bold border ${
+              stats.isDeficit
+                ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+            }`}
+          >
+            {stats.isDeficit
+              ? `Projected Deficit: -₹${formatINR(Math.abs(stats.fundingGap))}`
+              : `Projected Surplus: +₹${formatINR(stats.fundingGap)}`}
+          </span>
+          <div className="text-amber-400 font-medium text-xs">
+            {stats.totalItems} planned line items
+            {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
           </div>
         </div>
 
         {/* Card 3: Real Paid Expenses with Real Surplus/Deficit */}
         <div
-          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col justify-between ${
+          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center gap-1.5 ${
             stats.liveCashBalance < 0 ? 'border-red-500/40' : 'border-slate-800'
           }`}
         >
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-              REAL PAID EXPENSES
-            </span>
-            <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              ₹{formatINR(stats.totalActual)}
-            </span>
-          </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-col items-start gap-1 text-xs">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                stats.liveCashBalance >= 0
-                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                  : 'bg-red-500/15 text-red-400 border-red-500/30'
-              }`}
-            >
-              {stats.liveCashBalance >= 0 ? (
-                <>
-                  <TrendingUp className="w-3 h-3" />
-                  <span>Live Cash Balance: +₹{formatINR(stats.liveCashBalance)}</span>
-                </>
-              ) : (
-                <>
-                  <TrendingDown className="w-3 h-3" />
-                  <span>Actual Deficit: -₹{formatINR(Math.abs(stats.liveCashBalance))}</span>
-                </>
-              )}
-            </span>
-            <span className="text-amber-400 font-medium">
-              {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'saved vs budget' : 'over budget'}` : ''}
-            </span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+            REAL PAID EXPENSES
+          </span>
+          <span className="text-3xl font-black text-white tracking-tight">
+            ₹{formatINR(stats.totalActual)}
+          </span>
+          <span
+            className={`inline-flex items-center justify-center px-3 py-0.5 rounded-full text-xs font-bold border ${
+              stats.liveCashBalance >= 0
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                : 'bg-red-500/15 text-red-400 border-red-500/30'
+            }`}
+          >
+            {stats.liveCashBalance >= 0
+              ? `Live Cash Balance: +₹${formatINR(stats.liveCashBalance)}`
+              : `Actual Deficit: -₹${formatINR(Math.abs(stats.liveCashBalance))}`}
+          </span>
+          <div className="text-amber-400 font-medium text-xs">
+            {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'saved vs budget' : 'over budget'}` : ''}
           </div>
         </div>
       </div>
 
       {/* Minimalist Funding Feasibility Track (Mobile Optimized) */}
       {stats.totalExpected > 0 && (
-        <div className="p-3.5 sm:p-4 rounded-xl bg-slate-900/70 border border-slate-800 flex flex-col gap-2">
+        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col gap-2.5">
           {/* Top Row: Status Pill & Target Budget */}
           <div className="flex items-center justify-between gap-2">
             <span
@@ -385,7 +353,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           </div>
 
           {/* Dual Segment Progress Bar */}
-          <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden flex">
+          <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden flex">
             <div
               className="bg-emerald-500 transition-all duration-500"
               style={{ width: `${Math.min(stats.fundedPct, 100)}%` }}
@@ -402,17 +370,21 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
           {/* Bottom Labels */}
           <div className="flex items-center justify-between text-xs font-semibold gap-2">
-            <span className="text-emerald-400 inline-flex items-center gap-1 whitespace-nowrap">
-              ▾ Collected: ₹{formatINR(stats.totalAvailableFunds)}
+            <span className="text-emerald-400 inline-flex items-center gap-1.5 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <span>Collected: ₹{formatINR(stats.totalAvailableFunds)}</span>
             </span>
             <span
-              className={`inline-flex items-center gap-1 whitespace-nowrap ${
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap ${
                 stats.isDeficit ? 'text-red-400' : 'text-emerald-400'
               }`}
             >
-              {stats.isDeficit
-                ? `▾ Deficit: ₹${formatINR(Math.abs(stats.fundingGap))}`
-                : `▾ Surplus: +₹${formatINR(stats.fundingGap)}`}
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${stats.isDeficit ? 'bg-red-400' : 'bg-emerald-400'}`} />
+              <span>
+                {stats.isDeficit
+                  ? `Deficit: ₹${formatINR(Math.abs(stats.fundingGap))}`
+                  : `Surplus: +₹${formatINR(stats.fundingGap)}`}
+              </span>
             </span>
           </div>
         </div>
@@ -425,10 +397,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           onClick={() => setIsSettlementOpen((prev) => !prev)}
           className="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer bg-slate-950/60 hover:bg-slate-950/80 transition-colors select-none flex-wrap"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
-              <CreditCard className="w-5 h-5 text-indigo-400" />
-            </div>
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="text-xl shrink-0">💳</span>
             <div>
               <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2 flex-wrap">
                 <span>Account Settlement & Net Balance</span>

@@ -200,9 +200,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       const verif = verifByRegId.get(reg.id) || reg.payment_verifications?.[0];
       const rawUpi = verif?.upi_id ? verif.upi_id.trim() : null;
 
+      const isExplicitCash = isCashAccount(rawUpi) || isCashAccount(verif?.notes);
+      const isUntagged = !rawUpi && !isExplicitCash;
+
       let assignedUpi: string;
       let qrLabel: string;
-      if (isCashAccount(rawUpi)) {
+      if (isExplicitCash) {
         assignedUpi = CANONICAL_CASH_ACCOUNT;
         qrLabel = '💵 Cash in Hand';
       } else if (rawUpi) {
@@ -217,7 +220,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         }
       } else {
         assignedUpi = CANONICAL_CASH_ACCOUNT;
-        qrLabel = '⚠️ Not Tagged';
+        qrLabel = '⚠️ Untagged';
       }
 
       const paymentDate = reg.created_at.slice(0, 10);
@@ -228,7 +231,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         verification: verif,
         assignedUpi,
         qrLabel,
-        isCash: isCashAccount(rawUpi) || assignedUpi === CANONICAL_CASH_ACCOUNT,
+        isExplicitCash,
+        isUntagged,
+        isCash: isExplicitCash || isUntagged,
         paymentDate,
         amount,
         verifiedBy: verif?.verified_by || null,
@@ -774,8 +779,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           </div>
         </div>
 
-        {/* 3-column responsive grid on laptop/desktop, 2 on tablet, 1 on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+        {/* 2-column responsive grid on mobile, 3 on desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
           {knownAccounts.map((acc) => {
             const isChecked = selectedAccounts.includes(acc.upi_id);
             const stats = accountStats[acc.upi_id] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
@@ -783,7 +788,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             return (
               <label
                 key={acc.upi_id}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
+                className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
                     ? 'bg-slate-900/90 border-amber-500 shadow-sm'
                     : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
                   }`}
@@ -801,9 +806,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                         {acc.bankName}
                       </span>
                     </div>
-                    <span className="text-slate-400 font-mono text-[11px] truncate">
+                    <span className="text-slate-400 font-mono text-[10px] sm:text-[11px] truncate">
                       {stats.sponsorCount > 0 && stats.count > 0
-                        ? `${stats.count} Reg + ${stats.sponsorCount} Spons`
+                        ? `${stats.count} Reg + ${stats.sponsorCount} S`
                         : stats.sponsorCount > 0
                           ? `${stats.sponsorCount} Spons`
                           : `${stats.count} Regs`}
@@ -831,7 +836,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             const stats = accountStats[CANONICAL_CASH_ACCOUNT] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
             return (
               <label
-                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
+                className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
                     ? 'bg-slate-900/90 border-amber-500 shadow-sm'
                     : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
                   }`}
@@ -848,11 +853,11 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                         }}
                         className="w-4 h-4 rounded border-slate-700 text-amber-500 accent-amber-500 focus:ring-amber-500/30 cursor-pointer"
                       />
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-semibold text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-500/30 font-semibold text-[10px]">
                         💵 Cash
                       </span>
                     </div>
-                    <span className="text-slate-400 font-mono text-[11px] truncate">
+                    <span className="text-slate-400 font-mono text-[10px] sm:text-[11px] truncate">
                       {stats.count} Regs
                     </span>
                   </div>
@@ -943,18 +948,18 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         <button
           type="button"
           onClick={() => setActiveLedgerTab('registrations')}
-          className={`flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${activeLedgerTab === 'registrations'
+          className={`flex-1 min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap ${activeLedgerTab === 'registrations'
               ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
               : 'text-slate-400 hover:text-slate-200'
             }`}
         >
           <span>🎟️</span>
-          <span>Alumni Registrations ({filteredList.length})</span>
+          <span>Registrations ({filteredList.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveLedgerTab('sponsorships')}
-          className={`flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${activeLedgerTab === 'sponsorships'
+          className={`flex-1 min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap ${activeLedgerTab === 'sponsorships'
               ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
               : 'text-slate-400 hover:text-slate-200'
             }`}
@@ -1079,9 +1084,19 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                         </span>
                       </td>
                       <td className="py-2 px-2 align-middle text-center whitespace-nowrap overflow-hidden">
-                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate" title={sp.receiving_upi_id || 'Direct'}>
-                          {sp.receiving_upi_id || 'Direct'}
-                        </span>
+                        {isCashAccount(sp.receiving_upi_id) || sp.receiving_upi_id === CANONICAL_CASH_ACCOUNT ? (
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                            Cash in Hand
+                          </span>
+                        ) : !sp.receiving_upi_id ? (
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                            Untagged
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate" title={sp.receiving_upi_id}>
+                            {sp.receiving_upi_id}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 px-2 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-300">
                         {formatDDMMYYYY(sp.created_at)}
@@ -1141,9 +1156,21 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
                         CREDITED TO:
                       </span>
-                      <span className="inline-flex items-center text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[200px]">
-                        {sp.receiving_upi_id || 'Direct'}
-                      </span>
+                      {isCashAccount(sp.receiving_upi_id) || sp.receiving_upi_id === CANONICAL_CASH_ACCOUNT ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-400">
+                          <span>💵</span>
+                          <span>Cash in Hand</span>
+                        </span>
+                      ) : !sp.receiving_upi_id ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-400">
+                          <span>⚠️</span>
+                          <span>Untagged</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[200px]">
+                          {sp.receiving_upi_id}
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -1217,16 +1244,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                           </span>
                         </td>
                         <td className="py-2 px-2 text-center align-middle whitespace-nowrap overflow-hidden">
-                          {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.qrLabel.includes('Untagged') ? (
+                          {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
                             <span
                               className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate"
                               title={item.assignedUpi}
                             >
                               {item.assignedUpi}
-                            </span>
-                          ) : item.isCash && !item.qrLabel.includes('Untagged') ? (
-                            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                              Cash in Hand
                             </span>
                           ) : (
                             <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
@@ -1263,13 +1286,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               <div className="md:hidden space-y-3">
                 {group.items.map((item, idx) => {
                   const alumni = item.registration.alumni;
-                  const isTagged = Boolean(item.assignedUpi);
 
                   return (
                     <div
                       key={item.registration.id}
                       onClick={() => handleOpenEdit(item)}
-                      className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${isTagged
+                      className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged
                           ? 'border-l-[3.5px] border-l-emerald-500'
                           : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
                         }`}
@@ -1328,15 +1350,16 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                           <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
                             CREDITED TO:
                           </span>
-                          {item.assignedUpi ? (
+                          {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[220px]" title={item.assignedUpi}>
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                               <span>{item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}</span>
                               <span className="opacity-75 font-normal">{item.assignedUpi}</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
-                              ⚠️ Untagged
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
+                              <span className="text-amber-400 text-xs">⚠️</span>
+                              <span>Untagged</span>
                             </span>
                           )}
                         </div>
@@ -1399,16 +1422,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       </span>
                     </td>
                     <td className="py-2 px-2 text-center align-middle whitespace-nowrap overflow-hidden">
-                      {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.qrLabel.includes('Untagged') ? (
+                      {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
                         <span
                           className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate"
                           title={item.assignedUpi}
                         >
                           {item.assignedUpi}
-                        </span>
-                      ) : item.isCash && !item.qrLabel.includes('Untagged') ? (
-                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                          Cash in Hand
                         </span>
                       ) : (
                         <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
@@ -1448,13 +1467,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           <div className="md:hidden space-y-3">
             {filteredList.map((item, idx) => {
               const alumni = item.registration.alumni;
-              const isTagged = Boolean(item.assignedUpi);
 
               return (
                 <div
                   key={item.registration.id}
                   onClick={() => handleOpenEdit(item)}
-                  className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${isTagged
+                  className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged
                       ? 'border-l-[3.5px] border-l-emerald-500'
                       : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
                     }`}
@@ -1513,15 +1531,16 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
                         CREDITED TO:
                       </span>
-                      {item.assignedUpi ? (
+                      {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[220px]" title={item.assignedUpi}>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                           <span>{item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}</span>
                           <span className="opacity-75 font-normal">{item.assignedUpi}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
-                          ⚠️ Untagged
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
+                          <span className="text-amber-400 text-xs">⚠️</span>
+                          <span>Untagged</span>
                         </span>
                       )}
                     </div>
