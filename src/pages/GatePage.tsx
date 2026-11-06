@@ -144,7 +144,7 @@ export const GatePage: React.FC = () => {
     <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
       {/* Top Header for Gate Staff */}
       <header className="w-full bg-slate-900/90 border-b border-slate-800 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 space-y-2">
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2.5 space-y-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
@@ -225,7 +225,7 @@ export const GatePage: React.FC = () => {
       </header>
 
       {/* Main Gate Verification Portal */}
-      <main className="w-full max-w-4xl mx-auto px-3 sm:px-4 py-4 flex-1">
+      <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 flex-1">
         <GateVerificationPortal
           registrations={registrations}
           onRefreshRegistrations={fetchRegistrations}

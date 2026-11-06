@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 import { EventCard } from '../components/EventCard';
 import { RegistrationForm } from '../components/RegistrationForm';
 import { SuccessPage } from '../components/SuccessPage';
@@ -555,34 +556,11 @@ export const EventPage: React.FC = () => {
         onNewRegistration={handleStartRegistration}
       />
 
-      <footer className="w-full border-t border-slate-800 bg-[#07080f] py-8 px-4 text-center mt-auto">
-        <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logo-eck.png"
-              alt="ECK Kota"
-              className="h-10 w-10 rounded-full border border-amber-500/30 bg-slate-900 object-contain p-0.5"
-              width="40"
-              height="40"
-            />
-            <img
-              src="/logo-rtu.png"
-              alt="RTU Kota"
-              className="h-10 w-10 rounded-full border border-amber-400/30 bg-slate-900 object-contain p-0.5"
-              width="40"
-              height="40"
-            />
-          </div>
-          <p className="text-sm font-semibold text-slate-200">ECK-RTU Alumni Kota Chapter</p>
-          <p className="text-xs text-amber-400/90 font-medium">{event.tagline || '“दीप जले, यादें मुस्कुराएँ।”'}</p>
-          <p className="text-xs text-slate-400">
-            {event.event_name} • Kota, Rajasthan
-          </p>
-          <p className="text-[11px] text-slate-400 pt-2 border-t border-slate-800/60 w-full max-w-xs">
-            © {new Date().getFullYear()} ECK-RTU Alumni Kota Chapter. All Rights Reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer
+        eventName={event.event_name}
+        tagline={event.tagline || '“दीप जले, यादें मुस्कुराएँ”'}
+        location="Kota, Rajasthan"
+      />
     </div>
   );
 };

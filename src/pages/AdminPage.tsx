@@ -64,6 +64,23 @@ export const getEffectiveRegAmount = (
   return Number(reg.amount || 0);
 };
 
+const formatBranchShort = (disc?: string | null) => {
+  if (!disc || disc === 'Not Specified') return '—';
+  const d = disc.trim();
+  if (d.toLowerCase().includes('information technology')) return 'IT';
+  if (d.toLowerCase().includes('electronics & communication')) return 'ECE';
+  if (d.toLowerCase().includes('computer science')) return 'CSE';
+  if (d.toLowerCase().includes('production')) return 'P&I';
+  if (d.toLowerCase().includes('instrumentation')) return 'Inst.';
+  if (d.toLowerCase().includes('petrochemical')) return 'Petrochem';
+  if (d.toLowerCase().includes('petroleum')) return 'Petroleum';
+  if (d.toLowerCase().includes('aeronautical')) return 'Aero';
+  if (d.toLowerCase().includes('mechanical')) return 'Mech';
+  if (d.toLowerCase().includes('electrical')) return 'EE';
+  if (d.toLowerCase().includes('civil')) return 'Civil';
+  return d;
+};
+
 export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -1284,189 +1301,357 @@ export const AdminPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        statusFilter === 'all'
-                          ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
-                      }`}
-                      onClick={() => setStatusFilter('all')}
-                    >
-                      All ({scopedRegistrations.length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        statusFilter === 'yes'
-                          ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
-                      }`}
-                      onClick={() => setStatusFilter('yes')}
-                    >
-                      Attending ({scopedRegistrations.filter((r) => r.attendance_status === 'yes').length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        statusFilter === 'payment_pending'
-                          ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                          : 'bg-slate-900 text-amber-400 border border-amber-500/30 hover:bg-slate-800'
-                      }`}
-                      onClick={() => setStatusFilter('payment_pending')}
-                      title="Draft registrations pending payment screenshot"
-                    >
-                      ⏳ Pending ({scopedRegistrations.filter((r) => r.attendance_status === 'payment_pending').length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        statusFilter === 'maybe'
-                          ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
-                      }`}
-                      onClick={() => setStatusFilter('maybe')}
-                    >
-                      Maybe ({scopedRegistrations.filter((r) => r.attendance_status === 'maybe').length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        statusFilter === 'no'
-                          ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
-                      }`}
-                      onClick={() => setStatusFilter('no')}
-                    >
-                      No ({scopedRegistrations.filter((r) => r.attendance_status === 'no').length})
-                    </button>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                          statusFilter === 'all'
+                            ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                            : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
+                        }`}
+                        onClick={() => setStatusFilter('all')}
+                      >
+                        All ({scopedRegistrations.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                          statusFilter === 'yes'
+                            ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                            : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
+                        }`}
+                        onClick={() => setStatusFilter('yes')}
+                      >
+                        Attending ({scopedRegistrations.filter((r) => r.attendance_status === 'yes').length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                          statusFilter === 'payment_pending'
+                            ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                            : 'bg-slate-900 text-amber-400 border border-amber-500/30 hover:bg-slate-800'
+                        }`}
+                        onClick={() => setStatusFilter('payment_pending')}
+                        title="Draft registrations pending payment screenshot"
+                      >
+                        ⏳ Pending ({scopedRegistrations.filter((r) => r.attendance_status === 'payment_pending').length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                          statusFilter === 'maybe'
+                            ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                            : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
+                        }`}
+                        onClick={() => setStatusFilter('maybe')}
+                      >
+                        Maybe ({scopedRegistrations.filter((r) => r.attendance_status === 'maybe').length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                          statusFilter === 'no'
+                            ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                            : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
+                        }`}
+                        onClick={() => setStatusFilter('no')}
+                      >
+                        No ({scopedRegistrations.filter((r) => r.attendance_status === 'no').length})
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Registrations List */}
-                <div className="space-y-3">
-                  {filteredRegistrations.length === 0 ? (
-                    <div className="p-8 text-center bg-slate-900/60 rounded-2xl border border-slate-800 text-slate-400">
-                      <p className="text-base font-bold text-slate-300">No registrations found</p>
-                      <p className="text-xs text-slate-500 mt-1">Try clearing your search query or filters.</p>
+                {/* Registrations List / Table */}
+                {filteredRegistrations.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-900/60 rounded-2xl border border-slate-800 text-slate-400">
+                    <p className="text-base font-bold text-slate-300">No registrations found</p>
+                    <p className="text-xs text-slate-500 mt-1">Try clearing your search query or filters.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* LAPTOP / DESKTOP TABLE VIEW: High Real-Estate Density (Fits 100% inside max-w-3xl, ZERO scrollbar) */}
+                    <div className="hidden md:block rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl overflow-hidden">
+                      <table className="w-full text-left border-collapse table-fixed">
+                        <thead>
+                          <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th className="py-2.5 px-3 w-[110px]">Reg &amp; Status</th>
+                            <th className="py-2.5 px-3 w-[175px]">Alumnus</th>
+                            <th className="py-2.5 px-3 w-[150px]">Contact</th>
+                            <th className="py-2.5 px-2 text-center w-[75px]">Guests</th>
+                            <th className="py-2.5 px-3 text-right w-[82px]">Amount</th>
+                            <th className="py-2.5 px-2 text-center w-[72px]">Proof</th>
+                            <th className="py-2.5 px-2 text-center w-[72px]">Share</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
+                          {filteredRegistrations.map((reg) => {
+                            const regVerif = verifications.find((v) => v.registration_id === reg.id) || reg.payment_verifications?.[0];
+                            const isVerifiedOrDesk =
+                              regVerif?.verified_status === 'VERIFIED' ||
+                              regVerif?.upi_id === 'CASH' ||
+                              regVerif?.upi_id === 'COMPLIMENTARY' ||
+                              (regVerif?.notes && regVerif.notes.toLowerCase().includes('spot'));
+                            const effectiveAmount = getEffectiveRegAmount(reg, verifications);
+
+                            return (
+                              <tr
+                                key={reg.id}
+                                onClick={() => setSelectedReg(reg)}
+                                className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
+                              >
+                                {/* Reg & Status: Vertical Stack */}
+                                <td className="py-2 px-3 align-middle">
+                                  <div className="flex flex-col gap-1 items-start">
+                                    <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded leading-none">
+                                      {reg.registration_number}
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded leading-none ${
+                                      reg.attendance_status === 'yes'
+                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                        : reg.attendance_status === 'payment_pending'
+                                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                          : reg.attendance_status === 'maybe'
+                                            ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                    }`}>
+                                      {reg.attendance_status === 'yes'
+                                        ? 'Attending'
+                                        : reg.attendance_status === 'payment_pending'
+                                          ? 'Pending'
+                                          : reg.attendance_status === 'maybe'
+                                            ? 'Maybe'
+                                            : 'No'}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                {/* Alumnus: Name + Year & Short Branch + Org */}
+                                <td className="py-2 px-3 align-middle overflow-hidden">
+                                  <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={reg.alumni?.name}>
+                                    {reg.alumni?.name || 'Unknown Alumni'}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate" title={`${reg.alumni?.year_of_passing || ''} ${reg.alumni?.engineering_discipline || ''}`}>
+                                    {reg.alumni?.year_of_passing || '—'} • {formatBranchShort(reg.alumni?.engineering_discipline)}
+                                  </div>
+                                  {reg.alumni?.organization && (
+                                    <div className="text-[10px] text-amber-400/80 truncate" title={reg.alumni.organization}>
+                                      💼 {reg.alumni.organization}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Contact: Phone + City */}
+                                <td className="py-2 px-3 align-middle overflow-hidden">
+                                  <div className="text-slate-200 font-medium text-xs truncate">
+                                    📞 {formatDisplayMobile(reg.alumni?.mobile)}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 truncate" title={`${reg.alumni?.city || ''}, ${reg.alumni?.state || ''}`}>
+                                    📍 {reg.alumni?.city || '—'}, {reg.alumni?.state || ''}
+                                  </div>
+                                </td>
+
+                                {/* Guests: Symbol Only (👥 2) */}
+                                <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-200 bg-slate-800/90 border border-slate-700/60 px-2 py-0.5 rounded-full" title={`${reg.number_of_attendees} Guest(s)`}>
+                                    👥 {reg.number_of_attendees}
+                                  </span>
+                                </td>
+
+                                {/* Amount */}
+                                <td className="py-2 px-3 text-right align-middle whitespace-nowrap">
+                                  <span className="text-sm font-black text-amber-400">
+                                    {reg.attendance_status === 'yes' || reg.attendance_status === 'payment_pending'
+                                      ? `₹${effectiveAmount}`
+                                      : '—'}
+                                  </span>
+                                </td>
+
+                                {/* Proof: Symbol Only matching people badge size */}
+                                <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                                  {reg.payment_screenshot_path ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedReg(reg);
+                                      }}
+                                      className="relative inline-flex items-center justify-center gap-0.5 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                                      title="View attached payment screenshot"
+                                      aria-label="View screenshot"
+                                    >
+                                      <span>📷</span>
+                                      {reg.payment_screenshot_path.includes(',') && (
+                                        <span className="text-[9px] font-black text-emerald-300">
+                                          {reg.payment_screenshot_path.split(',').filter(Boolean).length}
+                                        </span>
+                                      )}
+                                    </button>
+                                  ) : isVerifiedOrDesk ? (
+                                    <span className="inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400" title={`Verified${regVerif?.upi_id === 'CASH' ? ' (Cash)' : ''}`}>
+                                      ✓
+                                    </span>
+                                  ) : (reg.attendance_status === 'payment_pending' || (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePingMissingScreenshot(e, reg);
+                                      }}
+                                      className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                                      title="Send WhatsApp reminder to submit payment screenshot"
+                                      aria-label="Remind alumni"
+                                    >
+                                      🔔
+                                    </button>
+                                  ) : (
+                                    <span className="text-slate-600">—</span>
+                                  )}
+                                </td>
+
+                                {/* Share: Symbol Only matching people badge size */}
+                                <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleShareSingleAlumnus(reg);
+                                    }}
+                                    className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                                    title="Share registration on WhatsApp"
+                                    aria-label="Share on WhatsApp"
+                                  >
+                                    💬
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  ) : (
-                    filteredRegistrations.map((reg) => (
-                      <div
-                        key={reg.id}
-                        className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5"
-                        onClick={() => setSelectedReg(reg)}
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-md">
-                              {reg.registration_number}
-                            </span>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
-                              reg.attendance_status === 'yes'
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                : reg.attendance_status === 'payment_pending'
-                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                  : reg.attendance_status === 'maybe'
-                                    ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                            }`}>
-                              {reg.attendance_status === 'yes'
-                                ? 'Attending'
-                                : reg.attendance_status === 'payment_pending'
-                                  ? '⚠️ Payment Pending'
-                                  : reg.attendance_status === 'maybe'
-                                    ? 'Maybe'
-                                    : 'Not Attending'}
-                            </span>
-                          </div>
-                          <span className="text-sm sm:text-base font-black text-amber-400">
-                            {reg.attendance_status === 'yes' || reg.attendance_status === 'payment_pending'
-                              ? `₹${getEffectiveRegAmount(reg, verifications)}`
-                              : '—'}
-                          </span>
-                        </div>
 
-                        <div>
-                          <h3 className="text-base sm:text-lg font-black text-white hover:text-amber-400 transition-colors">
-                            {reg.alumni?.name || 'Unknown Alumni'}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                            Batch of {reg.alumni?.year_of_passing || '—'} • {reg.alumni?.engineering_discipline || '—'}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            📞 {formatDisplayMobile(reg.alumni?.mobile)} • 📍 {reg.alumni?.city}, {reg.alumni?.state}
-                            {reg.alumni?.country && reg.alumni.country !== 'India' ? ` (${reg.alumni.country})` : ''}
-                          </p>
-                          {reg.alumni?.organization && (
-                            <p className="text-xs text-slate-400 mt-1">
-                              💼 {reg.alumni.organization} ({reg.alumni.professional_category})
-                            </p>
-                          )}
-                        </div>
+                    {/* MOBILE ADAPTIVE CARD VIEW (< md screens) */}
+                    <div className="md:hidden space-y-3">
+                      {filteredRegistrations.map((reg) => {
+                        const regVerif = verifications.find((v) => v.registration_id === reg.id) || reg.payment_verifications?.[0];
+                        const isVerifiedOrDesk =
+                          regVerif?.verified_status === 'VERIFIED' ||
+                          regVerif?.upi_id === 'CASH' ||
+                          regVerif?.upi_id === 'COMPLIMENTARY' ||
+                          (regVerif?.notes && regVerif.notes.toLowerCase().includes('spot'));
+                        const effectiveAmount = getEffectiveRegAmount(reg, verifications);
 
-                        <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-800 flex-wrap">
-                          <span className="text-xs font-bold text-slate-300">
-                            👥 {reg.number_of_attendees}
-                          </span>
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {reg.payment_screenshot_path ? (
-                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded-md">
-                                📷 {reg.payment_screenshot_path.includes(',')
-                                  ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length} Screenshots`
-                                  : 'Screenshot'}
+                        return (
+                          <div
+                            key={reg.id}
+                            className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5"
+                            onClick={() => setSelectedReg(reg)}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-md">
+                                  {reg.registration_number}
+                                </span>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+                                  reg.attendance_status === 'yes'
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : reg.attendance_status === 'payment_pending'
+                                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                      : reg.attendance_status === 'maybe'
+                                        ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                }`}>
+                                  {reg.attendance_status === 'yes'
+                                    ? 'Attending'
+                                    : reg.attendance_status === 'payment_pending'
+                                      ? '⚠️ Pending'
+                                      : reg.attendance_status === 'maybe'
+                                        ? 'Maybe'
+                                        : 'Not Attending'}
+                                </span>
+                              </div>
+                              <span className="text-sm font-black text-amber-400">
+                                {reg.attendance_status === 'yes' || reg.attendance_status === 'payment_pending'
+                                  ? `₹${effectiveAmount}`
+                                  : '—'}
                               </span>
-                            ) : (() => {
-                              const regVerif = verifications.find((v) => v.registration_id === reg.id) || reg.payment_verifications?.[0];
-                              const isVerifiedOrDesk =
-                                regVerif?.verified_status === 'VERIFIED' ||
-                                regVerif?.upi_id === 'CASH' ||
-                                regVerif?.upi_id === 'COMPLIMENTARY' ||
-                                (regVerif?.notes && regVerif.notes.toLowerCase().includes('spot'));
+                            </div>
 
-                              if (isVerifiedOrDesk) {
-                                return (
-                                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-1 rounded-md">
+                            <div>
+                              <h3 className="text-base font-black text-white hover:text-amber-400 transition-colors">
+                                {reg.alumni?.name || 'Unknown Alumni'}
+                              </h3>
+                              <p className="text-xs text-slate-300 mt-0.5">
+                                {reg.alumni?.year_of_passing || '—'} • {formatBranchShort(reg.alumni?.engineering_discipline)}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                📞 {formatDisplayMobile(reg.alumni?.mobile)} • 📍 {reg.alumni?.city}, {reg.alumni?.state}
+                                {reg.alumni?.country && reg.alumni.country !== 'India' ? ` (${reg.alumni.country})` : ''}
+                              </p>
+                              {reg.alumni?.organization && (
+                                <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+                                  💼 {reg.alumni.organization} ({reg.alumni.professional_category})
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-800 flex-wrap">
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-200 bg-slate-800/90 border border-slate-700/60 px-2 py-0.5 rounded-full">
+                                👥 {reg.number_of_attendees}
+                              </span>
+
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {reg.payment_screenshot_path ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedReg(reg);
+                                    }}
+                                    className="relative inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                                    title="View attached screenshot"
+                                  >
+                                    <span>📷</span>
+                                    <span>{reg.payment_screenshot_path.includes(',') ? `${reg.payment_screenshot_path.split(',').filter(Boolean).length}` : 'Proof'}</span>
+                                  </button>
+                                ) : isVerifiedOrDesk ? (
+                                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
                                     ✓ Verified{regVerif?.upi_id === 'CASH' ? ' (Cash)' : ''}
                                   </span>
-                                );
-                              }
-
-                              if (reg.attendance_status === 'payment_pending' || (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) {
-                                return (
+                                ) : (reg.attendance_status === 'payment_pending' || (reg.attendance_status === 'yes' && !reg.payment_screenshot_path)) ? (
                                   <button
                                     type="button"
                                     onClick={(e) => handlePingMissingScreenshot(e, reg)}
-                                    className="min-h-[44px] px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 text-xs font-bold transition-colors cursor-pointer"
+                                    className="relative inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
                                     title="Send WhatsApp reminder to submit payment screenshot"
                                   >
-                                    🔔 Remind
+                                    <span>🔔</span>
+                                    <span>Remind</span>
                                   </button>
-                                );
-                              }
+                                ) : null}
 
-                              return null;
-                            })()}
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleShareSingleAlumnus(reg);
-                              }}
-                              className="min-h-[44px] px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                              title="Share on WhatsApp"
-                            >
-                              💬 Share
-                            </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleShareSingleAlumnus(reg);
+                                  }}
+                                  className="relative inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                                  title="Share on WhatsApp"
+                                >
+                                  <span>💬</span>
+                                  <span>Share</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
