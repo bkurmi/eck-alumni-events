@@ -267,23 +267,23 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
   return (
     <div className="flex flex-col gap-5 w-full text-left">
       {/* 💰 1. Big Hero Block: Total Liquid Cash (In Hand) */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-950 border border-emerald-500/30 shadow-xl flex flex-col gap-4">
+      <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-emerald-500/30 shadow-xl flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs uppercase tracking-wider text-emerald-400 font-bold bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/30 inline-flex items-center gap-1">
+              <span className="text-xs uppercase tracking-wider text-emerald-400 font-bold bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30 inline-flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Central Association Treasury</span>
+                <span>CENTRAL ASSOCIATION TREASURY</span>
               </span>
             </div>
 
-            <span className="text-xs sm:text-sm text-slate-400 font-semibold block">
+            <span className="text-xs sm:text-sm text-slate-300 font-semibold block">
               Total Liquid Cash (In Hand)
             </span>
-            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-emerald-400 font-mono tracking-tight mt-1">
+            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-emerald-400 tracking-tight mt-1">
               ₹{formatINR(totalLiquidAssets)}
             </div>
-            <div className="text-xs sm:text-sm text-slate-300 mt-2">
+            <div className="text-xs sm:text-sm text-slate-400 mt-2">
               ₹{formatINR(bankBalancesTotal)} across bank accounts • ₹{formatINR(cashInHandBalance)} cash in hand
             </div>
           </div>
@@ -297,7 +297,7 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
                 setPresetFromAccount(undefined);
                 setIsTransferModalOpen(true);
               }}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm inline-flex items-center gap-2 shadow-lg shadow-indigo-600/30 active:scale-[0.98] transition-all cursor-pointer"
+              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-blue-900/30 active:scale-[0.98] transition-all cursor-pointer"
             >
               <ArrowLeftRight className="w-4 h-4" />
               <span>Transfer / Sweep Funds</span>
@@ -308,7 +308,7 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
                 type="button"
                 onClick={onRefresh}
                 disabled={loading}
-                className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold text-sm inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                 title="Refresh Balances"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -322,21 +322,21 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
       {/* 2. Grid of Dedicated Blocks: Legacy Fund + Event Blocks */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* 🌱 Block 1: Campus Legacy Fund (Permanent Endowment) */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-indigo-500/30 shadow-lg flex flex-col gap-3.5">
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-blue-500/30 shadow-lg flex flex-col gap-3.5">
           {/* Header */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <span className="text-2xl">🌱</span>
               <div>
-                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
-                  Permanent Endowment
+                <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
+                  PERMANENT ENDOWMENT
                 </span>
-                <h2 className="text-base sm:text-lg font-bold text-slate-100">
+                <h2 className="text-base sm:text-lg font-bold text-white">
                   Campus Legacy Fund
                 </h2>
               </div>
             </div>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
               Corpus
             </span>
           </div>
@@ -344,15 +344,16 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
           {/* Fund Amount */}
           <div className="flex items-baseline justify-between border-b border-slate-800 pb-3">
             <span className="text-xs text-slate-400 font-medium">Net Available Fund:</span>
-            <span className="text-2xl sm:text-3xl font-black text-sky-400 font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-sky-400 tracking-tight">
               ₹{formatINR(legacyFund.netBalance)}
             </span>
           </div>
 
           {/* Custodians */}
           <div className="flex flex-col gap-2">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">
-              👤 Fund Custodians (Holding Balance):
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1.5">
+              <span>👤</span>
+              <span>FUND CUSTODIANS (HOLDING BALANCE):</span>
             </span>
 
             {legacyFund.custodians.length === 0 ? (
@@ -361,13 +362,14 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
               legacyFund.custodians.map((c, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-2.5"
+                  className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-2.5"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-lg shrink-0">{c.isCash ? '💵' : '🏦'}</span>
                     <div className="min-w-0">
-                      <strong className="text-sm font-bold text-slate-100 block truncate">{c.name}</strong>
-                      <span className="text-xs text-slate-400">({c.bank})</span>
+                      <strong className="text-sm font-bold text-white block truncate">
+                        {c.name} <span className="text-xs text-slate-400 font-normal">({c.bank})</span>
+                      </strong>
                       {c.upiId && (
                         <div className="text-[11px] text-slate-500 font-mono truncate">
                           {c.upiId}
@@ -375,7 +377,7 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
                       )}
                     </div>
                   </div>
-                  <strong className="text-sm sm:text-base font-bold font-mono text-emerald-400 shrink-0">
+                  <strong className="text-base sm:text-lg font-bold text-emerald-400 shrink-0">
                     ₹{formatINR(c.amount)}
                   </strong>
                 </div>
@@ -391,23 +393,23 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
           return (
             <div
               key={ev.id}
-              className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-amber-500/30 shadow-lg flex flex-col gap-3.5"
+              className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col gap-3.5"
             >
               {/* Header */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                   <span className="text-2xl">🎪</span>
                   <div>
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
-                      Reunion Event
+                    <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
+                      REUNION EVENT
                     </span>
-                    <h2 className="text-base sm:text-lg font-bold text-slate-100">
+                    <h2 className="text-base sm:text-lg font-bold text-white">
                       {ev.name}
                     </h2>
                   </div>
                 </div>
                 <span
-                  className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                     ev.status === 'CLOSED'
                       ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
                       : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
@@ -421,7 +423,7 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
               <div className="flex items-baseline justify-between border-b border-slate-800 pb-3">
                 <span className="text-xs text-slate-400 font-medium">Event Operational Surplus:</span>
                 <span
-                  className={`text-2xl sm:text-3xl font-black font-mono whitespace-nowrap ${
+                  className={`text-2xl sm:text-3xl font-black tracking-tight whitespace-nowrap ${
                     isSurplus ? 'text-emerald-400' : 'text-rose-400'
                   }`}
                 >
@@ -431,8 +433,9 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
 
               {/* Custodians */}
               <div className="flex flex-col gap-2">
-                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">
-                  👤 Custodians (Holding Leftover Cash):
+                <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1.5">
+                  <span>👤</span>
+                  <span>CUSTODIANS (HOLDING LEFTOVER CASH):</span>
                 </span>
 
                 {ev.custodians.length === 0 ? (
@@ -441,13 +444,14 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
                   ev.custodians.map((c, idx) => (
                     <div
                       key={idx}
-                      className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-2.5"
+                      className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-2.5"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="text-lg shrink-0">{c.isCash ? '💵' : '🏦'}</span>
                         <div className="min-w-0">
-                          <strong className="text-sm font-bold text-slate-100 block truncate">{c.name}</strong>
-                          <span className="text-xs text-slate-400">({c.bank})</span>
+                          <strong className="text-sm font-bold text-white block truncate">
+                            {c.name} <span className="text-xs text-slate-400 font-normal">({c.bank})</span>
+                          </strong>
                           {c.upiId && (
                             <div className="text-[11px] text-slate-500 font-mono truncate">
                               {c.upiId}
@@ -455,7 +459,7 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
                           )}
                         </div>
                       </div>
-                      <strong className="text-sm sm:text-base font-bold font-mono text-emerald-400 shrink-0">
+                      <strong className="text-base sm:text-lg font-bold text-emerald-400 shrink-0">
                         ₹{formatINR(c.amount)}
                       </strong>
                     </div>

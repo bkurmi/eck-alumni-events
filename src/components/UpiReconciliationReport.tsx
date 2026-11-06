@@ -678,7 +678,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+        {/* Account Cards Grid — clean 2 columns inside max-w-3xl container */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {knownAccounts.map((acc) => {
             const isChecked = selectedAccounts.includes(acc.upi_id);
             const stats = accountStats[acc.upi_id] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
@@ -864,41 +865,60 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Desktop Table */}
-            <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-800">
-              <table className="w-full text-left text-xs sm:text-sm text-slate-300">
-                <thead className="bg-slate-950/70 text-slate-400 border-b border-slate-800 text-xs uppercase tracking-wider">
-                  <tr>
-                    <th className="p-3 w-10 text-center">#</th>
-                    <th className="p-3">Sponsor</th>
-                    <th className="p-3 text-right">Amount</th>
-                    <th className="p-3">UPI ID</th>
-                    <th className="p-3">Date</th>
-                    <th className="p-3 text-center w-12">Edit</th>
+            {/* Desktop Table (High Real-Estate Density, zero horizontal scrollbar) */}
+            <div className="hidden md:block rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl overflow-hidden">
+              <table className="w-full text-left border-collapse table-fixed">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-2.5 px-3 w-[45px] text-center">#</th>
+                    <th className="py-2.5 px-3 w-[220px]">Sponsor</th>
+                    <th className="py-2.5 px-3 text-right w-[110px]">Amount</th>
+                    <th className="py-2.5 px-3 w-[160px]">UPI ID</th>
+                    <th className="py-2.5 px-3 text-center w-[110px]">Date</th>
+                    <th className="py-2.5 px-2 text-center w-[65px]">Edit</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
+                <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
                   {filteredSponsorships.map((sp, idx) => (
                     <tr
                       key={sp.id}
                       onClick={() => onEditSponsorship?.(sp)}
-                      className="hover:bg-slate-800/50 cursor-pointer transition-colors"
+                      className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
                     >
-                      <td className="p-3 text-center text-slate-500 font-mono">{idx + 1}</td>
-                      <td className="p-3 font-bold text-amber-400">{sp.sponsor_name}</td>
-                      <td className="p-3 text-right font-mono font-bold text-white">
-                        ₹{formatINR(Number(sp.amount || 0))}
+                      <td className="py-2 px-2 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
+                      <td className="py-2 px-3 align-middle overflow-hidden">
+                        <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={sp.sponsor_name}>
+                          {sp.sponsor_name}
+                        </div>
+                        {(sp.contact_person || sp.category) && (
+                          <div className="text-[11px] text-slate-400 truncate">
+                            💼 {sp.contact_person || sp.category}
+                          </div>
+                        )}
                       </td>
-                      <td className="p-3 font-mono text-slate-400">{sp.receiving_upi_id || 'Direct'}</td>
-                      <td className="p-3 font-mono text-slate-400">{formatDDMMYYYY(sp.created_at)}</td>
-                      <td className="p-3 text-center">
+                      <td className="py-2 px-3 text-right align-middle whitespace-nowrap">
+                        <span className="text-sm font-black text-amber-400">
+                          ₹{formatINR(Number(sp.amount || 0))}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 align-middle whitespace-nowrap overflow-hidden">
+                        <span className="font-mono text-xs text-slate-300 bg-slate-950/70 border border-slate-800/80 px-2 py-0.5 rounded-md inline-block max-w-[145px] truncate" title={sp.receiving_upi_id || 'Direct'}>
+                          {sp.receiving_upi_id || 'Direct'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-400">
+                        {formatDDMMYYYY(sp.created_at)}
+                      </td>
+                      <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditSponsorship?.(sp);
                           }}
-                          className="min-h-[32px] min-w-[32px] inline-flex items-center justify-center text-amber-400 hover:text-amber-300"
+                          className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                          title="Edit Sponsorship"
+                          aria-label="Edit Sponsorship"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -909,24 +929,33 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               </table>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="sm:hidden space-y-2.5">
+            {/* Mobile Adaptive Cards */}
+            <div className="md:hidden space-y-3">
               {filteredSponsorships.map((sp, idx) => (
                 <div
                   key={sp.id}
                   onClick={() => onEditSponsorship?.(sp)}
-                  className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2 cursor-pointer"
+                  className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5 space-y-2"
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-500">#{idx + 1} • {formatDDMMYYYY(sp.created_at)}</span>
-                    <span className="font-mono font-bold text-amber-400 text-sm">
+                    <span className="font-mono text-slate-400 font-bold bg-slate-800/90 border border-slate-700/60 px-2 py-0.5 rounded-md">
+                      #{idx + 1} • {formatDDMMYYYY(sp.created_at)}
+                    </span>
+                    <span className="text-sm font-black text-amber-400">
                       ₹{formatINR(Number(sp.amount || 0))}
                     </span>
                   </div>
                   <div className="font-bold text-white text-sm">{sp.sponsor_name}</div>
-                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                    <span className="font-mono text-slate-400">{sp.receiving_upi_id || 'Direct'}</span>
-                    <span className="text-amber-400 font-semibold flex items-center gap-1">
+                  {(sp.contact_person || sp.category) && (
+                    <div className="text-xs text-slate-400">
+                      💼 {sp.contact_person || sp.category}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-800/80">
+                    <span className="font-mono text-slate-300 bg-slate-950/70 border border-slate-800 px-2 py-0.5 rounded-md truncate max-w-[200px]">
+                      {sp.receiving_upi_id || 'Direct'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
                       <Edit2 className="w-3 h-3" /> Edit
                     </span>
                   </div>
@@ -943,53 +972,74 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         /* DAY-WISE VIEW */
         <div className="space-y-4">
           {groupedByDate.map((group) => (
-            <div key={group.date} className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-              <div className="p-3 sm:px-4 bg-slate-950/70 border-b border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+            <div key={group.date} className="rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-hidden">
+              <div className="p-3 sm:px-4 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-amber-400" />
                   <span className="font-bold text-white text-sm">{formatDDMMYYYY(group.date)}</span>
                   <span className="text-xs text-slate-400">({group.subtotalCount} attendees)</span>
                 </div>
-                <div className="font-mono font-bold text-amber-400 text-sm sm:text-base">
+                <div className="text-sm sm:text-base font-black text-amber-400">
                   Subtotal: ₹{formatINR(group.subtotalAmount)}
                 </div>
               </div>
 
-              {/* Desktop Table */}
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-left text-xs sm:text-sm text-slate-300">
-                  <thead className="bg-slate-950/40 text-slate-400 border-b border-slate-800/60 text-xs uppercase tracking-wider">
-                    <tr>
-                      <th className="p-2.5 w-10 text-center">#</th>
-                      <th className="p-2.5">Name</th>
-                      <th className="p-2.5 text-right">Amount</th>
-                      <th className="p-2.5">UPI ID</th>
-                      <th className="p-2.5">Reg ID</th>
-                      <th className="p-2.5 text-center w-12">Edit</th>
+              {/* Desktop Table (High Real-Estate Density) */}
+              <div className="hidden md:block overflow-hidden">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-950/60 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="py-2.5 px-3 w-[45px] text-center">#</th>
+                      <th className="py-2.5 px-3 w-[220px]">Name</th>
+                      <th className="py-2.5 px-3 text-right w-[110px]">Amount</th>
+                      <th className="py-2.5 px-3 w-[160px]">UPI ID</th>
+                      <th className="py-2.5 px-3 text-center w-[110px]">Reg ID</th>
+                      <th className="py-2.5 px-2 text-center w-[65px]">Edit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/40">
+                  <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
                     {group.items.map((item, idx) => (
                       <tr
                         key={item.registration.id}
                         onClick={() => handleOpenEdit(item)}
-                        className="hover:bg-slate-850 cursor-pointer transition-colors"
+                        className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
                       >
-                        <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
-                        <td className="p-2.5 font-bold text-white">{item.registration.alumni?.name}</td>
-                        <td className="p-2.5 text-right font-mono font-bold text-emerald-400">
-                          ₹{formatINR(item.amount)}
+                        <td className="py-2 px-2 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
+                        <td className="py-2 px-3 align-middle overflow-hidden">
+                          <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={item.registration.alumni?.name}>
+                            {item.registration.alumni?.name || 'Unknown Alumni'}
+                          </div>
+                          {item.registration.alumni?.year_of_passing && (
+                            <div className="text-[11px] text-slate-400 truncate">
+                              {item.registration.alumni.year_of_passing} • {item.registration.alumni.engineering_discipline || ''}
+                            </div>
+                          )}
                         </td>
-                        <td className="p-2.5 font-mono text-slate-400">{item.assignedUpi}</td>
-                        <td className="p-2.5 font-mono text-amber-400">{item.registration.registration_number}</td>
-                        <td className="p-2.5 text-center">
+                        <td className="py-2 px-3 text-right align-middle whitespace-nowrap">
+                          <span className="text-sm font-black text-amber-400">
+                            ₹{formatINR(item.amount)}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 align-middle whitespace-nowrap overflow-hidden">
+                          <span className="font-mono text-xs text-slate-300 bg-slate-950/70 border border-slate-800/80 px-2 py-0.5 rounded-md inline-block max-w-[145px] truncate" title={item.assignedUpi}>
+                            {item.assignedUpi}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-center align-middle whitespace-nowrap">
+                          <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded leading-none inline-block">
+                            {item.registration.registration_number}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenEdit(item);
                             }}
-                            className="min-h-[32px] min-w-[32px] inline-flex items-center justify-center text-slate-400 hover:text-white"
+                            className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                            title="Edit UPI ID"
+                            aria-label="Edit UPI ID"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -1000,22 +1050,33 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 </table>
               </div>
 
-              {/* Mobile Cards */}
-              <div className="sm:hidden p-2.5 space-y-2">
+              {/* Mobile Adaptive Cards */}
+              <div className="md:hidden p-3 space-y-3">
                 {group.items.map((item) => (
                   <div
                     key={item.registration.id}
                     onClick={() => handleOpenEdit(item)}
-                    className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5 cursor-pointer"
+                    className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5 space-y-2"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-amber-400 font-bold">{item.registration.registration_number}</span>
-                      <span className="font-mono font-bold text-emerald-400">₹{formatINR(item.amount)}</span>
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-md">
+                        {item.registration.registration_number}
+                      </span>
+                      <span className="text-sm font-black text-amber-400">
+                        ₹{formatINR(item.amount)}
+                      </span>
                     </div>
                     <div className="text-sm font-bold text-white">{item.registration.alumni?.name}</div>
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60">
-                      <span className="font-mono truncate">{item.assignedUpi}</span>
-                      <span className="text-indigo-400 font-semibold flex items-center gap-1">
+                    {item.registration.alumni?.year_of_passing && (
+                      <div className="text-xs text-slate-400">
+                        {item.registration.alumni.year_of_passing} • {item.registration.alumni.engineering_discipline || ''}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-xs text-slate-400 pt-1.5 border-t border-slate-800/80">
+                      <span className="font-mono text-slate-300 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md truncate max-w-[200px]">
+                        {item.assignedUpi}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
                         <Edit2 className="w-3 h-3" /> Edit
                       </span>
                     </div>
@@ -1028,43 +1089,66 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       ) : (
         /* OVERALL FLAT VIEW */
         <div className="space-y-3">
-          {/* Desktop Table */}
-          <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-800">
-            <table className="w-full text-left text-xs sm:text-sm text-slate-300">
-              <thead className="bg-slate-950/70 text-slate-400 border-b border-slate-800 text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="p-3 w-10 text-center">#</th>
-                  <th className="p-3">Name</th>
-                  <th className="p-3 text-right">Amount</th>
-                  <th className="p-3">UPI ID</th>
-                  <th className="p-3">Reg ID</th>
-                  <th className="p-3">Date</th>
-                  <th className="p-3 text-center w-12">Edit</th>
+          {/* Desktop Table (High Real-Estate Density, zero horizontal scrollbar) */}
+          <div className="hidden md:block rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl overflow-hidden">
+            <table className="w-full text-left border-collapse table-fixed">
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 w-[45px] text-center">#</th>
+                  <th className="py-2.5 px-3 w-[200px]">Name</th>
+                  <th className="py-2.5 px-3 text-right w-[100px]">Amount</th>
+                  <th className="py-2.5 px-3 w-[150px]">UPI ID</th>
+                  <th className="py-2.5 px-3 text-center w-[100px]">Reg ID</th>
+                  <th className="py-2.5 px-3 text-center w-[100px]">Date</th>
+                  <th className="py-2.5 px-2 text-center w-[65px]">Edit</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
+              <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
                 {filteredList.map((item, idx) => (
                   <tr
                     key={item.registration.id}
                     onClick={() => handleOpenEdit(item)}
-                    className="hover:bg-slate-850 cursor-pointer transition-colors"
+                    className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
                   >
-                    <td className="p-3 text-center text-slate-500 font-mono">{idx + 1}</td>
-                    <td className="p-3 font-bold text-white">{item.registration.alumni?.name}</td>
-                    <td className="p-3 text-right font-mono font-bold text-emerald-400">
-                      ₹{formatINR(item.amount)}
+                    <td className="py-2 px-2 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
+                    <td className="py-2 px-3 align-middle overflow-hidden">
+                      <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={item.registration.alumni?.name}>
+                        {item.registration.alumni?.name || 'Unknown Alumni'}
+                      </div>
+                      {item.registration.alumni?.year_of_passing && (
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {item.registration.alumni.year_of_passing} • {item.registration.alumni.engineering_discipline || ''}
+                        </div>
+                      )}
                     </td>
-                    <td className="p-3 font-mono text-slate-400">{item.assignedUpi}</td>
-                    <td className="p-3 font-mono text-amber-400">{item.registration.registration_number}</td>
-                    <td className="p-3 font-mono text-slate-400">{formatDDMMYYYY(item.paymentDate)}</td>
-                    <td className="p-3 text-center">
+                    <td className="py-2 px-3 text-right align-middle whitespace-nowrap">
+                      <span className="text-sm font-black text-amber-400">
+                        ₹{formatINR(item.amount)}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 align-middle whitespace-nowrap overflow-hidden">
+                      <span className="font-mono text-xs text-slate-300 bg-slate-950/70 border border-slate-800/80 px-2 py-0.5 rounded-md inline-block max-w-[135px] truncate" title={item.assignedUpi}>
+                        {item.assignedUpi}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-center align-middle whitespace-nowrap">
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded leading-none inline-block">
+                        {item.registration.registration_number}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-400">
+                      {formatDDMMYYYY(item.paymentDate)}
+                    </td>
+                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenEdit(item);
                         }}
-                        className="min-h-[32px] min-w-[32px] inline-flex items-center justify-center text-slate-400 hover:text-white"
+                        className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                        title="Edit UPI ID"
+                        aria-label="Edit UPI ID"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -1075,25 +1159,36 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             </table>
           </div>
 
-          {/* Mobile Cards */}
-          <div className="sm:hidden space-y-2.5">
+          {/* Mobile Adaptive Cards */}
+          <div className="md:hidden space-y-3">
             {filteredList.map((item) => (
               <div
                 key={item.registration.id}
                 onClick={() => handleOpenEdit(item)}
-                className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5 cursor-pointer shadow-sm"
+                className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5 space-y-2"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono text-amber-400 font-bold">{item.registration.registration_number}</span>
-                  <span className="font-mono font-bold text-emerald-400 text-sm">₹{formatINR(item.amount)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-md">
+                      {item.registration.registration_number}
+                    </span>
+                    <span className="font-mono text-xs text-slate-400">
+                      {formatDDMMYYYY(item.paymentDate)}
+                    </span>
+                  </div>
+                  <span className="text-sm font-black text-amber-400">
+                    ₹{formatINR(item.amount)}
+                  </span>
                 </div>
                 <div className="text-sm font-bold text-white">{item.registration.alumni?.name}</div>
                 <div className="text-xs text-slate-400">
                   Batch {item.registration.alumni?.year_of_passing || '—'} • {item.registration.alumni?.engineering_discipline || '—'}
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-400 pt-1.5 border-t border-slate-800/80">
-                  <span className="font-mono truncate">{item.assignedUpi}</span>
-                  <span className="text-indigo-400 font-semibold flex items-center gap-1">
+                  <span className="font-mono text-slate-300 bg-slate-950/70 border border-slate-800 px-2 py-0.5 rounded-md truncate max-w-[200px]">
+                    {item.assignedUpi}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
                     <Edit2 className="w-3 h-3" /> Edit
                   </span>
                 </div>

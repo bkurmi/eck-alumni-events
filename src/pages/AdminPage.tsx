@@ -1085,17 +1085,19 @@ export const AdminPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsGatePinModalOpen(true)}
-                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+                      className="min-h-[44px] px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                     >
-                      🔑 Manage PINs
+                      <span>🔑</span>
+                      <span>Manage PINs</span>
                     </button>
                     <a
                       href="/gate"
                       target="_blank"
                       rel="noreferrer"
-                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center transition-colors cursor-pointer"
+                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      ↗ Open Desk
+                      <span>↗</span>
+                      <span>Open Desk</span>
                     </a>
                   </div>
                 </div>

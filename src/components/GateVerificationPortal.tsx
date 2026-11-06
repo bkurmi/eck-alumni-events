@@ -1369,44 +1369,44 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
     <div className="w-full max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 text-slate-100">
       {/* 1. Real-time Live Gate Metrics Bar (Requirement #9) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
-        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-sm">
-          <span className="text-xs text-slate-400 font-medium">Total Registered</span>
-          <span className="text-xl sm:text-2xl font-mono font-bold text-amber-400 my-1">{stats.totalRegistered}</span>
-          <span className="text-[11px] text-slate-500">Portal signups</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Total Registered</span>
+          <span className="text-3xl sm:text-4xl font-black text-indigo-400 tracking-tight my-1">{stats.totalRegistered}</span>
+          <span className="text-xs text-slate-400 font-medium">Portal signups</span>
         </div>
 
-        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-sm">
-          <span className="text-xs text-slate-400 font-medium">Paid &amp; Approved</span>
-          <span className="text-xl sm:text-2xl font-mono font-bold text-emerald-400 my-1">{stats.totalPaid}</span>
-          <span className="text-[11px] text-slate-500">{stats.totalNotPaid} unpaid/pending</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Paid &amp; Approved</span>
+          <span className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight my-1">{stats.totalPaid}</span>
+          <span className="text-xs text-slate-400 font-medium">{stats.totalNotPaid} unpaid/pending</span>
         </div>
 
-        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-sm">
-          <span className="text-xs text-slate-400 font-medium">ID Cards Generated</span>
-          <span className="text-xl sm:text-2xl font-mono font-bold text-indigo-400 my-1">{stats.totalIdCardsGenerated}</span>
-          <span className="text-[11px] text-slate-500">Downloaded passes</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">ID Cards Generated</span>
+          <span className="text-3xl sm:text-4xl font-black text-sky-400 tracking-tight my-1">{stats.totalIdCardsGenerated}</span>
+          <span className="text-xs text-slate-400 font-medium">Downloaded passes</span>
         </div>
 
-        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-amber-500/40 bg-gradient-to-b from-amber-500/10 to-slate-900 flex flex-col justify-between shadow-sm">
-          <span className="text-xs text-amber-300 font-semibold">⚡ Gate Verified</span>
-          <span className="text-xl sm:text-2xl font-mono font-bold text-amber-400 my-1">{stats.totalVerifiedAtGate}</span>
-          <span className="text-[11px] text-amber-400/70">{stats.turnoutPercent}% paid turnout</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-amber-500/40 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-300">⚡ Gate Verified</span>
+          <span className="text-3xl sm:text-4xl font-black text-amber-400 tracking-tight my-1">{stats.totalVerifiedAtGate}</span>
+          <span className="text-xs text-slate-400 font-medium">{stats.turnoutPercent}% paid turnout</span>
         </div>
 
-        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 flex flex-col justify-between shadow-sm">
-          <span className="text-xs text-slate-300 font-semibold">👥 Heads Inside Venue</span>
-          <span className="text-xl sm:text-2xl font-mono font-bold text-white my-1">{stats.totalHeadsInside}</span>
-          <span className="text-[11px] text-slate-400">Including accompanying</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-300">👥 Heads Inside Venue</span>
+          <span className="text-3xl sm:text-4xl font-black text-white tracking-tight my-1">{stats.totalHeadsInside}</span>
+          <span className="text-xs text-slate-400 font-medium">Including accompanying</span>
         </div>
       </div>
 
       {/* Staff Identifier bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 gap-3">
         <div className="flex items-center gap-2 text-xs sm:text-sm">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-slate-400 font-medium">Verified By:</span>
+          <span className="text-slate-300 font-semibold">Verified By:</span>
           {staffName ? (
-            <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-700 text-amber-300 font-mono text-xs font-bold">
+            <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
               {verifiedBy}
             </span>
           ) : (
@@ -1414,7 +1414,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               type="text"
               value={verifiedBy}
               onChange={(e) => setVerifiedBy(e.target.value)}
-              className="min-h-[36px] px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs outline-none focus:border-amber-500"
+              className="min-h-[36px] px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white font-mono text-xs outline-none focus:border-amber-500"
               title="Gate Name or Volunteer Name"
             />
           )}
@@ -1423,10 +1423,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           <button
             type="button"
             onClick={loadGateEntries}
-            className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors flex items-center justify-center"
+            className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
             title="Refresh attendance records"
           >
-            {loadingEntries ? '↻ Refreshing...' : '↻ Refresh Log'}
+            <span>↻</span>
+            <span>{loadingEntries ? 'Refreshing...' : 'Refresh Log'}</span>
           </button>
           {onLogout && (
             <button
@@ -1442,11 +1443,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       </div>
 
       {/* 2. Sub-Tabs Navigation */}
-      <div className="flex rounded-xl p-1 bg-slate-950 border border-slate-800 gap-1 overflow-x-auto tab-scrollbar">
+      <div className="flex rounded-2xl p-1.5 bg-slate-950/80 border border-slate-800 gap-1.5 overflow-x-auto tab-scrollbar">
         <button
           type="button"
-          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-            activeSubTab === 'scanner' ? 'bg-amber-500 text-slate-950 shadow-md font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'scanner' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
           }`}
           onClick={() => {
             setActiveSubTab('scanner');
@@ -1459,8 +1460,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         </button>
         <button
           type="button"
-          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-            activeSubTab === 'manual' ? 'bg-amber-500 text-slate-950 shadow-md font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'manual' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
           }`}
           onClick={() => setActiveSubTab('manual')}
         >
@@ -1470,8 +1471,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         </button>
         <button
           type="button"
-          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-            activeSubTab === 'spot' ? 'bg-amber-500 text-slate-950 shadow-md font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'spot' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
           }`}
           onClick={() => {
             handleResetSpot(true);
@@ -1484,13 +1485,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         </button>
         <button
           type="button"
-          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-            activeSubTab === 'log' ? 'bg-amber-500 text-slate-950 shadow-md font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'log' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
           }`}
           onClick={() => setActiveSubTab('log')}
         >
           <span>📋</span>
-          <span className="hidden sm:inline">Gate Entry Log ({gateEntries.length})</span>
+          <span className="hidden sm:inline">Gate Check-in List ({gateEntries.length})</span>
           <span className="sm:hidden">Log ({gateEntries.length})</span>
         </button>
       </div>

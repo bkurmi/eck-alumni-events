@@ -11,10 +11,13 @@ import {
   FileText,
   Edit2,
   Users,
-  Wallet,
   TrendingDown,
   TrendingUp,
   Receipt,
+  PlusCircle,
+  MinusCircle,
+  CheckCircle2,
+  CreditCard,
 } from 'lucide-react';
 import type {
   EventExpense,
@@ -256,24 +259,24 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       {/* 3 Stats Cards — responsive 1 col mobile, 3 cols desktop */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Card 1: Total Available Funds */}
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg flex flex-col justify-between">
+        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col justify-between">
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-              Total Available Funds
+              TOTAL AVAILABLE FUNDS
             </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-amber-400 font-mono tracking-tight">
+            <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               ₹{formatINR(stats.totalAvailableFunds)}
             </span>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-800/80 text-xs text-slate-400 space-y-1">
-            <div className="line-clamp-1">
+          <div className="mt-2.5 pt-2 border-t border-slate-800/80 text-xs space-y-1">
+            <div className="text-amber-400 font-medium line-clamp-1">
               ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount} attending)` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
             </div>
             {totalHeadcount > 0 && (
-              <div className="text-sky-400 font-semibold flex items-center gap-1">
-                <Users className="w-3.5 h-3.5 shrink-0" />
+              <div className="text-sky-400 font-medium flex items-center gap-1">
+                <Users className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
                 <span>
-                  {totalHeadcount} Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
+                  {totalHeadcount} Total Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
                 </span>
               </div>
             )}
@@ -282,15 +285,15 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
         {/* Card 2: Expected Budget (Plan) with Projected Surplus/Deficit */}
         <div
-          className={`p-4 rounded-2xl bg-slate-900/80 border shadow-lg flex flex-col justify-between ${
+          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col justify-between ${
             stats.isDeficit ? 'border-red-500/40' : 'border-slate-800'
           }`}
         >
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-              Expected Budget (Plan)
+              EXPECTED BUDGET (PLAN)
             </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight">
+            <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               ₹{formatINR(stats.totalExpected)}
             </span>
           </div>
@@ -314,24 +317,24 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 </>
               )}
             </span>
-            <span className="text-slate-400">
+            <span className="text-amber-400 font-medium">
               {stats.totalItems} planned line items
-              {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ~₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
+              {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
             </span>
           </div>
         </div>
 
         {/* Card 3: Real Paid Expenses with Real Surplus/Deficit */}
         <div
-          className={`p-4 rounded-2xl bg-slate-900/80 border shadow-lg flex flex-col justify-between ${
+          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col justify-between ${
             stats.liveCashBalance < 0 ? 'border-red-500/40' : 'border-slate-800'
           }`}
         >
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-              Real Paid Expenses
+              REAL PAID EXPENSES
             </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">
+            <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               ₹{formatINR(stats.totalActual)}
             </span>
           </div>
@@ -355,7 +358,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 </>
               )}
             </span>
-            <span className="text-slate-400">
+            <span className="text-amber-400 font-medium">
               {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'saved vs budget' : 'over budget'}` : ''}
             </span>
           </div>
@@ -377,7 +380,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               {stats.fundedPct}% Funded
             </span>
             <span className="text-xs text-slate-400 whitespace-nowrap">
-              Target: <strong className="text-slate-200 font-semibold font-mono">₹{formatINR(stats.totalExpected)}</strong>
+              Target: <strong className="text-slate-200 font-bold">₹{formatINR(stats.totalExpected)}</strong>
             </span>
           </div>
 
@@ -399,18 +402,17 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
           {/* Bottom Labels */}
           <div className="flex items-center justify-between text-xs font-semibold gap-2">
-            <span className="text-emerald-400 inline-flex items-center gap-1.5 whitespace-nowrap">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Collected: ₹{formatINR(stats.totalAvailableFunds)}
+            <span className="text-emerald-400 inline-flex items-center gap-1 whitespace-nowrap">
+              ▾ Collected: ₹{formatINR(stats.totalAvailableFunds)}
             </span>
             <span
-              className={`inline-flex items-center gap-1.5 whitespace-nowrap ${
+              className={`inline-flex items-center gap-1 whitespace-nowrap ${
                 stats.isDeficit ? 'text-red-400' : 'text-emerald-400'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${stats.isDeficit ? 'bg-red-400' : 'bg-emerald-400'}`} />
               {stats.isDeficit
-                ? `Deficit: ₹${formatINR(Math.abs(stats.fundingGap))}`
-                : `Surplus: +₹${formatINR(stats.fundingGap)}`}
+                ? `▾ Deficit: ₹${formatINR(Math.abs(stats.fundingGap))}`
+                : `▾ Surplus: +₹${formatINR(stats.fundingGap)}`}
             </span>
           </div>
         </div>
@@ -425,12 +427,12 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
-              <Wallet className="w-5 h-5" />
+              <CreditCard className="w-5 h-5 text-indigo-400" />
             </div>
             <div>
               <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2 flex-wrap">
                 <span>Account Settlement & Net Balance</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   Adjusted per Person
                 </span>
               </h4>
@@ -449,7 +451,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 setPresetFromAccount(undefined);
                 setIsTransferModalOpen(true);
               }}
-              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-indigo-950/40 transition-colors"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-indigo-950/40 transition-colors"
             >
               <ArrowRightLeft className="w-4 h-4" />
               <span>Transfer Funds</span>
@@ -468,15 +470,15 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               </button>
             )}
 
-            <span className="text-xs text-slate-400 font-semibold flex items-center gap-1 pl-1">
+            <span className="text-xs text-slate-300 font-semibold flex items-center gap-1 pl-1">
               {isSettlementOpen ? (
                 <>
-                  <ChevronUp className="w-4 h-4 text-amber-400" />
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
                   <span className="hidden sm:inline">Hide</span>
                 </>
               ) : (
                 <>
-                  <ChevronDown className="w-4 h-4 text-amber-400" />
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
                   <span className="hidden sm:inline">Breakdown</span>
                 </>
               )}
@@ -487,8 +489,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         {/* Settlement Content */}
         {isSettlementOpen && (
           <div className="p-3.5 sm:p-4 border-t border-slate-800/80 space-y-3">
-            {/* Account Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {/* Account Cards Grid — clean 2 columns for optimal real-estate without truncation */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
               {settlementData.accounts.map((acc) => {
                 const isSelected =
                   selectedAccountFilter.toLowerCase() === acc.accountName.toLowerCase();
@@ -516,7 +518,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                           {acc.accountName}
                         </span>
                         {acc.bankName && acc.bankName !== 'Other' && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-400">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700/60">
                             {acc.bankName}
                           </span>
                         )}
@@ -526,47 +528,29 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shrink-0 border ${
                           isPositive
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40'
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                             : isNegative
-                            ? 'bg-red-500/10 text-red-400 border-red-500/40'
-                            : 'bg-slate-800 text-slate-400 border-slate-700'
+                            ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                            : 'bg-slate-800/80 text-slate-300 border-slate-700'
                         }`}
                       >
-                        <span
-                          className={`w-3 h-3 rounded-full border text-[8px] font-black flex items-center justify-center ${
-                            isNegative
-                              ? 'border-red-400 text-red-400'
-                              : isPositive
-                              ? 'border-emerald-400 text-emerald-400'
-                              : 'border-slate-400 text-slate-400'
-                          }`}
-                        >
-                          {isNegative ? '!' : '✓'}
-                        </span>
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
                         {isPositive ? 'SURPLUS' : isNegative ? 'DUE' : 'SETTLED'}
                       </span>
                     </div>
 
                     {/* Inflow vs Spent Row */}
-                    <div className="flex items-center justify-between text-xs gap-2 pt-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3.5 h-3.5 rounded-full border border-emerald-400 text-emerald-400 text-[9px] font-bold flex items-center justify-center">
-                          +
-                        </span>
-                        <span className="text-slate-400">In:</span>
-                        <strong className="text-emerald-400 font-bold font-mono">
-                          ₹{formatINR(acc.inflow)}
-                        </strong>
+                    <div className="flex items-center justify-between text-xs gap-2 pt-1 font-bold">
+                      <div className="flex items-center gap-1 text-emerald-400">
+                        <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-slate-300 font-medium">Inflow:</span>
+                        <span>₹{formatINR(acc.inflow)}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3.5 h-3.5 rounded-full border border-red-400 text-red-400 text-[9px] font-bold flex items-center justify-center">
-                          −
-                        </span>
-                        <span className="text-slate-400">Out:</span>
-                        <strong className="text-red-400 font-bold font-mono">
-                          ₹{formatINR(acc.outflow)}
-                        </strong>
+                      <div className="flex items-center gap-1 text-rose-400">
+                        <MinusCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-slate-300 font-medium">Spent:</span>
+                        <span>₹{formatINR(acc.outflow)}</span>
                       </div>
                     </div>
 
@@ -577,7 +561,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                           <ArrowRightLeft className="w-3 h-3 text-indigo-400" />
                           <span>Transfers:</span>
                         </span>
-                        <div className="flex items-center gap-2 font-mono font-bold">
+                        <div className="flex items-center gap-2 font-bold">
                           {(acc.transferredIn || 0) > 0 && (
                             <span className="text-emerald-400">+₹{formatINR(acc.transferredIn || 0)}</span>
                           )}
@@ -592,12 +576,12 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                     <div className="flex items-center justify-between bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2">
                       <span className="text-xs text-slate-400 font-medium">Balance</span>
                       <strong
-                        className={`text-sm sm:text-base font-bold font-mono ${
-                          isPositive ? 'text-emerald-400' : isNegative ? 'text-red-400' : 'text-slate-300'
+                        className={`text-sm sm:text-base font-bold ${
+                          isPositive ? 'text-emerald-400' : isNegative ? 'text-red-400' : 'text-white'
                         }`}
                       >
                         {isPositive
-                          ? `+₹${formatINR(acc.netBalance)}`
+                          ? `₹${formatINR(acc.netBalance)}`
                           : isNegative
                           ? `-₹${formatINR(Math.abs(acc.netBalance))}`
                           : '₹0'}
@@ -606,8 +590,9 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
                     {/* Footer Actions */}
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-1 gap-2 flex-wrap">
-                      <span className="text-[11px] text-slate-500">
-                        {acc.expenseCount} {acc.expenseCount === 1 ? 'expense' : 'expenses'}
+                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <span>☑</span>
+                        <span>{acc.expenseCount} {acc.expenseCount === 1 ? 'expense' : 'expenses'} paid</span>
                       </span>
 
                       <div className="flex items-center gap-2">
@@ -627,11 +612,12 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                         </button>
 
                         <span
-                          className={`text-[11px] font-semibold underline underline-offset-2 ${
+                          className={`text-[11px] font-semibold flex items-center gap-1 underline underline-offset-2 ${
                             isSelected ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
                           }`}
                         >
-                          {isSelected ? '✓ Filtered' : 'Filter by this'}
+                          <span>≡</span>
+                          <span>{isSelected ? '✓ Filtered' : 'Filter by this'}</span>
                         </span>
                       </div>
                     </div>
