@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 import { IdCardPass } from '../components/IdCardPass';
 import {
   lookupRegistrationByMobile,
@@ -18,7 +19,9 @@ import {
   markIdCardDownloaded,
 } from '../lib/gate';
 import { supabase } from '../lib/supabase';
-import { isFeedbackEnabled } from '../lib/feedback';
+import { isEventConcluded } from '../lib/eventStatus';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
+import { ArrowLeft, Download, Camera, Check, Shield, Search, X, MessageCircle } from 'lucide-react';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
 const ID_PASS_LOCKED_MSG = 'Oops! ID Pass Locked 🔒 — Register, pay, and unlock your pass!';
@@ -41,7 +44,8 @@ function dataURLtoBlob(dataurl: string): Blob {
 
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [eventsList, setEventsList] = useState<ECKEvent[]>([]);
   const [searchMode, setSearchMode] = useState<'mobile' | 'reg_number' | 'name'>('reg_number');
   const [mobileInput, setMobileInput] = useState('');
   const [regInput, setRegInput] = useState('');
@@ -80,53 +84,105 @@ export const IdCardPage: React.FC = () => {
     id: 'deepaura-2026',
     event_name: 'ECK-RTU Alumni DeepAura 2K26',
     event_slug: 'deepaura-2k26',
+    event_code: 'REG',
     event_date: '2026-11-01',
     event_time: '5:00 PM onwards',
     location: 'Agora Ground, ECK-RTU Campus, Kota',
     description: 'Nostalgic reunion, networking, dinner & Diwali celebrations.',
     registration_fee: 800,
-    upi_id: '9799951857@upi',
+    upi_id: null,
     banner_image_url: '/deepaura-banner.jpg',
     tagline: '“दीप जले, यादें मुस्कुराएँ।”',
     theme_primary_color: '#f59e0b',
     theme_accent_color: '#d97706',
-    qr_image_url: '/qr-1.png',
+    qr_image_url: null,
     status: 'OPEN',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
+  const [activeEvent, setActiveEvent] = useState<ECKEvent>(defaultEvent);
+  const isConcluded = isEventConcluded(activeEvent);
+
+  // Load available events and resolve active event based on query param or status
+  useEffect(() => {
+    let isMounted = true;
+    async function loadEvents() {
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select('*')
+          .order('event_date', { ascending: false });
+
+        if (!error && data && data.length > 0 && isMounted) {
+          const list = data as ECKEvent[];
+          setEventsList(list);
+
+          const eventParam = searchParams.get('event');
+          const matched = eventParam
+            ? list.find((e) => e.event_slug === eventParam)
+            : null;
+
+          if (matched) {
+            setActiveEvent(matched);
+          } else {
+            const openEv = list.find((e) => e.status === 'OPEN');
+            setActiveEvent(openEv || list[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load events for ID cards:', err);
+      }
+    }
+    loadEvents();
+    return () => {
+      isMounted = false;
+    };
+  }, [searchParams]);
+
   // If feature is disabled by .env flag
   if (!isEnabled) {
     return (
-      <div className="id-card-page-wrapper">
-        <Header />
-        <main className="id-card-content-container">
-          <div className="form-back-nav" style={{ marginBottom: '1.25rem' }}>
-            <Link to="/" className="btn-back-link">
-              ← Back to Event Details
+      <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
+        <Header currentEventSlug={activeEvent.event_slug} maxWidth="max-w-3xl" />
+        <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-6 flex-1 flex flex-col items-center">
+          <div className="w-full mb-4">
+            <Link to="/" className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-amber-400 hover:text-amber-300 transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Event Details</span>
             </Link>
           </div>
-          <div className="id-disabled-card">
-            <div className="id-disabled-icon">⏳</div>
-            <h1 className="id-disabled-title">ID Card Generation Opening Soon</h1>
-            <p className="id-disabled-desc">
-              Event ID Pass generation will be enabled <strong>4 to 5 days prior to the event</strong>.
-            </p>
-            <div className="id-disabled-badge-box">
-              <span>Event Date: <strong>1st November 2026</strong></span>
-              <span>Venue: <strong>Agora Ground, ECK-RTU, Kota</strong></span>
+          <div className="w-full max-w-md bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl backdrop-blur-md">
+            <div className="w-14 h-14 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl">
+              ⏳
             </div>
-            <p className="id-disabled-tip">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">ID Card Generation Opening Soon</h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Event ID Pass generation will be enabled <strong className="text-white">4 to 5 days prior to the event</strong>.
+            </p>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-amber-200/90 flex flex-col gap-1 text-left">
+              <span>Event Date: <strong className="text-white">1st November 2026</strong></span>
+              <span>Venue: <strong className="text-white">Agora Ground, ECK-RTU, Kota</strong></span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
               Please ensure you have completed your registration and payment verification in advance so your pass is ready for instant download.
             </p>
-            <div className="id-disabled-actions">
-              <Link to="/" className="btn-primary-action">
-                ← Return to Event Registration
+            <div className="pt-2">
+              <Link
+                to="/"
+                className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-colors inline-flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Return to Event Registration</span>
               </Link>
             </div>
           </div>
         </main>
+        <Footer
+          eventName={activeEvent.event_name}
+          tagline={activeEvent.tagline}
+          location={activeEvent.location}
+        />
       </div>
     );
   }
@@ -173,7 +229,7 @@ export const IdCardPage: React.FC = () => {
     setDownloadSuccess(false);
 
     try {
-      const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
+      const res = await lookupRegistrationByMobile(activeEvent.event_slug, clean);
       if (!res.found || !res.alumni) {
         setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
@@ -210,19 +266,65 @@ export const IdCardPage: React.FC = () => {
 
   // Reusable Registration Number Lookup (formats digits to REG-XXXXX with up to 5 digits, prepending 0s)
   const executeRegLookup = async (rawRegOrDigits: string) => {
-    const formattedReg = formatRegistrationNumberInput(rawRegOrDigits);
-    if (!formattedReg) {
-      setErrorMsg('Please enter a valid numeric registration number (up to 5 digits).');
-      return;
-    }
+    const rawClean = (rawRegOrDigits || '').trim();
+    const digitsOnly = rawClean.replace(/\D/g, '');
+    const numValue = Number(digitsOnly);
+    const eventPrefix = (activeEvent.event_code || 'REG').toUpperCase();
 
     setLoading(true);
     setErrorMsg(null);
     setRegistration(null);
     setDownloadSuccess(false);
 
+    // 1. Instant check in preloaded allRegistrations (matches Gate Verification Portal)
+    if (allRegistrations && allRegistrations.length > 0 && digitsOnly) {
+      const matchInMem = allRegistrations.find((r) => {
+        const rDigits = (r.registration_number || '').replace(/\D/g, '');
+        return (
+          r.registration_number?.toUpperCase() === rawClean.toUpperCase() ||
+          rDigits === digitsOnly ||
+          (numValue > 0 && Number(rDigits) === numValue)
+        );
+      });
+
+      if (matchInMem && matchInMem.alumni) {
+        if (matchInMem.attendance_status !== 'yes') {
+          setErrorMsg(ID_PASS_LOCKED_MSG);
+          setLoading(false);
+          return;
+        }
+
+        const existingPhoto = await resolvePhotoWithStorageFallback(matchInMem);
+        const enrichedRes = { ...matchInMem, photo_url: existingPhoto || matchInMem.photo_url };
+        cachedEntryBlobRef.current = null;
+        cachedEntryDataUrlRef.current = null;
+        cachedSocialBlobRef.current = null;
+        cachedSocialDataUrlRef.current = null;
+        setRegistration(enrichedRes);
+        setIsPhoneVerified(false);
+        setPassViewMode('social');
+        setVerifyPhoneInput('');
+        setVerifyPhoneError(null);
+        if (existingPhoto) {
+          setPhotoPreview(existingPhoto);
+        } else {
+          setPhotoPreview(null);
+        }
+        setLoading(false);
+        return;
+      }
+    }
+
+    // 2. Network RPC / Table Lookup
+    const formattedReg = formatRegistrationNumberInput(rawRegOrDigits, eventPrefix);
+    if (!formattedReg) {
+      setErrorMsg('Please enter a valid numeric registration number (up to 5 digits).');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await lookupRegistrationByRegNumber('deepaura-2k26', formattedReg);
+      const res = await lookupRegistrationByRegNumber(activeEvent.event_slug, formattedReg, eventPrefix);
       if (!res.found || !res.alumni) {
         setErrorMsg(ID_PASS_LOCKED_MSG);
         setLoading(false);
@@ -273,8 +375,9 @@ export const IdCardPage: React.FC = () => {
       setErrorMsg('Please enter your registration number (e.g. 39 or 00039).');
       return;
     }
-    // Automatically pad to 5 digits
-    const padded = digitsOnly.padStart(5, '0');
+    const eventPrefix = (activeEvent.event_code || 'REG').toUpperCase();
+    const padLen = eventPrefix === 'REG' ? 5 : 4;
+    const padded = digitsOnly.padStart(padLen, '0');
     setRegInput(padded);
     executeRegLookup(padded);
   };
@@ -284,7 +387,7 @@ export const IdCardPage: React.FC = () => {
     let isMounted = true;
     setLoadingAllRegistrations(true);
 
-    fetchAllRegistrationsForLookup(defaultEvent.event_slug)
+    fetchAllRegistrationsForLookup(activeEvent.event_slug)
       .then((list) => {
         if (isMounted) setAllRegistrations(list);
       })
@@ -298,7 +401,7 @@ export const IdCardPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeEvent.event_slug]);
 
   // Instant In-Memory Predictive Search Filter (0ms delay on keystrokes)
   const filteredNameRegistrations = React.useMemo(() => {
@@ -315,6 +418,7 @@ export const IdCardPage: React.FC = () => {
         const name = (alumni.name || '').toLowerCase();
         const branch = (alumni.engineering_discipline || '').toLowerCase();
         const year = String(alumni.year_of_passing || '');
+        const batchStr = (alumni.batch || (alumni.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '')).toLowerCase();
         const mobile = cleanMobileNumber(alumni.mobile || '');
         const regNo = (reg.registration_number || '').toLowerCase();
         const city = (alumni.city || '').toLowerCase();
@@ -324,6 +428,7 @@ export const IdCardPage: React.FC = () => {
           (token) =>
             name.includes(token) ||
             branch.includes(token) ||
+            batchStr.includes(token) ||
             year.includes(token) ||
             mobile.includes(token) ||
             regNo.includes(token) ||
@@ -608,7 +713,8 @@ export const IdCardPage: React.FC = () => {
     const name = alumni?.name || 'Alumnus';
     const regNum = registration.registration_number || 'Pass';
     const discipline = alumni?.engineering_discipline ? `${alumni.engineering_discipline}` : '';
-    const batch = alumni?.year_of_passing ? `Batch of ${alumni.year_of_passing}` : '';
+    const batchName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '');
+    const batch = batchName ? `Batch ${batchName}` : '';
     const branchAndBatch = [discipline, batch].filter(Boolean).join(' • ');
 
     const totalGuests =
@@ -621,16 +727,24 @@ export const IdCardPage: React.FC = () => {
         ? `${window.location.origin}/id-card`
         : 'https://eck-alumni-events.pages.dev/id-card';
 
+    const eventDateFormatted = activeEvent.event_date
+      ? new Date(activeEvent.event_date).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : 'Event Day';
+
     const lines = [
-      '🪔 *ECK-RTU Alumni DeepAura 2K26* 🪔',
+      `🪔 *${activeEvent.event_name || 'ECK-RTU Alumni'}* 🪔`,
       '🎟️ *Official Entry ID Card Pass*',
       '',
       `👤 *Attendee:* ${name}`,
       `🎫 *Registration ID:* ${regNum}`,
       ...(branchAndBatch ? [`🎓 *Branch & Batch:* ${branchAndBatch}`] : []),
       ...(totalGuests ? [`👥 *Total Attendees:* ${totalGuests}`] : []),
-      '📅 *Event Date:* 1st November 2026 | 5:00 PM onwards',
-      '📍 *Venue:* Agora Ground, ECK-RTU Campus, Kota',
+      `📅 *Event Date:* ${eventDateFormatted} | ${activeEvent.event_time || '5:00 PM onwards'}`,
+      `📍 *Venue:* ${activeEvent.location || 'ECK-RTU Campus, Kota'}`,
       '',
       `👉 *Get your pass:* ${baseUrl}`,
       '',
@@ -736,312 +850,391 @@ export const IdCardPage: React.FC = () => {
   };
 
   return (
-    <div className="id-card-page-wrapper">
-      <Header />
+    <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
+      <Header currentEventSlug={activeEvent.event_slug} maxWidth="max-w-3xl" />
 
-      <main className="id-card-content-container">
+      <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 space-y-6">
         {/* Back navigation to Event Details */}
-        <div className="form-back-nav" style={{ marginBottom: '1.25rem' }}>
-          <Link to="/" className="btn-back-link">
-            ← Back to Event Details
+        <div>
+          <Link to="/" className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-amber-400 hover:text-amber-300 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Event Details</span>
           </Link>
         </div>
 
         {/* Page Banner Title */}
-        <div className="id-page-banner">
-          <span className="badge-pill-accent">Alumni Event Pass Portal</span>
-          <h1 className="id-page-title">Generate Your Event ID Card</h1>
-          <p className="id-page-subtitle">
-            Search by your phone number, Registration ID, or Attendee Name, upload your photograph, and save your official pass with QR code for quick gate entry on 1st November.
+        <div className="w-full text-center space-y-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            Alumni Event Pass Portal
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Generate Your Event ID Card</h1>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
+            Search by your phone number, Registration ID, or Attendee Name, upload your photograph, and save your official pass with QR code for {activeEvent.event_name}.
           </p>
         </div>
 
         {/* Step 1: Lookup Box */}
         {!registration ? (
-          <div className="id-lookup-card">
-            {/* Search Type Selector Tabs */}
-            <div className="id-search-tabs" role="tablist" aria-label="Search ID Pass by">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={searchMode === 'reg_number'}
-                className={`id-search-tab ${searchMode === 'reg_number' ? 'active' : ''}`}
-                onClick={() => {
-                  setSearchMode('reg_number');
-                  setErrorMsg(null);
-                }}
-              >
-                <span className="id-tab-icon">🎫</span>
-                <span>Reg ID</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={searchMode === 'mobile'}
-                className={`id-search-tab ${searchMode === 'mobile' ? 'active' : ''}`}
-                onClick={() => {
-                  setSearchMode('mobile');
-                  setErrorMsg(null);
-                }}
-              >
-                <span className="id-tab-icon">📱</span>
-                <span>Mobile</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={searchMode === 'name'}
-                className={`id-search-tab ${searchMode === 'name' ? 'active' : ''}`}
-                onClick={() => {
-                  setSearchMode('name');
-                  setErrorMsg(null);
-                }}
-              >
-                <span className="id-tab-icon">👤</span>
-                <span>Name</span>
-              </button>
-            </div>
-
-            {searchMode === 'reg_number' && (
-              <>
-                <h2 className="id-lookup-title">Enter Registration Number</h2>
-                <p className="id-lookup-desc">
-                  Enter your Registration ID (up to 5 digits).
-                </p>
-
-                <form onSubmit={handleRegLookupSubmit} className="id-lookup-form">
-                  <div className="id-integrated-input-box id-reg-input-group">
-                    <span className="id-input-prefix id-reg-prefix" title="Registration prefix REG- is fixed">
-                      REG-
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder="e.g. 39"
-                      maxLength={5}
-                      value={regInput}
-                      onChange={(e) => {
-                        // Strictly allow numbers only, max 5 digits
-                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
-                        setRegInput(cleaned);
-                      }}
-                      className="id-phone-input id-reg-input"
-                      required
-                      autoFocus
-                    />
-                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
-                      {loading ? 'Finding...' : 'Get Pass →'}
-                    </button>
-                  </div>
-
-                  <p className="id-reg-hint-note">
-                    💡 Enter your number (e.g. <strong>39</strong> or <strong>00039</strong>)
-                  </p>
-
-                  {errorMsg && (
-                    <div className="id-error-alert">
-                      <span>{errorMsg}</span>
-                      {errorMsg === ID_PASS_LOCKED_MSG && (
-                        <Link to="/" className="id-error-register-link">
-                          Register / Confirm Attendance Now →
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                </form>
-              </>
+          <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md space-y-5">
+            {eventsList.length > 1 && (
+              <div className="space-y-1.5 pb-2 border-b border-slate-800">
+                <label className="block text-xs font-semibold text-slate-400">
+                  Select Event Edition:
+                </label>
+                <select
+                  value={activeEvent.event_slug}
+                  onChange={(e) => {
+                    const found = eventsList.find((ev) => ev.event_slug === e.target.value);
+                    if (found) {
+                      setActiveEvent(found);
+                      setSearchParams({ event: found.event_slug });
+                      setRegistration(null);
+                      setErrorMsg(null);
+                    }
+                  }}
+                  className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/80 border border-amber-500/40 rounded-xl text-base text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                >
+                  {eventsList.map((ev) => (
+                    <option key={ev.id} value={ev.event_slug} className="bg-slate-900 text-slate-100">
+                      {ev.event_name} {ev.status === 'CLOSED' ? '(Concluded Keepsake)' : '(Active)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
 
-            {searchMode === 'mobile' && (
-              <>
-                <h2 className="id-lookup-title">Enter Registered Mobile Number</h2>
-                <p className="id-lookup-desc">
-                  We'll instantly look up your verified registration and prepare your delegate pass.
+            {isConcluded ? (
+              <div className="p-6 rounded-2xl bg-slate-950/70 border border-amber-500/30 text-center space-y-3">
+                <div className="text-4xl">🔒</div>
+                <h3 className="text-lg sm:text-xl font-bold text-white">
+                  Pass Downloads Concluded
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+                  Gate pass downloads for <strong>{activeEvent.event_name}</strong> have closed as the event concluded on {activeEvent.event_date}.
                 </p>
-
-                <form onSubmit={handleLookup} className="id-lookup-form">
-                  <div className="id-integrated-input-box">
-                    <span className="id-input-prefix">+91</span>
-                    <input
-                      type="tel"
-                      placeholder="10-digit number"
-                      maxLength={10}
-                      value={mobileInput}
-                      onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
-                      className="id-phone-input"
-                      required
-                      autoFocus
-                    />
-                    <button type="submit" className="id-integrated-submit-btn" disabled={loading}>
-                      {loading ? 'Finding...' : 'Get Pass →'}
-                    </button>
-                  </div>
-
-                  {errorMsg && (
-                    <div className="id-error-alert">
-                      <span>{errorMsg}</span>
-                      {errorMsg === ID_PASS_LOCKED_MSG && (
-                        <Link to="/" className="id-error-register-link">
-                          Register / Confirm Attendance Now →
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                </form>
-              </>
-            )}
-
-            {searchMode === 'name' && (
+                <div className="pt-2">
+                  <Link
+                    to={`/events/${activeEvent.event_slug}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-colors shadow-lg shadow-amber-500/20"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>View Event Memories &amp; Recap</span>
+                  </Link>
+                </div>
+              </div>
+            ) : (
               <>
-                <h2 className="id-lookup-title">Search by Attendee Name</h2>
-                <p className="id-lookup-desc">
-                  Type your name, passing batch, or branch to find and load your delegate pass.
-                </p>
+                {/* Search Type Selector Tabs */}
+                <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl bg-slate-950/80 border border-slate-800" role="tablist" aria-label="Search ID Pass by">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={searchMode === 'reg_number'}
+                    className={`min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                      searchMode === 'reg_number'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                    }`}
+                    onClick={() => {
+                      setSearchMode('reg_number');
+                      setErrorMsg(null);
+                    }}
+                  >
+                    <span>🎫</span>
+                    <span>Reg ID</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={searchMode === 'mobile'}
+                    className={`min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                      searchMode === 'mobile'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                    }`}
+                    onClick={() => {
+                      setSearchMode('mobile');
+                      setErrorMsg(null);
+                    }}
+                  >
+                    <span>📱</span>
+                    <span>Mobile</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={searchMode === 'name'}
+                    className={`min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                      searchMode === 'name'
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                    }`}
+                    onClick={() => {
+                      setSearchMode('name');
+                      setErrorMsg(null);
+                    }}
+                  >
+                    <span>👤</span>
+                    <span>Name</span>
+                  </button>
+                </div>
 
-                <div className="name-search-container id-name-search-box">
-                  {/* Search Input Bar */}
-                  <div className="name-search-input-wrapper">
-                    <span className="name-search-icon">🔍</span>
-                    <input
-                      type="text"
-                      placeholder="Type name (e.g. Bhawesh, Rahul), batch (2008), or branch..."
-                      value={nameSearchQuery}
-                      onChange={(e) => {
-                        setNameSearchQuery(e.target.value);
-                        setErrorMsg(null);
-                      }}
-                      className="name-search-input"
-                      autoFocus
-                    />
-                    {nameSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNameSearchQuery('');
-                          setErrorMsg(null);
-                        }}
-                        className="name-search-clear-btn"
-                        title="Clear search"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-
-                  {errorMsg && (
-                    <div className="id-error-alert">
-                      <span>{errorMsg}</span>
-                      {errorMsg === ID_PASS_LOCKED_MSG && (
-                        <Link to="/" className="id-error-register-link">
-                          Register / Confirm Attendance Now →
-                        </Link>
-                      )}
+                {searchMode === 'reg_number' && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <h2 className="text-base sm:text-lg font-bold text-white">Enter Registration Number</h2>
+                      <p className="text-xs sm:text-sm text-slate-400">
+                        Enter your Registration ID (up to 5 digits).
+                      </p>
                     </div>
-                  )}
 
-                  {/* Hints / Chips or Results List - Hidden whenever an error message is active */}
-                  {!errorMsg && (
-                    <>
-                      {nameSearchQuery.trim().length < 2 ? (
-                        <div className="name-search-hint-box">
-                          <p>
-                            ⚡ <strong>Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
-                          </p>
-                          <div className="name-search-chips">
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
-                            <span className="name-search-chip" onClick={() => setNameSearchQuery('2008')}>🎓 2008</span>
-                          </div>
+                    <form onSubmit={handleRegLookupSubmit} className="space-y-3">
+                      <div className="flex items-center rounded-xl bg-slate-950/80 border border-slate-700 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 overflow-hidden">
+                        <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none" title={`Registration prefix ${(activeEvent.event_code || 'REG').toUpperCase()}-`}>
+                          {(activeEvent.event_code || 'REG').toUpperCase()}-
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="e.g. 39"
+                          maxLength={5}
+                          value={regInput}
+                          onChange={(e) => {
+                            const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
+                            setRegInput(cleaned);
+                          }}
+                          className="flex-1 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
+                          required
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          className="px-4 sm:px-5 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
+                          disabled={loading}
+                        >
+                          {loading ? 'Finding...' : 'Get Pass →'}
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-slate-400">
+                        💡 Enter your number (e.g. <strong>39</strong> or <strong>00039</strong>)
+                      </p>
+
+                      {errorMsg && (
+                        <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs sm:text-sm flex flex-col gap-1.5">
+                          <span>{errorMsg}</span>
+                          {errorMsg === ID_PASS_LOCKED_MSG && (
+                            <Link to="/" className="text-amber-400 hover:underline font-semibold">
+                              Register / Confirm Attendance Now →
+                            </Link>
+                          )}
                         </div>
-                      ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
-                        <div className="name-search-hint-box" style={{ padding: '1.25rem' }}>
-                          <p>🔍 Loading registered alumni directory...</p>
+                      )}
+                    </form>
+                  </div>
+                )}
+
+                {searchMode === 'mobile' && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <h2 className="text-base sm:text-lg font-bold text-white">Enter Registered Mobile Number</h2>
+                      <p className="text-xs sm:text-sm text-slate-400">
+                        We'll instantly look up your verified registration and prepare your delegate pass.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleLookup} className="space-y-3">
+                      <div className="flex items-center rounded-xl bg-slate-950/80 border border-slate-700 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 overflow-hidden">
+                        <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none">+91</span>
+                        <input
+                          type="tel"
+                          placeholder="10-digit number"
+                          maxLength={10}
+                          value={mobileInput}
+                          onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
+                          className="flex-1 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
+                          required
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          className="px-4 sm:px-5 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
+                          disabled={loading}
+                        >
+                          {loading ? 'Finding...' : 'Get Pass →'}
+                        </button>
+                      </div>
+
+                      {errorMsg && (
+                        <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs sm:text-sm flex flex-col gap-1.5">
+                          <span>{errorMsg}</span>
+                          {errorMsg === ID_PASS_LOCKED_MSG && (
+                            <Link to="/" className="text-amber-400 hover:underline font-semibold">
+                              Register / Confirm Attendance Now →
+                            </Link>
+                          )}
                         </div>
-                      ) : filteredNameRegistrations.length === 0 ? (
-                        <div className="name-search-hint-box">
-                          <p>
-                            🔍 No registered alumni found matching <strong>"{nameSearchQuery}"</strong>.
-                          </p>
-                          <p style={{ fontSize: '0.82rem', margin: '6px 0 0 0' }}>
-                            Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
-                          </p>
+                      )}
+                    </form>
+                  </div>
+                )}
+
+                {searchMode === 'name' && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <h2 className="text-base sm:text-lg font-bold text-white">Search by Attendee Name</h2>
+                      <p className="text-xs sm:text-sm text-slate-400">
+                        Type your name, passing batch, or branch to find and load your delegate pass.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {/* Search Input Bar */}
+                      <div className="relative flex items-center">
+                        <Search className="w-5 h-5 text-slate-400 absolute left-3.5 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Type name (e.g. Bhawesh, Rahul), batch (A, 2008), or branch..."
+                          value={nameSearchQuery}
+                          onChange={(e) => {
+                            setNameSearchQuery(e.target.value);
+                            setErrorMsg(null);
+                          }}
+                          className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-slate-950/80 border border-slate-700 rounded-xl text-base text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
+                          autoFocus
+                        />
+                        {nameSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNameSearchQuery('');
+                              setErrorMsg(null);
+                            }}
+                            className="absolute right-3 p-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                            title="Clear search"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {errorMsg && (
+                        <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs sm:text-sm flex flex-col gap-1.5">
+                          <span>{errorMsg}</span>
+                          {errorMsg === ID_PASS_LOCKED_MSG && (
+                            <Link to="/" className="text-amber-400 hover:underline font-semibold">
+                              Register / Confirm Attendance Now →
+                            </Link>
+                          )}
                         </div>
-                      ) : (
+                      )}
+
+                      {!errorMsg && (
                         <>
-                          <div className="name-search-header-meta">
-                            <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
-                            <span>Click to load pass</span>
-                          </div>
+                          {nameSearchQuery.trim().length < 2 ? (
+                            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2 text-xs text-slate-400">
+                              <p>
+                                ⚡ <strong className="text-white">Instant Search:</strong> Type at least 2 letters of your name, passing year (e.g. <em>2012</em>), or engineering branch.
+                              </p>
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                <button type="button" className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-500/40 hover:text-amber-300 text-xs cursor-pointer transition-colors" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</button>
+                                <button type="button" className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-500/40 hover:text-amber-300 text-xs cursor-pointer transition-colors" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</button>
+                                <button type="button" className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-500/40 hover:text-amber-300 text-xs cursor-pointer transition-colors" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</button>
+                                <button type="button" className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-500/40 hover:text-amber-300 text-xs cursor-pointer transition-colors" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</button>
+                                <button type="button" className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-500/40 hover:text-amber-300 text-xs cursor-pointer transition-colors" onClick={() => setNameSearchQuery('2024')}>🎓 2024</button>
+                                <button type="button" className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-500/40 hover:text-amber-300 text-xs cursor-pointer transition-colors" onClick={() => setNameSearchQuery('2008')}>🎓 2008</button>
+                              </div>
+                            </div>
+                          ) : loadingAllRegistrations && allRegistrations.length === 0 ? (
+                            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-400">
+                              <p>🔍 Loading registered alumni directory...</p>
+                            </div>
+                          ) : filteredNameRegistrations.length === 0 ? (
+                            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-400 space-y-1">
+                              <p>
+                                🔍 No registered alumni found matching <strong className="text-white">"{nameSearchQuery}"</strong>.
+                              </p>
+                              <p>
+                                Check spelling or switch to the <strong>Mobile</strong> or <strong>Reg ID</strong> tab above.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                                <span>Found {filteredNameRegistrations.length} registered {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
+                                <span>Click to load pass</span>
+                              </div>
 
-                          <div className="name-search-results-list">
-                            {filteredNameRegistrations.map((reg) => {
-                              const alumni = reg.alumni;
-                              if (!alumni) return null;
+                              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                {filteredNameRegistrations.map((reg) => {
+                                  const alumni = reg.alumni;
+                                  if (!alumni) return null;
 
-                              return (
-                                <div
-                                  key={reg.registration_id}
-                                  className="name-search-result-card"
-                                  onClick={() => handleSelectAttendee(reg)}
-                                  role="button"
-                                  tabIndex={0}
-                                >
-                                  <div className="name-result-main-row">
-                                    {/* Top row: Name + Reg ID on left, Get Pass indicator on right */}
-                                    <div className="name-result-top-row">
-                                      <div className="name-result-title-group">
-                                        <span className="name-result-name">{alumni.name}</span>
-                                        <span className="name-result-reg-pill">
-                                          {reg.registration_number}
-                                        </span>
+                                  return (
+                                    <div
+                                      key={reg.registration_id}
+                                      className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-amber-500/40 hover:bg-slate-900 transition-all cursor-pointer flex items-center justify-between gap-3 text-left"
+                                      onClick={() => handleSelectAttendee(reg)}
+                                      role="button"
+                                      tabIndex={0}
+                                    >
+                                      <div className="space-y-0.5 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-sm text-white truncate">{alumni.name}</span>
+                                          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-900 border border-slate-700 text-amber-300 shrink-0">
+                                            {reg.registration_number}
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-slate-400 truncate">
+                                          🎓 Batch {alumni.batch || getBatchFromPassingYear(alumni.year_of_passing)} • {alumni.engineering_discipline || 'Alumni'}
+                                        </div>
                                       </div>
 
-                                      <div className="name-result-status-col">
-                                        <span className={`name-result-select-indicator ${reg.attendance_status !== 'yes' ? 'locked' : ''}`}>
+                                      <div className="shrink-0">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                          reg.attendance_status === 'yes'
+                                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                            : 'bg-slate-800 text-slate-400'
+                                        }`}>
                                           {reg.attendance_status === 'yes' ? 'Get Pass →' : 'Locked 🔒'}
                                         </span>
                                       </div>
                                     </div>
-
-                                    {/* Middle row: Branch & Passing Year */}
-                                    <div className="name-result-branch-line">
-                                      <span className="meta-icon">🎓</span>
-                                      <span className="meta-text">
-                                        {alumni.engineering_discipline || 'Alumni'}
-                                        {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </>
                       )}
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
-            <div className="id-lookup-footer">
-              <span>Haven't registered yet? </span>
-              <Link to="/" className="id-link-accent">Register here for DeepAura 2K26</Link>
-            </div>
+            {!isConcluded && (
+              <div className="pt-2 text-center text-xs text-slate-400 border-t border-slate-800/80">
+                <span>Haven't registered yet? </span>
+                <Link to={`/events/${activeEvent.event_slug}`} className="text-amber-400 hover:underline font-semibold ml-1">
+                  Register here for {activeEvent.event_name}
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           /* Step 2 & 3: Photo Upload and Live ID Card */
-          <div className="id-card-active-section">
+          <div className="space-y-6">
             {/* Top Toolbar / Attendee Verified Notice */}
-            <div className="id-verified-bar">
-              <div className="id-verified-info">
-                <span className="id-verified-check">✓ Verified Registration</span>
-                <span className="id-verified-name">{registration.alumni?.name}</span>
-                <span className="id-verified-reg">({registration.registration_number})</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-white">
+              <div className="flex items-center gap-2 flex-wrap text-sm">
+                <span className="font-bold text-emerald-300 flex items-center gap-1">
+                  <Check className="w-4 h-4" />
+                  <span>Verified Registration</span>
+                </span>
+                <span className="font-bold text-white">{registration.alumni?.name}</span>
+                <span className="font-mono text-amber-300">({registration.registration_number})</span>
               </div>
               <button
                 type="button"
@@ -1049,58 +1242,58 @@ export const IdCardPage: React.FC = () => {
                   setRegistration(null);
                   setPhotoPreview(null);
                 }}
-                className="btn-text-ghost"
+                className="text-xs text-slate-400 hover:text-white underline cursor-pointer self-start sm:self-auto"
               >
                 Change / Search Again
               </button>
             </div>
 
             {/* Photo Upload / Selfie Controls */}
-            <div className="id-photo-action-card">
-              <div className="id-photo-prompt">
-                <h3>📸 Attendee Photograph</h3>
-                <p>
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-lg">
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-white">📸 Attendee Photograph</h3>
+                <p className="text-xs text-slate-400">
                   Add a clear headshot photo or selfie for your ID card badge.
                 </p>
               </div>
 
-              <div className="id-photo-buttons-row">
-                {/* Hidden Native File Inputs */}
+              <div className="flex items-center gap-2 shrink-0">
                 <input
                   type="file"
                   ref={selfieInputRef}
                   accept="image/*"
                   capture="user"
-                  style={{ display: 'none' }}
+                  className="hidden"
                   onChange={handlePhotoSelect}
                 />
 
                 <button
                   type="button"
-                  className="btn-photo-action selfie-btn"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-700 transition-colors cursor-pointer active:scale-95"
                   onClick={() => selfieInputRef.current?.click()}
                   disabled={uploadingPhoto}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                    <circle cx="12" cy="13" r="4" />
-                  </svg>
+                  <Camera className="w-4 h-4" />
                   <span>{photoPreview ? 'Retake Selfie' : 'Take Selfie'}</span>
                 </button>
               </div>
 
-              {uploadingPhoto && <p className="id-uploading-indicator">Optimizing and saving photo...</p>}
+              {uploadingPhoto && <p className="text-xs text-amber-400 animate-pulse">Optimizing and saving photo...</p>}
             </div>
 
             {/* Pass Mode Toggle Switcher */}
-            <div className="id-pass-mode-toggle" role="tablist" aria-label="Pass Display Mode">
+            <div className="flex p-1 rounded-full bg-slate-950/80 border border-slate-800 max-w-md mx-auto w-full gap-1" role="tablist" aria-label="Pass Display Mode">
               {/* 1. Social Share Pass (First & Active) */}
               <button
                 type="button"
                 role="tab"
                 aria-selected={passViewMode === 'social'}
                 onClick={() => setPassViewMode('social')}
-                className={`btn-pass-mode-tab tab-social ${passViewMode === 'social' ? 'active' : ''}`}
+                className={`flex-1 min-h-[44px] rounded-full text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  passViewMode === 'social'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
                 title="View privacy-protected pass without personal QR code for sharing"
               >
                 <span>🌟 Social Share Pass</span>
@@ -1121,12 +1314,12 @@ export const IdCardPage: React.FC = () => {
                   }
                   setPassViewMode('entry');
                 }}
-                className={`btn-pass-mode-tab ${
+                className={`flex-1 min-h-[44px] rounded-full text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${
                   !IS_GATE_PASS_RELEASED
-                    ? 'tab-disabled'
+                    ? 'opacity-40 cursor-not-allowed text-slate-500'
                     : passViewMode === 'entry'
-                    ? 'active'
-                    : ''
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold shadow-md shadow-amber-500/20 cursor-pointer'
+                    : 'text-slate-400 hover:text-white cursor-pointer'
                 }`}
                 title={
                   !IS_GATE_PASS_RELEASED
@@ -1138,7 +1331,7 @@ export const IdCardPage: React.FC = () => {
               >
                 <span>
                   {!IS_GATE_PASS_RELEASED ? (
-                    <>🔒 Gate Pass <span className="tab-subtext">(Coming Soon)</span></>
+                    <>🔒 Gate Pass <span className="text-[10px] opacity-75">(Coming Soon)</span></>
                   ) : isPhoneVerified ? (
                     '🎟️ Gate Entry Pass'
                   ) : (
@@ -1148,42 +1341,35 @@ export const IdCardPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Ownership verified subtle indicator (only when Gate Pass released & active) */}
+            {/* Ownership verified subtle indicator */}
             {IS_GATE_PASS_RELEASED && isPhoneVerified && passViewMode === 'entry' && (
-              <div
-                className="id-unlock-verified-pill-wrapper"
-                style={{ width: '100%', display: 'flex', justifyContent: 'center', margin: '0.25rem 0 0.85rem 0' }}
-              >
-                <div className="id-unlock-verified-pill">
+              <div className="w-full flex justify-center">
+                <div className="px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs">
                   <span>✅ <strong>Ownership Confirmed:</strong> Gate Entry Pass is unlocked and ready!</span>
                 </div>
               </div>
             )}
 
-            {/* Mobile pass indicator */}
-            <div
-              className="ticket-mobile-indicator"
-              style={{ alignSelf: 'center', marginLeft: 'auto', marginRight: 'auto', textAlign: 'center' }}
-            >
+            {/* Mobile pass indicator note */}
+            <div className="text-center text-xs text-slate-400">
               <span>
                 {passViewMode === 'social' || !IS_GATE_PASS_RELEASED
                   ? '🔒 Social Pass: Personal phone QR code shielded for safe sharing with friends & groups'
-                  : '🎟️ Official Entry Pass: Show this QR code at the ECK-RTU gate on 1st November'}
+                  : `🎟️ Official Entry Pass: Show this QR code at the gate on ${activeEvent.event_date ? new Date(activeEvent.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'event day'}`}
               </span>
             </div>
 
             {/* Live Generated ID Cards */}
-            <div className="id-preview-container">
-              {/* Visible Pass based on active view mode & verification */}
+            <div className="w-full flex flex-col items-center justify-center py-2">
               <IdCardPass
                 registration={registration}
-                event={defaultEvent}
+                event={activeEvent}
                 photoUrl={photoPreview}
                 cardRef={passViewMode === 'social' || !isPhoneVerified ? socialCardRef : entryCardRef}
                 hideQr={passViewMode === 'social' || !isPhoneVerified}
               />
 
-              {/* Offscreen Pass so both versions are always rendered in DOM & pre-cached for 0ms lag (rendered once verified) */}
+              {/* Offscreen Pass for 0ms download speed */}
               {isPhoneVerified && (
                 <div
                   style={{
@@ -1198,7 +1384,7 @@ export const IdCardPage: React.FC = () => {
                 >
                   <IdCardPass
                     registration={registration}
-                    event={defaultEvent}
+                    event={activeEvent}
                     photoUrl={photoPreview}
                     cardRef={passViewMode === 'social' ? entryCardRef : socialCardRef}
                     hideQr={passViewMode === 'social' ? false : true}
@@ -1208,22 +1394,22 @@ export const IdCardPage: React.FC = () => {
             </div>
 
             {/* Action Buttons to Save / Download */}
-            <div className="id-download-cta-box">
+            <div className="w-full space-y-4 pt-2">
               {selfiePrompt && (
-                <div className="id-selfie-funny-alert" role="alert">
-                  <div className="id-funny-alert-icon">🤳</div>
-                  <div className="id-funny-alert-body">
-                    <h4 className="id-funny-alert-title">Almost there! Just add your selfie 📸✨</h4>
-                    <p className="id-funny-alert-text">
+                <div className="p-4 rounded-xl bg-amber-500/15 border border-amber-500/30 text-slate-200 flex items-start gap-3 text-xs sm:text-sm">
+                  <span className="text-2xl shrink-0">🤳</span>
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-white">Almost there! Just add your selfie 📸✨</h4>
+                    <p className="text-slate-300 leading-relaxed">
                       A pass without a photo is like Diwali without sweets! 🪔 Please take a quick selfie to personalize and download your official pass.
                     </p>
-                    <div className="id-funny-alert-actions">
+                    <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => selfieInputRef.current?.click()}
-                        className="btn-selfie-jump"
+                        className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer transition-colors"
                       >
-                        <span>📸 Snap Selfie Now</span>
+                        📸 Snap Selfie Now
                       </button>
                       <button
                         type="button"
@@ -1231,9 +1417,9 @@ export const IdCardPage: React.FC = () => {
                           setSelfieSkipped(true);
                           setSelfiePrompt(null);
                         }}
-                        className="btn-selfie-skip"
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs cursor-pointer transition-colors"
                       >
-                        <span>Skip Selfie</span>
+                        Skip Selfie
                       </button>
                     </div>
                   </div>
@@ -1241,149 +1427,105 @@ export const IdCardPage: React.FC = () => {
               )}
 
               {/* Privacy Guarantee Reassurance Banner */}
-              <div className="id-privacy-guarantee-badge" role="note">
-                <svg className="id-privacy-guarantee-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  <path d="M9 12l2 2 4-4" />
-                </svg>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400">
+                <Shield className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>
-                  <strong>Privacy Protected on WhatsApp:</strong> Your personal phone number QR code is automatically replaced with a royal verified seal when sharing!
+                  <strong className="text-slate-200 font-semibold">Privacy Protected on WhatsApp:</strong> Your personal phone number QR code is automatically replaced with a royal verified seal when sharing!
                 </span>
               </div>
 
               {downloadSuccess && (
-                <div className="id-download-success-banner" role="status">
-                  <div className="id-download-success-icon">🎉</div>
-                  <div className="id-download-success-text">
-                    <strong>Pass Downloaded Successfully!</strong>
-                    <span>
+                <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 flex items-start gap-3 text-xs sm:text-sm">
+                  <span className="text-2xl shrink-0">🎉</span>
+                  <div className="space-y-1">
+                    <strong className="font-bold text-white block">Pass Downloaded Successfully!</strong>
+                    <p className="text-slate-300">
                       {passViewMode === 'social'
                         ? 'Your privacy-protected social pass is ready to post or share!'
                         : 'Official Gate Pass saved! Keep this handy for instant entry at Agora Ground.'}
-                    </span>
+                    </p>
                     {passViewMode === 'entry' && (
-                      <div className="id-download-safety-tip">
-                        ⚠️ <strong>Private Gate Pass:</strong> Keep this downloaded pass image private for check-in at the gate. Always use the <strong>"Share Pass on WhatsApp"</strong> button to share with friends and groups safely without your QR code.
-                      </div>
+                      <p className="text-amber-300 text-xs pt-1">
+                        ⚠️ <strong>Private Gate Pass:</strong> Keep this downloaded pass image private for check-in at the gate. Always use the "Share Pass on WhatsApp" button to share with friends and groups safely without your QR code.
+                      </p>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="id-pass-action-buttons">
-                {passViewMode === 'entry' && (
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    className="btn-primary-action download-card-btn"
-                    disabled={downloading}
-                    id="btn-download-pass"
-                    title="Download official gate pass PNG with QR code"
-                  >
-                    {downloading ? (
-                      <span>Generating High-Res Pass...</span>
-                    ) : (
-                      <>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        <span>Download Gate Entry Pass</span>
-                      </>
+              <div className="w-full">
+                {isConcluded ? (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-center text-xs sm:text-sm">
+                    🔒 Event Concluded — Gate pass downloads are closed.
+                  </div>
+                ) : (
+                  <>
+                    {passViewMode === 'entry' && (
+                      <button
+                        type="button"
+                        onClick={handleDownload}
+                        className="w-full min-h-[48px] py-3.5 px-6 rounded-xl font-bold text-base bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                        disabled={downloading}
+                        id="btn-download-pass"
+                        title="Download official gate pass PNG with QR code"
+                      >
+                        {downloading ? (
+                          <span>Generating High-Res Pass...</span>
+                        ) : (
+                          <>
+                            <Download className="w-5 h-5" />
+                            <span>Download Gate Entry Pass</span>
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
-                )}
 
-                {passViewMode === 'social' && (
-                  <button
-                    type="button"
-                    onClick={handleShareWhatsApp}
-                    className="btn-whatsapp-pass-download"
-                    disabled={sharingWhatsApp || downloading}
-                    id="btn-share-pass-whatsapp"
-                    title="Share privacy-protected pass image on WhatsApp"
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path d="M12.031 2C6.511 2 2.023 6.488 2.023 12.008c0 1.848.508 3.585 1.396 5.088L2 22l5.06-1.328c1.449.809 3.109 1.258 4.967 1.258 5.524 0 10.016-4.488 10.016-10.008S17.555 2 12.031 2zm5.787 14.18c-.244.688-1.229 1.264-1.742 1.344-.472.072-1.074.132-3.153-.728-2.656-1.101-4.354-3.791-4.487-3.967-.13-.176-1.072-1.429-1.072-2.726 0-1.296.677-1.936.918-2.199.24-.264.527-.33.703-.33.176 0 .352.002.506.01.164.009.385-.062.602.46.223.535.757 1.848.824 1.98.067.132.112.287.022.463-.09.176-.134.286-.266.44-.132.154-.277.343-.396.462-.132.132-.27.275-.117.538.154.263.684 1.127 1.47 1.826 1.011.898 1.862 1.177 2.126 1.309.264.132.418.11.572-.066.154-.176.66-.77.836-1.034.176-.264.352-.22.593-.132.242.088 1.54.726 1.804.858.264.132.44.198.506.308.066.11.066.638-.178 1.326z" />
-                    </svg>
-                    <span>{sharingWhatsApp ? 'Preparing Pass Image...' : 'Share Pass on WhatsApp'}</span>
-                  </button>
+                    {passViewMode === 'social' && (
+                      <button
+                        type="button"
+                        onClick={handleShareWhatsApp}
+                        className="w-full min-h-[48px] py-3.5 px-6 rounded-xl font-bold text-base bg-gradient-to-r from-emerald-700 via-emerald-600 to-green-600 hover:from-emerald-600 hover:to-green-500 text-white shadow-lg shadow-emerald-950/40 transition-all flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                        disabled={sharingWhatsApp || downloading}
+                        id="btn-share-pass-whatsapp"
+                        title="Share privacy-protected pass image on WhatsApp"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <span>{sharingWhatsApp ? 'Preparing Pass Image...' : 'Share Pass on WhatsApp'}</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
               {!IS_GATE_PASS_RELEASED ? (
-                <div className="id-coming-soon-note">
+                <div className="text-center text-xs text-amber-300/80">
                   <span>🎟️ <em>Official Gate Entry Passes with entry QR codes will unlock for download closer to event day (1st November).</em></span>
                 </div>
               ) : !isPhoneVerified && passViewMode === 'social' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVerifyPhoneError(null);
-                    setShowPhoneVerifyModal(true);
-                  }}
-                  className="btn-link-unlock-entry"
-                >
-                  <span>🎟️ Need your Official Gate Pass with QR? Click to Unlock 🔓</span>
-                </button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerifyPhoneError(null);
+                      setShowPhoneVerifyModal(true);
+                    }}
+                    className="text-xs sm:text-sm text-amber-400 hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <span>🎟️ Need your Official Gate Pass with QR? Click to Unlock 🔓</span>
+                  </button>
+                </div>
               ) : null}
 
               {imageCopiedHint && (
-                <div className="id-image-copied-toast" role="status">
+                <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs sm:text-sm text-center">
                   <span>📋 <strong>Privacy-protected pass image copied!</strong> In WhatsApp, simply press <strong>Ctrl + V</strong> (or Paste) to send the image!</span>
                 </div>
               )}
 
               {passViewMode === 'entry' && IS_GATE_PASS_RELEASED && (
-                <p className="id-download-hint">
+                <p className="text-center text-xs text-slate-400 leading-relaxed">
                   💡 <strong>Gate Check-in Tip:</strong> Save the <strong>Gate Entry Pass (With QR)</strong> to your phone gallery. Simply show that QR code to the gate verification team at Agora Ground on 1st November for instant VIP entry!
                 </p>
-              )}
-
-              {isFeedbackEnabled() && (
-                <div
-                  style={{
-                    marginTop: '1.25rem',
-                    padding: '0.875rem 1rem',
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    border: '1px solid rgba(245, 158, 11, 0.25)',
-                    borderRadius: '0.875rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '0.75rem',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '1.25rem' }}>❤️</span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
-                        DeepAura 2K26 – Your Take!
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>
-                        Share your 2-minute experience &amp; help shape future reunions!
-                      </div>
-                    </div>
-                  </div>
-                  <Link
-                    to={`/feedback?name=${encodeURIComponent(registration.alumni?.name || '')}&batch=${encodeURIComponent(registration.alumni?.year_of_passing || '')}&regId=&regNo=${registration.registration_id || ""}`}
-                    className="btn-festive-primary"
-                    style={{
-                      fontSize: '0.8125rem',
-                      padding: '0.4rem 0.875rem',
-                      minHeight: '38px',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      borderRadius: '0.5rem',
-                    }}
-                  >
-                    <span>Give Feedback</span> →
-                  </Link>
-                </div>
               )}
             </div>
           </div>
@@ -1391,22 +1533,24 @@ export const IdCardPage: React.FC = () => {
 
         {/* Registered Mobile Verification Modal Popup */}
         {showPhoneVerifyModal && (
-          <div className="id-unlock-modal-overlay" onClick={() => setShowPhoneVerifyModal(false)}>
-            <div className="id-unlock-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowPhoneVerifyModal(false)}>
+            <div className="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-2xl p-6 text-center shadow-2xl relative space-y-4" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
-                className="id-unlock-modal-close"
+                className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
                 onClick={() => setShowPhoneVerifyModal(false)}
                 aria-label="Close verification modal"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
-              <div className="id-unlock-modal-icon">🔒</div>
-              <h3 className="id-unlock-modal-title">Unlock Official Gate Pass</h3>
-              <p className="id-unlock-modal-desc">
+              <div className="w-12 h-12 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl">
+                🔒
+              </div>
+              <h3 className="text-lg font-bold text-white">Unlock Official Gate Pass</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
                 To protect your privacy and ensure only you can download your admission QR code, please confirm your <strong>10-digit registered mobile number</strong>.
               </p>
-              <form onSubmit={handleVerifyPhoneSubmit} className="id-unlock-modal-form">
+              <form onSubmit={handleVerifyPhoneSubmit} className="space-y-3">
                 <input
                   ref={verifyPhoneInputRef}
                   type="tel"
@@ -1420,22 +1564,25 @@ export const IdCardPage: React.FC = () => {
                     setVerifyPhoneInput(e.target.value.replace(/\D/g, ''));
                     setVerifyPhoneError(null);
                   }}
-                  className="id-unlock-phone-input"
+                  className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/80 border border-slate-700 rounded-xl text-base text-slate-100 placeholder:text-slate-500 text-center font-mono focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   aria-label="10-digit registered mobile number"
                 />
                 {verifyPhoneError && (
-                  <p className="id-unlock-phone-error" role="alert">
+                  <p className="text-xs text-rose-400" role="alert">
                     ⚠️ {verifyPhoneError}
                   </p>
                 )}
-                <div className="id-unlock-modal-actions">
-                  <button type="submit" className="btn-unlock-phone-action">
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="submit"
+                    className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-colors shadow-lg shadow-amber-500/20 cursor-pointer"
+                  >
                     <span>🔓 Verify &amp; Unlock</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowPhoneVerifyModal(false)}
-                    className="btn-selfie-skip"
+                    className="min-h-[44px] py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition-colors cursor-pointer"
                   >
                     <span>Cancel</span>
                   </button>
@@ -1445,6 +1592,12 @@ export const IdCardPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      <Footer
+        eventName={activeEvent.event_name}
+        tagline={activeEvent.tagline}
+        location={activeEvent.location}
+      />
     </div>
   );
 };

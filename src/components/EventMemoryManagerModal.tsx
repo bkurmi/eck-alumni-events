@@ -34,7 +34,6 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
   // Sync initial state ONLY when modal transitions from closed to open
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current) {
-      // 1. Try restoring from draft if user was editing before switching tabs/windows
       let restoredFromDraft = false;
       try {
         const savedDraft = sessionStorage.getItem(draftKey);
@@ -49,7 +48,6 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
         }
       } catch (_) { }
 
-      // 2. If no draft, load from saved event.memory_media
       if (!restoredFromDraft) {
         const media = event.memory_media;
         setPhotos(media?.photos || []);
@@ -59,9 +57,9 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
       setErrorMsg(null);
     }
     prevIsOpenRef.current = isOpen;
-  }, [isOpen, draftKey]);
+  }, [isOpen, draftKey, event.memory_media]);
 
-  // Auto-save unsaved working draft so switching tabs or windows NEVER loses data
+  // Auto-save unsaved working draft
   useEffect(() => {
     if (!isOpen) return;
     try {
@@ -113,7 +111,6 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
     } finally {
       setIsUploading(false);
       setUploadProgressText('');
-      // Reset input value so same files can be re-selected if needed
       e.target.value = '';
     }
   };
@@ -152,72 +149,32 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
   return (
     <div
       onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        backdropFilter: 'blur(4px)',
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: '680px',
-          maxHeight: '90vh',
-          backgroundColor: '#0f172a',
-          borderRadius: '18px',
-          border: '1.5px solid rgba(245, 158, 11, 0.35)',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
-          overflow: 'hidden',
-        }}
+        className="w-full max-w-2xl max-h-[90vh] bg-slate-900 border border-amber-500/30 rounded-2xl flex flex-col shadow-2xl overflow-hidden text-slate-100"
       >
         {/* Modal Header */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: '#1e293b',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.4rem' }}>📸</span>
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-800/80">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="text-2xl">📸</span>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+              <h2 className="text-base sm:text-lg font-black text-white">
                 Event Media &amp; Memories
               </h2>
-              <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+              <p className="text-xs text-slate-400">
                 Curate up to {MAX_MEMORY_PHOTOS} photos and social video highlights for {event.event_name}
-              </span>
+              </p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            style={{
-              minWidth: '44px',
-              minHeight: '44px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '1.2rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="min-h-[44px] min-w-[44px] p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
             aria-label="Close modal"
           >
             ✕
@@ -225,54 +182,27 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
         </div>
 
         {/* Modal Scrollable Body */}
-        <div
-          style={{
-            padding: '20px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '18px',
-          }}
-        >
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 text-slate-100">
           {errorMsg && (
-            <div
-              style={{
-                padding: '10px 14px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                color: '#f87171',
-                fontSize: '0.84rem',
-              }}
-            >
-              ⚠️ {errorMsg}
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:text-sm font-medium flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{errorMsg}</span>
             </div>
           )}
 
           {/* 1. Photos Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs sm:text-sm font-bold text-slate-200">
                 Event Photos ({photos.length} / {MAX_MEMORY_PHOTOS})
               </label>
 
               {photos.length < MAX_MEMORY_PHOTOS && (
                 <label
                   htmlFor="memory-photo-upload-input"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 14px',
-                    minHeight: '40px',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                    border: '1px solid rgba(245, 158, 11, 0.35)',
-                    color: '#fbbf24',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    cursor: isUploading ? 'not-allowed' : 'pointer',
-                  }}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-400 font-bold text-xs sm:text-sm transition-colors ${
+                    isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-amber-500/25 cursor-pointer'
+                  }`}
                 >
                   <span>📷</span>
                   <span>{isUploading ? 'Uploading...' : '+ Add Photos'}</span>
@@ -287,23 +217,11 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
               multiple
               disabled={isUploading || photos.length >= MAX_MEMORY_PHOTOS}
               onChange={handlePhotoFilesSelected}
-              style={{ display: 'none' }}
+              className="hidden"
             />
 
             {isUploading && (
-              <div
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  color: '#93c5fd',
-                  fontSize: '0.8rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
+              <div className="p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs sm:text-sm flex items-center gap-2 animate-pulse">
                 <span>⏳</span>
                 <span>{uploadProgressText}</span>
               </div>
@@ -311,70 +229,25 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
 
             {/* Photos Thumbnail Grid */}
             {photos.length === 0 ? (
-              <div
-                style={{
-                  padding: '30px 16px',
-                  textAlign: 'center',
-                  backgroundColor: '#0c1322',
-                  borderRadius: '12px',
-                  border: '1px dashed rgba(255, 255, 255, 0.15)',
-                  color: '#94a3b8',
-                  fontSize: '0.85rem',
-                }}
-              >
-                No photos uploaded yet. Click <strong>+ Add Photos</strong> to select up to {MAX_MEMORY_PHOTOS} memorable reunion pictures.
+              <div className="p-6 text-center bg-slate-950/60 rounded-xl border border-dashed border-slate-700 text-slate-400 text-xs sm:text-sm">
+                No photos uploaded yet. Click <strong className="text-amber-400">+ Add Photos</strong> to select up to {MAX_MEMORY_PHOTOS} memorable reunion pictures.
               </div>
             ) : (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(95px, 1fr))',
-                  gap: '10px',
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  padding: '4px',
-                  backgroundColor: '#0c1322',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                }}
-              >
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 max-h-64 overflow-y-auto p-2 bg-slate-950/60 rounded-xl border border-slate-800">
                 {photos.map((url, idx) => (
                   <div
                     key={idx}
-                    style={{
-                      position: 'relative',
-                      aspectRatio: '1/1',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      backgroundColor: '#1e293b',
-                    }}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 bg-slate-800 group"
                   >
                     <img
                       src={url}
                       alt={`Upload ${idx + 1}`}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      className="w-full h-full object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => handleDeletePhoto(idx)}
-                      style={{
-                        position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '999px',
-                        backgroundColor: 'rgba(239, 68, 68, 0.85)',
-                        border: 'none',
-                        color: '#fff',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
+                      className="absolute top-1 right-1 w-7 h-7 rounded-full bg-red-600/90 hover:bg-red-600 text-white font-black text-xs flex items-center justify-center cursor-pointer shadow-md transition-transform hover:scale-110"
                       title="Delete Photo"
                     >
                       ✕
@@ -386,84 +259,48 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
           </div>
 
           {/* 2. YouTube Video Link */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc' }}>
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-slate-200" htmlFor="youtube-video-url">
               🎬 YouTube Highlights Video URL
             </label>
             <input
+              id="youtube-video-url"
               type="url"
               placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
               value={youtubeUrl}
               onChange={(e) => setYoutubeUrl(e.target.value)}
-              style={{
-                width: '100%',
-                minHeight: '44px',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                backgroundColor: '#1e293b',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#f8fafc',
-                fontSize: '0.88rem',
-              }}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-base text-slate-100 placeholder:text-slate-500 outline-none transition-colors"
             />
             {embedPreviewUrl && (
-              <span style={{ fontSize: '0.74rem', color: '#34d399' }}>
+              <span className="block text-xs text-emerald-400 font-medium">
                 ✓ Valid YouTube video link recognized
               </span>
             )}
           </div>
 
           {/* 3. Instagram Link */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc' }}>
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-slate-200" htmlFor="instagram-album-url">
               📷 Instagram Album / Reels URL
             </label>
             <input
+              id="instagram-album-url"
               type="url"
               placeholder="e.g. https://www.instagram.com/p/... or alumni page link"
               value={instagramUrl}
               onChange={(e) => setInstagramUrl(e.target.value)}
-              style={{
-                width: '100%',
-                minHeight: '44px',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                backgroundColor: '#1e293b',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#f8fafc',
-                fontSize: '0.88rem',
-              }}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-base text-slate-100 placeholder:text-slate-500 outline-none transition-colors"
             />
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div
-          style={{
-            padding: '14px 20px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: '10px',
-            backgroundColor: '#1e293b',
-          }}
-        >
+        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-800 bg-slate-800/80 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving || isUploading}
-            style={{
-              padding: '10px 16px',
-              minHeight: '44px',
-              borderRadius: '8px',
-              backgroundColor: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#cbd5e1',
-              fontSize: '0.86rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-700 hover:bg-slate-700/60 text-slate-300 font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -472,18 +309,7 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
             type="button"
             onClick={handleSave}
             disabled={isSaving || isUploading}
-            style={{
-              padding: '10px 24px',
-              minHeight: '44px',
-              borderRadius: '8px',
-              backgroundColor: '#f59e0b',
-              border: 'none',
-              color: '#000',
-              fontSize: '0.88rem',
-              fontWeight: 800,
-              cursor: isSaving || isUploading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 2px 10px rgba(245, 158, 11, 0.3)',
-            }}
+            className="min-h-[44px] px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isSaving ? 'Saving...' : 'Save Media & Memories'}
           </button>
@@ -492,4 +318,3 @@ export const EventMemoryManagerModal: React.FC<EventMemoryManagerModalProps> = (
     </div>
   );
 };
-

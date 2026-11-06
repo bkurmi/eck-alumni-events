@@ -19,9 +19,10 @@ import {
   formatRegistrationNumberInput,
 } from '../lib/registrations';
 import { calculateContribution, calculateSpotContribution } from '../lib/pricing';
-import { DEFAULT_UPI_CONFIGS } from '../lib/paymentRotation';
+import { getEventUpiConfigs } from '../lib/paymentRotation';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 import { ENGINEERING_DISCIPLINES } from '../types';
-import type { EventRegistration, GateEntry, GateVerificationResult } from '../types';
+import type { EventRegistration, GateEntry, GateVerificationResult, ECKEvent } from '../types';
 
 function toTitleCase(str: string): string {
   return str
@@ -74,6 +75,7 @@ interface GateVerificationPortalProps {
   staffName?: string;
   stationName?: string;
   onLogout?: () => void;
+  event?: ECKEvent | null;
 }
 
 export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
@@ -82,8 +84,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   staffName,
   stationName,
   onLogout,
+  event,
 }) => {
   const isGateEnabled = isAdminGatePortalEnabled();
+  const activeEventSlug = event?.event_slug || 'deepaura-2k26';
+  const eventPrefix = (event?.event_code || 'REG').toUpperCase();
   const [activeSubTab, setActiveSubTab] = useState<'scanner' | 'manual' | 'spot' | 'log'>('scanner');
   const [gateEntries, setGateEntries] = useState<GateEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
@@ -207,10 +212,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   const spotCameraInputRef = useRef<HTMLInputElement | null>(null);
   const spotFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Event configured UPI endpoints for spot collection
+  const eventUpiConfigs = React.useMemo(() => {
+    return getEventUpiConfigs(event);
+  }, [event]);
+
   // Currently selected UPI configuration (if paying via QR)
   const selectedUpiConfig = React.useMemo(() => {
-    return DEFAULT_UPI_CONFIGS.find((c) => c.upi_id === spotPaymentMode) || null;
-  }, [spotPaymentMode]);
+    return eventUpiConfigs.find((c) => c.upi_id === spotPaymentMode) || null;
+  }, [eventUpiConfigs, spotPaymentMode]);
 
   const handleCopyUpi = (upiId: string) => {
     try {
@@ -377,7 +387,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       found = registrations.find((r) => cleanMobileNumber(r.alumni?.mobile || '') === clean) || null;
       if (!found && clean.length === 10) {
         try {
-          const res = await lookupRegistrationByMobile('deepaura-2k26', clean);
+          const res = await lookupRegistrationByMobile(activeEventSlug, clean);
           if (res.found && res.alumni) {
             found = {
               id: res.registration_id || '',
@@ -407,7 +417,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       }
     } else if (query.reg) {
       const digits = query.reg.replace(/\D/g, '').slice(0, 5);
-      const canonical = formatRegistrationNumberInput(digits);
+      const canonical = formatRegistrationNumberInput(digits, eventPrefix);
 
       found =
         registrations.find((r) => {
@@ -418,7 +428,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
       if (!found && canonical) {
         try {
-          const res = await lookupRegistrationByRegNumber('deepaura-2k26', canonical);
+          const res = await lookupRegistrationByRegNumber(activeEventSlug, canonical, eventPrefix);
           if (res.found && res.alumni) {
             found = {
               id: res.registration_id || '',
@@ -539,7 +549,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           if (!isMounted) return;
           const clean = cleanMobileNumber(decodedText);
           let targetPhone = clean.length === 10 ? clean : '';
-          let targetReg = !targetPhone && decodedText.toUpperCase().includes('REG-') ? decodedText : '';
+          let targetReg =
+            !targetPhone &&
+            (decodedText.toUpperCase().includes(`${eventPrefix}-`) ||
+              decodedText.toUpperCase().includes('REG-') ||
+              decodedText.includes('-'))
+              ? decodedText
+              : '';
 
           // Stop camera scanner immediately to freeze frame and show attendee card
           if (scannerInstanceRef.current) {
@@ -751,7 +767,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       // 1. Always attempt live database lookup first for most accurate snapshot and counts
       if (clean && clean.length === 10) {
         try {
-          const remote = await lookupRegistrationByMobile('deepaura-2k26', clean);
+          const remote = await lookupRegistrationByMobile(activeEventSlug, clean);
           if (remote.found && remote.alumni) {
             matched = {
               id: remote.registration_id || '',
@@ -819,7 +835,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       // 1. Query live database directly to fetch the latest counts and combined screenshots
       let matched: EventRegistration | null = null;
       try {
-        const remote = await lookupRegistrationByMobile('deepaura-2k26', clean);
+        const remote = await lookupRegistrationByMobile(activeEventSlug, clean);
         if (remote.found && remote.alumni) {
           matched = {
             id: remote.registration_id || '',
@@ -1037,6 +1053,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       amount: totalContributionAmount,
       verifiedBy: verifiedByNote,
       paymentScreenshotPath: finalCombinedScreenshotPath,
+      eventSlug: activeEventSlug,
     });
 
     // 3. Reinforce updating exact attendee counts and attached screenshot via Security Definer RPC
@@ -1131,7 +1148,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   // Render the horizontal attendee ID card with approval actions down below
   const renderAttendeeIdCardWithActions = (attendee: EventRegistration) => {
     const alumni = attendee.alumni;
-    const { displayName: attendeeName, fontSizeClass: nameSizeClass, fullName: originalFullName } =
+    const { displayName: attendeeName, fullName: originalFullName } =
       formatSmartAttendeeName(alumni?.name || 'Alumnus');
     const regNumber = attendee.registration_number || '';
     const branch = alumni?.engineering_discipline || '';
@@ -1156,80 +1173,71 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       attendee.payment_verifications?.some((v) => v.verified_status === 'VERIFIED');
 
     return (
-      <div className="gate-id-card-wrapper" ref={statusResultRef}>
+      <div className="w-full max-w-md mx-auto my-4 space-y-4" ref={statusResultRef}>
         {/* ============================================================
             ATTENDEE ID CARD (Exact Match to ID Pass & User Screenshot)
             ============================================================ */}
-        <div className="ticket-v-attendee-card">
+        <div className="relative w-full bg-[#071333] border-[1.5px] border-[#c9a038] rounded-xl p-2.5 sm:p-3 flex items-center gap-2.5 sm:gap-3 shadow-2xl">
           {/* 4 Ornate Gold Corner Filigree Flourishes */}
-          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tl" />
-          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tr" />
-          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-bl" />
-          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-br" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute top-[1px] left-[1px] w-[30px] h-[30px] pointer-events-none opacity-95" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute top-[1px] right-[1px] w-[30px] h-[30px] pointer-events-none opacity-95 -scale-x-100" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute bottom-[1px] left-[1px] w-[30px] h-[30px] pointer-events-none opacity-95 -scale-y-100" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute bottom-[1px] right-[1px] w-[30px] h-[30px] pointer-events-none opacity-95 -scale-100" />
 
           {/* Left Column: Photo & Avatar */}
-          <div className="ticket-v-photo-col">
-            <div className="ticket-v-photo-box">
+          <div className="w-20 shrink-0 flex flex-col items-center gap-1.5">
+            <div className="w-16 h-20 rounded-lg overflow-hidden border border-[#c9a038]/60 bg-slate-950 flex items-center justify-center">
               {verifiedAttendeePhoto && !photoLoadFailed ? (
                 <img
                   src={verifiedAttendeePhoto}
                   alt={attendeeName}
-                  className="ticket-v-photo-img"
+                  className="w-full h-full object-cover"
                   onError={() => setPhotoLoadFailed(true)}
                 />
               ) : (
-                <div className="ticket-v-avatar-box">
-                  <div className="ticket-v-avatar-circle">
-                    <span className="ticket-v-avatar-initials">
-                      {getAttendeeInitials(alumni?.name || attendeeName)}
-                    </span>
+                <div className="flex flex-col items-center justify-center text-amber-400">
+                  <div className="w-10 h-10 rounded-full bg-slate-800 border border-amber-500/30 flex items-center justify-center text-sm font-bold">
+                    {getAttendeeInitials(alumni?.name || attendeeName)}
                   </div>
-                  <span className="ticket-v-avatar-badge">ALUMNI</span>
+                  <span className="text-[10px] font-mono mt-1 text-amber-300 font-bold">ALUMNI</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Right Column: Key Details */}
-          <div className="ticket-v-info-col">
+          <div className="flex-1 min-w-0 space-y-1 text-slate-200">
             {/* Row 1: Attendee Name */}
-            <div className="ticket-v-info-field ticket-v-name-row">
-              <span className="ticket-v-label">Attendee Name</span>
-              <h3 className={`ticket-v-val-name ${nameSizeClass}`} title={originalFullName}>
+            <div>
+              <span className="text-[10px] text-amber-400/80 uppercase tracking-wider block font-semibold">Attendee Name</span>
+              <h3 className="text-sm sm:text-base font-bold text-white truncate" title={originalFullName}>
                 {attendeeName}
               </h3>
             </div>
 
             {/* Row 2: Batch & Registration No */}
-            <div className="ticket-v-info-split-row">
-              <div className="ticket-v-batch-box">
-                <span className="ticket-v-label">Batch</span>
-                <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
-                  <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
-                </p>
+            <div className="flex items-center gap-3 text-xs">
+              <div>
+                <span className="text-[10px] text-amber-400/80 block font-semibold">Batch</span>
+                <p className="font-mono text-white font-bold">{batchYear}{branch ? ` • ${branch}` : ''}</p>
               </div>
-              <div className="ticket-v-reg-box">
-                <span className="ticket-v-label">Registration No</span>
-                <span className="ticket-v-val-reg">{regNumber}</span>
+              <div>
+                <span className="text-[10px] text-amber-400/80 block font-semibold">Registration No</span>
+                <span className="font-mono text-amber-300 font-bold">{regNumber}</span>
               </div>
             </div>
 
             {/* Row 3: Attendees Count */}
-            <div className="ticket-v-info-field">
-              <span className="ticket-v-label">No. of Attendees</span>
-              <p className="ticket-v-val-text ticket-v-highlight">{attendeesDesc}</p>
+            <div>
+              <span className="text-[10px] text-amber-400/80 block font-semibold">No. of Attendees</span>
+              <p className="text-xs font-semibold text-emerald-400">{attendeesDesc}</p>
             </div>
 
             {/* Row 4: Date & Venue */}
-            <div className="ticket-v-meta-row">
-              <div className="ticket-v-meta-item">
-                <span className="ticket-v-label">Date &amp; Time</span>
-                <span className="ticket-v-meta-val">01 Nov 2026, 5:00 PM</span>
-              </div>
-              <div className="ticket-v-meta-item">
-                <span className="ticket-v-label">Venue</span>
-                <span className="ticket-v-meta-val">Agora Ground, RTU</span>
-              </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-400 pt-0.5">
+              <span>01 Nov 2026, 5:00 PM</span>
+              <span>•</span>
+              <span>Agora Ground, RTU</span>
             </div>
           </div>
         </div>
@@ -1237,15 +1245,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         {/* ============================================================
             APPROVAL & ENTRY ACTIONS DOWN BELOW
             ============================================================ */}
-        <div className="gate-card-actions-area">
+        <div className="space-y-2.5 pt-1">
           {entryAllowedMsg ? (
             <>
-              <div className="gate-entry-allowed-line">
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs sm:text-sm font-semibold text-center">
                 <span>{entryAllowedMsg}</span>
               </div>
               <button
                 type="button"
-                className="btn-gate-next-card"
+                className="w-full min-h-[48px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2"
                 onClick={handleResetLookup}
               >
                 {activeSubTab === 'scanner' ? '📷 Scan Next Attendee →' : '🔍 Verify Next Attendee →'}
@@ -1255,12 +1263,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             <>
               {gateStatus.status === 'ALREADY_ENTERED' && (
                 <>
-                  <div className="gate-entry-alert-line warning">
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-center font-medium">
                     <span>⚠️ Already Admitted at {new Date(gateStatus.entry!.entered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} by {gateStatus.entry!.verified_by || 'Staff'}</span>
                   </div>
                   <button
                     type="button"
-                    className="btn-gate-next-card"
+                    className="w-full min-h-[48px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2"
                     onClick={handleResetLookup}
                   >
                     {activeSubTab === 'scanner' ? '📷 Scan Next Attendee →' : '🔍 Verify Next Attendee →'}
@@ -1270,13 +1278,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               {(!isPaid || gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
                 <>
-                  <div className="gate-entry-alert-line pending">
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-center font-medium">
                     <span>💳 Payment Pending (₹{attendee.amount || 0}) • Not Marked Paid</span>
                   </div>
                   <button
                     type="button"
-                    className="gate-allow-entry-btn"
-                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+                    className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 active:scale-[0.99] flex items-center justify-center gap-2"
                     onClick={() =>
                       handleRedirectToSpot({
                         name: alumni?.name,
@@ -1295,7 +1302,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="gate-card-clear-link"
+                    className="w-full min-h-[44px] text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center"
                     onClick={handleResetLookup}
                   >
                     Cancel / Search Another
@@ -1307,7 +1314,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 <>
                   <button
                     type="button"
-                    className="gate-allow-entry-btn"
+                    className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50"
                     disabled={isVerifying}
                     onClick={() => handleAllowEntry(attendee)}
                   >
@@ -1315,7 +1322,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="gate-card-clear-link"
+                    className="w-full min-h-[44px] text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center"
                     onClick={handleResetLookup}
                   >
                     Cancel / Search Another
@@ -1332,15 +1339,17 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   // If Gate Portal is disabled by .env flag
   if (!isGateEnabled) {
     return (
-      <div className="gate-disabled-container">
-        <div className="gate-disabled-card">
-          <span className="gate-disabled-badge">VITE_ENABLE_ADMIN_GATE_PORTAL is set to FALSE</span>
-          <h2>Gate Verification & Scanner Inactive</h2>
-          <p>
+      <div className="min-h-[50vh] flex items-center justify-center p-4">
+        <div className="max-w-md w-full p-6 sm:p-8 rounded-2xl bg-slate-900 border border-amber-500/30 text-center space-y-3 shadow-xl">
+          <span className="inline-block text-xs font-mono px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+            VITE_ENABLE_ADMIN_GATE_PORTAL is set to FALSE
+          </span>
+          <h2 className="text-lg sm:text-xl font-bold text-white">Gate Verification &amp; Scanner Inactive</h2>
+          <p className="text-xs sm:text-sm text-slate-400">
             The gate verification scanner, spot registrations, and physical attendance tracking are currently disabled.
           </p>
-          <p className="gate-hint-text">
-            To activate for the event on 1st November, set <code>VITE_ENABLE_ADMIN_GATE_PORTAL=true</code> in your <code>.env</code> file.
+          <p className="text-xs text-slate-500">
+            To activate for the event on 1st November, set <code className="text-amber-400 bg-slate-950 px-1 py-0.5 rounded font-mono">VITE_ENABLE_ADMIN_GATE_PORTAL=true</code> in your <code className="text-amber-400 bg-slate-950 px-1 py-0.5 rounded font-mono">.env</code> file.
           </p>
         </div>
       </div>
@@ -1358,73 +1367,74 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   });
 
   return (
-    <div className="gate-portal-container">
+    <div className="w-full max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 text-slate-100">
       {/* 1. Real-time Live Gate Metrics Bar (Requirement #9) */}
-      <div className="gate-metrics-grid">
-        <div className="gate-metric-card">
-          <span className="metric-label">Total Registered</span>
-          <span className="metric-val text-primary">{stats.totalRegistered}</span>
-          <span className="metric-sub">Portal signups</span>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Total Registered</span>
+          <span className="text-3xl sm:text-4xl font-black text-indigo-400 tracking-tight my-1">{stats.totalRegistered}</span>
+          <span className="text-xs text-slate-400 font-medium">Portal signups</span>
         </div>
 
-        <div className="gate-metric-card">
-          <span className="metric-label">Paid & Approved</span>
-          <span className="metric-val text-emerald">{stats.totalPaid}</span>
-          <span className="metric-sub">{stats.totalNotPaid} unpaid/pending</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Paid &amp; Approved</span>
+          <span className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight my-1">{stats.totalPaid}</span>
+          <span className="text-xs text-slate-400 font-medium">{stats.totalNotPaid} unpaid/pending</span>
         </div>
 
-        <div className="gate-metric-card">
-          <span className="metric-label">ID Cards Generated</span>
-          <span className="metric-val text-indigo">{stats.totalIdCardsGenerated}</span>
-          <span className="metric-sub">Downloaded passes</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">ID Cards Generated</span>
+          <span className="text-3xl sm:text-4xl font-black text-sky-400 tracking-tight my-1">{stats.totalIdCardsGenerated}</span>
+          <span className="text-xs text-slate-400 font-medium">Downloaded passes</span>
         </div>
 
-        <div className="gate-metric-card highlight-metric">
-          <span className="metric-label">⚡ Gate Verified</span>
-          <span className="metric-val text-amber">{stats.totalVerifiedAtGate}</span>
-          <span className="metric-sub">{stats.turnoutPercent}% paid turnout</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-amber-500/40 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-300">⚡ Gate Verified</span>
+          <span className="text-3xl sm:text-4xl font-black text-amber-400 tracking-tight my-1">{stats.totalVerifiedAtGate}</span>
+          <span className="text-xs text-slate-400 font-medium">{stats.turnoutPercent}% paid turnout</span>
         </div>
 
-        <div className="gate-metric-card highlight-metric-dark">
-          <span className="metric-label">👥 Heads Inside Venue</span>
-          <span className="metric-val text-white">{stats.totalHeadsInside}</span>
-          <span className="metric-sub">Including accompanying</span>
+        <div className="p-4 sm:p-5 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 flex flex-col justify-between shadow-lg">
+          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-300">👥 Heads Inside Venue</span>
+          <span className="text-3xl sm:text-4xl font-black text-white tracking-tight my-1">{stats.totalHeadsInside}</span>
+          <span className="text-xs text-slate-400 font-medium">Including accompanying</span>
         </div>
       </div>
 
       {/* Staff Identifier bar */}
-      <div className="gate-operator-bar">
-        <div className="gate-operator-info">
-          <span className="gate-active-dot" />
-          <span className="gate-operator-label">Verified By:</span>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 gap-3">
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-slate-300 font-semibold">Verified By:</span>
           {staffName ? (
-            <span className="gate-staff-locked-badge">
-              <strong>{verifiedBy}</strong>
+            <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
+              {verifiedBy}
             </span>
           ) : (
             <input
               type="text"
               value={verifiedBy}
               onChange={(e) => setVerifiedBy(e.target.value)}
-              className="gate-staff-input"
+              className="min-h-[36px] px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white font-mono text-xs outline-none focus:border-amber-500"
               title="Gate Name or Volunteer Name"
             />
           )}
         </div>
-        <div className="gate-operator-actions">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={loadGateEntries}
-            className="btn-refresh-gate"
+            className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
             title="Refresh attendance records"
           >
-            {loadingEntries ? '↻ Refreshing...' : '↻ Refresh Log'}
+            <span>↻</span>
+            <span>{loadingEntries ? 'Refreshing...' : 'Refresh Log'}</span>
           </button>
           {onLogout && (
             <button
               type="button"
               onClick={onLogout}
-              className="btn-gate-exit-mini"
+              className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-colors flex items-center justify-center"
               title="Exit / Switch PIN"
             >
               Exit Desk
@@ -1434,65 +1444,72 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       </div>
 
       {/* 2. Sub-Tabs Navigation */}
-      <div className="gate-subtabs">
+      <div className="flex rounded-2xl p-1.5 bg-slate-950/80 border border-slate-800 gap-1.5 overflow-x-auto tab-scrollbar">
         <button
           type="button"
-          className={`gate-subtab-btn ${activeSubTab === 'scanner' ? 'active' : ''}`}
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'scanner' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
+          }`}
           onClick={() => {
             setActiveSubTab('scanner');
             setScannerActive(true);
           }}
         >
-          <span className="gate-tab-icon">📷</span>
-          <span className="gate-tab-full">QR Camera Scanner</span>
-          <span className="gate-tab-short">QR Scanner</span>
+          <span>📷</span>
+          <span className="hidden sm:inline">QR Camera Scanner</span>
+          <span className="sm:hidden">QR Scanner</span>
         </button>
         <button
           type="button"
-          className={`gate-subtab-btn ${activeSubTab === 'manual' ? 'active' : ''}`}
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'manual' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
+          }`}
           onClick={() => setActiveSubTab('manual')}
         >
-          <span className="gate-tab-icon">🔍</span>
-          <span className="gate-tab-full">Manual Lookup</span>
-          <span className="gate-tab-short">Lookup</span>
+          <span>🔍</span>
+          <span className="hidden sm:inline">Manual Lookup</span>
+          <span className="sm:hidden">Lookup</span>
         </button>
         <button
           type="button"
-          className={`gate-subtab-btn ${activeSubTab === 'spot' ? 'active' : ''}`}
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'spot' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
+          }`}
           onClick={() => {
             handleResetSpot(true);
             setActiveSubTab('spot');
           }}
         >
-          <span className="gate-tab-icon">⚡</span>
-          <span className="gate-tab-full">Spot Walk-in Registration</span>
-          <span className="gate-tab-short">Spot Entry</span>
+          <span>⚡</span>
+          <span className="hidden sm:inline">Spot Walk-in Registration</span>
+          <span className="sm:hidden">Spot Entry</span>
         </button>
         <button
           type="button"
-          className={`gate-subtab-btn ${activeSubTab === 'log' ? 'active' : ''}`}
+          className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'log' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-900/60 font-semibold'
+          }`}
           onClick={() => setActiveSubTab('log')}
         >
-          <span className="gate-tab-icon">📋</span>
-          <span className="gate-tab-full">Gate Entry Log ({gateEntries.length})</span>
-          <span className="gate-tab-short">Log ({gateEntries.length})</span>
+          <span>📋</span>
+          <span className="hidden sm:inline">Gate Check-in List ({gateEntries.length})</span>
+          <span className="sm:hidden">Log ({gateEntries.length})</span>
         </button>
       </div>
 
       {/* 3. SUBTAB: QR Camera Scanner */}
       {activeSubTab === 'scanner' && (
-        <div className="gate-scanner-section">
+        <div className="flex flex-col items-center justify-center w-full min-h-[360px] p-2 sm:p-4">
           {/* If attendee found via QR scan */}
           {verifiedAttendee ? (
             renderAttendeeIdCardWithActions(verifiedAttendee)
           ) : lookupNotFoundMsg ? (
-            <div className="gate-search-not-found">
-              <p>🔍 {lookupNotFoundMsg}</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', justifyContent: 'center' }}>
+            <div className="w-full max-w-lg mx-auto bg-slate-900/90 border border-amber-500/30 rounded-2xl p-5 text-center flex flex-col items-center gap-4 shadow-xl">
+              <p className="text-sm sm:text-base text-slate-200 font-medium">🔍 {lookupNotFoundMsg}</p>
+              <div className="flex gap-2 flex-wrap w-full justify-center">
                 <button
                   type="button"
-                  className="btn-gate-next-card"
-                  style={{ maxWidth: '240px' }}
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-all max-w-[240px]"
                   onClick={() => {
                     setLookupNotFoundMsg(null);
                     setScannerActive(true);
@@ -1503,7 +1520,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 </button>
                 <button
                   type="button"
-                  className="btn-spot-create-new"
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all"
                   onClick={() => setActiveSubTab('spot')}
                 >
                   ⚡ Register at Spot Walk-in Desk →
@@ -1514,20 +1531,20 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             <>
               {/* Active Camera Viewport */}
               {scannerActive && (
-                <div className="scanner-active-box">
+                <div className="w-full max-w-[460px] mx-auto flex flex-col items-center gap-3 sm:gap-4">
                   {/* Custom Dark-Themed Camera Bar */}
-                  <div className="scanner-top-bar">
+                  <div className="flex items-center justify-between w-full gap-2 flex-wrap">
                     {cameras.length > 1 && (
-                      <div className="scanner-camera-picker">
-                        <span className="camera-picker-label">📷</span>
+                      <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5 flex-1 min-w-[200px]">
+                        <span className="text-base">📷</span>
                         <select
                           value={selectedCameraId}
                           onChange={(e) => setSelectedCameraId(e.target.value)}
-                          className="scanner-camera-select"
+                          className="bg-transparent text-slate-200 text-base sm:text-sm font-medium w-full focus:outline-none cursor-pointer"
                           title="Select Camera"
                         >
                           {cameras.map((cam, idx) => (
-                            <option key={cam.id} value={cam.id}>
+                            <option key={cam.id} value={cam.id} className="bg-slate-900 text-white">
                               {cam.label || `Camera ${idx + 1}`}
                             </option>
                           ))}
@@ -1538,7 +1555,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       <button
                         type="button"
                         onClick={toggleTorch}
-                        className={`scanner-torch-btn ${torchOn ? 'active' : ''}`}
+                        className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                          torchOn
+                            ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-500/30'
+                            : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                        }`}
                         title={torchOn ? 'Turn Flashlight Off' : 'Turn Flashlight On'}
                       >
                         <span>{torchOn ? '🔦 Torch ON' : '💡 Torch'}</span>
@@ -1547,17 +1568,16 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </div>
 
                   {cameraError ? (
-                    <div className="scanner-error-card">
-                      <span className="scanner-error-icon">⚠️</span>
-                      <div className="scanner-error-text">
-                        <h4>Camera Access Notice</h4>
-                        <p>{cameraError}</p>
-                        <div className="scanner-error-actions">
+                    <div className="w-full bg-red-950/40 border border-red-500/40 rounded-2xl p-4 sm:p-5 flex items-start gap-3 text-red-200">
+                      <span className="text-2xl shrink-0">⚠️</span>
+                      <div className="flex-1 flex flex-col gap-1.5">
+                        <h4 className="font-bold text-white text-sm sm:text-base">Camera Access Notice</h4>
+                        <p className="text-xs sm:text-sm text-red-300">{cameraError}</p>
+                        <div className="flex gap-2 flex-wrap mt-2">
                           <button
                             type="button"
                             onClick={() => setActiveSubTab('manual')}
-                            className="btn-primary-action"
-                            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                            className="min-h-[44px] px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm transition-all"
                           >
                             ⌨️ Use Phone Lookup Instead
                           </button>
@@ -1568,8 +1588,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                               setScannerActive(false);
                               setTimeout(() => setScannerActive(true), 150);
                             }}
-                            className="btn-secondary"
-                            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                            className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all"
                           >
                             🔄 Retry Camera
                           </button>
@@ -1577,26 +1596,26 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="scanner-viewport-wrapper">
-                      <div id="gate-reader-view" className="gate-qr-viewport" />
-                      <div className="scanner-reticle-overlay">
-                        <div className="scanner-reticle-box">
-                          <span className="scanner-corner scanner-corner-tl" />
-                          <span className="scanner-corner scanner-corner-tr" />
-                          <span className="scanner-corner scanner-corner-bl" />
-                          <span className="scanner-corner scanner-corner-br" />
-                          <div className="scanner-laser-line" />
+                    <div className="relative w-full max-w-[440px] rounded-2xl overflow-hidden shadow-2xl shadow-black/80 ring-2 ring-indigo-500/40 bg-black">
+                      <div id="gate-reader-view" className="w-full min-h-[300px] bg-black [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:rounded-2xl" />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-4">
+                        <div className="w-[220px] max-w-[60vw] h-[220px] max-h-[60vw] relative rounded-2xl">
+                          <span className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-amber-400 rounded-tl-xl" />
+                          <span className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-amber-400 rounded-tr-xl" />
+                          <span className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-amber-400 rounded-bl-xl" />
+                          <span className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-amber-400 rounded-br-xl" />
+                          <div className="absolute left-1.5 right-1.5 h-[3px] bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_12px_#f59e0b] animate-[scanLaser_2s_ease-in-out_infinite_alternate]" />
                         </div>
-                        <span className="scanner-overlay-hint">Align QR Code inside box</span>
+                        <span className="mt-4 text-xs font-semibold text-slate-300 bg-black/60 backdrop-blur-xs px-3 py-1 rounded-full border border-white/10">Align QR Code inside box</span>
                       </div>
                     </div>
                   )}
 
-                  <div className="scanner-controls-row">
+                  <div className="flex items-center justify-center w-full mt-1">
                     <button
                       type="button"
                       onClick={() => setScannerActive(false)}
-                      className="btn-stop-camera"
+                      className="min-h-[44px] px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -1609,21 +1628,21 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               {/* If scanner is inactive and no scan in-flight, show Camera Start button */}
               {!scannerActive && !isVerifying && (
-                <div className="scanner-start-box">
-                  <div className="scanner-start-icon-ring">
+                <div className="w-full max-w-[480px] mx-auto bg-gradient-to-b from-slate-800 to-slate-900 border border-amber-500/25 rounded-2xl p-6 sm:p-10 text-center flex flex-col items-center gap-4 shadow-2xl">
+                  <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                       <circle cx="12" cy="13" r="4" />
                     </svg>
                   </div>
-                  <h3 className="scanner-start-title">Gate Camera Check-in</h3>
-                  <p className="scanner-hint">
+                  <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Gate Camera Check-in</h3>
+                  <p className="text-xs sm:text-sm text-slate-400 max-w-sm">
                     Turn your phone or laptop camera into an instant, high-speed QR gate scanner.
                   </p>
                   <button
                     type="button"
                     onClick={() => setScannerActive(true)}
-                    className="btn-large-camera"
+                    className="min-h-[48px] px-6 py-3 rounded-xl font-bold text-sm sm:text-base bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 inline-flex items-center gap-2.5 shadow-xl shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <span>📷</span>
                     <span>Start Camera Scanner</span>
@@ -1637,18 +1656,22 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
       {/* 4. SUBTAB: Manual Lookup (Phone & Predictive Name Search) */}
       {activeSubTab === 'manual' && (
-        <div className="gate-manual-section">
-          <div className="gate-card-box">
-            <h3>Manual Gate Verification</h3>
-            <p className="card-sub-desc">
+        <div className="w-full flex flex-col items-center">
+          <div className="w-full max-w-2xl bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md">
+            <h3 className="text-lg sm:text-xl font-bold text-white mb-1">Manual Gate Verification</h3>
+            <p className="text-xs sm:text-sm text-slate-400 mb-4 sm:mb-6">
               Search by phone, Reg ID, or name to verify attendee entry:
             </p>
 
             {/* Segmented Mode Switcher */}
-            <div className="manual-mode-segmented-bar">
+            <div className="flex items-center bg-slate-950/80 border border-slate-800 p-1 rounded-xl mb-5 gap-1">
               <button
                 type="button"
-                className={`manual-mode-btn ${manualLookupMode === 'reg_number' ? 'active' : ''}`}
+                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                  manualLookupMode === 'reg_number'
+                    ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                }`}
                 onClick={() => {
                   setManualLookupMode('reg_number');
                   handleResetLookup();
@@ -1658,7 +1681,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </button>
               <button
                 type="button"
-                className={`manual-mode-btn ${manualLookupMode === 'phone' ? 'active' : ''}`}
+                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                  manualLookupMode === 'phone'
+                    ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                }`}
                 onClick={() => {
                   setManualLookupMode('phone');
                   handleResetLookup();
@@ -1668,7 +1695,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </button>
               <button
                 type="button"
-                className={`manual-mode-btn ${manualLookupMode === 'name' ? 'active' : ''}`}
+                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                  manualLookupMode === 'name'
+                    ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                }`}
                 onClick={() => {
                   setManualLookupMode('name');
                   handleResetLookup();
@@ -1678,16 +1709,18 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </button>
             </div>
 
-            <div className="name-search-container">
+            <div className="w-full flex flex-col gap-4">
               {verifiedAttendee ? (
                 renderAttendeeIdCardWithActions(verifiedAttendee)
               ) : (
                 <>
                   {manualLookupMode === 'reg_number' && (
-                    <div className="gate-search-flow-box">
-                      <form onSubmit={handleSearchByRegNumber} className="gate-search-input-group">
-                        <div className="manual-reg-input-group">
-                          <span className="manual-reg-prefix">REG-</span>
+                    <div className="w-full flex flex-col gap-3">
+                      <form onSubmit={handleSearchByRegNumber} className="w-full">
+                        <div className="flex items-stretch w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden focus-within:border-amber-500/60 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
+                          <span className="px-3.5 bg-slate-900 text-amber-400 font-bold text-sm sm:text-base flex items-center border-r border-slate-800 select-none">
+                            {eventPrefix}-
+                          </span>
                           <input
                             type="text"
                             inputMode="numeric"
@@ -1700,7 +1733,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                               setManualRegNumber(cleaned);
                               if (lookupNotFoundMsg) setLookupNotFoundMsg(null);
                             }}
-                            className="manual-reg-field"
+                            className="flex-1 bg-transparent px-3.5 py-3 text-white text-base sm:text-sm placeholder-slate-500 focus:outline-none min-w-0"
                             autoFocus
                           />
                           {manualRegNumber && (
@@ -1710,8 +1743,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                 setManualRegNumber('');
                                 setLookupNotFoundMsg(null);
                               }}
-                              className="name-search-clear-btn"
-                              style={{ position: 'relative', right: '4px' }}
+                              className="px-3 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
                               title="Clear input"
                             >
                               ✕
@@ -1719,7 +1751,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           )}
                           <button
                             type="submit"
-                            className="gate-search-btn"
+                            className="min-h-[44px] px-5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer"
                             disabled={isSearchingLookup || !manualRegNumber.trim()}
                           >
                             {isSearchingLookup ? 'Searching...' : '🔍 Search'}
@@ -1728,8 +1760,8 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </form>
 
                       {lookupNotFoundMsg && (
-                        <div className="gate-search-not-found">
-                          <p>⚠️ {lookupNotFoundMsg}</p>
+                        <div className="bg-slate-950/90 border border-amber-500/30 rounded-xl p-4 text-center flex flex-col items-center gap-3">
+                          <p className="text-sm sm:text-base text-amber-200">⚠️ {lookupNotFoundMsg}</p>
                           <button
                             type="button"
                             onClick={() =>
@@ -1738,7 +1770,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                 mobile: undefined,
                               })
                             }
-                            className="btn-spot-create-new"
+                            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
                           >
                             ⚡ Register at Spot Walk-in Desk →
                           </button>
@@ -1748,10 +1780,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   )}
 
                   {manualLookupMode === 'phone' && (
-                    <div className="gate-search-flow-box">
-                      <form onSubmit={handleSearchByPhone} className="gate-search-input-group">
-                        <div className="manual-phone-input-group">
-                          <span className="manual-phone-prefix">+91</span>
+                    <div className="w-full flex flex-col gap-3">
+                      <form onSubmit={handleSearchByPhone} className="w-full">
+                        <div className="flex items-stretch w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden focus-within:border-amber-500/60 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
+                          <span className="px-3.5 bg-slate-900 text-amber-400 font-bold text-sm sm:text-base flex items-center border-r border-slate-800 select-none">
+                            +91
+                          </span>
                           <input
                             type="tel"
                             placeholder="10-digit mobile"
@@ -1766,7 +1800,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                               setManualPhone(clean);
                               if (lookupNotFoundMsg) setLookupNotFoundMsg(null);
                             }}
-                            className="manual-phone-field"
+                            className="flex-1 bg-transparent px-3.5 py-3 text-white text-base sm:text-sm placeholder-slate-500 focus:outline-none min-w-0"
                             autoFocus
                           />
                           {manualPhone && (
@@ -1776,8 +1810,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                 setManualPhone('');
                                 setLookupNotFoundMsg(null);
                               }}
-                              className="name-search-clear-btn"
-                              style={{ position: 'relative', right: '4px' }}
+                              className="px-3 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
                               title="Clear input"
                             >
                               ✕
@@ -1785,7 +1818,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           )}
                           <button
                             type="submit"
-                            className="gate-search-btn"
+                            className="min-h-[44px] px-5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer"
                             disabled={isSearchingLookup || manualPhone.trim().length < 10}
                           >
                             {isSearchingLookup ? 'Searching...' : '🔍 Search'}
@@ -1793,185 +1826,182 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         </div>
                       </form>
 
-                  {lookupNotFoundMsg && (
-                    <div className="gate-search-not-found">
-                      <p>⚠️ {lookupNotFoundMsg}</p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRedirectToSpot({
-                            mobile: manualPhone.trim(),
-                          })
-                        }
-                        className="btn-spot-create-new"
-                      >
-                        ⚡ Register at Spot Walk-in Desk →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {manualLookupMode === 'name' && (
-                <div className="name-search-input-wrapper">
-                  <span className="name-search-icon">🔍</span>
-                  <input
-                    type="text"
-                    placeholder="Type name (e.g. Rahul), batch (2012), or branch (CSE)..."
-                    value={nameSearchQuery}
-                    onChange={(e) => {
-                      setNameSearchQuery(e.target.value);
-                      if (selectedAttendee) setSelectedAttendee(null);
-                    }}
-                    className="name-search-input"
-                    autoFocus
-                  />
-                  {nameSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNameSearchQuery('');
-                        setSelectedAttendee(null);
-                      }}
-                      className="name-search-clear-btn"
-                      title="Clear search"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* 2. NAME SEARCH PREDICTIVE RESULTS (Only shown when manualLookupMode === 'name') */}
-              {manualLookupMode === 'name' && (() => {
-                const queryActive = nameSearchQuery.trim();
-
-                if (queryActive.length < 2) {
-                  return (
-                    <div className="name-search-hint-box">
-                      <p>
-                        ⚡ <strong>Predictive Attendee Search:</strong> Type at least 2 letters of an
-                        attendee's name, passing year (e.g. <em>2015</em>), or branch.
-                      </p>
-                      <div className="name-search-chips">
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
-                        <span className="name-search-chip" onClick={() => setNameSearchQuery('2018')}>🎓 2018</span>
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (filteredNameRegistrations.length === 0) {
-                  return (
-                    <div className="name-search-hint-box">
-                      <p>
-                        🔍 No registered alumni found matching <strong>"{queryActive}"</strong>.
-                      </p>
-                      <p style={{ fontSize: '0.82rem', margin: 0 }}>
-                        Check details, or register this attendee directly at Spot Walk-in Desk:
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRedirectToSpot({
-                            name: queryActive,
-                          })
-                        }
-                        className="btn-spot-create-new"
-                      >
-                        ⚡ Register at Spot Walk-in Desk →
-                      </button>
-                    </div>
-                  );
-                }
-
-                return (
-                  <>
-                    <div className="name-search-header-meta">
-                      <span>Found {filteredNameRegistrations.length} matching {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
-                      <span>Tap name to view ID Card &amp; admit</span>
-                    </div>
-
-                    <div className="name-search-results-list">
-                      {filteredNameRegistrations.map((reg) => {
-                        const alumni = reg.alumni;
-                        if (!alumni) return null;
-                        const gateStatus = getAttendeeGateStatus(reg);
-                        const participantCount = reg.number_of_attendees || 1;
-
-                        return (
-                          <div
-                            key={reg.id}
-                            className="name-search-result-card"
-                            onClick={() => handleSelectNameAttendee(reg)}
-                            role="button"
-                            tabIndex={0}
+                      {lookupNotFoundMsg && (
+                        <div className="bg-slate-950/90 border border-amber-500/30 rounded-xl p-4 text-center flex flex-col items-center gap-3">
+                          <p className="text-sm sm:text-base text-amber-200">⚠️ {lookupNotFoundMsg}</p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRedirectToSpot({
+                                mobile: manualPhone.trim(),
+                              })
+                            }
+                            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
                           >
-                            <div className="name-result-main-row">
-                              {/* Top row: Name + Reg ID on left, Status badge on right */}
-                              <div className="name-result-top-row">
-                                <div className="name-result-title-group">
-                                  <span className="name-result-name">{alumni.name}</span>
-                                  <span className="name-result-reg-pill">
-                                    {reg.registration_number}
-                                  </span>
-                                </div>
-
-                                <div className="name-result-status-col">
-                                  {gateStatus.status === 'READY' && (
-                                    <span className="gate-status-pill ready">🟢 Ready</span>
-                                  )}
-                                  {gateStatus.status === 'ALREADY_ENTERED' && (
-                                    <span className="gate-status-pill entered">⚠️ Entered</span>
-                                  )}
-                                  {gateStatus.status === 'PAYMENT_PENDING' && (
-                                    <span className="gate-status-pill pending">💳 Pending</span>
-                                  )}
-                                  {gateStatus.status === 'MAYBE' && (
-                                    <span className="gate-status-pill pending">💳 Unpaid</span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Middle row: Branch & Passing Year */}
-                              <div className="name-result-branch-line">
-                                <span className="meta-icon">🎓</span>
-                                <span className="meta-text">
-                                  {alumni.engineering_discipline || 'Alumni'}
-                                  {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
-                                </span>
-                              </div>
-
-                              {/* Bottom row: Mobile & Number of Participants */}
-                              <div className="name-result-bottom-meta">
-                                <span className="name-result-phone-badge">
-                                  <span className="meta-icon">📞</span>
-                                  <span>{alumni.mobile}</span>
-                                </span>
-                                <span className="name-result-heads-badge">
-                                  <span className="meta-icon">👥</span>
-                                  <span>
-                                    {participantCount} {participantCount > 1 ? 'Participants' : 'Participant'}
-                                  </span>
-                                </span>
-                              </div>
-                            </div>
-
-                          </div>
-                        );
-                      })}
+                            ⚡ Register at Spot Walk-in Desk →
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </>
-                );
-              })()}
-            </>
-          )}
-        </div>
+                  )}
 
+                  {manualLookupMode === 'name' && (
+                    <div className="relative flex items-center w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 focus-within:border-amber-500/60 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
+                      <span className="text-slate-400 mr-2 text-base">🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Type name (e.g. Rahul), batch (2012), or branch (CSE)..."
+                        value={nameSearchQuery}
+                        onChange={(e) => {
+                          setNameSearchQuery(e.target.value);
+                          if (selectedAttendee) setSelectedAttendee(null);
+                        }}
+                        className="w-full bg-transparent py-3 text-white text-base sm:text-sm placeholder-slate-500 focus:outline-none"
+                        autoFocus
+                      />
+                      {nameSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNameSearchQuery('');
+                            setSelectedAttendee(null);
+                          }}
+                          className="px-3 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+                          title="Clear search"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 2. NAME SEARCH PREDICTIVE RESULTS (Only shown when manualLookupMode === 'name') */}
+                  {manualLookupMode === 'name' && (() => {
+                    const queryActive = nameSearchQuery.trim();
+
+                    if (queryActive.length < 2) {
+                      return (
+                        <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 text-xs sm:text-sm text-slate-400 flex flex-col gap-2.5">
+                          <p>
+                            ⚡ <strong className="text-white">Predictive Attendee Search:</strong> Type at least 2 letters of an
+                            attendee's name, passing year (e.g. <em>2015</em>), or branch.
+                          </p>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <span className="min-h-[44px] sm:min-h-0 px-3 py-1.5 sm:py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors inline-flex items-center" onClick={() => setNameSearchQuery('Computer')}>💻 Computer</span>
+                            <span className="min-h-[44px] sm:min-h-0 px-3 py-1.5 sm:py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors inline-flex items-center" onClick={() => setNameSearchQuery('Mechanical')}>⚙️ Mechanical</span>
+                            <span className="min-h-[44px] sm:min-h-0 px-3 py-1.5 sm:py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors inline-flex items-center" onClick={() => setNameSearchQuery('Electrical')}>⚡ Electrical</span>
+                            <span className="min-h-[44px] sm:min-h-0 px-3 py-1.5 sm:py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors inline-flex items-center" onClick={() => setNameSearchQuery('Civil')}>🏗️ Civil</span>
+                            <span className="min-h-[44px] sm:min-h-0 px-3 py-1.5 sm:py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors inline-flex items-center" onClick={() => setNameSearchQuery('2024')}>🎓 2024</span>
+                            <span className="min-h-[44px] sm:min-h-0 px-3 py-1.5 sm:py-1 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors inline-flex items-center" onClick={() => setNameSearchQuery('2018')}>🎓 2018</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (filteredNameRegistrations.length === 0) {
+                      return (
+                        <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 text-xs sm:text-sm text-slate-400 flex flex-col gap-2.5">
+                          <p>
+                            🔍 No registered alumni found matching <strong className="text-white">"{queryActive}"</strong>.
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Check details, or register this attendee directly at Spot Walk-in Desk:
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRedirectToSpot({
+                                name: queryActive,
+                              })
+                            }
+                            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer self-start"
+                          >
+                            ⚡ Register at Spot Walk-in Desk →
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-1">
+                          <span>Found {filteredNameRegistrations.length} matching {filteredNameRegistrations.length === 1 ? 'attendee' : 'attendees'}</span>
+                          <span>Tap name to view ID Card &amp; admit</span>
+                        </div>
+
+                        <div className="flex flex-col gap-2 max-h-[420px] overflow-y-auto tab-scrollbar pr-0.5">
+                          {filteredNameRegistrations.map((reg) => {
+                            const alumni = reg.alumni;
+                            if (!alumni) return null;
+                            const gateStatus = getAttendeeGateStatus(reg);
+                            const participantCount = reg.number_of_attendees || 1;
+
+                            return (
+                              <div
+                                key={reg.id}
+                                className="bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 rounded-xl p-3 sm:p-4 cursor-pointer transition-all active:scale-[0.99]"
+                                onClick={() => handleSelectNameAttendee(reg)}
+                                role="button"
+                                tabIndex={0}
+                              >
+                                <div className="flex flex-col gap-2">
+                                  {/* Top row: Name + Reg ID on left, Status badge on right */}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                      <span className="font-bold text-white text-sm sm:text-base truncate">{alumni.name}</span>
+                                      <span className="px-2 py-0.5 bg-amber-500/15 border border-amber-500/30 rounded text-amber-300 font-mono text-xs font-semibold">
+                                        {reg.registration_number}
+                                      </span>
+                                    </div>
+
+                                    <div className="shrink-0">
+                                      {gateStatus.status === 'READY' && (
+                                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">🟢 Ready</span>
+                                      )}
+                                      {gateStatus.status === 'ALREADY_ENTERED' && (
+                                        <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">⚠️ Entered</span>
+                                      )}
+                                      {gateStatus.status === 'PAYMENT_PENDING' && (
+                                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold">💳 Pending</span>
+                                      )}
+                                      {gateStatus.status === 'MAYBE' && (
+                                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold">💳 Unpaid</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Middle row: Branch & Passing Year */}
+                                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                    <span>🎓</span>
+                                    <span>
+                                      Batch {alumni.batch || getBatchFromPassingYear(alumni.year_of_passing)} • {alumni.engineering_discipline || 'Alumni'}
+                                    </span>
+                                  </div>
+
+                                  {/* Bottom row: Mobile & Number of Participants */}
+                                  <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap pt-0.5">
+                                    <span className="flex items-center gap-1 bg-slate-900/80 px-2 py-1 rounded-md border border-slate-800">
+                                      <span>📞</span>
+                                      <span>{alumni.mobile}</span>
+                                    </span>
+                                    <span className="flex items-center gap-1 bg-slate-900/80 px-2 py-1 rounded-md border border-slate-800">
+                                      <span>👥</span>
+                                      <span>
+                                        {participantCount} {participantCount > 1 ? 'Participants' : 'Participant'}
+                                      </span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1979,33 +2009,32 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
       {/* 5. SUBTAB: Spot Walk-in Registration (Requirement #7) */}
       {activeSubTab === 'spot' && (
-        <div className="gate-spot-section">
-          <div className="gate-card-box">
-            <div className="spot-header-row">
-              <div style={{ flex: '1 1 auto' }}>
-                <h3>⚡ Gate Spot Registration (Walk-ins)</h3>
-                <p className="card-sub-desc">
+        <div className="w-full flex flex-col items-center">
+          <div className="w-full max-w-2xl bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md">
+            <div className="flex items-start justify-between gap-3 mb-4 sm:mb-6 flex-wrap sm:flex-nowrap">
+              <div className="flex-1">
+                <h3 className="text-lg sm:text-xl font-bold text-white mb-1">⚡ Gate Spot Registration (Walk-ins)</h3>
+                <p className="text-xs sm:text-sm text-slate-400">
                   Quickly register walk-in alumni at the gate, accept Cash/UPI, mark entry, and create their pass.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => handleResetSpot(true)}
-                className="btn-spot-reset-header"
+                className="min-h-[44px] px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs sm:text-sm font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer shrink-0"
                 title="Clear all fields and start a fresh registration"
               >
                 <span>↺</span> Reset Form
               </button>
             </div>
 
-
             {preloadNotice && (
-              <div className="spot-prefill-banner">
-                <span className="banner-icon">⚡</span>
-                <div className="banner-text">{preloadNotice}</div>
+              <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 sm:p-4 flex items-start gap-2.5 text-xs sm:text-sm text-amber-200 mb-4">
+                <span className="text-base shrink-0">⚡</span>
+                <div className="flex-1">{preloadNotice}</div>
                 <button
                   type="button"
-                  className="btn-dismiss-prefill"
+                  className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 text-slate-400 hover:text-white flex items-center justify-center p-1 transition-colors cursor-pointer"
                   onClick={() => setPreloadNotice(null)}
                   title="Dismiss"
                 >
@@ -2015,38 +2044,48 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             )}
 
             {existingMatchedReg && (
-              <div className={`spot-detected-status-card status-${existingStatusType.toLowerCase()}`}>
-                <div className="status-header-row">
-                  <div className="status-badge-wrap">
+              <div
+                className={`w-full rounded-xl p-3.5 sm:p-4 mb-4 sm:mb-6 border transition-all ${
+                  existingStatusType === 'CONFIRMED_PAID'
+                    ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
+                    : existingStatusType === 'PAYMENT_PENDING'
+                    ? 'bg-amber-950/30 border-amber-500/40 text-amber-200'
+                    : existingStatusType === 'MAYBE'
+                    ? 'bg-sky-950/30 border-sky-500/40 text-sky-200'
+                    : 'bg-slate-900/60 border-slate-700 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {existingStatusType === 'CONFIRMED_PAID' && (
-                      <span className="spot-status-pill pill-paid">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                         ✓ Confirmed &amp; Paid
                       </span>
                     )}
                     {existingStatusType === 'PAYMENT_PENDING' && (
-                      <span className="spot-status-pill pill-pending">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                         ⏳ Payment Pending (Unpaid)
                       </span>
                     )}
                     {existingStatusType === 'MAYBE' && (
-                      <span className="spot-status-pill pill-maybe">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                         ❓ Marked Maybe (Unpaid)
                       </span>
                     )}
                     {existingStatusType === 'NO' && (
-                      <span className="spot-status-pill pill-no">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
                         ✕ Marked Not Attending (Unpaid)
                       </span>
                     )}
                     {existingMatchedReg.registration_number && (
-                      <span className="spot-reg-number-chip">
+                      <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-xs font-semibold">
                         {existingMatchedReg.registration_number}
                       </span>
                     )}
                   </div>
                   <button
                     type="button"
-                    className="btn-clear-detected"
+                    className="min-h-[44px] px-2.5 py-1 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer inline-flex items-center"
                     onClick={() => handleResetSpot(true)}
                     title="Clear and register a new attendee"
                   >
@@ -2054,38 +2093,38 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </button>
                 </div>
 
-                <div className="status-body-content">
+                <div className="text-xs sm:text-sm leading-relaxed text-slate-300">
                   {existingStatusType === 'CONFIRMED_PAID' ? (
-                    <p className="status-main-desc">
+                    <p>
                       Alumnus is <strong>Confirmed &amp; Paid</strong> (₹{previousPaidAmount} credited online).
                       {isFullyPaid ? (
-                        <span className="status-highlight-text" style={{ color: '#34d399' }}>
+                        <span className="text-emerald-400 font-semibold">
                           {' '}Current attendee count ({spotAdults + spotKidsAbove10 + spotKidsUnder10}) is fully covered — no extra payment required!
                         </span>
                       ) : (
-                        <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                        <span className="text-amber-400 font-semibold">
                           {' '}Attendee count increased! Previous <strong>₹{previousPaidAmount}</strong> is credited. Collect only the difference of <strong>₹{differenceDue}</strong>.
                         </span>
                       )}
                     </p>
                   ) : existingStatusType === 'PAYMENT_PENDING' ? (
-                    <p className="status-main-desc">
+                    <p>
                       Attendee signed up online with status <strong>Payment Pending</strong> (unpaid).
-                      <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                      <span className="text-amber-400 font-semibold">
                         {' '}Full contribution of <strong>₹{totalContributionAmount}</strong> must be collected at the gate desk.
                       </span>
                     </p>
                   ) : existingStatusType === 'MAYBE' ? (
-                    <p className="status-main-desc">
+                    <p>
                       Attendee originally registered online as <strong>“Maybe”</strong> without making payment.
-                      <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                      <span className="text-amber-400 font-semibold">
                         {' '}Full contribution of <strong>₹{totalContributionAmount}</strong> must be collected at the gate desk.
                       </span>
                     </p>
                   ) : (
-                    <p className="status-main-desc">
+                    <p>
                       Attendee originally registered online as <strong>“Not Attending”</strong>.
-                      <span className="status-highlight-text" style={{ color: '#fbbf24' }}>
+                      <span className="text-amber-400 font-semibold">
                         {' '}Attending in-person today — full contribution of <strong>₹{totalContributionAmount}</strong> must be collected at the gate desk.
                       </span>
                     </p>
@@ -2095,21 +2134,25 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             )}
 
             {spotFormErrorMsg && (
-              <div className="spot-validation-alert">
-                <span className="alert-icon">⚠️</span>
-                <span className="alert-msg">{spotFormErrorMsg}</span>
+              <div className="w-full bg-red-950/50 border border-red-500/40 rounded-xl p-3 text-red-200 text-xs sm:text-sm flex items-center gap-2 mb-4">
+                <span className="text-base shrink-0">⚠️</span>
+                <span>{spotFormErrorMsg}</span>
               </div>
             )}
 
-            <form onSubmit={handleSpotSubmit} noValidate className="gate-spot-form">
-              <div className="form-fields-grid">
+            <form onSubmit={handleSpotSubmit} noValidate className="w-full flex flex-col gap-4 sm:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Row 1: Mobile (First for Instant Pre-load) & Full Name */}
-                <div className={`form-field ${spotErrors.mobile ? 'has-error' : ''}`}>
-                  <label htmlFor="spot-mobile">
-                    Mobile Number <span className="label-optional">(Optional)</span>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="spot-mobile" className="text-xs sm:text-sm font-semibold text-slate-300">
+                    Mobile Number <span className="text-xs text-slate-500 font-normal">(Optional)</span>
                   </label>
-                  <div className="input-prefix-wrap">
-                    <span className="input-prefix">+91</span>
+                  <div className={`flex items-stretch w-full bg-slate-950 border rounded-xl overflow-hidden focus-within:border-amber-500/60 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all ${
+                    spotErrors.mobile ? 'border-red-500/60' : 'border-slate-800'
+                  }`}>
+                    <span className="px-3.5 bg-slate-900 text-amber-400 font-bold text-sm sm:text-base flex items-center border-r border-slate-800 select-none">
+                      +91
+                    </span>
                     <input
                       id="spot-mobile"
                       type="tel"
@@ -2120,14 +2163,14 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         handleSpotMobileChange(e.target.value);
                         clearSpotError('mobile');
                       }}
-                      className="prefixed-input"
+                      className="flex-1 bg-transparent px-3.5 py-2.5 text-white text-base sm:text-sm placeholder-slate-500 focus:outline-none min-w-0"
                     />
                   </div>
                 </div>
 
-                <div className={`form-field ${spotErrors.name ? 'has-error' : ''}`}>
-                  <label htmlFor="spot-name">
-                    Full Name <span className="req-star">*</span>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="spot-name" className="text-xs sm:text-sm font-semibold text-slate-300">
+                    Full Name <span className="text-amber-400 font-bold ml-0.5">*</span>
                   </label>
                   <input
                     id="spot-name"
@@ -2140,13 +2183,16 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       clearSpotError('name');
                     }}
                     autoFocus={activeSubTab === 'spot' && !spotName}
+                    className={`w-full min-h-[44px] bg-slate-950 border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all ${
+                      spotErrors.name ? 'border-red-500/60' : 'border-slate-800'
+                    }`}
                   />
                 </div>
 
                 {/* Row 2: Branch / Discipline & Passing Batch (Year) */}
-                <div className={`form-field ${spotErrors.branch ? 'has-error' : ''}`}>
-                  <label htmlFor="spot-branch">
-                    Branch / Discipline <span className="label-optional">(Optional)</span>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="spot-branch" className="text-xs sm:text-sm font-semibold text-slate-300">
+                    Branch / Discipline <span className="text-xs text-slate-500 font-normal">(Optional)</span>
                   </label>
                   <select
                     id="spot-branch"
@@ -2155,6 +2201,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       setSpotBranch(e.target.value);
                       clearSpotError('branch');
                     }}
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer [&_option]:bg-slate-900 [&_option]:text-white"
                   >
                     <option value="">Select Branch (Optional)</option>
                     {ENGINEERING_DISCIPLINES.map((discipline) => (
@@ -2165,9 +2212,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </select>
                 </div>
 
-                <div className={`form-field ${spotErrors.batch ? 'has-error' : ''}`}>
-                  <label htmlFor="spot-batch">
-                    Year of Passing (Batch) <span className="label-optional">(Optional)</span>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="spot-batch" className="text-xs sm:text-sm font-semibold text-slate-300">
+                    Year of Passing (Batch) <span className="text-xs text-slate-500 font-normal">(Optional)</span>
                   </label>
                   <select
                     id="spot-batch"
@@ -2176,6 +2223,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       setSpotBatch(e.target.value ? Number(e.target.value) : '');
                       clearSpotError('batch');
                     }}
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer [&_option]:bg-slate-900 [&_option]:text-white"
                   >
                     <option value="">Select Passing Year (Optional)</option>
                     {passingYears.map((year) => (
@@ -2187,35 +2235,35 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 </div>
 
                 {/* Unified Attendee Selection (Adults & Children together under single heading) */}
-                <div className={`form-field spot-attendees-full-section`} style={{ gridColumn: '1 / -1', width: '100%' }}>
-                  <label htmlFor="spot-attendees-grid">
-                    Number of People Attending <span className="req-star">*</span>
+                <div className="sm:col-span-2 flex flex-col gap-2">
+                  <label htmlFor="spot-attendees-grid" className="text-xs sm:text-sm font-semibold text-slate-300">
+                    Number of People Attending <span className="text-amber-400 font-bold ml-0.5">*</span>
                   </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                    <div className="rates-summary-badge">
+                  <div className="flex flex-col gap-2 mb-2">
+                    <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-xs font-medium">
                       <span>⚡ Spot Entry: ₹1,000 per adult • ₹500 per child (10+) • Free (&lt;10 yrs)</span>
                     </div>
                   </div>
 
-                  <div className="spot-unified-attendees-box">
+                  <div className="flex flex-col gap-2.5 bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 sm:p-4">
                     {/* Row 1: Adults */}
-                    <div className="spot-attendee-unified-row">
-                      <div className="spot-attendee-unified-info">
-                        <div className="row-title-wrap">
-                          <strong>Adults</strong>
+                    <div className="flex items-center justify-between gap-3 py-2 border-b border-slate-800/60">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm sm:text-base text-white">Adults</strong>
                           {isExistingPaid && (
-                            <span className="spot-reg-number-chip" style={{ fontSize: '0.72rem', padding: '0.1rem 0.4rem' }}>
+                            <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[11px] font-semibold">
                               Min: {minAdults}
                             </span>
                           )}
                         </div>
-                        <span className="row-desc">
+                        <span className="text-xs text-slate-400">
                           {spotAdults === 1
                             ? '₹1,000 for 1 adult'
                             : `${spotAdults} × ₹1,000 = ₹${spotAdults * 1000}`}
                         </span>
                       </div>
-                      <div className="spot-stepper">
+                      <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
                         <button
                           type="button"
                           onClick={() => {
@@ -2225,10 +2273,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           disabled={spotAdults <= minAdults}
                           aria-label="Decrease adults"
                           title={isExistingPaid && spotAdults <= minAdults ? `Cannot reduce below previously registered count (${minAdults})` : undefined}
+                          className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 text-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                         >
                           −
                         </button>
-                        <span>{spotAdults}</span>
+                        <span className="px-3 min-w-[32px] text-center font-bold text-white text-sm sm:text-base select-none">{spotAdults}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -2237,6 +2286,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           }}
                           disabled={spotAdults >= 10}
                           aria-label="Increase adults"
+                          className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 text-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                         >
                           +
                         </button>
@@ -2244,23 +2294,23 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     </div>
 
                     {/* Row 2: Children (10+ Years) */}
-                    <div className="spot-attendee-unified-row">
-                      <div className="spot-attendee-unified-info">
-                        <div className="row-title-wrap">
-                          <strong>Children (10+ Years)</strong>
+                    <div className="flex items-center justify-between gap-3 py-2 border-b border-slate-800/60">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm sm:text-base text-white">Children (10+ Years)</strong>
                           {isExistingPaid && minKidsAbove10 > 0 && (
-                            <span className="spot-reg-number-chip" style={{ fontSize: '0.72rem', padding: '0.1rem 0.4rem' }}>
+                            <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[11px] font-semibold">
                               Min: {minKidsAbove10}
                             </span>
                           )}
                         </div>
-                        <span className="row-desc">
+                        <span className="text-xs text-slate-400">
                           {spotKidsAbove10 === 0
                             ? '₹500 per child'
                             : `${spotKidsAbove10} × ₹500 = ₹${spotKidsAbove10 * 500}`}
                         </span>
                       </div>
-                      <div className="spot-stepper">
+                      <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
                         <button
                           type="button"
                           onClick={() => {
@@ -2270,10 +2320,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           disabled={spotKidsAbove10 <= minKidsAbove10}
                           aria-label="Decrease children 10 and above"
                           title={isExistingPaid && spotKidsAbove10 <= minKidsAbove10 ? `Cannot reduce below previously registered count (${minKidsAbove10})` : undefined}
+                          className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 text-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                         >
                           −
                         </button>
-                        <span>{spotKidsAbove10}</span>
+                        <span className="px-3 min-w-[32px] text-center font-bold text-white text-sm sm:text-base select-none">{spotKidsAbove10}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -2282,6 +2333,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           }}
                           disabled={spotKidsAbove10 >= 10}
                           aria-label="Increase children 10 and above"
+                          className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 text-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                         >
                           +
                         </button>
@@ -2289,19 +2341,19 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     </div>
 
                     {/* Row 3: Children (Under 10 Years) */}
-                    <div className="spot-attendee-unified-row">
-                      <div className="spot-attendee-unified-info">
-                        <div className="row-title-wrap">
-                          <strong>Children (Under 10 Years)</strong>
+                    <div className="flex items-center justify-between gap-3 py-2">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm sm:text-base text-white">Children (Under 10 Years)</strong>
                           {isExistingPaid && minKidsUnder10 > 0 && (
-                            <span className="spot-reg-number-chip" style={{ fontSize: '0.72rem', padding: '0.1rem 0.4rem' }}>
+                            <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[11px] font-semibold">
                               Min: {minKidsUnder10}
                             </span>
                           )}
                         </div>
-                        <span className="badge-free">FREE</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/30 inline-block w-fit">FREE</span>
                       </div>
-                      <div className="spot-stepper">
+                      <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
                         <button
                           type="button"
                           onClick={() => {
@@ -2311,10 +2363,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           disabled={spotKidsUnder10 <= minKidsUnder10}
                           aria-label="Decrease children under 10"
                           title={isExistingPaid && spotKidsUnder10 <= minKidsUnder10 ? `Cannot reduce below previously registered count (${minKidsUnder10})` : undefined}
+                          className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 text-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                         >
                           −
                         </button>
-                        <span>{spotKidsUnder10}</span>
+                        <span className="px-3 min-w-[32px] text-center font-bold text-white text-sm sm:text-base select-none">{spotKidsUnder10}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -2323,6 +2376,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           }}
                           disabled={spotKidsUnder10 >= 10}
                           aria-label="Increase children under 10"
+                          className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 text-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                         >
                           +
                         </button>
@@ -2331,71 +2385,70 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </div>
 
                   {/* Amount Breakdown Card Matching Registration Form (Requirement: Difference Calculation) */}
-                  <div className="spot-amount-summary-box">
-                    <div className="spot-pricing-items-list">
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex flex-col gap-2.5 mt-2">
+                    <div className="flex flex-col gap-1.5">
                       {spotPricing.items.map((item, idx) => (
-                        <div key={idx} className="spot-amount-row">
-                          <div className="spot-amount-label-wrap">
-                            <span className="spot-amount-label">{item.label}</span>
-                            <span className="spot-amount-sublabel">{item.rateDescription}</span>
+                        <div key={idx} className="flex items-center justify-between text-xs sm:text-sm">
+                          <div className="flex flex-col">
+                            <span className="text-slate-300 font-medium">{item.label}</span>
+                            <span className="text-xs text-slate-500">{item.rateDescription}</span>
                           </div>
-                          <span className={`spot-amount-rate ${item.isFree ? 'spot-free-tag' : ''}`}>
+                          <span className={`font-semibold ${item.isFree ? 'text-emerald-400 font-bold' : 'text-slate-200'}`}>
                             {item.isFree ? 'FREE' : `₹${item.amount}`}
                           </span>
                         </div>
                       ))}
                     </div>
 
-                    <div className="spot-amount-divider" />
+                    <div className="h-px bg-slate-800 my-1" />
 
-                    <div className="spot-amount-total-row">
-                      <div className="spot-total-label-wrap">
-                        <span className="spot-total-label">
+                    <div className="flex items-center justify-between text-sm sm:text-base font-bold text-white">
+                      <div className="flex flex-col">
+                        <span>
                           {isExistingPaid ? 'Updated Total Contribution:' : 'Total Contribution:'}
                         </span>
-                        <span className="spot-total-hint">
+                        <span className="text-xs text-slate-400 font-normal">
                           ({spotAttendees}{' '}
                           {spotAttendees === 1 ? 'attendee' : 'attendees'})
                         </span>
                       </div>
-                      <span className="spot-total-number">₹{totalContributionAmount}</span>
+                      <span className="text-amber-400 text-base sm:text-lg font-extrabold">₹{totalContributionAmount}</span>
                     </div>
 
                     {/* If Existing Paid Attendee: Deduct previously paid amount and show Difference */}
                     {isExistingPaid && (
                       <>
-                        <div className="spot-amount-row spot-deduct-row">
-                          <div className="spot-amount-label-wrap">
-                            <span className="spot-amount-label text-paid-credit">
+                        <div className="flex items-center justify-between text-xs sm:text-sm text-emerald-400">
+                          <div className="flex flex-col">
+                            <span className="font-semibold">
                               ✓ Previously Paid Contribution:
                             </span>
-                            <span className="spot-amount-sublabel text-paid-credit-sub">
+                            <span className="text-xs text-emerald-500/80">
                               Credited from existing registration ({existingMatchedReg?.registration_number})
                             </span>
                           </div>
-                          <span className="spot-amount-rate text-paid-credit font-semibold">
+                          <span className="font-semibold text-emerald-400">
                             − ₹{previousPaidAmount}
                           </span>
                         </div>
 
-                        <div className="spot-amount-divider" />
+                        <div className="h-px bg-slate-800 my-1" />
 
-                        <div className="spot-amount-total-row spot-due-highlight-row">
-                          <div className="spot-total-label-wrap">
-                            <span className="spot-total-label font-bold">
+                        <div className="flex items-center justify-between text-sm sm:text-base font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 mt-1">
+                          <div className="flex flex-col">
+                            <span className="text-white font-bold">
                               {isFullyPaid ? 'Additional Amount Due:' : 'Difference to Pay Now:'}
                             </span>
-                            <span className="spot-total-hint">
+                            <span className="text-xs text-slate-400 font-normal">
                               {isFullyPaid
                                 ? 'All dues cleared for registered members'
                                 : 'Difference to pay for additional member(s)'}
                             </span>
                           </div>
                           <span
-                            className={`spot-total-number ${
-                              isFullyPaid ? 'text-cleared font-bold' : 'text-due font-extrabold'
+                            className={`text-base sm:text-lg font-extrabold ${
+                              isFullyPaid ? 'text-emerald-400' : 'text-amber-400'
                             }`}
-                            style={{ color: isFullyPaid ? '#34d399' : '#f59e0b' }}
                           >
                             {isFullyPaid ? '₹0 (Paid ✓)' : `₹${differenceDue}`}
                           </span>
@@ -2406,11 +2459,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
                   {/* Fully Paid Callout if dues cleared */}
                   {isFullyPaid && (
-                    <div className="spot-fully-paid-callout">
-                      <div className="callout-icon">🎉</div>
-                      <div className="callout-body">
-                        <strong>All Dues Cleared!</strong>
-                        <p>
+                    <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 sm:p-4 flex items-start gap-3 text-emerald-200 text-xs sm:text-sm mt-2">
+                      <div className="text-2xl shrink-0">🎉</div>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <strong className="text-sm font-bold text-white">All Dues Cleared!</strong>
+                        <p className="text-slate-300">
                           Previous online payment of <strong>₹{previousPaidAmount}</strong> fully covers all{' '}
                           {spotAdults + spotKidsAbove10 + spotKidsUnder10} attendee(s). No payment collection needed at gate. Click below to confirm entry!
                         </p>
@@ -2420,12 +2473,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
                   {/* Difference Alert if extra attendees added */}
                   {isExistingPaid && differenceDue > 0 && (
-                    <div className="spot-diff-alert">
-                      <div className="alert-flex">
-                        <span className="alert-icon">💳</span>
-                        <div className="alert-body">
-                          <strong>Additional Payment of ₹{differenceDue} Required</strong>
-                          <p>
+                    <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-3 sm:p-4 flex items-start gap-3 text-amber-200 text-xs sm:text-sm mt-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl shrink-0">💳</span>
+                        <div className="flex-1 flex flex-col gap-1">
+                          <strong className="text-sm font-bold text-white">Additional Payment of ₹{differenceDue} Required</strong>
+                          <p className="text-slate-300">
                             You added attendee(s). Previous payment of <strong>₹{previousPaidAmount}</strong> is credited.
                             Please collect only the remaining difference of <strong>₹{differenceDue}</strong> via Cash or UPI below.
                           </p>
@@ -2435,9 +2488,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   )}
                 </div>
 
-                <div className={`form-field ${spotErrors.paymentMode ? 'has-error' : ''}`}>
-                  <label htmlFor="spot-payment-mode">
-                    Payment Collected At Gate <span className="req-star">*</span>
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                  <label htmlFor="spot-payment-mode" className="text-xs sm:text-sm font-semibold text-slate-300">
+                    Payment Collected At Gate <span className="text-amber-400 font-bold ml-0.5">*</span>
                   </label>
                   <select
                     id="spot-payment-mode"
@@ -2448,6 +2501,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       setPaymentConfirmed(e.target.value === 'ALL_DUES_CLEARED');
                       clearSpotError('paymentMode');
                     }}
+                    className={`w-full min-h-[44px] bg-slate-950 border rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer [&_option]:bg-slate-900 [&_option]:text-white ${
+                      spotErrors.paymentMode ? 'border-red-500/60' : 'border-slate-800'
+                    }`}
                   >
                     <option value="">-- Select Payment Method --</option>
                     {isFullyPaid && (
@@ -2459,7 +2515,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       💵 Cash Collected ({isExistingPaid ? `Difference: ₹${amountToCollect}` : `₹${amountToCollect}`})
                     </option>
                     <optgroup label={`📱 UPI QR - Scan to Pay ${isExistingPaid ? `Difference (₹${amountToCollect})` : `(₹${amountToCollect})`}`}>
-                      {DEFAULT_UPI_CONFIGS.map((config) => {
+                      {eventUpiConfigs.map((config) => {
                         const bankHandle = config.upi_id.includes('@')
                           ? `@${config.upi_id.split('@')[1]}`
                           : config.upi_id;
@@ -2477,11 +2533,11 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               {/* ALL DUES CLEARED CARD (When difference is 0) */}
               {spotPaymentMode === 'ALL_DUES_CLEARED' && (
-                <div className="spot-fully-paid-card">
-                  <div className="fully-paid-icon">🎉</div>
-                  <div className="fully-paid-body">
-                    <h4>No Payment Required (Dues Cleared)</h4>
-                    <p>
+                <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-4 flex items-start gap-3 text-emerald-200 text-xs sm:text-sm">
+                  <div className="text-2xl shrink-0">🎉</div>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <h4 className="font-bold text-white text-sm sm:text-base">No Payment Required (Dues Cleared)</h4>
+                    <p className="text-slate-300">
                       Attendee's previous payment of <strong>₹{previousPaidAmount}</strong> completely covers all registered attendees.
                       You can admit this attendee immediately.
                     </p>
@@ -2491,30 +2547,34 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               {/* INSTANT UPI QR CODE PAYMENT DESK CARD */}
               {selectedUpiConfig && (
-                <div className="spot-qr-display-card">
-                  <div className="spot-qr-card-header">
-                    <div className="spot-qr-header-title">
-                      <span className="spot-qr-icon">📱</span>
+                <div className="bg-slate-950/90 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">📱</span>
                       <div>
-                        <h4>Instant Desk UPI QR Payment</h4>
-                        <p>Alumnus can scan the QR code below using Google Pay, PhonePe, Paytm, or BHIM.</p>
+                        <h4 className="font-bold text-white text-sm sm:text-base">Instant Desk UPI QR Payment</h4>
+                        <p className="text-xs text-slate-400">Alumnus can scan the QR code below using Google Pay, PhonePe, Paytm, or BHIM.</p>
                       </div>
                     </div>
-                    <div className="spot-qr-amount-pill">
-                      <span className="lbl">{isExistingPaid ? 'Difference Due' : 'Amount'}</span>
-                      <span className="val">₹{amountToCollect}</span>
+                    <div className="flex flex-col items-end px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-xl text-right">
+                      <span className="text-[11px] text-amber-300 font-medium">{isExistingPaid ? 'Difference Due' : 'Amount'}</span>
+                      <span className="text-base sm:text-lg font-bold text-amber-400">₹{amountToCollect}</span>
                     </div>
                   </div>
 
                   {/* Quick Recipient Switcher Pills */}
-                  <div className="spot-qr-account-switcher">
-                    <span className="switcher-label">Switch Receiver:</span>
-                    <div className="switcher-pills">
-                      {DEFAULT_UPI_CONFIGS.map((config) => (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-1">
+                    <span className="text-xs text-slate-400 font-medium whitespace-nowrap">Switch Receiver:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {eventUpiConfigs.map((config) => (
                         <button
                           key={config.upi_id}
                           type="button"
-                          className={`account-pill ${spotPaymentMode === config.upi_id ? 'active' : ''}`}
+                          className={`min-h-[44px] sm:min-h-0 px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            spotPaymentMode === config.upi_id
+                              ? 'bg-amber-500 text-slate-950 font-bold'
+                              : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
+                          }`}
                           onClick={() => {
                             setSpotPaymentMode(config.upi_id);
                             setPaymentConfirmed(false);
@@ -2526,35 +2586,35 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                     </div>
                   </div>
 
-                  <div className="spot-qr-body-grid">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-center">
                     {/* High contrast QR Frame */}
-                    <div className="spot-qr-frame-box">
-                      <div className="spot-qr-image-wrapper">
+                    <div className="flex flex-col items-center gap-2.5 bg-white p-3 sm:p-4 rounded-2xl shadow-xl max-w-[260px] mx-auto w-full">
+                      <div className="w-full aspect-square flex items-center justify-center">
                         <img
-                          src={selectedUpiConfig.qr_image_url}
+                          src={selectedUpiConfig.qr_image_url || undefined}
                           alt={`UPI QR Code for ${selectedUpiConfig.account_name}`}
-                          className="spot-qr-img"
+                          className="w-full h-full object-contain"
                         />
                       </div>
-                      <div className="spot-qr-badge">
+                      <div className="text-[11px] font-bold text-slate-900 bg-amber-400 px-2.5 py-0.5 rounded-full text-center">
                         <span>⚡ {isExistingPaid ? `Scan to Pay Difference ₹${amountToCollect}` : `Scan to Pay ₹${amountToCollect}`}</span>
                       </div>
                     </div>
 
                     {/* Recipient Details & Confirmation */}
-                    <div className="spot-qr-details-box">
-                      <div className="spot-qr-detail-row">
-                        <span className="detail-label">Receiver Account</span>
-                        <strong className="detail-value text-gold">{selectedUpiConfig.account_name}</strong>
+                    <div className="flex flex-col gap-3 text-xs sm:text-sm">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                        <span className="text-slate-400">Receiver Account</span>
+                        <strong className="text-amber-400 font-semibold">{selectedUpiConfig.account_name}</strong>
                       </div>
 
-                      <div className="spot-qr-detail-row">
-                        <span className="detail-label">UPI ID</span>
-                        <div className="upi-id-copy-row">
-                          <code className="upi-code">{selectedUpiConfig.upi_id}</code>
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                        <span className="text-slate-400">UPI ID</span>
+                        <div className="flex items-center gap-1.5">
+                          <code className="px-2 py-1 bg-slate-900 border border-slate-800 rounded font-mono text-xs text-amber-300">{selectedUpiConfig.upi_id}</code>
                           <button
                             type="button"
-                            className="btn-copy-upi"
+                            className="min-h-[44px] sm:min-h-0 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded transition-colors cursor-pointer inline-flex items-center"
                             onClick={() => handleCopyUpi(selectedUpiConfig.upi_id)}
                           >
                             {copiedUpi ? '✓ Copied' : 'Copy'}
@@ -2562,16 +2622,16 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         </div>
                       </div>
 
-                      <div className="spot-qr-detail-row">
-                        <span className="detail-label">Attendees Covered</span>
-                        <span className="detail-value">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                        <span className="text-slate-400">Attendees Covered</span>
+                        <span className="text-slate-200 font-semibold">
                           {spotAdults + spotKidsAbove10 + spotKidsUnder10}{' '}
                           {spotAdults + spotKidsAbove10 + spotKidsUnder10 === 1 ? 'Person' : 'People'}
                         </span>
                       </div>
 
                       {/* Live Camera Photo Snap for UPI Payment Confirmation */}
-                      <div className="spot-upi-proof-section">
+                      <div className="flex flex-col gap-2 pt-1">
                         <input
                           ref={spotCameraInputRef}
                           type="file"
@@ -2607,34 +2667,38 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         />
 
                         {!spotPhotoPreview ? (
-                          <div className="spot-photo-capture-box">
+                          <div className="flex flex-col gap-2.5 mt-2">
                             <button
                               id="spot-snap-payment-btn"
                               type="button"
-                              className={`btn-snap-payment ${spotErrors.upiConfirmed ? 'has-error' : ''}`}
+                              className={`w-full min-h-[52px] p-3 rounded-xl border-2 border-dashed bg-slate-900/60 hover:bg-slate-900 flex items-center gap-3 text-left transition-all cursor-pointer ${
+                                spotErrors.upiConfirmed
+                                  ? 'border-red-500/60 bg-red-950/20'
+                                  : 'border-slate-700 hover:border-amber-500/60'
+                              }`}
                               onClick={() => {
                                 spotCameraInputRef.current?.click();
                                 clearSpotError('upiConfirmed');
                               }}
                             >
-                              <span className="snap-camera-icon">📸</span>
-                              <div className="snap-btn-text">
-                                <strong>Snap Attendee's Payment Screen</strong>
-                                <span>Point mobile camera at alumnus's phone to capture payment confirmation</span>
+                              <span className="text-2xl">📸</span>
+                              <div className="flex flex-col text-xs sm:text-sm">
+                                <strong className="text-white">Snap Attendee's Payment Screen</strong>
+                                <span className="text-slate-400">Point mobile camera at alumnus's phone to capture payment confirmation</span>
                               </div>
                             </button>
 
                             {spotErrors.upiConfirmed && (
-                              <div className="spot-inline-error-alert">
-                                <span className="inline-err-icon">⚠️</span>
+                              <div className="flex items-center gap-1.5 text-xs text-red-400 mt-1">
+                                <span className="text-sm">⚠️</span>
                                 <span>Please snap the payment screen or verify manually below.</span>
                               </div>
                             )}
 
-                            <div className="snap-alt-actions">
+                            <div className="flex items-center justify-center gap-2 text-xs text-slate-400 flex-wrap">
                               <button
                                 type="button"
-                                className="btn-snap-alt-link"
+                                className="min-h-[44px] sm:min-h-0 py-1 text-slate-400 hover:text-amber-400 underline transition-colors cursor-pointer inline-flex items-center"
                                 onClick={() => {
                                   spotFileInputRef.current?.click();
                                   clearSpotError('upiConfirmed');
@@ -2642,10 +2706,10 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                               >
                                 📁 Choose from files
                               </button>
-                              <span className="snap-divider">•</span>
+                              <span className="text-slate-600">•</span>
                               <button
                                 type="button"
-                                className="btn-snap-alt-link"
+                                className="min-h-[44px] sm:min-h-0 py-1 text-slate-400 hover:text-amber-400 underline transition-colors cursor-pointer inline-flex items-center"
                                 onClick={() => {
                                   const next = !paymentConfirmed;
                                   setPaymentConfirmed(next);
@@ -2657,37 +2721,39 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                             </div>
 
                             {paymentConfirmed && (
-                              <div className="manual-verified-badge">
+                              <div className="text-center text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2">
                                 <span>✓ Payment verified on alumnus screen (no photo attached)</span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="spot-photo-preview-card">
-                            <div className="preview-thumb-col">
+                          <div className="flex flex-col sm:flex-row gap-3 bg-slate-900/90 border border-slate-800 rounded-xl p-3 items-center sm:items-start">
+                            <div className="relative w-24 h-24 rounded-lg overflow-hidden shrink-0 border border-slate-700">
                               <img
                                 src={spotPhotoPreview}
                                 alt="Payment Confirmation Screen"
-                                className="spot-proof-img"
+                                className="w-full h-full object-cover"
                               />
-                              <span className="proof-status-chip">✓ Photo Attached</span>
+                              <span className="absolute bottom-1 left-1 right-1 text-[10px] font-bold text-center bg-emerald-950/90 text-emerald-300 py-0.5 rounded">
+                                ✓ Photo Attached
+                              </span>
                             </div>
-                            <div className="preview-meta-col">
-                              <strong className="preview-title">Payment Screen Captured</strong>
-                              <span className="preview-filesize">
+                            <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                              <strong className="font-bold text-white text-xs sm:text-sm">Payment Screen Captured</strong>
+                              <span className="text-xs text-slate-400">
                                 {spotPhotoFile ? `${(spotPhotoFile.size / 1024).toFixed(0)} KB • Ready to save` : ''}
                               </span>
-                              <div className="preview-btn-row">
+                              <div className="flex gap-2 mt-1 flex-wrap">
                                 <button
                                   type="button"
-                                  className="btn-retake-snap"
+                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer inline-flex items-center"
                                   onClick={() => spotCameraInputRef.current?.click()}
                                 >
                                   📸 Retake Photo
                                 </button>
                                 <button
                                   type="button"
-                                  className="btn-delete-snap"
+                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-500/30 text-xs font-medium transition-colors cursor-pointer inline-flex items-center"
                                   onClick={() => {
                                     if (spotPhotoPreview) URL.revokeObjectURL(spotPhotoPreview);
                                     setSpotPhotoFile(null);
@@ -2709,22 +2775,28 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               {/* CASH PAYMENT CONFIRMATION CARD */}
               {spotPaymentMode === 'CASH' && (
-                <div className="spot-cash-payment-card">
-                  <div className="cash-card-header">
-                    <span className="cash-card-icon">💵</span>
-                    <div className="cash-card-info">
-                      <h4>Cash Collection at Gate Desk</h4>
-                      <p>Collect {isExistingPaid ? 'remaining difference of ' : ''}₹{amountToCollect} cash in hand from alumnus before admitting entry.</p>
+                <div className="bg-slate-950/90 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 flex flex-col gap-3 shadow-xl">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <span className="text-2xl">💵</span>
+                    <div className="flex-1 flex flex-col min-w-[200px]">
+                      <h4 className="font-bold text-white text-sm sm:text-base">Cash Collection at Gate Desk</h4>
+                      <p className="text-xs text-slate-400">Collect {isExistingPaid ? 'remaining difference of ' : ''}₹{amountToCollect} cash in hand from alumnus before admitting entry.</p>
                     </div>
-                    <div className="cash-amount-badge">
-                      <span className="lbl">{isExistingPaid ? 'Difference Due' : 'Amount'}</span>
-                      <span className="val">₹{amountToCollect}</span>
+                    <div className="flex flex-col items-end px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-right">
+                      <span className="text-[11px] text-emerald-300 font-medium">{isExistingPaid ? 'Difference Due' : 'Amount'}</span>
+                      <span className="text-base sm:text-lg font-bold text-emerald-400">₹{amountToCollect}</span>
                     </div>
                   </div>
 
                   <div
                     id="spot-cash-confirm-box"
-                    className={`spot-payment-confirm-card ${paymentConfirmed ? 'confirmed' : ''} ${spotErrors.cashConfirmed ? 'has-error' : ''}`}
+                    className={`flex items-start gap-3 bg-slate-900/80 border rounded-xl p-3.5 sm:p-4 cursor-pointer transition-all ${
+                      paymentConfirmed
+                        ? 'border-emerald-500/60 bg-emerald-950/20'
+                        : spotErrors.cashConfirmed
+                        ? 'border-red-500/60'
+                        : 'border-slate-800 hover:border-emerald-500/40'
+                    }`}
                     onClick={() => {
                       const next = !paymentConfirmed;
                       setPaymentConfirmed(next);
@@ -2740,12 +2812,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                         if (e.target.checked) clearSpotError('cashConfirmed');
                       }}
                       onClick={(e) => e.stopPropagation()}
+                      className="mt-1 w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
                     />
-                    <label htmlFor="spot-cash-checkbox" className="confirm-label">
+                    <label htmlFor="spot-cash-checkbox" className="flex flex-col text-xs sm:text-sm text-slate-300 cursor-pointer">
                       <strong>
-                        Cash Received in Hand <span className="req-star">*</span>
+                        Cash Received in Hand <span className="text-amber-400 font-bold ml-0.5">*</span>
                       </strong>
-                      <span>
+                      <span className="text-xs text-slate-400 mt-0.5">
                         {paymentConfirmed
                           ? `✅ Confirmed: ₹${amountToCollect} cash collected at gate desk`
                           : `Check this once alumnus hands over ₹${amountToCollect} in cash.`}
@@ -2754,19 +2827,19 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </div>
 
                   {spotErrors.cashConfirmed && (
-                    <div className="spot-inline-error-alert">
-                      <span className="inline-err-icon">⚠️</span>
+                    <div className="flex items-center gap-1.5 text-xs text-red-400 mt-1">
+                      <span className="text-sm">⚠️</span>
                       <span>Please check the box above to confirm cash collection before completing entry.</span>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="spot-form-actions">
+              <div className="w-full mt-2">
                 <button
                   type="submit"
                   disabled={spotSubmitting}
-                  className="btn-primary-action btn-spot-submit"
+                  className="w-full min-h-[48px] py-3 px-6 rounded-xl font-bold text-sm sm:text-base bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-xl shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50"
                 >
                   {spotSubmitting
                     ? 'Registering...'
@@ -2783,35 +2856,40 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             {spotScanResult && (
               <div
                 ref={statusResultRef}
-                className={`gate-scan-result-card ${spotScanResult.status.toLowerCase()}`}
-                style={{ marginTop: '1.25rem', width: '100%', maxWidth: '100%' }}
+                className={`mt-5 w-full rounded-2xl border p-4 sm:p-6 shadow-2xl transition-all ${
+                  spotScanResult.status === 'ENTERED'
+                    ? 'bg-slate-950/95 border-emerald-500/50'
+                    : 'bg-slate-950/95 border-red-500/50'
+                }`}
               >
                 {spotScanResult.status === 'ENTERED' && (
                   <>
-                    <div className="result-content success">
-                      <div className="result-icon">✅</div>
-                      <div className="result-text">
-                        <h3 className="result-title">VERIFIED SUCCESSFULLY</h3>
-                        <p className="result-name">{spotScanResult.attendee_name}</p>
-                        <div className="result-badges">
-                          <span className="result-pill">{spotScanResult.registration_number}</span>
-                          <span className="result-pill">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className="text-3xl sm:text-4xl shrink-0">✅</div>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <h3 className="text-base sm:text-lg font-bold tracking-wide text-emerald-400">VERIFIED SUCCESSFULLY</h3>
+                        <p className="text-lg sm:text-xl font-extrabold text-white">{spotScanResult.attendee_name}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-200">
+                            {spotScanResult.registration_number}
+                          </span>
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-200">
                             {spotScanResult.branch && spotScanResult.branch !== 'Other'
                               ? `${spotScanResult.branch}${spotScanResult.year_of_passing ? ` (${spotScanResult.year_of_passing})` : ''}`
                               : spotScanResult.year_of_passing
                               ? `Class of ${spotScanResult.year_of_passing}`
                               : 'Spot Walk-in'}
                           </span>
-                          <span className="result-pill count-pill">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300">
                             👥 {spotScanResult.number_of_attendees || 1} Attendees Allowed
                           </span>
-                          <span className="result-pill spot-verified-pill">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
                             ⚡ Spot Entry Admitted
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="result-actions">
+                    <div className="flex gap-2 sm:gap-3 flex-wrap mt-4">
                       <button
                         type="button"
                         onClick={() => {
@@ -2819,7 +2897,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                           const nameInput = document.getElementById('spot-name') || document.getElementById('spot-mobile');
                           if (nameInput) nameInput.focus();
                         }}
-                        className="btn-scan-next btn-success"
+                        className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
                       >
                         <span>⚡</span>
                         <span>Register Next Walk-in Attendee →</span>
@@ -2830,24 +2908,23 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
                 {spotScanResult.status === 'ERROR' && (
                   <>
-                    <div className="result-content error">
-                      <div className="result-icon">❌</div>
-                      <div className="result-text">
-                        <h3 className="result-title">REGISTRATION FAILED</h3>
-                        <p className="result-detail">{spotScanResult.message}</p>
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className="text-3xl sm:text-4xl shrink-0">❌</div>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <h3 className="text-base sm:text-lg font-bold tracking-wide text-red-400">REGISTRATION FAILED</h3>
+                        <p className="text-xs sm:text-sm text-red-300">{spotScanResult.message}</p>
                         {spotScanResult.attendee_name && (
-                          <p className="result-sub">
+                          <p className="text-xs sm:text-sm text-slate-300">
                             Attendee: <strong>{spotScanResult.attendee_name}</strong>
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="result-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <div className="flex gap-2 sm:gap-3 flex-wrap mt-4">
                       <button
                         type="button"
                         onClick={() => setSpotScanResult(null)}
-                        className="btn-scan-next btn-warning"
-                        style={{ flex: '1 1 160px', minHeight: '44px' }}
+                        className="flex-1 min-w-[160px] min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
                       >
                         <span>↩</span>
                         <span>Edit &amp; Try Again</span>
@@ -2855,8 +2932,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleResetSpot(true)}
-                        className="btn-scan-next btn-error"
-                        style={{ flex: '1 1 160px', minHeight: '44px' }}
+                        className="flex-1 min-w-[160px] min-h-[44px] px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
                       >
                         <span>✕</span>
                         <span>Clear &amp; Reset Form</span>
@@ -2872,70 +2948,82 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
       {/* 6. SUBTAB: Gate Entry Log Table (Requirement #6) */}
       {activeSubTab === 'log' && (
-        <div className="gate-log-section">
-          <div className="gate-log-toolbar">
+        <div className="w-full flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/80 border border-slate-800 rounded-xl p-3">
             <input
               type="text"
               placeholder="Search entered attendees by name or phone..."
               value={logSearch}
               onChange={(e) => setLogSearch(e.target.value)}
-              className="gate-log-search"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all flex-1 max-w-md"
             />
-            <span className="log-count-indicator">
+            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
               Showing {filteredGateEntries.length} of {gateEntries.length} physical entries
             </span>
           </div>
 
-          <div className="gate-table-wrapper gate-desktop-table">
-            <table className="gate-table">
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/80 shadow-xl">
+            <table className="w-full text-left text-xs sm:text-sm text-slate-300">
               <thead>
-                <tr>
-                  <th>Time Entered</th>
-                  <th>Attendee Name</th>
-                  <th>Phone</th>
-                  <th>Branch & Batch</th>
-                  <th>Heads</th>
-                  <th>Mode</th>
-                  <th>Payment</th>
-                  <th>Gate Staff</th>
+                <tr className="border-b border-slate-800 bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="px-4 py-3">Time Entered</th>
+                  <th className="px-4 py-3">Attendee Name</th>
+                  <th className="px-4 py-3">Phone</th>
+                  <th className="px-4 py-3">Branch &amp; Batch</th>
+                  <th className="px-4 py-3">Heads</th>
+                  <th className="px-4 py-3">Mode</th>
+                  <th className="px-4 py-3">Payment</th>
+                  <th className="px-4 py-3">Gate Staff</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-800/60">
                 {filteredGateEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="empty-table-cell">
+                    <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-xs sm:text-sm">
                       {loadingEntries ? 'Loading gate entries...' : 'No gate entries recorded yet.'}
                     </td>
                   </tr>
                 ) : (
                   filteredGateEntries.map((entry) => (
-                    <tr key={entry.id}>
-                      <td className="time-cell">
+                    <tr key={entry.id} className="hover:bg-slate-900/40 transition-colors">
+                      <td className="px-4 py-3 font-mono text-slate-400 text-xs whitespace-nowrap">
                         {new Date(entry.entered_at).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit',
                           second: '2-digit',
                         })}
                       </td>
-                      <td className="name-cell">
-                        <strong>{entry.attendee_name}</strong>
+                      <td className="px-4 py-3 font-bold text-white">
+                        {entry.attendee_name}
                       </td>
-                      <td>{entry.phone_number}</td>
-                      <td>
-                        {entry.branch || '—'} {entry.year_of_passing ? `('${String(entry.year_of_passing).slice(-2)})` : ''}
+                      <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{entry.phone_number}</td>
+                      <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
+                        {entry.year_of_passing ? `Batch ${getBatchFromPassingYear(entry.year_of_passing)}` : (entry.branch || '—')} {entry.branch && entry.year_of_passing ? `• ${entry.branch}` : ''}
                       </td>
-                      <td className="heads-cell">
-                        <span className="heads-badge">👥 {entry.accompanying_count || 1}</span>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium">
+                          👥 {entry.accompanying_count || 1}
+                        </span>
                       </td>
-                      <td>
-                        <span className={`entry-mode-pill ${entry.entry_mode}`}>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                            entry.entry_mode === 'qr_scan'
+                              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                              : entry.entry_mode === 'manual_phone'
+                              ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          }`}
+                        >
                           {entry.entry_mode === 'qr_scan' ? '📷 QR Scan' : entry.entry_mode === 'manual_phone' ? '⌨️ Manual' : '⚡ Spot'}
                         </span>
                       </td>
-                      <td>
-                        <span className="pay-verified-pill">✓ {entry.payment_status}</span>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                          ✓ {entry.payment_status}
+                        </span>
                       </td>
-                      <td className="staff-cell">{entry.verified_by || 'Gate 1'}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{entry.verified_by || 'Gate 1'}</td>
                     </tr>
                   ))
                 )}
@@ -2944,42 +3032,53 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
           </div>
 
           {/* Mobile Card List View for Phones */}
-          <div className="gate-mobile-log-list">
+          <div className="flex md:hidden flex-col gap-3">
             {filteredGateEntries.length === 0 ? (
-              <div className="empty-log-card">
+              <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-6 text-center text-slate-500 text-xs sm:text-sm">
                 {loadingEntries ? 'Loading gate entries...' : 'No gate entries recorded yet.'}
               </div>
             ) : (
               filteredGateEntries.map((entry) => (
-                <div key={entry.id} className="gate-mobile-entry-card">
-                  <div className="card-top-row">
-                    <span className="attendee-name">{entry.attendee_name}</span>
-                    <span className="entry-time">
+                <div key={entry.id} className="bg-slate-950 border border-slate-800/80 rounded-xl p-3.5 flex flex-col gap-2 shadow-md">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-white text-sm truncate">{entry.attendee_name}</span>
+                    <span className="text-xs text-slate-400 font-mono shrink-0">
                       {new Date(entry.entered_at).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </span>
                   </div>
-                  <div className="card-meta-row">
-                    <span className="attendee-phone">📞 {entry.phone_number}</span>
-                    <span className="attendee-academic">
-                      🎓 {entry.branch || 'General'}{' '}
-                      {entry.year_of_passing ? `('${String(entry.year_of_passing).slice(-2)})` : ''}
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-400 flex-wrap">
+                    <span>📞 {entry.phone_number}</span>
+                    <span>
+                      🎓 {entry.year_of_passing ? `Batch ${getBatchFromPassingYear(entry.year_of_passing)}` : (entry.branch || 'General')}
                     </span>
                   </div>
-                  <div className="card-badges-row">
-                    <span className="heads-badge">👥 {entry.accompanying_count || 1} Total</span>
-                    <span className={`entry-mode-pill ${entry.entry_mode}`}>
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium">
+                      👥 {entry.accompanying_count || 1} Total
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                        entry.entry_mode === 'qr_scan'
+                          ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                          : entry.entry_mode === 'manual_phone'
+                          ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      }`}
+                    >
                       {entry.entry_mode === 'qr_scan'
                         ? '📷 QR'
                         : entry.entry_mode === 'manual_phone'
                           ? '⌨️ Phone'
                           : '⚡ Spot'}
                     </span>
-                    <span className="pay-verified-pill">✓ {entry.payment_status}</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                      ✓ {entry.payment_status}
+                    </span>
                     {entry.verified_by && (
-                      <span className="staff-cell" title={entry.verified_by}>
+                      <span className="text-xs text-slate-400" title={entry.verified_by}>
                         👤 {entry.verified_by.split(' ')[0]}
                       </span>
                     )}

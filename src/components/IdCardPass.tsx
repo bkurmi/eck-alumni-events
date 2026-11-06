@@ -1,6 +1,7 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 
 interface IdCardPassProps {
   registration: ExistingRegistrationLookup;
@@ -62,11 +63,15 @@ function formatSmartAttendeeName(rawName: string): { displayName: string; fontSi
 
 export const IdCardPass: React.FC<IdCardPassProps> = ({
   registration,
-  event: _event,
+  event,
   photoUrl,
   cardRef,
   hideQr = false,
 }) => {
+  const isConcluded = event?.status === 'CLOSED';
+  const eventTitle = (event?.short_name || event?.event_name || 'DEEPAURA 2K26').toUpperCase();
+  const eventTagline = event?.tagline || 'A ROYAL DIWALI REUNION';
+
   const alumni = registration.alumni;
   const rawMobile = alumni?.mobile || '';
   const cleanMobile = rawMobile.replace(/\D/g, '').slice(-10);
@@ -75,7 +80,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     formatSmartAttendeeName(alumni?.name || 'Alumnus');
   const regNumber = registration.registration_number || '';
   const branch = alumni?.engineering_discipline || '';
-  const batchYear = alumni?.year_of_passing ? String(alumni.year_of_passing) : '';
+  const batchName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '');
+  const batchDisplay = batchName ? `Batch ${batchName}` : 'Alumnus';
   const category = alumni?.professional_category || 'Alumnus';
   const badgeLabel = category.toLowerCase().includes('faculty')
     ? 'FACULTY'
@@ -126,13 +132,20 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
         {/* Subtle starry sparklers overlay */}
         <div className="ticket-bg-stars" />
 
+        {/* Concluded Edition Keepsake Stamp */}
+        {isConcluded && (
+          <div className="ticket-v-concluded-banner" title="Event Concluded • Official Souvenir Keepsake">
+            <span className="concluded-banner-text">★ SOUVENIR KEEPSAKE • CONCLUDED EDITION ★</span>
+          </div>
+        )}
+
         {/* ============================================================
             1. TOP HEADER BANNER (Official Target Design)
             ============================================================ */}
         <div className="ticket-v-header-section">
           <img
             src="/card-header-official.jpg"
-            alt="ECK-RTU Alumni DeepAura 2K26"
+            alt={eventTitle}
             className="ticket-v-header-official-img"
           />
         </div>
@@ -186,8 +199,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-info-split-row">
                 <div className="ticket-v-batch-box">
                   <span className="ticket-v-label">Batch</span>
-                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
-                    <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
+                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchDisplay}${branch ? ` • ${branch}` : ''}`}>
+                    <strong>{batchDisplay}</strong>{branch ? ` • ${branch}` : ''}
                   </p>
                 </div>
                 <div className="ticket-v-reg-box">
@@ -246,8 +259,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
           <div className="ticket-v-bottom-content">
             <h4 className="ticket-v-stub-title-sub">ECK-RTU</h4>
-            <h3 className="ticket-v-stub-title-main">DEEPAURA 2K26</h3>
-            <p className="ticket-v-stub-title-desc">A ROYAL DIWALI REUNION</p>
+            <h3 className="ticket-v-stub-title-main">{eventTitle}</h3>
+            <p className="ticket-v-stub-title-desc">{eventTagline.toUpperCase()}</p>
 
             {hideQr ? (
               <>
@@ -294,7 +307,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                     </div>
                     <span className="ticket-v-seal-brand">ECK-RTU</span>
                     <span className="ticket-v-seal-verified">★ VERIFIED ★</span>
-                    <span className="ticket-v-seal-event">DEEPAURA 2K26</span>
+                    <span className="ticket-v-seal-event">{eventTitle}</span>
                     <span className="ticket-v-seal-privacy">🔒 QR PROTECTED</span>
                   </div>
                 </div>

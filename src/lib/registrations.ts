@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getBatchFromPassingYear } from './batchUtils';
 import type {
   ExistingRegistrationLookup,
   RegistrationFormData,
@@ -158,14 +159,26 @@ export async function lookupRegistrationByMobile(
 }
 
 /**
- * Normalizes input numeric registration id (e.g. "39", "00039", or "REG-00039")
- * into canonical "REG-00039" format with leading zeros up to 5 digits.
+ * Normalizes input registration number:
+ * - "39" -> "REG-00039"
+ * - "DA26-42" -> "DA26-0042"
+ * - "NY27-1" -> "NY27-0001"
+ * Supports custom event prefixes as well as legacy REG- prefix.
  */
-export function formatRegistrationNumberInput(rawInput: string): string {
-  const digits = (rawInput || '').replace(/\D/g, '').slice(0, 5);
-  if (!digits) return '';
-  const padded = digits.padStart(5, '0');
-  return `REG-${padded}`;
+export function formatRegistrationNumberInput(rawInput: string, defaultPrefix = 'REG'): string {
+  const trimmed = (rawInput || '').trim().toUpperCase();
+  if (!trimmed) return '';
+
+  // Matches e.g. "DA26-0042", "DA26 42", "REG-00039", or bare digits "39"
+  const match = trimmed.match(/^([A-Z0-9]{2,8})?[-_\s]*(\d+)$/);
+  if (match) {
+    const prefix = match[1] || defaultPrefix;
+    const digits = match[2].slice(-5);
+    const padLen = prefix === 'REG' ? 5 : 4;
+    return `${prefix}-${digits.padStart(padLen, '0')}`;
+  }
+
+  return trimmed;
 }
 
 /**
@@ -174,9 +187,13 @@ export function formatRegistrationNumberInput(rawInput: string): string {
  */
 export async function lookupRegistrationByRegNumber(
   eventSlug: string,
-  regNumberOrDigits: string
+  regNumberOrDigits: string,
+  defaultPrefix = 'REG'
 ): Promise<ExistingRegistrationLookup> {
-  const formattedRegNumber = formatRegistrationNumberInput(regNumberOrDigits);
+  const formattedRegNumber = formatRegistrationNumberInput(regNumberOrDigits, defaultPrefix);
+  const digitsOnly = (regNumberOrDigits || '').replace(/\D/g, '');
+  const legacyRegFormat = digitsOnly ? `REG-${digitsOnly.padStart(5, '0')}` : '';
+
   if (!formattedRegNumber) {
     return { found: false };
   }
@@ -192,10 +209,25 @@ export async function lookupRegistrationByRegNumber(
       if (data.found) {
         return data as ExistingRegistrationLookup;
       }
-      return { found: false };
     }
   } catch (rpcErr) {
     console.warn('RPC get_registration_by_reg_number notice:', rpcErr);
+  }
+
+  // If primary RPC with formatted prefix didn't find, and formatted is different from legacy REG-00000, retry RPC with legacy REG
+  if (legacyRegFormat && legacyRegFormat !== formattedRegNumber) {
+    try {
+      const { data: legacyData, error: legacyErr } = await supabase.rpc('get_registration_by_reg_number', {
+        p_event_slug: eventSlug,
+        p_reg_number: legacyRegFormat,
+      });
+
+      if (!legacyErr && legacyData && legacyData.found) {
+        return legacyData as ExistingRegistrationLookup;
+      }
+    } catch {
+      // Silently fall through to table query
+    }
   }
 
   // 2. Secondary fallback: Direct Supabase table query
@@ -208,8 +240,13 @@ export async function lookupRegistrationByRegNumber(
 
     let query = supabase
       .from('event_registrations')
-      .select('*, alumni:alumni_id (*)')
-      .ilike('registration_number', formattedRegNumber);
+      .select('*, alumni:alumni_id (*)');
+
+    if (legacyRegFormat && legacyRegFormat !== formattedRegNumber) {
+      query = query.or(`registration_number.ilike.${formattedRegNumber},registration_number.ilike.${legacyRegFormat}`);
+    } else {
+      query = query.ilike('registration_number', formattedRegNumber);
+    }
 
     if (eventData?.id) {
       query = query.eq('event_id', eventData.id);
@@ -290,9 +327,11 @@ export function recordCompletedRegistrationLocally(
       country: formData.country,
       city: formData.city,
       state: formData.state,
+      batch: formData.batch || (formData.year_of_passing ? getBatchFromPassingYear(formData.year_of_passing) : '2024'),
       year_of_passing: Number(formData.year_of_passing) || 2024,
       engineering_discipline: formData.engineering_discipline,
       organization: formData.organization || null,
+      designation: formData.designation || null,
       employment_type: formData.employment_type || undefined,
       industry_domain: formData.industry_domain || undefined,
       professional_category: formData.professional_category || '',
@@ -329,10 +368,12 @@ export function convertLookupToFormData(lookup: ExistingRegistrationLookup): Reg
     city: alumni?.city || '',
     state: isIndia ? (alumni?.state || '') : '',
     state_other: isIndia ? '' : (alumni?.state || ''),
+    batch: alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : ''),
     year_of_passing: alumni?.year_of_passing || '',
     engineering_discipline: alumni?.engineering_discipline || '',
     engineering_discipline_other: '',
     organization: alumni?.organization || '',
+    designation: alumni?.designation || '',
     employment_type: alumni?.employment_type || '',
     employment_type_other: '',
     industry_domain: alumni?.industry_domain || '',
@@ -412,6 +453,7 @@ export async function fetchAllRegistrationsForLookup(
           mobile,
           email,
           engineering_discipline,
+          batch,
           year_of_passing,
           professional_category,
           city,

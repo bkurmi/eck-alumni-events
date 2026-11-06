@@ -333,10 +333,14 @@ export function buildAlumniFeedbackShareMessage(options?: {
   attendeeName?: string | null;
   batch?: string | null;
   isAnonymous?: boolean;
+  eventName?: string;
+  tagline?: string;
 }): string {
   const isAnon = options?.isAnonymous ?? false;
   const rawName = options?.attendeeName?.trim();
   const rawBatch = options?.batch?.trim();
+  const eventName = options?.eventName || 'ECK-RTU Alumni DeepAura 2K26';
+  const tagline = options?.tagline || '“दीप जले, यादें मुस्कुराएँ।”';
 
   const name = !isAnon && rawName ? rawName : '';
   const batch = !isAnon && rawBatch ? `Batch of ${rawBatch}` : '';
@@ -348,10 +352,10 @@ export function buildAlumniFeedbackShareMessage(options?: {
       : 'https://eck-alumni-events.web.app/feedback';
 
   const lines = [
-    '🪔✨ *ECK-RTU Alumni DeepAura 2K26* ✨🪔',
-    '“दीप जले, यादें मुस्कुराएँ।”',
+    `✨ *${eventName.toUpperCase()}* ✨`,
+    tagline ? `${tagline}` : '',
     '',
-    '📢 *Doston, maine apna DeepAura feedback submit kar diya!* 📝⚡',
+    `📢 *Doston, maine apna ${eventName} feedback submit kar diya!* 📝⚡`,
     '',
     '😂 _Sach batau toh:_ Ye hostel ki 2-minute Maggi se bhi tez tha aur engineering viva ya end-sem clearance se 100 guna aasan! 🍜💯',
     '',
@@ -362,7 +366,7 @@ export function buildAlumniFeedbackShareMessage(options?: {
     '',
     '*(Bas 2 minute lagenge, abhi tap karo aur review do!)* 🚀',
     ...(signature ? ['', `— ${signature} 🎓`] : ['', '— An ECK-RTU Alumnus 🎓']),
-  ];
+  ].filter(Boolean);
 
   return lines.join('\n');
 }
