@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   X,
@@ -6,6 +6,7 @@ import {
   Edit2,
   Loader2,
   ExternalLink,
+  ChevronDown,
 } from 'lucide-react';
 import type { EventRegistration, PaymentVerification, Sponsorship, ECKEvent } from '../types';
 import { getUpiAccountName, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
@@ -173,6 +174,28 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   const [editAmount, setEditAmount] = useState<number>(800);
   const [editNotes, setEditNotes] = useState<string>('');
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState<boolean>(false);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close account dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (
+        accountDropdownRef.current &&
+        !accountDropdownRef.current.contains(e.target as Node)
+      ) {
+        setAccountDropdownOpen(false);
+      }
+    };
+    if (accountDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [accountDropdownOpen]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -453,25 +476,35 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
   // Open Edit Modal
   const handleOpenEdit = (item: (typeof enrichedList)[0]) => {
-    const raw = item.assignedUpi || item.verification?.upi_id || '';
-    const isCash = isCashAccount(raw) || item.assignedUpi === CANONICAL_CASH_ACCOUNT || isCashAccount(item.verification?.notes);
-    const norm = raw.toLowerCase().trim();
+    const verifUpi = item.verification?.upi_id ? item.verification.upi_id.trim() : '';
+    const isExplicitCash = isCashAccount(verifUpi) || isCashAccount(item.verification?.notes);
+    const norm = verifUpi.toLowerCase();
     const isKnown = norm ? knownAccounts.some((a) => a.upi_id === norm) : false;
+
+    // Check if this registration is untagged or has no verification record
+    const hasExistingTag = !item.isUntagged && !!verifUpi;
 
     setEditingReg({
       registration: item.registration,
       verification: item.verification,
     });
-    setEditUpiId(
-      isCash
-        ? CANONICAL_CASH_ACCOUNT
-        : isKnown
-          ? norm
-          : raw
-            ? 'custom'
-            : knownAccounts[0]?.upi_id || CANONICAL_CASH_ACCOUNT
-    );
-    setEditCustomUpi(isCash || isKnown ? '' : raw);
+    setAccountDropdownOpen(false);
+
+    // Default to NOTHING pre-selected if untagged or no verification record
+    if (!hasExistingTag) {
+      setEditUpiId('');
+      setEditCustomUpi('');
+    } else if (isExplicitCash) {
+      setEditUpiId(CANONICAL_CASH_ACCOUNT);
+      setEditCustomUpi('');
+    } else if (isKnown) {
+      setEditUpiId(norm);
+      setEditCustomUpi('');
+    } else {
+      setEditUpiId('custom');
+      setEditCustomUpi(verifUpi);
+    }
+
     setEditAmount(item.amount || item.registration.amount || 800);
     setEditNotes(item.verification?.notes || '');
   };
@@ -479,17 +512,23 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   // Save Edit
   const handleSaveEdit = async () => {
     if (!editingReg) return;
+
+    if (!editUpiId || editUpiId === '') {
+      alert('⚠️ Receiving Account is mandatory! Please select an account or Cash in Hand.');
+      return;
+    }
+
+    if (editUpiId === 'custom' && !editCustomUpi.trim()) {
+      alert('⚠️ Please specify the Custom UPI ID (mandatory).');
+      return;
+    }
+
     const finalUpi =
       editUpiId === 'custom'
         ? editCustomUpi.trim()
         : isCashAccount(editUpiId)
           ? CANONICAL_CASH_ACCOUNT
           : editUpiId.trim();
-
-    if (!finalUpi) {
-      alert('Please select or specify a UPI ID or Cash in Hand');
-      return;
-    }
 
     setSavingEdit(true);
     try {
@@ -501,6 +540,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       );
       if (ok) {
         setEditingReg(null);
+        setAccountDropdownOpen(false);
       }
     } finally {
       setSavingEdit(false);
@@ -732,8 +772,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           <button
             type="button"
             className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'overall'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
               }`}
             onClick={() => setViewMode('overall')}
           >
@@ -743,8 +783,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           <button
             type="button"
             className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'daywise'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
               }`}
             onClick={() => setViewMode('daywise')}
           >
@@ -789,8 +829,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               <label
                 key={acc.upi_id}
                 className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
-                    ? 'bg-slate-900/90 border-amber-500 shadow-sm'
-                    : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
+                  ? 'bg-slate-900/90 border-amber-500 shadow-sm'
+                  : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
                   }`}
               >
                 <div>
@@ -837,8 +877,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             return (
               <label
                 className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
-                    ? 'bg-slate-900/90 border-amber-500 shadow-sm'
-                    : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
+                  ? 'bg-slate-900/90 border-amber-500 shadow-sm'
+                  : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
                   }`}
               >
                 <div>
@@ -949,8 +989,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           type="button"
           onClick={() => setActiveLedgerTab('registrations')}
           className={`flex-1 min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap ${activeLedgerTab === 'registrations'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+            ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+            : 'text-slate-400 hover:text-slate-200'
             }`}
         >
           <span>🎟️</span>
@@ -960,8 +1000,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           type="button"
           onClick={() => setActiveLedgerTab('sponsorships')}
           className={`flex-1 min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap ${activeLedgerTab === 'sponsorships'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+            ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+            : 'text-slate-400 hover:text-slate-200'
             }`}
         >
           <span>🤝</span>
@@ -979,8 +1019,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 type="button"
                 onClick={() => setAttendanceFilter(status)}
                 className={`min-h-[38px] px-4 py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap shrink-0 transition-colors cursor-pointer ${attendanceFilter === status
-                    ? 'border border-amber-500 bg-amber-500/10 text-amber-400 font-bold shadow-sm shadow-amber-500/10'
-                    : 'border border-slate-800 bg-slate-900/90 text-slate-300 font-semibold hover:bg-slate-800'
+                  ? 'border border-amber-500 bg-amber-500/10 text-amber-400 font-bold shadow-sm shadow-amber-500/10'
+                  : 'border border-slate-800 bg-slate-900/90 text-slate-300 font-semibold hover:bg-slate-800'
                   }`}
               >
                 {status === 'all' && `All (${attendanceCounts.all})`}
@@ -1292,8 +1332,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       key={item.registration.id}
                       onClick={() => handleOpenEdit(item)}
                       className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged
-                          ? 'border-l-[3.5px] border-l-emerald-500'
-                          : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
+                        ? 'border-l-[3.5px] border-l-emerald-500'
+                        : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
                         }`}
                     >
                       {/* Header: #1, REG-00305, Date | Amount */}
@@ -1320,12 +1360,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                           {alumni?.name || 'Unknown Alumni'}
                         </h4>
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${item.registration.attendance_status === 'yes'
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            : item.registration.attendance_status === 'payment_pending'
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : item.registration.attendance_status === 'maybe'
-                                ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : item.registration.attendance_status === 'payment_pending'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : item.registration.attendance_status === 'maybe'
+                              ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                              : 'bg-red-500/20 text-red-400 border border-red-500/30'
                           }`}>
                           {item.registration.attendance_status === 'yes' ? 'ATTENDING' : item.registration.attendance_status === 'maybe' ? 'MAYBE' : 'NOT ATTENDING'}
                         </span>
@@ -1473,8 +1513,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                   key={item.registration.id}
                   onClick={() => handleOpenEdit(item)}
                   className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged
-                      ? 'border-l-[3.5px] border-l-emerald-500'
-                      : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
+                    ? 'border-l-[3.5px] border-l-emerald-500'
+                    : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
                     }`}
                 >
                   {/* Header: #1, REG-00305, Date | Amount */}
@@ -1501,12 +1541,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       {alumni?.name || 'Unknown Alumni'}
                     </h4>
                     <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${item.registration.attendance_status === 'yes'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : item.registration.attendance_status === 'payment_pending'
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          : item.registration.attendance_status === 'maybe'
-                            ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : item.registration.attendance_status === 'payment_pending'
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        : item.registration.attendance_status === 'maybe'
+                          ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
                       }`}>
                       {item.registration.attendance_status === 'yes' ? 'ATTENDING' : item.registration.attendance_status === 'maybe' ? 'MAYBE' : 'NOT ATTENDING'}
                     </span>
@@ -1569,59 +1609,67 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       {editingReg && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => !savingEdit && setEditingReg(null)}
+          onClick={() => {
+            if (!savingEdit) {
+              setEditingReg(null);
+              setAccountDropdownOpen(false);
+            }
+          }}
           role="dialog"
           aria-modal="true"
         >
           <div
-            className="relative w-full max-w-lg max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-slate-900 border-t sm:border border-amber-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden text-slate-100"
+            className="relative w-full max-w-md max-h-[85vh] sm:max-h-[80vh] flex flex-col bg-slate-900 border-t sm:border border-amber-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden text-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="shrink-0 flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-800 bg-slate-950/50">
+            <div className="shrink-0 flex items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-800 bg-slate-950/50">
               <div>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
                   {editingReg.registration.registration_number}
                 </span>
-                <h2 className="text-base sm:text-lg font-bold text-white mt-1">
+                <h2 className="text-sm sm:text-base font-bold text-white mt-0.5">
                   Record / Change Receiving UPI ID
                 </h2>
               </div>
               <button
                 type="button"
-                onClick={() => setEditingReg(null)}
+                onClick={() => {
+                  setEditingReg(null);
+                  setAccountDropdownOpen(false);
+                }}
                 disabled={savingEdit}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 tab-scrollbar space-y-4">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 tab-scrollbar space-y-3.5">
               {/* Summary */}
-              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-3">
-                <div>
-                  <strong className="block text-white text-sm sm:text-base">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-2.5">
+                <div className="min-w-0 flex-1">
+                  <strong className="block text-white text-xs sm:text-sm font-bold truncate">
                     {editingReg.registration.alumni?.name}
                   </strong>
-                  <span className="text-xs text-slate-400 block mt-0.5">
+                  <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
                     Batch {editingReg.registration.alumni?.year_of_passing} • {formatDDMMYYYY(editingReg.registration.created_at)}
                   </span>
                 </div>
-                <span className="text-base sm:text-lg font-mono font-bold text-emerald-400">
+                <span className="text-sm sm:text-base font-mono font-bold text-emerald-400 shrink-0">
                   ₹{editingReg.registration.amount}
                 </span>
               </div>
 
               {/* Notes Display */}
               {editingReg.verification?.notes && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-                  <strong className="block text-amber-400 mb-1">📝 Notes:</strong>
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
+                  <strong className="block text-amber-400 mb-0.5 text-[11px]">📝 Notes:</strong>
                   <span>{editingReg.verification.notes}</span>
                 </div>
               )}
 
               {/* Payment Screenshot Display */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-slate-200">
                     📄 Attached Payment Screenshot(s)
@@ -1638,7 +1686,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 </div>
 
                 {editingReg.registration.payment_screenshot_path ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {(editingReg.registration.payment_screenshot_path || '')
                       .split(',')
                       .map((s) => s.trim())
@@ -1648,7 +1696,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                           return (
                             <div
                               key={idx}
-                              className="p-3 rounded-xl bg-indigo-500/10 border border-dashed border-indigo-500/30 text-indigo-300 text-xs text-center"
+                              className="p-2.5 rounded-xl bg-indigo-500/10 border border-dashed border-indigo-500/30 text-indigo-300 text-xs text-center"
                             >
                               ⚡ Manual Admin Entry (Direct verification, no screenshot uploaded)
                             </div>
@@ -1660,7 +1708,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                         return (
                           <div
                             key={idx}
-                            className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2"
+                            className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5"
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-semibold text-amber-400">
@@ -1675,7 +1723,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                                   href={url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-colors"
+                                  className="inline-flex items-center gap-1.5 min-h-[44px] px-2.5 py-1 rounded-lg text-xs font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-colors"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                   <span>Open Full Image</span>
@@ -1694,12 +1742,12 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                                 <img
                                   src={url}
                                   alt={`Payment screenshot ${idx + 1}`}
-                                  className="w-full max-h-72 object-contain rounded-lg group-hover:scale-[1.01] transition-transform duration-200"
+                                  className="w-full max-h-40 sm:max-h-52 object-contain rounded-lg group-hover:scale-[1.01] transition-transform duration-200"
                                   loading="lazy"
                                 />
                               </a>
                             ) : (
-                              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
+                              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
                                 ⚠️ Could not resolve receipt image URL
                               </div>
                             )}
@@ -1708,7 +1756,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       })}
                   </div>
                 ) : (
-                  <div className="p-3.5 rounded-xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400 text-xs text-center">
+                  <div className="p-2.5 rounded-xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400 text-xs text-center">
                     ℹ️ No payment screenshot attached to this registration.
                   </div>
                 )}
@@ -1716,44 +1764,182 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
               {/* Form fields */}
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                    Receiving Account / Payment Mode *
-                  </label>
-                  <select
-                    value={editUpiId}
-                    onChange={(e) => setEditUpiId(e.target.value)}
-                    className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500"
+                <div ref={accountDropdownRef} className="relative">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-200">
+                      Receiving Account / Payment Mode <span className="text-rose-400">*</span>
+                    </label>
+                    {!editUpiId && (
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        Mandatory
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => setAccountDropdownOpen((prev) => !prev)}
+                    className={`w-full min-h-[44px] text-xs px-3 py-2 rounded-xl bg-slate-950 border flex items-center justify-between gap-2 transition-all cursor-pointer ${!editUpiId
+                        ? 'border-amber-500/60 ring-1 ring-amber-500/25 bg-amber-500/5 text-amber-300'
+                        : 'border-slate-700 hover:border-slate-600 text-white'
+                      }`}
                   >
-                    <optgroup label="🏦 Receiving UPI Accounts">
-                      {knownAccounts.map((acc) => (
-                        <option key={acc.upi_id} value={acc.upi_id} className="bg-slate-900">
-                          {acc.accountName} ({acc.upi_id})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="💵 Cash Collections">
-                      <option value={CANONICAL_CASH_ACCOUNT} className="bg-slate-900">
-                        💵 Cash in Hand (Physical / Spot Cash)
-                      </option>
-                    </optgroup>
-                    <optgroup label="✏️ Custom">
-                      <option value="custom" className="bg-slate-900">✏️ Other / Custom UPI ID...</option>
-                    </optgroup>
-                  </select>
+                    <div className="flex items-center gap-2 min-w-0 flex-1 truncate text-left">
+                      {!editUpiId ? (
+                        <span className="text-amber-300/90 font-medium truncate flex items-center gap-1.5 text-xs">
+                          <span>⚠️</span>
+                          <span>-- Select Receiving Account --</span>
+                        </span>
+                      ) : editUpiId === CANONICAL_CASH_ACCOUNT ? (
+                        <span className="text-emerald-400 font-semibold truncate text-xs flex items-center gap-1.5">
+                          <span>💵</span>
+                          <span>Cash in Hand (Physical / Spot Cash)</span>
+                        </span>
+                      ) : editUpiId === 'custom' ? (
+                        <span className="text-amber-300 font-semibold truncate text-xs flex items-center gap-1.5">
+                          <span>✏️</span>
+                          <span>Custom UPI: {editCustomUpi || '(Specify below)'}</span>
+                        </span>
+                      ) : (
+                        (() => {
+                          const acc = knownAccounts.find((a) => a.upi_id === editUpiId);
+                          return (
+                            <span className="text-xs text-slate-100 font-medium truncate flex items-center gap-1.5 w-full justify-between">
+                              <span className="font-semibold text-white truncate shrink-0 max-w-[50%]">
+                                {acc?.accountName || editUpiId}
+                              </span>
+                              <span className="text-[11px] font-mono text-slate-400 truncate flex-1 text-right">
+                                {editUpiId}
+                              </span>
+                            </span>
+                          );
+                        })()
+                      )}
+                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${accountDropdownOpen ? 'rotate-180 text-amber-400' : ''
+                        }`}
+                    />
+                  </button>
+
+                  {/* Dropdown Options Popup */}
+                  {accountDropdownOpen && (
+                    <div className="mt-1.5 w-full rounded-xl bg-slate-950 border border-slate-700 shadow-2xl overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="p-1 max-h-56 sm:max-h-64 overflow-y-auto tab-scrollbar space-y-0.5">
+                        {/* UPI Accounts Header */}
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/60 rounded">
+                          🏦 Receiving UPI Accounts
+                        </div>
+
+                        {knownAccounts.map((acc) => {
+                          const isSelected = editUpiId === acc.upi_id;
+                          return (
+                            <button
+                              type="button"
+                              key={acc.upi_id}
+                              onClick={() => {
+                                setEditUpiId(acc.upi_id);
+                                setAccountDropdownOpen(false);
+                              }}
+                              className={`w-full min-h-[44px] px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${isSelected
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                  : 'hover:bg-slate-900 text-slate-200 border border-transparent'
+                                }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                                <span
+                                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-amber-400 bg-amber-400' : 'border-slate-600'
+                                    }`}
+                                >
+                                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                                </span>
+                                <span className="text-[11px] sm:text-xs font-semibold text-slate-100 truncate shrink-0 max-w-[42%] sm:max-w-[48%]">
+                                  {acc.accountName}
+                                </span>
+                                <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 truncate flex-1 text-right">
+                                  {acc.upi_id}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+
+                        {/* Cash Collections Header */}
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/60 rounded mt-1">
+                          💵 Cash Collections
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditUpiId(CANONICAL_CASH_ACCOUNT);
+                            setAccountDropdownOpen(false);
+                          }}
+                          className={`w-full min-h-[44px] px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${editUpiId === CANONICAL_CASH_ACCOUNT
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'hover:bg-slate-900 text-slate-200 border border-transparent'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${editUpiId === CANONICAL_CASH_ACCOUNT ? 'border-amber-400 bg-amber-400' : 'border-slate-600'
+                                }`}
+                            >
+                              {editUpiId === CANONICAL_CASH_ACCOUNT && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
+                              )}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-semibold text-emerald-400 truncate">
+                              💵 Cash in Hand (Physical / Spot Cash)
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Custom Header */}
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/60 rounded mt-1">
+                          ✏️ Custom
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditUpiId('custom');
+                            setAccountDropdownOpen(false);
+                          }}
+                          className={`w-full min-h-[44px] px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${editUpiId === 'custom'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'hover:bg-slate-900 text-slate-200 border border-transparent'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${editUpiId === 'custom' ? 'border-amber-400 bg-amber-400' : 'border-slate-600'
+                                }`}
+                            >
+                              {editUpiId === 'custom' && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
+                              )}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-semibold text-amber-300 truncate">
+                              ✏️ Other / Custom UPI ID...
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {editUpiId === 'custom' && (
-                  <div>
+                  <div className="animate-in fade-in slide-in-from-top-1 duration-150">
                     <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                      Custom UPI ID *
+                      Custom UPI ID <span className="text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. name@bank"
+                      placeholder="e.g. name@bank (Mandatory)"
                       value={editCustomUpi}
                       onChange={(e) => setEditCustomUpi(e.target.value)}
-                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/50 text-white font-mono outline-none"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/50 text-white font-mono outline-none focus:border-amber-400"
                     />
                   </div>
                 )}
@@ -1774,30 +1960,40 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             </div>
 
             {/* Footer */}
-            <div className="shrink-0 p-3 sm:p-4 bg-slate-950/60 border-t border-slate-800 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setEditingReg(null)}
-                disabled={savingEdit}
-                className="min-h-[44px] px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                disabled={savingEdit}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors disabled:opacity-50"
-              >
-                {savingEdit ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <span>💾 Save UPI Record</span>
+            <div className="shrink-0 p-3 sm:p-4 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between gap-3">
+              <div className="text-[11px] text-slate-400 truncate">
+                {!editUpiId && (
+                  <span className="text-amber-400 font-medium">⚠️ Account selection is mandatory</span>
                 )}
-              </button>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingReg(null);
+                    setAccountDropdownOpen(false);
+                  }}
+                  disabled={savingEdit}
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={savingEdit || !editUpiId || (editUpiId === 'custom' && !editCustomUpi.trim())}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {savingEdit ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>💾 Save UPI Record</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
