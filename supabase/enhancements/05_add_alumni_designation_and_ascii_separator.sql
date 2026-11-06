@@ -7,8 +7,9 @@
 -- 3. One-time clean-up of corrupted 'â€¢' and bullet points in existing records.
 -- ==============================================================================
 
--- 1. Add designation column to alumni table
+-- 1. Add designation column to alumni table & registration_prefix to events table
 ALTER TABLE alumni ADD COLUMN IF NOT EXISTS designation TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_prefix TEXT DEFAULT 'REG';
 
 -- 2. Clean up existing corrupted mojibake entries and bullets in professional_category
 UPDATE alumni
@@ -19,7 +20,54 @@ UPDATE alumni
    SET professional_category = REPLACE(professional_category, ' • ', ' | ')
  WHERE professional_category LIKE '% • %';
 
--- 3. Create or replace canonical `update_alumni_profile` RPC with `p_designation` & ASCII separator
+-- 3. Ensure sequence exists & dynamic event-scoped prefix generator
+CREATE SEQUENCE IF NOT EXISTS registration_seq START 1;
+
+CREATE OR REPLACE FUNCTION generate_event_registration_number(p_event_id UUID)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_prefix TEXT := 'REG';
+  v_next_val BIGINT;
+  v_padding INT := 5;
+BEGIN
+  -- Read custom prefix from active event, defaulting to 'REG'
+  BEGIN
+    SELECT COALESCE(registration_prefix, 'REG')
+      INTO v_prefix
+      FROM events
+     WHERE id = p_event_id;
+  EXCEPTION WHEN OTHERS THEN
+    v_prefix := 'REG';
+  END;
+
+  IF v_prefix IS NULL OR v_prefix = '' THEN
+    v_prefix := 'REG';
+  END IF;
+
+  -- DeepAura 2K26 retains 5-digit padding (REG-00001); future custom prefixes use 4-digit padding (NY27-0001)
+  IF v_prefix = 'REG' THEN
+    v_padding := 5;
+  ELSE
+    v_padding := 4;
+  END IF;
+
+  v_next_val := nextval('registration_seq');
+  RETURN v_prefix || '-' || LPAD(v_next_val::TEXT, v_padding, '0');
+END;
+$$;
+
+-- 4. Drop older overloaded functions to prevent PostgreSQL "Could not choose the best candidate function" error
+DROP FUNCTION IF EXISTS public.update_alumni_profile(UUID, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.update_alumni_profile(UUID, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
+
+DROP FUNCTION IF EXISTS public.register_for_event(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT);
+DROP FUNCTION IF EXISTS public.register_for_event(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS public.register_for_event(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT);
+
+-- 5. Create canonical `update_alumni_profile` RPC with `p_designation` & ASCII separator
 CREATE OR REPLACE FUNCTION update_alumni_profile(
   p_alumni_id               UUID,
   p_mobile                  TEXT,

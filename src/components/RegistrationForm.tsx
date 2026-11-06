@@ -498,6 +498,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
         p_email: formData.email.trim() || null,
         p_organization: formData.organization.trim() || null,
+        p_designation: formData.designation?.trim() || null,
         p_work_location: formData.work_location.trim() || null,
         p_payment_screenshot_path: activeExistingReg?.payment_screenshot_path || null,
       });
@@ -811,6 +812,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           formData.attendance_status === 'yes' ? (formData.children_under_7_count ?? 0) : 0,
         p_email: formData.email.trim() || null,
         p_organization: formData.organization.trim() || null,
+        p_designation: formData.designation?.trim() || null,
         p_work_location: formData.work_location.trim() || null,
         p_payment_screenshot_path: uploadedScreenshotPath,
       });
@@ -919,6 +921,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 p_children_under_7_count: formData.children_under_7_count ?? 0,
                 p_email: formData.email.trim() || null,
                 p_organization: formData.organization.trim() || null,
+                p_designation: formData.designation?.trim() || null,
                 p_work_location: formData.work_location.trim() || null,
                 p_payment_screenshot_path: uploadedScreenshotPath,
               });

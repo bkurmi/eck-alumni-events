@@ -311,7 +311,7 @@ BEGIN
            updated_at              = NOW()
      WHERE id = v_reg_id;
   ELSE
-    v_reg_number := generate_event_registration_number(v_event_id);
+    v_reg_number := 'REG-' || LPAD(nextval('registration_seq')::TEXT, 5, '0');
 
     INSERT INTO event_registrations (
       event_id, alumni_id, registration_number,

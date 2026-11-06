@@ -293,6 +293,7 @@ export async function saveAlumniProfile(
         p_batch: payload.batch?.trim() || null,
         p_engineering_discipline: payload.engineering_discipline?.trim() || null,
         p_organization: payload.organization?.trim() || null,
+        p_designation: payload.designation?.trim() || null,
         p_employment_type: payload.employment_type?.trim() || null,
         p_industry_domain: payload.industry_domain?.trim() || null,
         p_professional_category: payload.professional_category?.trim() || null,
