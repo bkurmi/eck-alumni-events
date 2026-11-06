@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GateVerificationPortal } from '../components/GateVerificationPortal';
 import { GatePinLogin } from '../components/GatePinLogin';
+import { Footer } from '../components/Footer';
 import {
   getGateStaffSession,
   clearGateStaffSession,
@@ -235,6 +236,12 @@ export const GatePage: React.FC = () => {
           event={activeEvent}
         />
       </main>
+
+      <Footer
+        eventName={activeEvent?.event_name}
+        tagline={activeEvent?.tagline}
+        location={activeEvent?.location}
+      />
     </div>
   );
 };

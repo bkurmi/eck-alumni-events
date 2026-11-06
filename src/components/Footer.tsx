@@ -1,17 +1,19 @@
 import React from 'react';
 
 interface FooterProps {
-  eventName?: string;
-  tagline?: string;
-  location?: string;
+  eventName?: string | null;
+  tagline?: string | null;
+  location?: string | null;
 }
 
 export const Footer: React.FC<FooterProps> = ({
-  eventName = 'ECK-RTU Alumni DeepAura 2K26',
-  tagline = '“दीप जले, यादें मुस्कुराएँ”',
-  location = 'Kota, Rajasthan',
+  eventName,
+  tagline,
+  location,
 }) => {
   const currentYear = new Date().getFullYear();
+  const displayEventName = eventName || 'ECK-RTU Alumni DeepAura 2K26';
+  const displayLocation = location || 'Kota, Rajasthan';
 
   // Clean and format tagline to ensure beautiful Hindi quote representation
   const cleanTagline = tagline
@@ -61,7 +63,7 @@ export const Footer: React.FC<FooterProps> = ({
 
         {/* Event Edition & Location in warm amber-gold tone */}
         <p className="text-xs sm:text-sm text-amber-400/90 font-medium tracking-wide">
-          {eventName} • {location}
+          {displayEventName} • {displayLocation}
         </p>
 
         {/* Copyright notice in muted slate */}

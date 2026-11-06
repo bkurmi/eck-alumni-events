@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 import { AdminLogin } from '../components/AdminLogin';
 import { ShareWhatsAppModal } from '../components/ShareWhatsAppModal';
 import { UpiReconciliationReport } from '../components/UpiReconciliationReport';
@@ -790,17 +791,18 @@ export const AdminPage: React.FC = () => {
   if (loadingAuth) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-        <Header title="Organizer Portal" maxWidth="max-w-3xl" />
+        <Header title="Organizer Portal" maxWidth="max-w-7xl" />
         <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-4 py-16 flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
         </main>
+        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Header title="Organizer Portal" tagline="ECK-RTU Alumni Registrations" maxWidth="max-w-3xl" />
+      <Header title="Organizer Portal" tagline="ECK-RTU Alumni Registrations" maxWidth="max-w-7xl" />
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {!session ? (
@@ -1280,59 +1282,59 @@ export const AdminPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Stats Cards with Combined Grand Total */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col items-center justify-center text-center">
-                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            Total Submissions
-                          </span>
-                            <span className="text-2xl sm:text-3xl font-black text-white mt-1.5">
-                              {stats.totalRegs}
-                            </span>
-                              <span className="text-xs font-semibold text-amber-400/90 mt-1">
-                                {stats.paymentPendingCount > 0 ? `${stats.paymentPendingCount} Pending • ` : ''}
-                                {stats.maybeCount} Maybe
-                              </span>
-                            </div>
+                {/* Stats Cards with Combined Grand Total — 2 in one row on desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-md flex flex-col items-center justify-center text-center">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Total Submissions
+                    </span>
+                    <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
+                      {stats.totalRegs}
+                    </span>
+                    <span className="text-xs font-semibold text-amber-400">
+                      {stats.paymentPendingCount > 0 ? `${stats.paymentPendingCount} Pending • ` : ''}
+                      {stats.maybeCount} Maybe
+                    </span>
+                  </div>
 
-                                <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col items-center justify-center text-center">
-                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                    Attending Headcount
-                                  </span>
-                                    <span className="text-2xl sm:text-3xl font-black text-white mt-1.5">
-                                      {stats.totalAttendees}
-                                    </span>
-                                      <span className="text-xs font-semibold text-amber-400/90 mt-1">
-                                        {stats.attendingCount} Confirmed Regs{stats.totalAttendees > stats.attendingCount ? ` (+${stats.totalAttendees - stats.attendingCount} guests)` : ''}
-                                      </span>
-                                    </div>
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-md flex flex-col items-center justify-center text-center">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Attending Headcount
+                    </span>
+                    <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
+                      {stats.totalAttendees}
+                    </span>
+                    <span className="text-xs font-semibold text-amber-400">
+                      {stats.attendingCount} Confirmed Regs{stats.totalAttendees > stats.attendingCount ? ` (+${stats.totalAttendees - stats.attendingCount} guests)` : ''}
+                    </span>
+                  </div>
 
-                                        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col items-center justify-center text-center">
-                                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                            Estimated Collection
-                                          </span>
-                                            <span className="text-2xl sm:text-3xl font-black text-white mt-1.5">
-                                              ₹{stats.totalAmount.toLocaleString('en-IN')}
-                                            </span>
-                                              <span className="text-xs font-semibold text-amber-400/90 mt-1">
-                                                {stats.pendingAmount > 0
-                                                  ? `+ ₹${stats.pendingAmount.toLocaleString('en-IN')} pending`
-                                                  : 'Via verified screenshot'}
-                                              </span>
-                                            </div>
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-md flex flex-col items-center justify-center text-center">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Estimated Collection
+                    </span>
+                    <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
+                      ₹{stats.totalAmount.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs font-semibold text-amber-400">
+                      {stats.pendingAmount > 0
+                        ? `+ ₹${stats.pendingAmount.toLocaleString('en-IN')} pending`
+                        : 'Via verified screenshot'}
+                    </span>
+                  </div>
 
-                                                <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col items-center justify-center text-center">
-                                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                                    Total Funds Raised
-                                                  </span>
-                                                    <span className="text-2xl sm:text-3xl font-black text-white mt-1.5">
-                                                      ₹{stats.grandTotalFunds.toLocaleString('en-IN')}
-                                                    </span>
-                                                      <span className="text-xs font-semibold text-amber-400/90 mt-1">
-                                                        ₹{stats.totalAmount.toLocaleString('en-IN')} Regs + ₹{stats.confirmedSponsorshipAmount.toLocaleString('en-IN')} Sponsors
-                                                      </span>
-                                                    </div>
-                                                </div>
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-md flex flex-col items-center justify-center text-center">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Total Funds Raised
+                    </span>
+                    <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
+                      ₹{stats.grandTotalFunds.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs font-semibold text-amber-400">
+                      ₹{stats.totalAmount.toLocaleString('en-IN')} Regs + ₹{stats.confirmedSponsorshipAmount.toLocaleString('en-IN')} Sponsors
+                    </span>
+                  </div>
+                </div>
 
                                                 {/* Search & Filter Toolbar */}
                                                       <div className="space-y-3">
@@ -2003,6 +2005,12 @@ export const AdminPage: React.FC = () => {
                                                               prev.map((e) => (e.id === activeEvent.id ? { ...e, memory_media: updatedMedia } : e))
                                                             );
                                                           }}
+                                                        />
+
+                                                        <Footer
+                                                          eventName={activeEvent?.event_name}
+                                                          tagline={activeEvent?.tagline}
+                                                          location={activeEvent?.location}
                                                         />
                                                       </div>
                                                       );

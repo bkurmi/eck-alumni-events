@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   title = 'ECK-RTU Alumni Kota Chapter',
   tagline = '“दीप जले, यादें मुस्कुराएँ।”',
   currentEventSlug,
-  maxWidth = 'max-w-3xl',
+  maxWidth = 'max-w-7xl',
 }) => {
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -90,11 +90,11 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-amber-500/25 bg-[#0a0c16]/95 backdrop-blur-md shadow-lg shadow-black/40">
-      <div className={`mx-auto flex h-16 w-full ${maxWidth} items-center justify-between px-3 sm:px-6`}>
+      <div className={`mx-auto flex h-16 w-full ${maxWidth} items-center justify-between px-3 sm:px-6 lg:px-8 gap-3 sm:gap-6`}>
         {/* Brand logo & titles */}
         <Link
           to="/"
-          className="group flex min-w-0 items-center gap-2.5 sm:gap-3 focus:outline-none"
+          className="group flex shrink-0 min-w-0 items-center gap-2.5 sm:gap-3 focus:outline-none"
           aria-label="ECK-RTU Alumni Kota Chapter"
         >
           {/* Dual Crests */}
@@ -119,20 +119,20 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-sm sm:text-base font-bold tracking-tight text-slate-100 group-hover:text-amber-400 transition-colors whitespace-nowrap">
               {title}
             </span>
-            <span className="truncate text-[11px] sm:text-xs font-medium text-amber-400/90">
+            <span className="truncate text-[11px] sm:text-xs font-medium text-amber-400/90 whitespace-nowrap">
               {tagline}
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation (>= 768px) */}
-        <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
+        <nav className="hidden md:flex items-center gap-1.5 lg:gap-3 shrink-0">
           {events.length > 0 && (
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative shrink-0" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
-                className={`flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+                className={`flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap transition-all ${
                   isDropdownOpen
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                     : 'text-slate-300 hover:bg-slate-800/80 hover:text-white border border-transparent'
@@ -140,10 +140,10 @@ export const Header: React.FC<HeaderProps> = ({
                 aria-expanded={isDropdownOpen}
                 aria-haspopup="true"
               >
-                <Calendar className="h-4 w-4 text-amber-400" />
-                <span>Events</span>
+                <Calendar className="h-4 w-4 text-amber-400 shrink-0" />
+                <span className="whitespace-nowrap">Events</span>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                  className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
                     isDropdownOpen ? 'rotate-180 text-amber-400' : 'text-slate-400'
                   }`}
                 />
@@ -205,26 +205,26 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             to="/directory"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors shrink-0"
           >
-            <Users className="h-4 w-4 text-amber-400" />
-            <span>Directory</span>
+            <Users className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="whitespace-nowrap">Directory</span>
           </Link>
 
           <Link
             to="/profile"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800/80 hover:text-white transition-colors shrink-0"
           >
-            <User className="h-4 w-4 text-amber-400" />
-            <span>My Profile</span>
+            <User className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="whitespace-nowrap">My Profile</span>
           </Link>
 
           <a
             href="/admin"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all shadow-sm"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium whitespace-nowrap text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all shadow-sm shrink-0"
           >
-            <ShieldCheck className="h-4 w-4 text-amber-400" />
-            <span>Admin</span>
+            <ShieldCheck className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="whitespace-nowrap">Admin</span>
           </a>
         </nav>
 

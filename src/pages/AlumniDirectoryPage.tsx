@@ -4,6 +4,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { AlumniProfileEditModal } from '../components/AlumniProfileEditModal';
 import { SearchableSelect } from '../components/SearchableSelect';
+import { supabase } from '../lib/supabase';
 import { fetchAlumniDirectory } from '../lib/directory';
 import { cleanMobileNumber } from '../lib/registrations';
 import type { AlumniDirectoryItem } from '../types';
@@ -32,6 +33,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
   const [searchParams] = useSearchParams();
   const [alumniList, setAlumniList] = useState<AlumniDirectoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeEvent, setActiveEvent] = useState<{ event_name?: string; tagline?: string; location?: string } | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,7 +75,23 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
         }
       }
     }
+    async function loadActiveEvent() {
+      try {
+        const { data } = await supabase
+          .from('events')
+          .select('event_name, tagline, location')
+          .order('event_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data && isMounted) {
+          setActiveEvent(data);
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
     loadDirectory();
+    loadActiveEvent();
     return () => {
       isMounted = false;
     };
@@ -221,7 +239,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
 
   return (
     <div className="min-h-screen w-full bg-[#0a0c16] text-slate-100 flex flex-col overflow-x-hidden selection:bg-amber-500 selection:text-slate-950">
-      <Header maxWidth="max-w-3xl" />
+      <Header maxWidth="max-w-7xl" />
 
       <main className="flex-1 w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6">
         {/* Top Hero Section */}
@@ -534,9 +552,9 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
       </main>
 
       <Footer
-        eventName="ECK-RTU Alumni DeepAura 2K26"
-        tagline="“दीप जले, यादें मुस्कुराएँ”"
-        location="Kota, Rajasthan"
+        eventName={activeEvent?.event_name}
+        tagline={activeEvent?.tagline}
+        location={activeEvent?.location}
       />
 
       {/* Edit Profile & Photo Modal */}

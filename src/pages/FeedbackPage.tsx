@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 import { supabase } from '../lib/supabase';
 import {
   isFeedbackEnabled,
@@ -489,7 +490,7 @@ export const FeedbackPage: React.FC = () => {
   if (!enabled) {
     return (
       <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
-        <Header maxWidth="max-w-3xl" />
+        <Header maxWidth="max-w-7xl" />
         <main className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-8 flex-1 flex items-center justify-center">
           <div className="w-full max-w-md bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl backdrop-blur-md">
             <div className="w-14 h-14 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl">
@@ -523,13 +524,14 @@ export const FeedbackPage: React.FC = () => {
             </div>
           </div>
         </main>
+        <Footer eventName={eventName} tagline={eventTagline} />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#0a0c16] text-slate-100 flex flex-col">
-      <Header maxWidth="max-w-3xl" />
+      <Header maxWidth="max-w-7xl" />
 
       {/* Confetti Canvas */}
       <canvas ref={canvasRef} className="fixed inset-0 w-screen h-screen pointer-events-none z-50" />
@@ -899,6 +901,8 @@ export const FeedbackPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      <Footer eventName={eventName} tagline={eventTagline} />
     </div>
   );
 };

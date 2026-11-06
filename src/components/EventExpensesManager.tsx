@@ -255,18 +255,18 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       {/* 3 Stats Cards — responsive 1 col mobile, 3 cols desktop */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Card 1: Total Available Funds */}
-        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col items-center justify-center text-center gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-lg flex flex-col items-center justify-center text-center">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
             TOTAL AVAILABLE FUNDS
           </span>
-          <span className="text-3xl font-black text-white tracking-tight">
+          <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
             ₹{formatINR(stats.totalAvailableFunds)}
           </span>
-          <div className="text-amber-400 font-medium text-xs">
+          <div className="text-amber-400 font-semibold text-xs">
             ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount} attending)` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
           </div>
           {totalHeadcount > 0 && (
-            <div className="text-sky-400 font-medium text-xs flex items-center justify-center gap-1">
+            <div className="text-sky-400 font-semibold text-xs flex items-center justify-center gap-1 mt-0.5">
               <span>👥</span>
               <span>
                 {totalHeadcount} Total Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
@@ -277,65 +277,69 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
         {/* Card 2: Expected Budget (Plan) with Projected Surplus/Deficit */}
         <div
-          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center gap-1.5 ${
-            stats.isDeficit ? 'border-red-500/40' : 'border-slate-800'
+          className={`p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center ${
+            stats.isDeficit ? 'border-red-500/40' : 'border-amber-500/30'
           }`}
         >
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
             EXPECTED BUDGET (PLAN)
           </span>
-          <span className="text-3xl font-black text-white tracking-tight">
+          <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
             ₹{formatINR(stats.totalExpected)}
           </span>
-          <span
-            className={`inline-flex items-center justify-center px-3 py-0.5 rounded-full text-xs font-bold border ${
-              stats.isDeficit
-                ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-            }`}
-          >
-            {stats.isDeficit
-              ? `Projected Deficit: -₹${formatINR(Math.abs(stats.fundingGap))}`
-              : `Projected Surplus: +₹${formatINR(stats.fundingGap)}`}
-          </span>
-          <div className="text-amber-400 font-medium text-xs">
-            {stats.totalItems} planned line items
-            {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
+          <div className="flex flex-col items-center gap-1 mt-0.5">
+            <span
+              className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                stats.isDeficit
+                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+              }`}
+            >
+              {stats.isDeficit
+                ? `Projected Deficit: -₹${formatINR(Math.abs(stats.fundingGap))}`
+                : `Projected Surplus: +₹${formatINR(stats.fundingGap)}`}
+            </span>
+            <span className="text-amber-400 font-semibold text-xs">
+              {stats.totalItems} planned line items
+              {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
+            </span>
           </div>
         </div>
 
         {/* Card 3: Real Paid Expenses with Real Surplus/Deficit */}
         <div
-          className={`p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center gap-1.5 ${
-            stats.liveCashBalance < 0 ? 'border-red-500/40' : 'border-slate-800'
+          className={`p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center ${
+            stats.liveCashBalance < 0 ? 'border-red-500/40' : 'border-amber-500/30'
           }`}
         >
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
             REAL PAID EXPENSES
           </span>
-          <span className="text-3xl font-black text-white tracking-tight">
+          <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
             ₹{formatINR(stats.totalActual)}
           </span>
-          <span
-            className={`inline-flex items-center justify-center px-3 py-0.5 rounded-full text-xs font-bold border ${
-              stats.liveCashBalance >= 0
-                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                : 'bg-red-500/15 text-red-400 border-red-500/30'
-            }`}
-          >
-            {stats.liveCashBalance >= 0
-              ? `Live Cash Balance: +₹${formatINR(stats.liveCashBalance)}`
-              : `Actual Deficit: -₹${formatINR(Math.abs(stats.liveCashBalance))}`}
-          </span>
-          <div className="text-amber-400 font-medium text-xs">
-            {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'saved vs budget' : 'over budget'}` : ''}
+          <div className="flex flex-col items-center gap-1 mt-0.5">
+            <span
+              className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                stats.liveCashBalance >= 0
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : 'bg-red-500/15 text-red-400 border-red-500/30'
+              }`}
+            >
+              {stats.liveCashBalance >= 0
+                ? `Live Cash Balance: +₹${formatINR(stats.liveCashBalance)}`
+                : `Actual Deficit: -₹${formatINR(Math.abs(stats.liveCashBalance))}`}
+            </span>
+            <span className="text-amber-400 font-semibold text-xs">
+              {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'saved vs budget' : 'over budget'}` : ''}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Minimalist Funding Feasibility Track (Mobile Optimized) */}
       {stats.totalExpected > 0 && (
-        <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col gap-2.5">
+        <div className="p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-lg flex flex-col gap-2.5">
           {/* Top Row: Status Pill & Target Budget */}
           <div className="flex items-center justify-between gap-2">
             <span

@@ -27,6 +27,9 @@
 }
 
 @theme {
+  --font-sans: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-accent: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-festive: 'Cinzel', 'Outfit', serif;
   --color-brand-primary: #f59e0b;
   --color-brand-primary-light: #fbbf24;
   --color-brand-primary-dark: #d97706;
@@ -35,6 +38,10 @@
   --color-brand-bg-base: #0a0c16;
   --color-brand-bg-surface: #111425;
   --color-brand-bg-elevated: #1a1e36;
+}
+
+body {
+  font-family: var(--font-sans);
 }
 
 /* ============================================================
