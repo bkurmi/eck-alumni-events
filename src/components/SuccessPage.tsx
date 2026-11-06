@@ -4,6 +4,7 @@ import { MessageCircle, ChevronRight, Sparkles } from 'lucide-react';
 import { isAlumniIdCardsEnabled } from '../lib/gate';
 import { isEventConcluded } from '../lib/eventStatus';
 import type { RegistrationFormData, RegistrationResult, ECKEvent } from '../types';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 
 interface SuccessPageProps {
   event: ECKEvent;
@@ -24,7 +25,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
 
   const buildWhatsAppMessage = () => {
     const count = formData.number_of_attendees || 1;
-    const batchText = formData.year_of_passing ? `${formData.year_of_passing} Batch` : 'Alumnus';
+    const batchText = formData.batch ? `Batch ${formData.batch}` : (formData.year_of_passing ? `Batch ${getBatchFromPassingYear(formData.year_of_passing)}` : 'Alumnus');
     const attendanceText = isAttending
       ? `${count} ${count === 1 ? 'Person' : 'Persons'}`
       : formData.attendance_status === 'maybe' ? 'Maybe' : 'Not Attending';
@@ -172,9 +173,18 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
           <div className="flex items-center justify-between py-2">
             <span className="text-slate-400">Batch &amp; Branch</span>
             <span className="text-white text-right">
-              Class of {formData.year_of_passing} • {formData.engineering_discipline}
+              Batch {formData.batch || getBatchFromPassingYear(formData.year_of_passing)} • {formData.engineering_discipline}
             </span>
           </div>
+
+          {formData.year_of_passing ? (
+            <div className="flex items-center justify-between py-2">
+              <span className="text-slate-400">Pass Out Year</span>
+              <span className="text-white text-right">
+                {formData.year_of_passing}
+              </span>
+            </div>
+          ) : null}
 
           <div className="flex items-center justify-between py-2">
             <span className="text-slate-400">Location</span>

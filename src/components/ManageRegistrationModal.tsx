@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { ECKEvent, ExistingRegistrationLookup } from '../types';
 import { lookupRegistrationByMobile, cleanMobileNumber, formatDisplayMobile } from '../lib/registrations';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 import { isAlumniIdCardsEnabled } from '../lib/gate';
 import { isEventConcluded } from '../lib/eventStatus';
 
@@ -194,7 +195,7 @@ export const ManageRegistrationModal: React.FC<ManageRegistrationModalProps> = (
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
                   <span className="block text-[10px] font-bold text-slate-400 uppercase">Batch &amp; Branch</span>
                   <span className="text-slate-200">
-                    Class of {foundReg.alumni?.year_of_passing || '—'} • {foundReg.alumni?.engineering_discipline || '—'}
+                    Batch {foundReg.alumni?.batch || getBatchFromPassingYear(foundReg.alumni?.year_of_passing)} • {foundReg.alumni?.engineering_discipline || '—'}
                   </span>
                 </div>
 

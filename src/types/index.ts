@@ -68,6 +68,7 @@ export interface Alumni {
   country?: string;
   city: string;
   state: string;
+  batch?: string | null;
   year_of_passing: number;
   engineering_discipline: string;
   organization: string | null;
@@ -91,6 +92,7 @@ export interface UpdateAlumniPayload {
   mobile: string;
   name: string;
   email?: string | null;
+  batch?: string | null;
   year_of_passing?: number | null;
   engineering_discipline?: string | null;
   organization?: string | null;
@@ -195,6 +197,7 @@ export interface RegistrationFormData {
   city: string;
   state: string;
   state_other?: string;
+  batch?: string;
   year_of_passing: number | '';
   engineering_discipline: string;
   engineering_discipline_other?: string;

@@ -20,6 +20,7 @@ import {
 } from '../lib/registrations';
 import { calculateContribution, calculateSpotContribution } from '../lib/pricing';
 import { getEventUpiConfigs } from '../lib/paymentRotation';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 import { ENGINEERING_DISCIPLINES } from '../types';
 import type { EventRegistration, GateEntry, GateVerificationResult, ECKEvent } from '../types';
 
@@ -1973,8 +1974,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                                   <div className="flex items-center gap-1.5 text-xs text-slate-400">
                                     <span>🎓</span>
                                     <span>
-                                      {alumni.engineering_discipline || 'Alumni'}
-                                      {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
+                                      Batch {alumni.batch || getBatchFromPassingYear(alumni.year_of_passing)} • {alumni.engineering_discipline || 'Alumni'}
                                     </span>
                                   </div>
 
@@ -2998,7 +2998,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                       </td>
                       <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{entry.phone_number}</td>
                       <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
-                        {entry.branch || '—'} {entry.year_of_passing ? `('${String(entry.year_of_passing).slice(-2)})` : ''}
+                        {entry.year_of_passing ? `Batch ${getBatchFromPassingYear(entry.year_of_passing)}` : (entry.branch || '—')} {entry.branch && entry.year_of_passing ? `• ${entry.branch}` : ''}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium">
@@ -3052,8 +3052,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   <div className="flex items-center justify-between gap-2 text-xs text-slate-400 flex-wrap">
                     <span>📞 {entry.phone_number}</span>
                     <span>
-                      🎓 {entry.branch || 'General'}{' '}
-                      {entry.year_of_passing ? `('${String(entry.year_of_passing).slice(-2)})` : ''}
+                      🎓 {entry.year_of_passing ? `Batch ${getBatchFromPassingYear(entry.year_of_passing)}` : (entry.branch || 'General')}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap pt-1">

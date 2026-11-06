@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getBatchFromPassingYear } from './batchUtils';
 import type {
   ExistingRegistrationLookup,
   RegistrationFormData,
@@ -326,6 +327,7 @@ export function recordCompletedRegistrationLocally(
       country: formData.country,
       city: formData.city,
       state: formData.state,
+      batch: formData.batch || (formData.year_of_passing ? getBatchFromPassingYear(formData.year_of_passing) : '2024'),
       year_of_passing: Number(formData.year_of_passing) || 2024,
       engineering_discipline: formData.engineering_discipline,
       organization: formData.organization || null,
@@ -365,6 +367,7 @@ export function convertLookupToFormData(lookup: ExistingRegistrationLookup): Reg
     city: alumni?.city || '',
     state: isIndia ? (alumni?.state || '') : '',
     state_other: isIndia ? '' : (alumni?.state || ''),
+    batch: alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : ''),
     year_of_passing: alumni?.year_of_passing || '',
     engineering_discipline: alumni?.engineering_discipline || '',
     engineering_discipline_other: '',
@@ -448,6 +451,7 @@ export async function fetchAllRegistrationsForLookup(
           mobile,
           email,
           engineering_discipline,
+          batch,
           year_of_passing,
           professional_category,
           city,

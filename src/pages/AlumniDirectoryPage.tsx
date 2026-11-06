@@ -9,6 +9,7 @@ import { fetchAlumniDirectory } from '../lib/directory';
 import { cleanMobileNumber } from '../lib/registrations';
 import type { AlumniDirectoryItem } from '../types';
 import { ENGINEERING_DISCIPLINES } from '../types';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 import {
   GraduationCap,
   User,
@@ -126,15 +127,26 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
       .map(([cityName]) => cityName);
   }, [alumniList]);
 
-  // Extract unique batch years present in data
+  // Extract unique batches present in data
   const availableBatches = useMemo(() => {
-    const years = new Set<number>();
+    const batchesMap = new Map<string, { value: string; label: string; sortKey: number }>();
     alumniList.forEach((a) => {
-      if (a.year_of_passing && a.year_of_passing > 1950) {
-        years.add(a.year_of_passing);
+      const yr = Number(a.year_of_passing) || 0;
+      const b = a.batch || (yr ? getBatchFromPassingYear(yr) : '');
+      if (b) {
+        const sortKey = (b.length === 1 && b >= 'A' && b <= 'Z')
+          ? 1985 + (b.charCodeAt(0) - 65)
+          : (parseInt(b, 10) || yr || 0);
+        if (!batchesMap.has(b)) {
+          batchesMap.set(b, {
+            value: b,
+            label: `Batch ${b}`,
+            sortKey,
+          });
+        }
       }
     });
-    return Array.from(years).sort((a, b) => b - a);
+    return Array.from(batchesMap.values()).sort((a, b) => b.sortKey - a.sortKey);
   }, [alumniList]);
 
   // Options for Searchable Selects
@@ -153,9 +165,9 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
   }, [availableCities]);
 
   const batchOptions = useMemo(() => {
-    return availableBatches.map((yr) => ({
-      value: String(yr),
-      label: `Batch of ${yr}`,
+    return availableBatches.map((b) => ({
+      value: b.value,
+      label: b.label,
     }));
   }, [availableBatches]);
 
@@ -170,7 +182,8 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
       if (selectedCity !== 'ALL' && a.city?.toLowerCase() !== selectedCity.toLowerCase()) {
         return false;
       }
-      if (selectedBatch !== 'ALL' && String(a.year_of_passing) !== selectedBatch) {
+      const aBatch = a.batch || (a.year_of_passing ? getBatchFromPassingYear(a.year_of_passing) : '');
+      if (selectedBatch !== 'ALL' && aBatch !== selectedBatch && String(a.year_of_passing) !== selectedBatch) {
         return false;
       }
       if (q) {
@@ -179,7 +192,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
         const cityMatch = a.city?.toLowerCase().includes(q);
         const discMatch = a.engineering_discipline?.toLowerCase().includes(q);
         const workMatch = a.work_location?.toLowerCase().includes(q);
-        const batchMatch = String(a.year_of_passing).includes(q);
+        const batchMatch = aBatch.toLowerCase().includes(q) || String(a.year_of_passing).includes(q);
 
         if (!nameMatch && !orgMatch && !cityMatch && !discMatch && !workMatch && !batchMatch) {
           return false;
@@ -333,7 +346,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
                   >
                     <span className="text-sm font-semibold text-slate-200">{item.name}</span>
                     <span className="text-xs text-slate-400">
-                      {item.year_of_passing ? `'${String(item.year_of_passing).slice(-2)}` : ''} • {item.engineering_discipline} • {item.city}
+                      Batch {item.batch || getBatchFromPassingYear(item.year_of_passing)} • {item.engineering_discipline} • {item.city}
                     </span>
                   </button>
                 ))}
@@ -448,11 +461,12 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
                           <h2 className="text-sm sm:text-base font-bold text-white truncate" title={alumnus.name}>
                             {alumnus.name}
                           </h2>
-                          {alumnus.year_of_passing && (
-                            <span className="inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-semibold text-amber-300 shrink-0">
-                              '{String(alumnus.year_of_passing).slice(-2)}
-                            </span>
-                          )}
+                          <span
+                            className="inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-semibold text-amber-300 shrink-0"
+                            title={`Batch ${alumnus.batch || getBatchFromPassingYear(alumnus.year_of_passing)}`}
+                          >
+                            Batch {alumnus.batch || getBatchFromPassingYear(alumnus.year_of_passing)}
+                          </span>
                         </div>
 
                         <div className="space-y-0.5 mt-0.5">
@@ -471,6 +485,12 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
 
                     {/* Quick Meta Tags */}
                     <div className="flex flex-wrap gap-1.5 text-[11px]">
+                      {alumnus.year_of_passing ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-amber-300 border border-amber-500/20 font-mono text-[11px]">
+                          🎓 Pass out {alumnus.year_of_passing}
+                        </span>
+                      ) : null}
+
                       <span className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 px-2 py-0.5 text-slate-300 border border-slate-700/60">
                         <MapPin className="h-3 w-3 text-amber-400" />
                         <span>{alumnus.city || 'Kota'}{alumnus.state ? `, ${alumnus.state}` : ''}</span>

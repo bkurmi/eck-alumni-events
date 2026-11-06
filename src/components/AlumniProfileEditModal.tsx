@@ -14,6 +14,12 @@ import {
   saveAlumniProfile,
 } from '../lib/directory';
 import { cleanMobileNumber } from '../lib/registrations';
+import {
+  getAllBatchOptions,
+  getPassingYearOptions,
+  getDefaultPassingYearForBatch,
+  getBatchFromPassingYear,
+} from '../lib/batchUtils';
 
 interface AlumniProfileEditModalProps {
   isOpen: boolean;
@@ -47,6 +53,10 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
   // Selected alumnus record
   const [selectedAlumnus, setSelectedAlumnus] = useState<AlumniDirectoryItem | null>(null);
 
+  // Batch & Passing Year options
+  const { allBatches } = React.useMemo(() => getAllBatchOptions(), []);
+  const passingYearOptions = React.useMemo(() => getPassingYearOptions(), []);
+
   // Form states matching full registration schema
   const [formData, setFormData] = useState({
     name: '',
@@ -58,6 +68,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
     state_other: '',
     city: '',
     address: '',
+    batch: '2020',
     year_of_passing: 2020,
     engineering_discipline: 'Computer Science',
     engineering_discipline_other: '',
@@ -140,6 +151,9 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
     const indDomain = alumnus.industry_domain || 'Information Technology & Services';
     const isStdDomain = (INDUSTRY_DOMAINS as readonly string[]).includes(indDomain);
 
+    const passingYear = alumnus.year_of_passing || 2020;
+    const resolvedBatch = alumnus.batch || getBatchFromPassingYear(passingYear);
+
     setFormData({
       name: alumnus.name || '',
       email: alumnus.email || '',
@@ -150,7 +164,8 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
       state_other: stateOther,
       city: alumnus.city || '',
       address: alumnus.address || '',
-      year_of_passing: alumnus.year_of_passing || 2020,
+      batch: resolvedBatch,
+      year_of_passing: passingYear,
       engineering_discipline: disciplineValue,
       engineering_discipline_other: disciplineOther,
       employment_type: isStdEmp ? empType : 'Other',
@@ -277,6 +292,16 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
       return;
     }
 
+    if (!formData.batch || !formData.batch.trim()) {
+      setSaveErrorMsg('Batch is mandatory. Please select your ECK/RTU Batch.');
+      return;
+    }
+
+    if (!formData.year_of_passing) {
+      setSaveErrorMsg('Pass Out Year is mandatory. Please select your Year of Passing.');
+      return;
+    }
+
     setIsSaving(true);
     setSaveErrorMsg('');
     setSaveSuccessMsg('');
@@ -311,6 +336,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
         mobile: selectedAlumnus.mobile,
         name: formData.name.trim(),
         email: formData.email.trim() || null,
+        batch: formData.batch.trim(),
         year_of_passing: Number(formData.year_of_passing),
         engineering_discipline: resolvedDiscipline,
         employment_type: resolvedEmploymentType,
@@ -333,6 +359,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
           ...selectedAlumnus,
           name: payload.name,
           email: payload.email || null,
+          batch: payload.batch || selectedAlumnus.batch,
           year_of_passing: Number(payload.year_of_passing) || selectedAlumnus.year_of_passing,
           engineering_discipline: payload.engineering_discipline || selectedAlumnus.engineering_discipline,
           employment_type: payload.employment_type || undefined,
@@ -545,7 +572,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                                 <div className="flex items-center gap-2 flex-wrap text-sm text-white font-bold">
                                   <span>{item.name}</span>
                                   <span className="text-xs font-mono font-normal text-amber-400">
-                                    {item.year_of_passing ? `'${String(item.year_of_passing).slice(-2)}` : ''} • {item.engineering_discipline}
+                                    Batch {item.batch || getBatchFromPassingYear(item.year_of_passing)} • {item.engineering_discipline}
                                   </span>
                                 </div>
                                 <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
@@ -659,8 +686,13 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                       <h4 className="text-base sm:text-lg font-bold text-white">{formData.name || selectedAlumnus.name}</h4>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300">
-                          🎓 Batch of {formData.year_of_passing}
+                          🎓 Batch {formData.batch || getBatchFromPassingYear(formData.year_of_passing)}
                         </span>
+                        {formData.year_of_passing ? (
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-emerald-300">
+                            📅 Pass Out: {formData.year_of_passing}
+                          </span>
+                        ) : null}
                         <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
                           💻 {formData.engineering_discipline}
                         </span>
@@ -865,20 +897,58 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Year of Passing */}
+                  {/* Batch (Mandatory) */}
                   <div className="space-y-1.5">
-                    <label htmlFor="edit-passing-year" className="block text-xs font-semibold text-slate-200">
-                      Year of Passing (Batch) <span className="text-amber-400">*</span>
+                    <label htmlFor="edit-batch" className="block text-xs font-semibold text-slate-200">
+                      Batch <span className="text-amber-400">*</span>
                     </label>
+                    <select
+                      id="edit-batch"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
+                      value={formData.batch}
+                      onChange={(e) => {
+                        const newBatch = e.target.value;
+                        const defaultYear = getDefaultPassingYearForBatch(newBatch);
+                        setFormData({
+                          ...formData,
+                          batch: newBatch,
+                          year_of_passing: defaultYear,
+                        });
+                      }}
+                      required
+                    >
+                      <option value="" disabled className="bg-slate-900">
+                        Select Batch
+                      </option>
+                      {allBatches.map((b) => (
+                        <option key={b.value} value={b.value} className="bg-slate-900 text-white font-normal">
+                          {b.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Year of Passing (Mandatory, pre-loaded & editable) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="edit-passing-year" className="block text-xs font-semibold text-slate-200">
+                        Pass Out Year <span className="text-amber-400">*</span>
+                      </label>
+                      <span className="text-[10px] text-emerald-400 font-mono">Pre-loaded • Editable</span>
+                    </div>
                     <select
                       id="edit-passing-year"
                       className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       value={formData.year_of_passing}
                       onChange={(e) => setFormData({ ...formData, year_of_passing: Number(e.target.value) })}
+                      required
                     >
-                      {Array.from({ length: 50 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
-                        <option key={year} value={year} className="bg-slate-900">
-                          Batch of {year}
+                      <option value="" disabled className="bg-slate-900">
+                        Select Year
+                      </option>
+                      {passingYearOptions.map((year) => (
+                        <option key={year} value={year} className="bg-slate-900 text-white">
+                          {year}
                         </option>
                       ))}
                     </select>

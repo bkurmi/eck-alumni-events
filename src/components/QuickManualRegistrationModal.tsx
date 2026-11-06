@@ -23,6 +23,11 @@ import { supabase } from '../lib/supabase';
 import { calculateContribution } from '../lib/pricing';
 import { lookupRegistrationByMobile, cleanMobileNumber } from '../lib/registrations';
 import { getEventUpiConfigs, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
+import {
+  getAllBatchOptions,
+  getDefaultPassingYearForBatch,
+  getBatchFromPassingYear,
+} from '../lib/batchUtils';
 
 interface QuickManualRegistrationModalProps {
   isOpen: boolean;
@@ -136,6 +141,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
 
   // Optional Alumni Details
   const [showOptionalDetails, setShowOptionalDetails] = useState<boolean>(false);
+  const [batch, setBatch] = useState<string>('');
   const [yearOfPassing, setYearOfPassing] = useState<string>('');
   const [engineeringDiscipline, setEngineeringDiscipline] = useState<string>('');
   const [city, setCity] = useState<string>('');
@@ -154,7 +160,8 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
 
-  // List of passing years
+  // List of passing years & batches
+  const { allBatches } = useMemo(() => getAllBatchOptions(), []);
   const currentYear = new Date().getFullYear();
   const passingYears = useMemo(() => {
     return Array.from({ length: currentYear - 1980 + 1 }, (_, i) => currentYear - i);
@@ -371,7 +378,11 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
             }
           }
 
-          // 5. Populate Batch / Passing Year
+          // 5. Populate Batch & Passing Year
+          const resolvedAlumniBatch = lookup.alumni?.batch || (lookup.alumni?.year_of_passing ? getBatchFromPassingYear(lookup.alumni.year_of_passing) : '');
+          if (resolvedAlumniBatch) {
+            setBatch(resolvedAlumniBatch);
+          }
           if (lookup.alumni?.year_of_passing && lookup.alumni.year_of_passing > 1900) {
             setYearOfPassing(String(lookup.alumni.year_of_passing));
           }
@@ -575,6 +586,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         p_country: resolvedCountry,
         p_city: resolvedCity,
         p_state: resolvedState,
+        p_batch: batch || (resolvedYear ? getBatchFromPassingYear(resolvedYear) : null),
         p_year_of_passing: resolvedYear,
         p_engineering_discipline: resolvedDiscipline,
         p_attendance_status: attendanceStatus,
@@ -1405,10 +1417,35 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                 {showOptionalDetails && (
                   <div className="p-3.5 sm:p-4 border-t border-slate-800/80 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                      {/* Batch */}
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                          Batch
+                        </label>
+                        <select
+                          value={batch}
+                          onChange={(e) => {
+                            const newB = e.target.value;
+                            setBatch(newB);
+                            if (newB) {
+                              setYearOfPassing(String(getDefaultPassingYearForBatch(newB)));
+                            }
+                          }}
+                          className="w-full min-h-[44px] text-base sm:text-xs px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none focus:border-amber-500"
+                        >
+                          <option value="" className="bg-slate-900">-- Select Batch --</option>
+                          {allBatches.map((b) => (
+                            <option key={b.value} value={b.value} className="bg-slate-900 text-white font-normal">
+                              {b.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       {/* Year of Passing */}
                       <div>
                         <label className="block text-xs font-medium text-slate-400 mb-1">
-                          Batch / Passing Year
+                          Pass Out Year
                         </label>
                         <select
                           value={yearOfPassing}
@@ -1418,7 +1455,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
                           <option value="" className="bg-slate-900">-- Not Specified --</option>
                           {passingYears.map((y) => (
                             <option key={y} value={y} className="bg-slate-900">
-                              Batch of {y}
+                              {y}
                             </option>
                           ))}
                         </select>

@@ -20,6 +20,7 @@ import {
 } from '../lib/gate';
 import { supabase } from '../lib/supabase';
 import { isEventConcluded } from '../lib/eventStatus';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 import { ArrowLeft, Download, Camera, Check, Shield, Search, X, MessageCircle } from 'lucide-react';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
@@ -417,6 +418,7 @@ export const IdCardPage: React.FC = () => {
         const name = (alumni.name || '').toLowerCase();
         const branch = (alumni.engineering_discipline || '').toLowerCase();
         const year = String(alumni.year_of_passing || '');
+        const batchStr = (alumni.batch || (alumni.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '')).toLowerCase();
         const mobile = cleanMobileNumber(alumni.mobile || '');
         const regNo = (reg.registration_number || '').toLowerCase();
         const city = (alumni.city || '').toLowerCase();
@@ -426,6 +428,7 @@ export const IdCardPage: React.FC = () => {
           (token) =>
             name.includes(token) ||
             branch.includes(token) ||
+            batchStr.includes(token) ||
             year.includes(token) ||
             mobile.includes(token) ||
             regNo.includes(token) ||
@@ -710,7 +713,8 @@ export const IdCardPage: React.FC = () => {
     const name = alumni?.name || 'Alumnus';
     const regNum = registration.registration_number || 'Pass';
     const discipline = alumni?.engineering_discipline ? `${alumni.engineering_discipline}` : '';
-    const batch = alumni?.year_of_passing ? `Batch of ${alumni.year_of_passing}` : '';
+    const batchName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '');
+    const batch = batchName ? `Batch ${batchName}` : '';
     const branchAndBatch = [discipline, batch].filter(Boolean).join(' • ');
 
     const totalGuests =
@@ -1091,7 +1095,7 @@ export const IdCardPage: React.FC = () => {
                         <Search className="w-5 h-5 text-slate-400 absolute left-3.5 pointer-events-none" />
                         <input
                           type="text"
-                          placeholder="Type name (e.g. Bhawesh, Rahul), batch (2008), or branch..."
+                          placeholder="Type name (e.g. Bhawesh, Rahul), batch (A, 2008), or branch..."
                           value={nameSearchQuery}
                           onChange={(e) => {
                             setNameSearchQuery(e.target.value);
@@ -1183,8 +1187,7 @@ export const IdCardPage: React.FC = () => {
                                           </span>
                                         </div>
                                         <div className="text-xs text-slate-400 truncate">
-                                          🎓 {alumni.engineering_discipline || 'Alumni'}
-                                          {alumni.year_of_passing ? ` (${alumni.year_of_passing})` : ''}
+                                          🎓 Batch {alumni.batch || getBatchFromPassingYear(alumni.year_of_passing)} • {alumni.engineering_discipline || 'Alumni'}
                                         </div>
                                       </div>
 

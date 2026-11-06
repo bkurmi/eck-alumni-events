@@ -2,6 +2,7 @@
 import { supabase } from './supabase';
 import { cleanMobileNumber } from './registrations';
 import { compressAttendeePhoto } from './gate';
+import { getBatchFromPassingYear } from './batchUtils';
 import type { AlumniDirectoryItem, UpdateAlumniPayload, Alumni } from '../types';
 
 /**
@@ -27,6 +28,8 @@ function normalizeAlumniWithPhoto(record: any): AlumniDirectoryItem {
   }
 
   const latestReg = registrations[0];
+  const passingYear = Number(record.year_of_passing) || 0;
+  const resolvedBatch = record.batch || (passingYear ? getBatchFromPassingYear(passingYear) : null);
 
   return {
     id: record.id,
@@ -37,7 +40,8 @@ function normalizeAlumniWithPhoto(record: any): AlumniDirectoryItem {
     country: record.country || 'India',
     city: record.city || 'Kota',
     state: record.state || 'Rajasthan',
-    year_of_passing: Number(record.year_of_passing) || 0,
+    batch: resolvedBatch,
+    year_of_passing: passingYear,
     engineering_discipline: record.engineering_discipline || 'Other',
     organization: record.organization || null,
     employment_type: record.employment_type || undefined,
@@ -227,6 +231,7 @@ export async function saveAlumniProfile(
         p_name: payload.name.trim(),
         p_email: payload.email?.trim() || null,
         p_year_of_passing: payload.year_of_passing ? Number(payload.year_of_passing) : null,
+        p_batch: payload.batch?.trim() || null,
         p_engineering_discipline: payload.engineering_discipline?.trim() || null,
         p_organization: payload.organization?.trim() || null,
         p_employment_type: payload.employment_type?.trim() || null,
@@ -264,6 +269,9 @@ export async function saveAlumniProfile(
       updated_at: new Date().toISOString(),
     };
 
+    if (payload.batch) {
+      updateObj.batch = payload.batch.trim();
+    }
     if (payload.year_of_passing) {
       updateObj.year_of_passing = Number(payload.year_of_passing);
     }

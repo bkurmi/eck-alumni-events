@@ -24,6 +24,11 @@ import {
 } from '../lib/registrations';
 import { isRegistrationClosed } from '../lib/eventStatus';
 import {
+  getAllBatchOptions,
+  getPassingYearOptions,
+  getDefaultPassingYearForBatch,
+} from '../lib/batchUtils';
+import {
   AlertCircle,
   X,
   Lock,
@@ -52,6 +57,7 @@ const INITIAL_FORM_DATA: RegistrationFormData = {
   city: '',
   state: '',
   state_other: '',
+  batch: '',
   year_of_passing: '',
   engineering_discipline: '',
   engineering_discipline_other: '',
@@ -173,11 +179,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     }
   }, [initialData, existingRegistration]);
 
-  const currentYear = new Date().getFullYear();
-  const passingYears = Array.from(
-    { length: currentYear - 1980 + 1 },
-    (_, i) => currentYear - i
-  );
+  const { allBatches } = useMemo(() => getAllBatchOptions(), []);
+  const passingYearOptions = useMemo(() => getPassingYearOptions(), []);
 
   // Pricing calculation managed purely in codebase
   const pricing = useMemo(() => {
@@ -325,6 +328,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       return;
     }
 
+    if (name === 'batch') {
+      const defaultYear = getDefaultPassingYearForBatch(value);
+      setFormData((prev) => ({
+        ...prev,
+        batch: value,
+        year_of_passing: defaultYear,
+      }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]:
@@ -406,8 +419,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       scrollToError('Please enter a valid 10-digit mobile number before making payment.', 'field-mobile');
       return;
     }
+    if (!formData.batch || !formData.batch.trim()) {
+      scrollToError('Please select your ECK/RTU Batch (Mandatory).', 'field-batch');
+      return;
+    }
     if (!formData.year_of_passing) {
-      scrollToError('Please select your Year of Passing (Batch).', 'field-year');
+      scrollToError('Please select your Pass Out Year (Mandatory).', 'field-year');
       return;
     }
     if (!formData.engineering_discipline) {
@@ -447,6 +464,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         p_country: resolvedCountry,
         p_city: formData.city.trim() || 'Not Specified',
         p_state: resolvedState || 'Not Specified',
+        p_batch: formData.batch?.trim() || null,
         p_year_of_passing: Number(formData.year_of_passing) || 2000,
         p_engineering_discipline: resolvedDiscipline || 'General',
         p_employment_type: resolvedEmploymentType || null,
@@ -478,6 +496,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           p_country: resolvedCountry,
           p_city: formData.city.trim() || 'Not Specified',
           p_state: resolvedState || 'Not Specified',
+          p_batch: formData.batch?.trim() || null,
           p_year_of_passing: Number(formData.year_of_passing) || 2000,
           p_engineering_discipline: resolvedDiscipline || 'General',
           p_employment_type: resolvedEmploymentType || null,
@@ -597,8 +616,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       );
       return;
     }
+    if (!formData.batch || !formData.batch.trim()) {
+      scrollToError('Please select your ECK/RTU Batch (Mandatory).', 'field-batch');
+      return;
+    }
     if (!formData.year_of_passing) {
-      scrollToError('Please select your year of passing (Batch).', 'field-year');
+      scrollToError('Please select your Pass Out Year (Mandatory).', 'field-year');
       return;
     }
     if (!formData.engineering_discipline) {
@@ -754,6 +777,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         p_country: resolvedCountry,
         p_city: formData.city.trim(),
         p_state: resolvedState,
+        p_batch: formData.batch?.trim() || null,
         p_year_of_passing: Number(formData.year_of_passing),
         p_engineering_discipline: resolvedDiscipline,
         p_employment_type: resolvedEmploymentType,
@@ -783,6 +807,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           p_address: formData.address.trim(),
           p_city: formData.city.trim(),
           p_state: resolvedState,
+          p_batch: formData.batch?.trim() || null,
           p_year_of_passing: Number(formData.year_of_passing),
           p_engineering_discipline: resolvedDiscipline,
           p_professional_category: combinedCategory,
@@ -864,6 +889,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 p_country: resolvedCountry,
                 p_city: formData.city.trim(),
                 p_state: resolvedState,
+                p_batch: formData.batch?.trim() || null,
                 p_year_of_passing: Number(formData.year_of_passing),
                 p_engineering_discipline: resolvedDiscipline,
                 p_employment_type: resolvedEmploymentType,
@@ -888,6 +914,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   p_address: formData.address.trim(),
                   p_city: formData.city.trim(),
                   p_state: resolvedState,
+                  p_batch: formData.batch?.trim() || null,
                   p_year_of_passing: Number(formData.year_of_passing),
                   p_engineering_discipline: resolvedDiscipline,
                   p_professional_category: combinedCategory,
@@ -1133,11 +1160,40 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             />
           </div>
 
-          {/* Year of Passing */}
+          {/* Batch (Mandatory) */}
           <div className="space-y-1.5">
-            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-year">
-              Year of Passing (Batch)
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-batch">
+              Batch
             </label>
+            <select
+              id="field-batch"
+              name="batch"
+              value={formData.batch || ''}
+              onChange={handleChange}
+              required
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
+                errorFieldId === 'field-batch' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+              }`}
+            >
+              <option value="" disabled className="bg-slate-900 text-slate-400">
+                Select your Batch
+              </option>
+              {allBatches.map((b) => (
+                <option key={b.value} value={b.value} className="bg-slate-900 text-slate-100 font-normal">
+                  {b.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Pass Out Year (Mandatory, pre-loaded & editable) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 after:content-['*'] after:ml-1 after:text-amber-400" htmlFor="field-year">
+                Pass Out Year
+              </label>
+              <span className="text-[10px] text-emerald-400 font-mono">Pre-loaded • Editable</span>
+            </div>
             <select
               id="field-year"
               name="year_of_passing"
@@ -1148,13 +1204,18 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 errorFieldId === 'field-year' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
               }`}
             >
-              <option value="">Select Passing Year</option>
-              {passingYears.map((year) => (
+              <option value="" disabled className="bg-slate-900 text-slate-400">
+                Select Year
+              </option>
+              {passingYearOptions.map((year) => (
                 <option key={year} value={year} className="bg-slate-900 text-slate-100">
-                  Class of {year}
+                  {year}
                 </option>
               ))}
             </select>
+            <p className="text-[11px] text-slate-400 leading-tight">
+              Pre-loaded based on your Batch. Change this if your graduation was delayed.
+            </p>
           </div>
 
           {/* Engineering Discipline */}

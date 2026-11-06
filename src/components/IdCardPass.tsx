@@ -1,6 +1,7 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 
 interface IdCardPassProps {
   registration: ExistingRegistrationLookup;
@@ -79,7 +80,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     formatSmartAttendeeName(alumni?.name || 'Alumnus');
   const regNumber = registration.registration_number || '';
   const branch = alumni?.engineering_discipline || '';
-  const batchYear = alumni?.year_of_passing ? String(alumni.year_of_passing) : '';
+  const batchName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '');
+  const batchDisplay = batchName ? `Batch ${batchName}` : 'Alumnus';
   const category = alumni?.professional_category || 'Alumnus';
   const badgeLabel = category.toLowerCase().includes('faculty')
     ? 'FACULTY'
@@ -197,8 +199,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-info-split-row">
                 <div className="ticket-v-batch-box">
                   <span className="ticket-v-label">Batch</span>
-                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
-                    <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
+                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchDisplay}${branch ? ` • ${branch}` : ''}`}>
+                    <strong>{batchDisplay}</strong>{branch ? ` • ${branch}` : ''}
                   </p>
                 </div>
                 <div className="ticket-v-reg-box">

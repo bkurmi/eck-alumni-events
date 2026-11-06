@@ -13,6 +13,7 @@ import { getUpiAccountName, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { formatINR } from '../lib/expenses';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 
 interface UpiReconciliationReportProps {
   registrations: EventRegistration[];
@@ -1373,7 +1374,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
                       {/* Alumnus Meta: Batch, Discipline & City */}
                       <div className="text-xs text-slate-400">
-                        <span>Batch {alumni?.year_of_passing || '—'}</span>
+                        <span>Batch {alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '—')}</span>
                         <span className="mx-1">•</span>
                         <span>{alumni?.engineering_discipline || 'Other'}</span>
                         {alumni?.city && (
@@ -1554,7 +1555,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
                   {/* Alumnus Meta: Batch, Discipline & City */}
                   <div className="text-xs text-slate-400">
-                    <span>Batch {alumni?.year_of_passing || '—'}</span>
+                    <span>Batch {alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '—')}</span>
                     <span className="mx-1">•</span>
                     <span>{alumni?.engineering_discipline || 'Other'}</span>
                     {alumni?.city && (
@@ -1652,7 +1653,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                     {editingReg.registration.alumni?.name}
                   </strong>
                   <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
-                    Batch {editingReg.registration.alumni?.year_of_passing} • {formatDDMMYYYY(editingReg.registration.created_at)}
+                    Batch {editingReg.registration.alumni?.batch || (editingReg.registration.alumni?.year_of_passing ? getBatchFromPassingYear(editingReg.registration.alumni.year_of_passing) : '—')} • {formatDDMMYYYY(editingReg.registration.created_at)}
                   </span>
                 </div>
                 <span className="text-sm sm:text-base font-mono font-bold text-emerald-400 shrink-0">
