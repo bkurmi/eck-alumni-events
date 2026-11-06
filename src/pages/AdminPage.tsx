@@ -630,6 +630,60 @@ export const AdminPage: React.FC = () => {
     window.open(`https://wa.me/${target}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  // Export filtered/scoped registrations to CSV
+  const handleExportRegistrationsCSV = () => {
+    const list = filteredRegistrations.length > 0 ? filteredRegistrations : scopedRegistrations;
+    const headers = [
+      'Registration Number',
+      'Name',
+      'Attendance Status',
+      'Headcount',
+      'Amount (INR)',
+      'Mobile Number',
+      'Year of Passing',
+      'Discipline',
+      'City',
+      'Registration Date',
+    ];
+
+    const rows = list.map((reg) => {
+      const alumni = reg.alumni;
+      const attStatus =
+        reg.attendance_status === 'yes'
+          ? 'Attending'
+          : reg.attendance_status === 'payment_pending'
+            ? 'Payment Pending'
+            : reg.attendance_status === 'maybe'
+              ? 'Maybe'
+              : 'Not Attending';
+
+      return [
+        `"${reg.registration_number || ''}"`,
+        `"${(alumni?.name || '').replace(/"/g, '""')}"`,
+        `"${attStatus}"`,
+        `"${reg.number_of_attendees || 1}"`,
+        `"${reg.amount || 0}"`,
+        `"${alumni?.mobile || ''}"`,
+        `"${alumni?.year_of_passing || ''}"`,
+        `"${(alumni?.engineering_discipline || '').replace(/"/g, '""')}"`,
+        `"${(alumni?.city || '').replace(/"/g, '""')}"`,
+        `"${(reg.created_at || '').slice(0, 10)}"`,
+      ].join(',');
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute(
+      'download',
+      `${(activeEvent.short_name || activeEvent.event_name).replace(/\s+/g, '_')}_Registrations_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Registrations scoped to the active event, with safe fallback to all if none match strictly
   const scopedRegistrations = useMemo(() => {
     if (!activeEvent?.id || activeEvent.id === 'mock-deepaura-2026') return registrations;
@@ -858,11 +912,11 @@ export const AdminPage: React.FC = () => {
               </div>
 
               {/* Event-Tied Actions */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2.5 shrink-0 flex-nowrap">
                 <button
                   type="button"
                   onClick={() => setIsManualEntryOpen(true)}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-500/20 flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-500/20 flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] whitespace-nowrap"
                   title={`Quick register alumnus for ${activeEvent.event_name}`}
                 >
                   <span>⚡</span>
@@ -871,7 +925,7 @@ export const AdminPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsMemoryModalOpen(true)}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap"
                   title={`Upload and curate photos & video for ${activeEvent.event_name}`}
                 >
                   <span>📸</span>
@@ -1195,23 +1249,33 @@ export const AdminPage: React.FC = () => {
             ) : (
               <div className="space-y-5">
                 {/* Mobile WhatsApp Broadcast Banner */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-[#0d2818]/90 via-[#0a1f14] to-slate-950 border border-[#0d9616]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">🪔</span>
                     <div>
                       <h3 className="text-sm sm:text-base font-black text-white">Diwali WhatsApp Broadcast</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-300 mt-0.5">
                         Share registered alumni list with passing year, location &amp; accompanying guests to WhatsApp!
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
                     <button
                       type="button"
                       onClick={() => setIsShareModalOpen(true)}
-                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/25 flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                      className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#025907] via-[#087f10] to-[#0d9616] hover:from-[#036809] hover:via-[#0a8e13] hover:to-[#0fa81a] border border-[#0d9616]/60 text-white font-bold text-xs sm:text-sm shadow-md shadow-green-950/50 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                     >
-                      💬 Broadcast List
+                      <span>💬</span>
+                      <span>Broadcast List</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportRegistrationsCSV}
+                      className="min-h-[44px] px-4 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      title="Download CSV of alumni registrations"
+                    >
+                      <span>📥</span>
+                      <span>CSV</span>
                     </button>
                   </div>
                 </div>

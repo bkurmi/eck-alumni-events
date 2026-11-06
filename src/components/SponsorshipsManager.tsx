@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { Sponsorship } from '../types';
 import { buildAllSponsorshipsWhatsAppMessage } from '../lib/sponsorships';
 import { formatDisplayMobile } from '../lib/registrations';
-import { Search, Plus, MessageCircle, Edit2, X, Phone, Mail, User, FileText } from 'lucide-react';
+import { Search, Plus, Edit2, X } from 'lucide-react';
 
 interface SponsorshipsManagerProps {
   sponsorships: Sponsorship[];
@@ -104,43 +104,44 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
   return (
     <div className="flex flex-col gap-4 w-full">
       {/* ── TOOLBAR HEADER ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-amber-500/20 backdrop-blur-md">
-        <div className="flex items-start gap-2.5 min-w-0 flex-1">
-          <span className="text-xl sm:text-2xl shrink-0 mt-0.5">💎</span>
+      <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg">
+        <div className="flex items-start gap-2.5">
+          <span className="text-2xl shrink-0 mt-0.5">💎</span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2 flex-wrap">
+            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2 flex-wrap">
               <span>Event Sponsorships</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold shrink-0">
                 {sponsorships.length}
               </span>
             </h2>
             <div className="text-xs sm:text-sm text-slate-400 mt-1 break-words">
-              Total Collected: <strong className="text-emerald-400 font-semibold">₹{stats.totalAmount.toLocaleString('en-IN')}</strong>
+              Total Collected: <strong className="text-emerald-400 font-bold">₹{stats.totalAmount.toLocaleString('en-IN')}</strong>
               {registrationAmount > 0 && (
-                <> • Combined Fund: <strong className="text-indigo-300 font-semibold">₹{stats.grandEventTotal.toLocaleString('en-IN')}</strong> ({totalAttendeesCount} guests attending)</>
+                <> • Combined Fund: <strong className="text-indigo-300 font-bold">₹{stats.grandEventTotal.toLocaleString('en-IN')}</strong> ({totalAttendeesCount} guests attending)</>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        {/* Action Buttons Row */}
+        <div className="flex items-center gap-3 mt-3.5">
           <button
             type="button"
             onClick={onAddSponsorship}
-            className="min-h-[44px] px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm inline-flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-amber-500/25 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Sponsorship</span>
+            <span className="text-sm">💎</span>
+            <span>+ Add Sponsorship</span>
           </button>
 
           <button
             type="button"
             onClick={handleShareAllWhatsApp}
-            className="min-h-[44px] px-3 sm:px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm inline-flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all cursor-pointer"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#025907] via-[#087f10] to-[#0d9616] hover:from-[#036809] hover:via-[#0a8e13] hover:to-[#0fa81a] border border-[#0d9616]/60 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-green-950/50 active:scale-[0.98] transition-all cursor-pointer"
             title="Share all sponsorships on WhatsApp"
           >
-            <MessageCircle className="w-4 h-4" />
-            <span className="hidden xs:inline">Share</span>
+            <span className="text-sm">💬</span>
+            <span>Share</span>
           </button>
         </div>
       </div>
@@ -153,7 +154,7 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
           placeholder="Search sponsor, contact, phone, notes, UPI..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-slate-900/90 text-slate-100 placeholder-slate-500 border border-slate-800 rounded-xl text-base sm:text-sm focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60 transition-colors"
+          className="w-full min-h-[44px] pl-10 pr-10 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-base sm:text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
         />
         {searchQuery && (
           <button
@@ -180,7 +181,7 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
           <button
             type="button"
             onClick={onAddSponsorship}
-            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold text-sm inline-flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold text-sm inline-flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add First Sponsorship</span>
@@ -193,12 +194,14 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                  <th className="w-10 text-center py-3 px-2">#</th>
-                  <th className="py-3 px-3">Sponsor / Partner</th>
-                  <th className="w-28 text-right py-3 px-3">Amount</th>
-                  <th className="w-44 text-center py-3 px-2">Receiving UPI</th>
-                  <th className="w-28 text-center py-3 px-2">Date</th>
-                  <th className="w-14 text-center py-3 px-2" title="Actions">Edit</th>
+                  <th className="w-10 text-center py-3.5 px-2">#</th>
+                  <th className="py-3.5 px-3 text-left w-[220px] max-w-[220px]">NAME</th>
+                  <th className="w-28 py-3.5 px-3 text-left">AMOUNT</th>
+                  <th className="w-44 text-center py-3.5 px-2">UPI ID</th>
+                  <th className="w-28 text-center py-3.5 px-2">DATE</th>
+                  <th className="w-12 text-center py-3.5 px-2" title="Actions">
+                    <Edit2 className="w-3.5 h-3.5 text-amber-500 inline-block" />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -211,61 +214,49 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
                       title="Click to view & edit details"
                     >
                       {/* # Index */}
-                      <td className="text-center py-3 px-2 text-slate-500 font-mono text-xs">
+                      <td className="text-center py-3.5 px-2 text-slate-300 font-mono text-xs font-bold">
                         {idx + 1}
                       </td>
 
-                      {/* Name & Contact */}
-                      <td className="py-3 px-3">
-                        <div className="font-bold text-slate-100 group-hover:text-amber-400 transition-colors">
+                      {/* Name */}
+                      <td className="py-3.5 px-3 w-[220px] max-w-[220px] overflow-hidden">
+                        <div
+                          className="font-black text-white group-hover:text-amber-400 transition-colors text-sm truncate"
+                          title={s.sponsor_name}
+                        >
                           {s.sponsor_name}
                         </div>
-                        {(s.contact_person || s.contact_phone) && (
-                          <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                            {s.contact_person && <span>👤 {s.contact_person}</span>}
-                            {s.contact_phone && (
-                              <span className="text-slate-500">
-                                • 📞 {formatDisplayMobile(s.contact_phone, '')}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {s.notes && (
-                          <div className="text-xs text-slate-400/90 line-clamp-1 mt-0.5 font-sans italic">
-                            📝 {s.notes}
-                          </div>
-                        )}
                       </td>
 
                       {/* Amount */}
-                      <td className="text-right py-3 px-3 font-mono font-bold text-amber-400 text-sm whitespace-nowrap">
+                      <td className="text-left py-3.5 px-3 font-black text-amber-400 text-sm whitespace-nowrap">
                         ₹{Number(s.amount || 0).toLocaleString('en-IN')}
                       </td>
 
                       {/* UPI ID */}
-                      <td className="text-center py-3 px-2 whitespace-nowrap">
+                      <td className="text-center py-3.5 px-2 whitespace-nowrap">
                         {s.receiving_upi_id ? (
-                          <span className="inline-block text-xs font-mono px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
                             {s.receiving_upi_id}
                           </span>
                         ) : (
-                          <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 border border-rose-500/30 text-rose-400">
                             Untagged
                           </span>
                         )}
                       </td>
 
                       {/* Date */}
-                      <td className="text-center py-3 px-2 text-xs font-mono text-slate-400 whitespace-nowrap">
+                      <td className="text-center py-3.5 px-2 text-xs font-mono text-slate-400 whitespace-nowrap">
                         {formatDDMMYYYY(s.created_at)}
                       </td>
 
                       {/* Action */}
-                      <td className="text-center py-3 px-2" onClick={(e) => e.stopPropagation()}>
+                      <td className="text-center py-3.5 px-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => onEditSponsorship(s)}
-                          className="min-h-[36px] min-w-[36px] p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 transition-colors cursor-pointer inline-flex items-center justify-center"
+                          className="min-h-[32px] min-w-[32px] p-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-amber-500 hover:text-amber-400 hover:bg-slate-700/60 transition-colors inline-flex items-center justify-center cursor-pointer"
                           title="Edit Sponsorship"
                           aria-label="Edit"
                         >
@@ -277,14 +268,14 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
                 })}
               </tbody>
               <tfoot>
-                <tr className="border-t border-slate-700 bg-amber-500/10 font-bold text-slate-200">
-                  <td colSpan={2} className="py-3 px-3 text-right text-xs uppercase tracking-wider text-slate-400">
+                <tr className="border-t border-amber-500/20 bg-amber-950/30 font-bold text-slate-200">
+                  <td colSpan={2} className="py-3.5 px-4 text-center text-sm font-bold text-slate-100">
                     Grand Total:
                   </td>
-                  <td className="py-3 px-3 text-right font-mono text-amber-400 text-sm">
+                  <td className="py-3.5 px-3 text-left font-black text-amber-400 text-base whitespace-nowrap">
                     ₹{filteredAmount.toLocaleString('en-IN')}
                   </td>
-                  <td colSpan={3} className="py-3 px-3 text-center text-xs text-slate-400 font-normal">
+                  <td colSpan={3} className="py-3.5 px-4 text-center text-sm font-bold text-slate-300">
                     {filteredList.length} {filteredList.length === 1 ? 'Sponsor' : 'Sponsors'}
                   </td>
                 </tr>
@@ -295,75 +286,94 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
           {/* ── MOBILE CARDS VIEW (Screens < 640px) ── */}
           <div className="sm:hidden flex flex-col gap-3">
             {filteredList.map((s, idx) => {
+              const isTagged = Boolean(s.receiving_upi_id);
+
               return (
                 <div
                   key={s.id}
                   onClick={() => onEditSponsorship(s)}
-                  className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 active:border-amber-500/50 transition-colors flex flex-col gap-2.5 cursor-pointer"
+                  className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${
+                    isTagged
+                      ? 'border-l-[3.5px] border-l-emerald-500'
+                      : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
+                  }`}
                 >
                   {/* Card Header: Index, Date, Amount */}
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2">
-                    <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-                      <span className="font-bold text-amber-400/90">#{idx + 1}</span>
-                      <span>•</span>
-                      <span>{formatDDMMYYYY(s.created_at)}</span>
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-400 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded-md">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-mono text-xs text-slate-300 bg-slate-800/80 border border-slate-700/50 px-2.5 py-0.5 rounded-md">
+                        {formatDDMMYYYY(s.created_at)}
+                      </span>
                     </div>
-                    <div className="text-base font-bold font-mono text-amber-400">
+                    <div className="font-serif font-black text-amber-400 text-xl tracking-tight">
                       ₹{Number(s.amount || 0).toLocaleString('en-IN')}
                     </div>
                   </div>
 
                   {/* Card Body: Name, Contact & Notes */}
-                  <div>
-                    <h4 className="text-base font-bold text-slate-100">
+                  <div className="flex flex-col gap-1.5 pt-0.5">
+                    <h4 className="text-base font-bold text-white leading-snug break-words">
                       {s.sponsor_name}
                     </h4>
 
                     {(s.contact_person || s.contact_phone || s.contact_email) && (
-                      <div className="text-xs text-slate-400 flex flex-wrap items-center gap-2 mt-1.5">
+                      <div className="text-xs text-slate-400 flex flex-wrap items-center gap-1.5 mt-0.5">
                         {s.contact_person && (
-                          <span className="inline-flex items-center gap-1">
-                            <User className="w-3 h-3 text-slate-500" />
+                          <span className="text-slate-300 font-medium flex items-center gap-1">
+                            <span className="text-blue-400">👤</span>
                             <span>{s.contact_person}</span>
                           </span>
                         )}
                         {s.contact_phone && (
-                          <a
-                            href={`tel:${s.contact_phone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-sky-400 hover:underline min-h-[32px] items-center"
-                          >
-                            <Phone className="w-3 h-3" />
-                            <span>{formatDisplayMobile(s.contact_phone, '')}</span>
-                          </a>
+                          <>
+                            {s.contact_person && <span className="text-slate-600">•</span>}
+                            <a
+                              href={`tel:${s.contact_phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-blue-400 font-mono hover:underline flex items-center gap-1 min-h-[32px] items-center"
+                            >
+                              <span>📞</span>
+                              <span>{formatDisplayMobile(s.contact_phone, '')}</span>
+                            </a>
+                          </>
                         )}
                         {s.contact_email && (
-                          <span className="inline-flex items-center gap-1 text-slate-400">
-                            <Mail className="w-3 h-3 text-slate-500" />
-                            <span>{s.contact_email}</span>
-                          </span>
+                          <>
+                            {(s.contact_person || s.contact_phone) && <span className="text-slate-600">•</span>}
+                            <span className="text-slate-400 flex items-center gap-1">
+                              <span>✉️</span>
+                              <span>{s.contact_email}</span>
+                            </span>
+                          </>
                         )}
                       </div>
                     )}
 
                     {s.notes && (
-                      <div className="mt-2 text-xs text-slate-300 bg-slate-950/50 p-2 rounded-lg border-l-2 border-amber-500 flex items-start gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                        <span>{s.notes}</span>
+                      <div className="mt-1 text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border-l-2 border-l-amber-500 leading-relaxed break-words">
+                        📝 {s.notes}
                       </div>
                     )}
                   </div>
 
                   {/* Card Footer: Credited Account & Edit button */}
-                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/40">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                      <span>Credited:</span>
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        CREDITED TO:
+                      </span>
                       {s.receiving_upi_id ? (
-                        <span className="font-mono text-slate-300 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 truncate max-w-[170px]">
+                        <span
+                          className="inline-flex items-center text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[200px]"
+                          title={s.receiving_upi_id}
+                        >
                           {s.receiving_upi_id}
                         </span>
                       ) : (
-                        <span className="text-rose-400 font-semibold px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/30">
+                        <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
                           Untagged
                         </span>
                       )}
@@ -375,11 +385,11 @@ export const SponsorshipsManager: React.FC<SponsorshipsManagerProps> = ({
                         e.stopPropagation();
                         onEditSponsorship(s);
                       }}
-                      className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 flex items-center justify-center transition-colors cursor-pointer"
+                      className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 flex items-center justify-center transition-colors cursor-pointer ml-auto"
                       title="Edit Sponsorship"
                       aria-label="Edit"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <span className="text-sm">✏️</span>
                     </button>
                   </div>
                 </div>

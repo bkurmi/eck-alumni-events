@@ -792,7 +792,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md transition-colors"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#025907] via-[#087f10] to-[#0d9616] hover:from-[#036809] hover:via-[#0a8e13] hover:to-[#0fa81a] border border-[#0d9616]/60 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-950/50 transition-all cursor-pointer active:scale-[0.98]"
             title="Share itemized Budget report to WhatsApp"
           >
             <span>💬</span>

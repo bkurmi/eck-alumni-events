@@ -2,9 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   X,
-  Copy,
   Calendar,
-  CreditCard,
   Edit2,
   Loader2,
   ExternalLink,
@@ -12,7 +10,7 @@ import {
 import type { EventRegistration, PaymentVerification, Sponsorship, ECKEvent } from '../types';
 import { getUpiAccountName, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
-import { isRealMobileNumber } from '../lib/registrations';
+import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
 import { formatINR } from '../lib/expenses';
 
 interface UpiReconciliationReportProps {
@@ -463,10 +461,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       isCash
         ? CANONICAL_CASH_ACCOUNT
         : isKnown
-        ? norm
-        : raw
-        ? 'custom'
-        : knownAccounts[0]?.upi_id || CANONICAL_CASH_ACCOUNT
+          ? norm
+          : raw
+            ? 'custom'
+            : knownAccounts[0]?.upi_id || CANONICAL_CASH_ACCOUNT
     );
     setEditCustomUpi(isCash || isKnown ? '' : raw);
     setEditAmount(item.amount || item.registration.amount || 800);
@@ -480,8 +478,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       editUpiId === 'custom'
         ? editCustomUpi.trim()
         : isCashAccount(editUpiId)
-        ? CANONICAL_CASH_ACCOUNT
-        : editUpiId.trim();
+          ? CANONICAL_CASH_ACCOUNT
+          : editUpiId.trim();
 
     if (!finalUpi) {
       alert('Please select or specify a UPI ID or Cash in Hand');
@@ -532,6 +530,124 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     return text;
   };
 
+  // CSV Export for filtered selection
+  const handleExportCSV = () => {
+    if (activeLedgerTab === 'sponsorships') {
+      const headers = [
+        'Sponsor Name',
+        'Category / Tier',
+        'Amount (INR)',
+        'Receiving UPI ID',
+        'Date',
+        'Contact Person',
+        'Contact Phone',
+        'Payment Status',
+        'Payment Mode',
+        'Transaction Ref',
+        'Notes',
+      ];
+      const rows = filteredSponsorships.map((sp) => [
+        `"${(sp.sponsor_name || '').replace(/"/g, '""')}"`,
+        `"${(sp.category || '').replace(/"/g, '""')}"`,
+        `"${sp.amount || 0}"`,
+        `"${sp.receiving_upi_id || ''}"`,
+        `"${formatDDMMYYYY((sp.created_at || '').slice(0, 10))}"`,
+        `"${(sp.contact_person || '').replace(/"/g, '""')}"`,
+        `"${formatDisplayMobile(sp.contact_phone || '', '')}"`,
+        `"${sp.payment_status || 'CONFIRMED'}"`,
+        `"${sp.payment_mode || 'UPI'}"`,
+        `"${(sp.transaction_reference || '').replace(/"/g, '""')}"`,
+        `"${(sp.notes || '').replace(/"/g, '""')}"`,
+      ].join(','));
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute(
+        'download',
+        `ECK_Sponsorships_Report_${new Date().toISOString().slice(0, 10)}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    const headers = [
+      'Person Name',
+      'Attendance Status',
+      'Total Headcount',
+      'Adult',
+      'Kids (10+)',
+      'Kids (<10)',
+      'Contribution (INR)',
+      'Credited UPI ID',
+      'Registration Number',
+      'Payment Date',
+      'Verified By',
+      'Mobile Number',
+      'Passing Year',
+      'Discipline',
+      'City',
+    ];
+
+    const rows = filteredList.map((item) => {
+      const reg = item.registration;
+      const alumni = reg.alumni;
+      const attStatus =
+        reg.attendance_status === 'yes'
+          ? 'Attending'
+          : reg.attendance_status === 'payment_pending'
+            ? 'Payment Pending'
+            : reg.attendance_status === 'maybe'
+              ? 'Maybe'
+              : 'No';
+
+      const isNotAttending = reg.attendance_status === 'no';
+      const adults = isNotAttending
+        ? 0
+        : (reg.adults_count !== undefined && reg.adults_count !== null
+          ? Number(reg.adults_count)
+          : Math.max(1, Number(reg.number_of_attendees || 1) - Number(reg.children_above_7_count || 0) - Number(reg.children_under_7_count || 0)));
+      const kidsAbove10 = isNotAttending ? 0 : Number(reg.children_above_7_count || 0);
+      const kidsUnder10 = isNotAttending ? 0 : Number(reg.children_under_7_count || 0);
+      const totalHeadcount = isNotAttending
+        ? 0
+        : (Number(reg.number_of_attendees) || (adults + kidsAbove10 + kidsUnder10));
+
+      return [
+        `"${(alumni?.name || '').replace(/"/g, '""')}"`,
+        `"${attStatus}"`,
+        `"${totalHeadcount}"`,
+        `"${adults}"`,
+        `"${kidsAbove10}"`,
+        `"${kidsUnder10}"`,
+        `"${item.amount}"`,
+        `"${item.assignedUpi || 'Unassigned'}"`,
+        `"${reg.registration_number || ''}"`,
+        `"${formatDDMMYYYY(item.paymentDate)}"`,
+        `"${item.verifiedBy || 'Not Verified'}"`,
+        `"${formatDisplayMobile(alumni?.mobile, '')}"`,
+        `"${alumni?.year_of_passing || ''}"`,
+        `"${alumni?.engineering_discipline || ''}"`,
+        `"${(alumni?.city || '').replace(/"/g, '""')}"`,
+      ].join(',');
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute(
+      'download',
+      `ECK_UPI_Report_${viewMode}_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleCopySummary = () => {
     const text = buildWhatsAppSummaryText();
     navigator.clipboard.writeText(text);
@@ -558,27 +674,25 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
   return (
     <div className="flex flex-col gap-4 text-slate-100">
-      {/* ── WhatsApp Broadcast & Action Banner ── */}
-      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg flex items-center justify-between gap-3 flex-wrap">
+      {/* ── WhatsApp Broadcast Banner ── */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#0d2818]/90 via-[#0a1f14] to-slate-950 border border-[#0d9616]/60 shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
-            <CreditCard className="w-5 h-5" />
-          </div>
+          <span className="text-2xl shrink-0">💳</span>
           <div>
             <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-              UPI WhatsApp Broadcast & Audit
+              UPI WhatsApp Broadcast
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Account-wise collections ledger, reconciliation receipts, and audit trail
+            <p className="text-xs text-slate-300 mt-0.5">
+              Share account-wise collections report to WhatsApp, copy summary or export CSV!
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap ml-auto">
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md transition-colors"
+            className="flex-1 sm:flex-none min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#025907] via-[#087f10] to-[#0d9616] hover:from-[#036809] hover:via-[#0a8e13] hover:to-[#0fa81a] border border-[#0d9616]/60 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-950/50 transition-all cursor-pointer active:scale-[0.98]"
             title="Broadcast report on WhatsApp"
           >
             <span>💬</span>
@@ -587,83 +701,65 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           <button
             type="button"
             onClick={handleCopySummary}
-            className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors"
+            className="min-h-[44px] px-4 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             title="Copy WhatsApp text summary"
           >
-            <Copy className="w-4 h-4 text-slate-400" />
-            <span>{copiedSummary ? '✓ Copied' : 'Copy'}</span>
+            <span>{copiedSummary ? '✓ Copied' : '📋 Copy'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="min-h-[44px] px-4 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            title="Download CSV to open in Excel"
+          >
+            <span>📥</span>
+            <span>CSV</span>
           </button>
         </div>
       </div>
 
-      {/* ── VIEW MODE & RECONCILIATION TABS ── */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        {/* Category: Registrations vs Sponsorships */}
-        <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto tab-scrollbar">
+      {/* ── VIEW MODE SWITCHER ── */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5">
+        <span className="text-xs sm:text-sm font-bold text-amber-400 block">
+          Display Mode:
+        </span>
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => setActiveLedgerTab('registrations')}
-            className={`min-h-[40px] px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-              activeLedgerTab === 'registrations'
-                ? 'bg-slate-800 text-amber-300 shadow-sm border border-slate-700'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>🎟️</span>
-            <span>Alumni Registrations ({filteredList.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveLedgerTab('sponsorships')}
-            className={`min-h-[40px] px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-              activeLedgerTab === 'sponsorships'
-                ? 'bg-slate-800 text-amber-400 shadow-sm border border-slate-700'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>🤝</span>
-            <span>Sponsorships ({filteredSponsorships.length})</span>
-          </button>
-        </div>
-
-        {/* Display Mode: Overall vs Daywise */}
-        <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-          <button
-            type="button"
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'overall'
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
+              }`}
             onClick={() => setViewMode('overall')}
-            className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              viewMode === 'overall'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
           >
-            Overall View
+            <span>📊</span>
+            <span>Overall Flat View</span>
           </button>
           <button
             type="button"
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'daywise'
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
+              }`}
             onClick={() => setViewMode('daywise')}
-            className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              viewMode === 'daywise'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
           >
-            Day-wise View
+            <span>📅</span>
+            <span>Day-wise View</span>
           </button>
         </div>
       </div>
 
       {/* ── MULTI-SELECT QR CODE CHECKBOXES ── */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+          <span className="text-xs sm:text-sm font-bold text-slate-200 uppercase tracking-wider">
             Select Receiving UPI ID Accounts ({selectedAccounts.length}/{allAccountKeys.length})
           </span>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-xs">
             <button
               type="button"
               onClick={selectAllAccounts}
-              className="text-amber-400 hover:underline font-semibold"
+              className="text-amber-400 hover:underline font-bold cursor-pointer"
             >
               Select All
             </button>
@@ -671,15 +767,15 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             <button
               type="button"
               onClick={clearAllAccounts}
-              className="text-slate-400 hover:text-slate-200 font-semibold"
+              className="text-amber-400 hover:underline font-bold cursor-pointer"
             >
               Clear
             </button>
           </div>
         </div>
 
-        {/* Account Cards Grid — clean 2 columns inside max-w-3xl container */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {/* 3-column responsive grid on laptop/desktop, 2 on tablet, 1 on mobile */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
           {knownAccounts.map((acc) => {
             const isChecked = selectedAccounts.includes(acc.upi_id);
             const stats = accountStats[acc.upi_id] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
@@ -687,36 +783,43 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             return (
               <label
                 key={acc.upi_id}
-                className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
-                  isChecked
-                    ? 'bg-amber-950/20 border-amber-500/50 ring-1 ring-amber-500/30'
+                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
+                    ? 'bg-slate-900/90 border-amber-500 shadow-sm'
                     : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
-                }`}
+                  }`}
               >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => toggleAccount(acc.upi_id)}
-                  className="mt-1 rounded border-slate-700 text-amber-500 focus:ring-amber-500/30"
-                />
-                <div className="flex-1 min-w-0 space-y-1">
+                <div>
                   <div className="flex items-center justify-between gap-1 text-[11px]">
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold">
-                      {acc.bankName}
-                    </span>
-                    <span className="text-slate-400 font-mono">
-                      {stats.count} Regs{stats.sponsorCount > 0 ? ` + ${stats.sponsorCount} Spons` : ''}
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleAccount(acc.upi_id)}
+                        className="w-4 h-4 rounded border-slate-700 text-amber-500 accent-amber-500 focus:ring-amber-500/30 cursor-pointer"
+                      />
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-[10px]">
+                        {acc.bankName}
+                      </span>
+                    </div>
+                    <span className="text-slate-400 font-mono text-[11px] truncate">
+                      {stats.sponsorCount > 0 && stats.count > 0
+                        ? `${stats.count} Reg + ${stats.sponsorCount} Spons`
+                        : stats.sponsorCount > 0
+                          ? `${stats.sponsorCount} Spons`
+                          : `${stats.count} Regs`}
                     </span>
                   </div>
-                  <strong className="block text-sm font-bold text-white truncate">
-                    {acc.accountName}
-                  </strong>
-                  <span className="block text-[11px] text-slate-400 font-mono truncate" title={acc.upi_id}>
-                    {acc.upi_id}
-                  </span>
-                  <div className="text-xs sm:text-sm font-mono font-bold text-amber-400 pt-0.5">
-                    ₹{formatINR(stats.totalAmount)}
+                  <div className="mt-1.5">
+                    <strong className="block text-sm font-bold text-white truncate">
+                      {acc.accountName}
+                    </strong>
+                    <span className="block text-[11px] text-slate-400 font-mono truncate mt-0.5" title={acc.upi_id}>
+                      {acc.upi_id}
+                    </span>
                   </div>
+                </div>
+                <div className="font-black text-amber-400 text-base sm:text-lg mt-1.5 tracking-tight">
+                  ₹{formatINR(stats.totalAmount)}
                 </div>
               </label>
             );
@@ -728,39 +831,42 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             const stats = accountStats[CANONICAL_CASH_ACCOUNT] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
             return (
               <label
-                className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
-                  isChecked
-                    ? 'bg-amber-950/20 border-amber-500/50 ring-1 ring-amber-500/30'
+                className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
+                    ? 'bg-slate-900/90 border-amber-500 shadow-sm'
                     : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
-                }`}
+                  }`}
               >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => {
-                    toggleAccount(CANONICAL_CASH_ACCOUNT);
-                    if (selectedAccounts.includes('unassigned')) toggleAccount('unassigned');
-                  }}
-                  className="mt-1 rounded border-slate-700 text-amber-500 focus:ring-amber-500/30"
-                />
-                <div className="flex-1 min-w-0 space-y-1">
+                <div>
                   <div className="flex items-center justify-between gap-1 text-[11px]">
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-semibold">
-                      💵 Cash
-                    </span>
-                    <span className="text-slate-400 font-mono">
-                      {stats.count} Entries
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          toggleAccount(CANONICAL_CASH_ACCOUNT);
+                          if (selectedAccounts.includes('unassigned')) toggleAccount('unassigned');
+                        }}
+                        className="w-4 h-4 rounded border-slate-700 text-amber-500 accent-amber-500 focus:ring-amber-500/30 cursor-pointer"
+                      />
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-semibold text-[10px]">
+                        💵 Cash
+                      </span>
+                    </div>
+                    <span className="text-slate-400 font-mono text-[11px] truncate">
+                      {stats.count} Regs
                     </span>
                   </div>
-                  <strong className="block text-sm font-bold text-white truncate">
-                    Cash in Hand
-                  </strong>
-                  <span className="block text-[11px] text-slate-400 truncate">
-                    Spot Cash / Handover
-                  </span>
-                  <div className="text-xs sm:text-sm font-mono font-bold text-amber-400 pt-0.5">
-                    ₹{formatINR(stats.totalAmount)}
+                  <div className="mt-1.5">
+                    <strong className="block text-sm font-bold text-white truncate">
+                      Cash in Hand
+                    </strong>
+                    <span className="block text-[11px] text-slate-400 truncate mt-0.5">
+                      Spot Cash / Untagged
+                    </span>
                   </div>
+                </div>
+                <div className="font-black text-amber-400 text-base sm:text-lg mt-1.5 tracking-tight">
+                  ₹{formatINR(stats.totalAmount)}
                 </div>
               </label>
             );
@@ -768,41 +874,109 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
       </div>
 
-      {/* ── LIVE SELECTION BANNER ── */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-slate-900 via-indigo-950/20 to-slate-900 border border-slate-800 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <span className="text-xs font-semibold text-slate-400 block">
-            {selectedAccounts.length === allAccountKeys.length
-              ? `All (${selectedAccounts.length}) Accounts Selected`
-              : `${selectedAccounts.length} Account(s) Selected`}
-          </span>
-          <span className="text-xs text-slate-300 mt-0.5 block">
-            {currentTotals.totalRegCount} matching registrations
-            {currentTotals.totalSponsorCount > 0 ? ` + ${currentTotals.totalSponsorCount} sponsorships` : ''}
-          </span>
+      {/* ── LIVE SELECTION BANNER (Section 3: Total Amount & Account Selection Summary) ── */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-950 border border-amber-500/30 shadow-xl flex flex-col gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl shrink-0">🎯</span>
+            <div>
+              <div className="text-base sm:text-lg font-bold text-white tracking-tight">
+                {selectedAccounts.length === allAccountKeys.length
+                  ? `All (${selectedAccounts.length}) UPI Accounts Selected`
+                  : selectedAccounts.length === 0
+                    ? 'No Accounts Selected'
+                    : `${selectedAccounts.length} UPI Account${selectedAccounts.length === 1 ? '' : 's'} Selected`}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5">
+                {currentTotals.totalRegCount} matching registration{currentTotals.totalRegCount === 1 ? '' : 's'}
+                {currentTotals.totalSponsorCount > 0
+                  ? ` + ${currentTotals.totalSponsorCount} sponsorship${currentTotals.totalSponsorCount === 1 ? '' : 's'}`
+                  : ''}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:items-end shrink-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              TOTAL AMOUNT
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight">
+              ₹{formatINR(currentTotals.totalAmount)}
+            </div>
+          </div>
         </div>
-        <div className="text-right">
-          <span className="text-[11px] text-slate-400 block">Total Pool Amount</span>
-          <span className="text-xl sm:text-2xl font-mono font-extrabold text-amber-400">
-            ₹{formatINR(currentTotals.totalAmount)}
-          </span>
+
+        <div className="pt-2 border-t border-slate-800/60">
+          {selectedAccounts.length === allAccountKeys.length ? (
+            <span className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              ✓ Showing all {allAccountKeys.length} receiving accounts (including Sponsorships)
+            </span>
+          ) : selectedAccounts.length === 0 ? (
+            <span className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-400">
+              ⚠️ No accounts selected (showing 0)
+            </span>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedAccounts.map((key) => {
+                const match = knownAccounts.find((a) => a.upi_id === key);
+                const label = match
+                  ? `${match.bankName} (${match.accountName})`
+                  : isCashAccount(key) || key === CANONICAL_CASH_ACCOUNT || key === 'unassigned'
+                    ? '💵 Cash in Hand'
+                    : key;
+                return (
+                  <span
+                    key={key}
+                    className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800/90 border border-slate-700/80 text-slate-200"
+                  >
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* ── DEDICATED VIEW TOGGLE (REGISTRATIONS vs SPONSORSHIPS) ── */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800">
+        <button
+          type="button"
+          onClick={() => setActiveLedgerTab('registrations')}
+          className={`flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${activeLedgerTab === 'registrations'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+            }`}
+        >
+          <span>🎟️</span>
+          <span>Alumni Registrations ({filteredList.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveLedgerTab('sponsorships')}
+          className={`flex-1 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${activeLedgerTab === 'sponsorships'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+            }`}
+        >
+          <span>🤝</span>
+          <span>Sponsorships ({filteredSponsorships.length})</span>
+        </button>
       </div>
 
       {/* ── ATTENDANCE STATUS FILTER CHIPS & TOOLBAR ── */}
       <div className="space-y-3">
         {activeLedgerTab === 'registrations' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto tab-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 w-full">
             {(['all', 'yes', 'maybe', 'no'] as const).map((status) => (
               <button
                 key={status}
                 type="button"
                 onClick={() => setAttendanceFilter(status)}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap border ${
-                  attendanceFilter === status
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
+                className={`min-h-[38px] px-4 py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap shrink-0 transition-colors cursor-pointer ${attendanceFilter === status
+                    ? 'border border-amber-500 bg-amber-500/10 text-amber-400 font-bold shadow-sm shadow-amber-500/10'
+                    : 'border border-slate-800 bg-slate-900/90 text-slate-300 font-semibold hover:bg-slate-800'
+                  }`}
               >
                 {status === 'all' && `All (${attendanceCounts.all})`}
                 {status === 'yes' && `Attending (${attendanceCounts.yes})`}
@@ -813,10 +987,10 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
           </div>
         )}
 
-        {/* Toolbar: Search & Date */}
-        <div className="flex items-center gap-2 bg-slate-900 p-2 sm:p-2.5 rounded-2xl border border-slate-800 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+        {/* Toolbar: Search on left, Date on right in single row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
             <input
               type="text"
               placeholder={
@@ -826,25 +1000,26 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full min-h-[40px] text-base sm:text-sm pl-9 pr-8 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-white placeholder-slate-500 outline-none focus:border-amber-500"
+              className="w-full min-h-[42px] text-base sm:text-sm pl-10 pr-9 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-white placeholder-slate-500 outline-none focus:border-amber-500 transition-colors"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+                aria-label="Clear search"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400">Date:</span>
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-auto justify-between sm:justify-start">
+            <span className="text-xs sm:text-sm font-bold text-slate-300 pl-1">Date:</span>
             <select
               value={selectedDateFilter}
               onChange={(e) => setSelectedDateFilter(e.target.value)}
-              className="min-h-[40px] text-base sm:text-xs px-3 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-slate-200 outline-none focus:border-amber-500 cursor-pointer"
+              className="flex-1 sm:flex-initial min-h-[42px] text-base sm:text-sm px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500 cursor-pointer font-medium"
             >
               <option value="all" className="bg-slate-900">All Dates ({availableDates.length})</option>
               {availableDates.map((d) => (
@@ -866,16 +1041,18 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         ) : (
           <div className="space-y-3">
             {/* Desktop Table (High Real-Estate Density, zero horizontal scrollbar) */}
-            <div className="hidden md:block rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl overflow-hidden">
+            <div className="hidden md:block rounded-2xl border border-slate-800 bg-[#0d101d] shadow-xl overflow-hidden">
               <table className="w-full text-left border-collapse table-fixed">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-2.5 px-3 w-[45px] text-center">#</th>
-                    <th className="py-2.5 px-3 w-[220px]">Sponsor</th>
-                    <th className="py-2.5 px-3 text-right w-[110px]">Amount</th>
-                    <th className="py-2.5 px-3 w-[160px]">UPI ID</th>
-                    <th className="py-2.5 px-3 text-center w-[110px]">Date</th>
-                    <th className="py-2.5 px-2 text-center w-[65px]">Edit</th>
+                  <tr className="border-b border-slate-800 bg-slate-950/90 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-2.5 px-2 w-[35px] text-center">#</th>
+                    <th className="py-2.5 px-2.5 w-[220px] text-left">Sponsor</th>
+                    <th className="py-2.5 px-2 w-[80px] text-left">Amount</th>
+                    <th className="py-2.5 px-2 w-[170px] text-center">UPI ID</th>
+                    <th className="py-2.5 px-2 w-[95px] text-center">Date</th>
+                    <th className="py-2.5 px-1.5 w-[35px] text-center">
+                      <Edit2 className="w-3.5 h-3.5 text-amber-500 mx-auto" />
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
@@ -885,8 +1062,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                       onClick={() => onEditSponsorship?.(sp)}
                       className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
                     >
-                      <td className="py-2 px-2 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
-                      <td className="py-2 px-3 align-middle overflow-hidden">
+                      <td className="py-2 px-2 text-center text-slate-400 font-bold text-xs">{idx + 1}</td>
+                      <td className="py-2 px-2.5 align-middle overflow-hidden text-left">
                         <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={sp.sponsor_name}>
                           {sp.sponsor_name}
                         </div>
@@ -896,31 +1073,31 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                           </div>
                         )}
                       </td>
-                      <td className="py-2 px-3 text-right align-middle whitespace-nowrap">
+                      <td className="py-2 px-2 text-left align-middle whitespace-nowrap">
                         <span className="text-sm font-black text-amber-400">
                           ₹{formatINR(Number(sp.amount || 0))}
                         </span>
                       </td>
-                      <td className="py-2 px-3 align-middle whitespace-nowrap overflow-hidden">
-                        <span className="font-mono text-xs text-slate-300 bg-slate-950/70 border border-slate-800/80 px-2 py-0.5 rounded-md inline-block max-w-[145px] truncate" title={sp.receiving_upi_id || 'Direct'}>
+                      <td className="py-2 px-2 align-middle text-center whitespace-nowrap overflow-hidden">
+                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate" title={sp.receiving_upi_id || 'Direct'}>
                           {sp.receiving_upi_id || 'Direct'}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-400">
+                      <td className="py-2 px-2 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-300">
                         {formatDDMMYYYY(sp.created_at)}
                       </td>
-                      <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                      <td className="py-2 px-1.5 text-center align-middle whitespace-nowrap">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditSponsorship?.(sp);
                           }}
-                          className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                          className="p-1 text-amber-500 hover:text-amber-400 hover:scale-110 transition-all cursor-pointer inline-flex items-center justify-center"
                           title="Edit Sponsorship"
                           aria-label="Edit Sponsorship"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>
@@ -935,29 +1112,51 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                 <div
                   key={sp.id}
                   onClick={() => onEditSponsorship?.(sp)}
-                  className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5 space-y-2"
+                  className="p-4 rounded-2xl bg-[#111422] border border-slate-800/80 border-l-[3.5px] border-l-amber-500 shadow-md cursor-pointer hover:border-amber-500/40 transition-all flex flex-col gap-2"
                 >
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400 font-bold bg-slate-800/90 border border-slate-700/60 px-2 py-0.5 rounded-md">
-                      #{idx + 1} • {formatDDMMYYYY(sp.created_at)}
-                    </span>
-                    <span className="text-sm font-black text-amber-400">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-400">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded">
+                        SPONSOR
+                      </span>
+                      <span className="font-mono text-xs text-slate-300 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded">
+                        {formatDDMMYYYY(sp.created_at)}
+                      </span>
+                    </div>
+                    <div className="font-black text-amber-400 text-xl tracking-tight">
                       ₹{formatINR(Number(sp.amount || 0))}
-                    </span>
+                    </div>
                   </div>
-                  <div className="font-bold text-white text-sm">{sp.sponsor_name}</div>
+                  <div className="font-bold text-amber-400 text-base">{sp.sponsor_name}</div>
                   {(sp.contact_person || sp.category) && (
                     <div className="text-xs text-slate-400">
                       💼 {sp.contact_person || sp.category}
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-800/80">
-                    <span className="font-mono text-slate-300 bg-slate-950/70 border border-slate-800 px-2 py-0.5 rounded-md truncate max-w-[200px]">
-                      {sp.receiving_upi_id || 'Direct'}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
-                      <Edit2 className="w-3 h-3" /> Edit
-                    </span>
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        CREDITED TO:
+                      </span>
+                      <span className="inline-flex items-center text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[200px]">
+                        {sp.receiving_upi_id || 'Direct'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditSponsorship?.(sp);
+                      }}
+                      className="min-h-[38px] px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                      title="Edit Sponsorship"
+                    >
+                      <span>✏️</span>
+                      <span>Edit</span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -988,13 +1187,15 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               <div className="hidden md:block overflow-hidden">
                 <table className="w-full text-left border-collapse table-fixed">
                   <thead>
-                    <tr className="border-b border-slate-800 bg-slate-950/60 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-2.5 px-3 w-[45px] text-center">#</th>
-                      <th className="py-2.5 px-3 w-[220px]">Name</th>
-                      <th className="py-2.5 px-3 text-right w-[110px]">Amount</th>
-                      <th className="py-2.5 px-3 w-[160px]">UPI ID</th>
-                      <th className="py-2.5 px-3 text-center w-[110px]">Reg ID</th>
-                      <th className="py-2.5 px-2 text-center w-[65px]">Edit</th>
+                    <tr className="border-b border-slate-800 bg-slate-950/60 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="py-2.5 px-2 w-[35px] text-center">#</th>
+                      <th className="py-2.5 px-2.5 w-[220px] text-left">Name</th>
+                      <th className="py-2.5 px-2 w-[75px] text-left">Amount</th>
+                      <th className="py-2.5 px-2 w-[170px] text-center">UPI ID</th>
+                      <th className="py-2.5 px-2 w-[100px] text-center">Reg ID</th>
+                      <th className="py-2.5 px-1.5 w-[35px] text-center">
+                        <Edit2 className="w-3.5 h-3.5 text-amber-500 mx-auto" />
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
@@ -1004,44 +1205,52 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                         onClick={() => handleOpenEdit(item)}
                         className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
                       >
-                        <td className="py-2 px-2 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
-                        <td className="py-2 px-3 align-middle overflow-hidden">
-                          <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={item.registration.alumni?.name}>
+                        <td className="py-2 px-2 text-center text-slate-400 font-bold text-xs">{idx + 1}</td>
+                        <td className="py-2 px-2.5 align-middle overflow-hidden text-left">
+                          <span className="font-bold text-white text-sm truncate block" title={item.registration.alumni?.name}>
                             {item.registration.alumni?.name || 'Unknown Alumni'}
-                          </div>
-                          {item.registration.alumni?.year_of_passing && (
-                            <div className="text-[11px] text-slate-400 truncate">
-                              {item.registration.alumni.year_of_passing} • {item.registration.alumni.engineering_discipline || ''}
-                            </div>
-                          )}
+                          </span>
                         </td>
-                        <td className="py-2 px-3 text-right align-middle whitespace-nowrap">
+                        <td className="py-2 px-2 text-left align-middle whitespace-nowrap">
                           <span className="text-sm font-black text-amber-400">
                             ₹{formatINR(item.amount)}
                           </span>
                         </td>
-                        <td className="py-2 px-3 align-middle whitespace-nowrap overflow-hidden">
-                          <span className="font-mono text-xs text-slate-300 bg-slate-950/70 border border-slate-800/80 px-2 py-0.5 rounded-md inline-block max-w-[145px] truncate" title={item.assignedUpi}>
-                            {item.assignedUpi}
-                          </span>
+                        <td className="py-2 px-2 text-center align-middle whitespace-nowrap overflow-hidden">
+                          {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.qrLabel.includes('Untagged') ? (
+                            <span
+                              className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate"
+                              title={item.assignedUpi}
+                            >
+                              {item.assignedUpi}
+                            </span>
+                          ) : item.isCash && !item.qrLabel.includes('Untagged') ? (
+                            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                              Cash in Hand
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                              Untagged
+                            </span>
+                          )}
                         </td>
-                        <td className="py-2 px-3 text-center align-middle whitespace-nowrap">
-                          <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded leading-none inline-block">
+                        <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 border border-amber-500/25 text-amber-400">
                             {item.registration.registration_number}
                           </span>
                         </td>
-                        <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                        <td className="py-2 px-1.5 text-center align-middle whitespace-nowrap">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenEdit(item);
                             }}
-                            className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                            className="p-1 text-amber-500 hover:text-amber-400 hover:scale-110 transition-all cursor-pointer inline-flex items-center justify-center"
                             title="Edit UPI ID"
                             aria-label="Edit UPI ID"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            <Edit2 className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
@@ -1051,37 +1260,103 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               </div>
 
               {/* Mobile Adaptive Cards */}
-              <div className="md:hidden p-3 space-y-3">
-                {group.items.map((item) => (
-                  <div
-                    key={item.registration.id}
-                    onClick={() => handleOpenEdit(item)}
-                    className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5 space-y-2"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-md">
-                        {item.registration.registration_number}
-                      </span>
-                      <span className="text-sm font-black text-amber-400">
-                        ₹{formatINR(item.amount)}
-                      </span>
-                    </div>
-                    <div className="text-sm font-bold text-white">{item.registration.alumni?.name}</div>
-                    {item.registration.alumni?.year_of_passing && (
-                      <div className="text-xs text-slate-400">
-                        {item.registration.alumni.year_of_passing} • {item.registration.alumni.engineering_discipline || ''}
+              <div className="md:hidden space-y-3">
+                {group.items.map((item, idx) => {
+                  const alumni = item.registration.alumni;
+                  const isTagged = Boolean(item.assignedUpi);
+
+                  return (
+                    <div
+                      key={item.registration.id}
+                      onClick={() => handleOpenEdit(item)}
+                      className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${isTagged
+                          ? 'border-l-[3.5px] border-l-emerald-500'
+                          : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
+                        }`}
+                    >
+                      {/* Header: #1, REG-00305, Date | Amount */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-slate-400">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded">
+                            {item.registration.registration_number}
+                          </span>
+                          <span className="font-mono text-xs text-slate-300 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded">
+                            {formatDDMMYYYY(item.paymentDate)}
+                          </span>
+                        </div>
+                        <div className="font-black text-amber-400 text-xl tracking-tight">
+                          ₹{formatINR(item.amount)}
+                        </div>
                       </div>
-                    )}
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-1.5 border-t border-slate-800/80">
-                      <span className="font-mono text-slate-300 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md truncate max-w-[200px]">
-                        {item.assignedUpi}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
-                        <Edit2 className="w-3 h-3" /> Edit
-                      </span>
+
+                      {/* Body: Name & Attendance Status Badge */}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <h4 className="text-base font-bold text-white truncate" title={alumni?.name}>
+                          {alumni?.name || 'Unknown Alumni'}
+                        </h4>
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${item.registration.attendance_status === 'yes'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : item.registration.attendance_status === 'payment_pending'
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              : item.registration.attendance_status === 'maybe'
+                                ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          }`}>
+                          {item.registration.attendance_status === 'yes' ? 'ATTENDING' : item.registration.attendance_status === 'maybe' ? 'MAYBE' : 'NOT ATTENDING'}
+                        </span>
+                      </div>
+
+                      {/* Alumnus Meta: Batch, Discipline & City */}
+                      <div className="text-xs text-slate-400">
+                        <span>Batch {alumni?.year_of_passing || '—'}</span>
+                        <span className="mx-1">•</span>
+                        <span>{alumni?.engineering_discipline || 'Other'}</span>
+                        {alumni?.city && (
+                          <>
+                            <span className="mx-1">•</span>
+                            <span>📍 {alumni.city}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Footer: Credited Account & Edit button */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            CREDITED TO:
+                          </span>
+                          {item.assignedUpi ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[220px]" title={item.assignedUpi}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                              <span>{item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}</span>
+                              <span className="opacity-75 font-normal">{item.assignedUpi}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
+                              ⚠️ Untagged
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEdit(item);
+                          }}
+                          className="min-h-[38px] px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                          title="Edit UPI Account"
+                        >
+                          <span>✏️</span>
+                          <span>Edit</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -1089,18 +1364,20 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       ) : (
         /* OVERALL FLAT VIEW */
         <div className="space-y-3">
-          {/* Desktop Table (High Real-Estate Density, zero horizontal scrollbar) */}
-          <div className="hidden md:block rounded-2xl border border-slate-800 bg-slate-900/80 shadow-xl overflow-hidden">
+          {/* Desktop Table (Matching production screenshot pixel-for-pixel) */}
+          <div className="hidden md:block rounded-2xl border border-slate-800 bg-[#0d101d] shadow-xl overflow-hidden">
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/90 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-2.5 px-3 w-[45px] text-center">#</th>
-                  <th className="py-2.5 px-3 w-[200px]">Name</th>
-                  <th className="py-2.5 px-3 text-right w-[100px]">Amount</th>
-                  <th className="py-2.5 px-3 w-[150px]">UPI ID</th>
-                  <th className="py-2.5 px-3 text-center w-[100px]">Reg ID</th>
-                  <th className="py-2.5 px-3 text-center w-[100px]">Date</th>
-                  <th className="py-2.5 px-2 text-center w-[65px]">Edit</th>
+                <tr className="border-b border-slate-800 bg-slate-950/90 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-2 w-[35px] text-center">#</th>
+                  <th className="py-2.5 px-2.5 w-[220px] text-left">Name</th>
+                  <th className="py-2.5 px-2 w-[75px] text-left">Amount</th>
+                  <th className="py-2.5 px-2 w-[170px] text-center">UPI ID</th>
+                  <th className="py-2.5 px-2 w-[100px] text-center">Reg ID</th>
+                  <th className="py-2.5 px-2 w-[90px] text-center">Date</th>
+                  <th className="py-2.5 px-1.5 w-[35px] text-center">
+                    <Edit2 className="w-3.5 h-3.5 text-amber-500 mx-auto" />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
@@ -1110,47 +1387,55 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
                     onClick={() => handleOpenEdit(item)}
                     className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
                   >
-                    <td className="py-2 px-2 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
-                    <td className="py-2 px-3 align-middle overflow-hidden">
-                      <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={item.registration.alumni?.name}>
+                    <td className="py-2 px-2 text-center text-slate-400 font-bold text-xs">{idx + 1}</td>
+                    <td className="py-2 px-2.5 align-middle overflow-hidden text-left">
+                      <span className="font-bold text-white text-sm truncate block" title={item.registration.alumni?.name}>
                         {item.registration.alumni?.name || 'Unknown Alumni'}
-                      </div>
-                      {item.registration.alumni?.year_of_passing && (
-                        <div className="text-[11px] text-slate-400 truncate">
-                          {item.registration.alumni.year_of_passing} • {item.registration.alumni.engineering_discipline || ''}
-                        </div>
-                      )}
+                      </span>
                     </td>
-                    <td className="py-2 px-3 text-right align-middle whitespace-nowrap">
+                    <td className="py-2 px-2 text-left align-middle whitespace-nowrap">
                       <span className="text-sm font-black text-amber-400">
                         ₹{formatINR(item.amount)}
                       </span>
                     </td>
-                    <td className="py-2 px-3 align-middle whitespace-nowrap overflow-hidden">
-                      <span className="font-mono text-xs text-slate-300 bg-slate-950/70 border border-slate-800/80 px-2 py-0.5 rounded-md inline-block max-w-[135px] truncate" title={item.assignedUpi}>
-                        {item.assignedUpi}
-                      </span>
+                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap overflow-hidden">
+                      {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.qrLabel.includes('Untagged') ? (
+                        <span
+                          className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate"
+                          title={item.assignedUpi}
+                        >
+                          {item.assignedUpi}
+                        </span>
+                      ) : item.isCash && !item.qrLabel.includes('Untagged') ? (
+                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                          Cash in Hand
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                          Untagged
+                        </span>
+                      )}
                     </td>
-                    <td className="py-2 px-3 text-center align-middle whitespace-nowrap">
-                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded leading-none inline-block">
+                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 border border-amber-500/25 text-amber-400">
                         {item.registration.registration_number}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-400">
+                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-300">
                       {formatDDMMYYYY(item.paymentDate)}
                     </td>
-                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                    <td className="py-2 px-1.5 text-center align-middle whitespace-nowrap">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenEdit(item);
                         }}
-                        className="relative inline-flex items-center justify-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 transition-colors cursor-pointer before:absolute before:-inset-2 before:content-['']"
+                        className="p-1 text-amber-500 hover:text-amber-400 hover:scale-110 transition-all cursor-pointer inline-flex items-center justify-center"
                         title="Edit UPI ID"
                         aria-label="Edit UPI ID"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
@@ -1161,39 +1446,102 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
           {/* Mobile Adaptive Cards */}
           <div className="md:hidden space-y-3">
-            {filteredList.map((item) => (
-              <div
-                key={item.registration.id}
-                onClick={() => handleOpenEdit(item)}
-                className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md cursor-pointer hover:shadow-amber-500/5 space-y-2"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-md">
-                      {item.registration.registration_number}
-                    </span>
-                    <span className="font-mono text-xs text-slate-400">
-                      {formatDDMMYYYY(item.paymentDate)}
+            {filteredList.map((item, idx) => {
+              const alumni = item.registration.alumni;
+              const isTagged = Boolean(item.assignedUpi);
+
+              return (
+                <div
+                  key={item.registration.id}
+                  onClick={() => handleOpenEdit(item)}
+                  className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${isTagged
+                      ? 'border-l-[3.5px] border-l-emerald-500'
+                      : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
+                    }`}
+                >
+                  {/* Header: #1, REG-00305, Date | Amount */}
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-slate-400">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded">
+                        {item.registration.registration_number}
+                      </span>
+                      <span className="font-mono text-xs text-slate-300 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded">
+                        {formatDDMMYYYY(item.paymentDate)}
+                      </span>
+                    </div>
+                    <div className="font-black text-amber-400 text-xl tracking-tight">
+                      ₹{formatINR(item.amount)}
+                    </div>
+                  </div>
+
+                  {/* Body: Name & Attendance Status Badge */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <h4 className="text-base font-bold text-white truncate" title={alumni?.name}>
+                      {alumni?.name || 'Unknown Alumni'}
+                    </h4>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${item.registration.attendance_status === 'yes'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : item.registration.attendance_status === 'payment_pending'
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : item.registration.attendance_status === 'maybe'
+                            ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                      {item.registration.attendance_status === 'yes' ? 'ATTENDING' : item.registration.attendance_status === 'maybe' ? 'MAYBE' : 'NOT ATTENDING'}
                     </span>
                   </div>
-                  <span className="text-sm font-black text-amber-400">
-                    ₹{formatINR(item.amount)}
-                  </span>
+
+                  {/* Alumnus Meta: Batch, Discipline & City */}
+                  <div className="text-xs text-slate-400">
+                    <span>Batch {alumni?.year_of_passing || '—'}</span>
+                    <span className="mx-1">•</span>
+                    <span>{alumni?.engineering_discipline || 'Other'}</span>
+                    {alumni?.city && (
+                      <>
+                        <span className="mx-1">•</span>
+                        <span>📍 {alumni.city}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Footer: Credited Account & Edit button */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        CREDITED TO:
+                      </span>
+                      {item.assignedUpi ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[220px]" title={item.assignedUpi}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          <span>{item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}</span>
+                          <span className="opacity-75 font-normal">{item.assignedUpi}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
+                          ⚠️ Untagged
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEdit(item);
+                      }}
+                      className="min-h-[38px] px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                      title="Edit UPI Account"
+                    >
+                      <span>✏️</span>
+                      <span>Edit</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="text-sm font-bold text-white">{item.registration.alumni?.name}</div>
-                <div className="text-xs text-slate-400">
-                  Batch {item.registration.alumni?.year_of_passing || '—'} • {item.registration.alumni?.engineering_discipline || '—'}
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-400 pt-1.5 border-t border-slate-800/80">
-                  <span className="font-mono text-slate-300 bg-slate-950/70 border border-slate-800 px-2 py-0.5 rounded-md truncate max-w-[200px]">
-                    {item.assignedUpi}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
-                    <Edit2 className="w-3 h-3" /> Edit
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

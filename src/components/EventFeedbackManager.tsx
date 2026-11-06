@@ -169,7 +169,7 @@ export const EventFeedbackManager: React.FC<EventFeedbackManagerProps> = ({
             type="button"
             onClick={handleShareCommitteeReport}
             disabled={feedbackList.length === 0}
-            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/25 flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#025907] via-[#087f10] to-[#0d9616] hover:from-[#036809] hover:via-[#0a8e13] hover:to-[#0fa81a] border border-[#0d9616]/60 text-white text-xs sm:text-sm font-bold shadow-md shadow-green-950/50 flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             title={
               feedbackList.length === 0
                 ? 'No feedback responses received yet to share'
