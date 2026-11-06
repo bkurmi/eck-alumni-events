@@ -802,7 +802,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       </div>
 
       {/* ── 2 TABS / SEGMENTED CONTROL: Expenses vs Internal Transfers ── */}
-      <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 w-full sm:w-fit overflow-x-auto tab-scrollbar">
+      <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveLedgerTab('expenses')}
