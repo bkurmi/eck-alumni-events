@@ -1,5 +1,22 @@
 # Project Instructions & Guidelines
 
+## Pure Tailwind CSS & Modern Styling Standards
+
+### 1. 100% Tailwind CSS for All UI Development
+- **Strict Tailwind Policy**: All frontend and UI development—new pages, components, modals, dialogs, form elements, drawer menus, and bug fixes—MUST be implemented exclusively using pure Tailwind CSS utility classes.
+- **Zero Component-Level CSS Files**: Never create component-specific stylesheets (e.g. `ComponentName.css`, `module.css`) or import standalone `.css` files into components.
+- **Zero Monolithic CSS Dumping**: Never add component-specific styles or ad-hoc class selectors into `src/index.css`.
+- **Allowed Scope of `src/index.css`**: `src/index.css` is strictly reserved for:
+  1. Tailwind directives: `@import "tailwindcss";`
+  2. Tailwind `@utility` definitions (e.g. `@utility no-scrollbar`, `@utility tab-scrollbar`)
+  3. Design system tokens inside `@theme` and shared `:root` CSS variables
+  4. Global CSS keyframe animations (e.g. `kenBurns`, `shutterPulse`, `marqueeLeft`, `scanLaser`)
+  5. Scoped physical ticket pass print/export rules required by `html-to-image` for pixel-perfect ID card PNG exports in `IdCardPass.tsx`
+- **Responsive Prefixes over Custom Media Queries**: Always use Tailwind's built-in responsive prefixes (`sm:`, `md:`, `lg:`, `xl:`) rather than writing manual `@media` queries in CSS.
+- **No Inline Style Hacks**: Do not use ad-hoc inline `style={{ ... }}` objects for layout, colors, display, or spacing. Use Tailwind utility classes or arbitrary bracket values (e.g., `min-h-[44px]`, `w-[220px]`).
+
+---
+
 ## Mobile-First & Responsive Design Standards
 
 ### 1. Mobile-First Philosophy & Architecture

@@ -382,15 +382,23 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="alumni-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="alumni-modal-container relative w-full max-w-2xl bg-[#111425] border border-amber-500/40 rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl my-auto" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="relative w-full max-w-2xl bg-slate-900 border-t sm:border border-amber-500/30 rounded-t-2xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-slate-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div className="alumni-modal-header">
+        <div className="shrink-0 flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-800 bg-slate-950/50">
           <div>
-            <h2 className="alumni-modal-title">
-              {activeStep === 'find' ? '👤 Open My Alumni Profile' : '👤 My Alumni Profile'}
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <span>👤</span> {activeStep === 'find' ? 'Open My Alumni Profile' : 'My Alumni Profile'}
             </h2>
-            <p className="alumni-modal-subtitle">
+            <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
               {activeStep === 'find'
                 ? 'Search your name or mobile number to open your record and update your complete information.'
                 : `Editing profile for ${selectedAlumnus?.name} • Registered Mobile: ${selectedAlumnus?.mobile}`}
@@ -398,7 +406,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
           </div>
           <button
             type="button"
-            className="alumni-modal-close-btn"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-slate-400 hover:text-white transition-colors text-lg"
             onClick={onClose}
             aria-label="Close Modal"
           >
@@ -407,45 +415,64 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="alumni-modal-body">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 tab-scrollbar space-y-5">
           {/* STEP 1: FIND / LOOKUP ALUMNUS */}
           {activeStep === 'find' && (
-            <div className="alumni-search-view">
+            <div className="space-y-4">
               {/* Method Switcher Tabs */}
-              <div className="alumni-search-tabs">
+              <div className="flex rounded-xl p-1 bg-slate-950 border border-slate-800 gap-1">
                 <button
                   type="button"
-                  className={`alumni-tab-btn ${searchMethod === 'name' ? 'active' : ''}`}
+                  className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                    searchMethod === 'name'
+                      ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                   onClick={() => setSearchMethod('name')}
                 >
                   <span>🔤 Search by Name</span>
-                  <span className="tab-pill-badge">Live Auto-suggest</span>
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                      searchMethod === 'name' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    Auto-suggest
+                  </span>
                 </button>
                 <button
                   type="button"
-                  className={`alumni-tab-btn ${searchMethod === 'mobile' ? 'active' : ''}`}
+                  className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                    searchMethod === 'mobile'
+                      ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                   onClick={() => setSearchMethod('mobile')}
                 >
                   <span>📱 Search by Mobile</span>
-                  <span className="tab-pill-badge">Exact 10 Digits</span>
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                      searchMethod === 'mobile' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    10 Digits
+                  </span>
                 </button>
               </div>
 
               {/* Name Auto-suggestion Box */}
               {searchMethod === 'name' && (
-                <div className="alumni-search-box">
-                  <label htmlFor="alumni-name-suggest-input" className="form-label">
+                <div className="space-y-3">
+                  <label htmlFor="alumni-name-suggest-input" className="block text-xs sm:text-sm font-semibold text-slate-200">
                     Type your name to open your record:
                   </label>
-                  <div className="search-input-wrap">
-                    <span className="search-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.6, pointerEvents: 'none' }}>
+                  <div className="relative w-full">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">
                       🔍
                     </span>
                     <input
                       id="alumni-name-suggest-input"
                       type="text"
-                      className="alumni-form-input"
-                      style={{ paddingLeft: '2.5rem', paddingRight: nameQuery ? '2.5rem' : '1rem' }}
+                      className="w-full min-h-[44px] text-base sm:text-sm pl-10 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 font-medium placeholder:text-slate-500"
                       placeholder="Type name (e.g. Bhawesh, Rahul), batch (2018), or branch..."
                       value={nameQuery}
                       onChange={(e) => setNameQuery(e.target.value)}
@@ -454,87 +481,89 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                     {nameQuery && (
                       <button
                         type="button"
-                        className="clear-search-btn"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 min-h-[32px] min-w-[32px] flex items-center justify-center text-slate-400 hover:text-white"
                         onClick={() => setNameQuery('')}
-                        style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)' }}
                         title="Clear input"
                       >
                         ✕
                       </button>
                     )}
-                    {loadingPool && <span className="input-spinner" style={{ position: 'absolute', right: '2.5rem', top: '50%', transform: 'translateY(-50%)' }}>⏳</span>}
+                    {loadingPool && (
+                      <span className="absolute right-10 top-1/2 -translate-y-1/2 text-xs text-amber-400">⏳</span>
+                    )}
                   </div>
 
                   {/* Empty state discovery hints when not typed yet */}
                   {!nameQuery.trim() && (
-                    <div className="name-search-discovery-hints">
-                      <p className="discovery-hint-text">
+                    <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
+                      <p className="text-xs text-slate-300">
                         ⚡ <strong>Instant Search:</strong> Start typing any name, branch, batch year, or city.
                       </p>
-                      <div className="discovery-chips-row">
-                        <span className="discovery-chip" onClick={() => setNameQuery('Computer')}>💻 Computer</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('Electrical')}>⚡ Electrical</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('Mechanical')}>⚙️ Mechanical</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('Civil')}>🏗️ Civil</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('Kota')}>📍 Kota</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('Jaipur')}>📍 Jaipur</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('Bengaluru')}>📍 Bengaluru</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('2024')}>🎓 2024</span>
-                        <span className="discovery-chip" onClick={() => setNameQuery('2018')}>🎓 2018</span>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {['Computer', 'Electrical', 'Mechanical', 'Civil', 'Kota', 'Jaipur', 'Bengaluru', '2024', '2018'].map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            className="inline-flex items-center min-h-[36px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-slate-700/60 hover:border-amber-500/40 text-xs font-medium cursor-pointer transition-colors"
+                            onClick={() => setNameQuery(tag)}
+                          >
+                            {tag}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}
 
                   {/* Instant 0ms Suggestion Dropdown List */}
                   {nameQuery.trim().length > 0 && (
-                    <div className="suggestions-container">
+                    <div className="mt-2">
                       {filteredSuggestions.length > 0 ? (
-                        <div className="suggestions-list" role="listbox">
+                        <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 shadow-2xl divide-y divide-slate-800/80 tab-scrollbar" role="listbox">
                           {filteredSuggestions.map((item) => (
                             <button
                               key={item.id}
                               type="button"
-                              className="suggestion-item"
+                              className="w-full min-h-[52px] p-3 text-left flex items-center gap-3 hover:bg-slate-900 transition-colors cursor-pointer group"
                               onClick={() => loadAlumnusIntoForm(item)}
                               role="option"
                               aria-selected="false"
                             >
-                              <div className="suggestion-avatar">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800 border border-amber-500/30 flex items-center justify-center shrink-0 font-bold text-amber-400 text-sm">
                                 {item.resolved_photo_url ? (
                                   <img
                                     src={item.resolved_photo_url}
                                     alt={item.name}
-                                    className="avatar-img"
+                                    className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <span className="avatar-initials">
+                                  <span>
                                     {item.name.slice(0, 2).toUpperCase()}
                                   </span>
                                 )}
                               </div>
-                              <div className="suggestion-details">
-                                <div className="suggestion-name-row">
-                                  <strong>{item.name}</strong>
-                                  <span className="suggestion-batch">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap text-sm text-white font-bold">
+                                  <span>{item.name}</span>
+                                  <span className="text-xs font-mono font-normal text-amber-400">
                                     {item.year_of_passing ? `'${String(item.year_of_passing).slice(-2)}` : ''} • {item.engineering_discipline}
                                   </span>
                                 </div>
-                                <div className="suggestion-meta-row">
+                                <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
                                   <span>📍 {item.city || 'Kota'}</span>
                                   {item.organization && <span>• 🏢 {item.organization}</span>}
-                                  <span className="masked-phone">• 📱 {maskPhone(item.mobile)}</span>
+                                  <span className="font-mono text-slate-500">• 📱 {maskPhone(item.mobile)}</span>
                                 </div>
                               </div>
-                              <div className="suggestion-action-arrow">
+                              <div className="shrink-0 text-xs font-semibold text-amber-400 group-hover:translate-x-1 transition-transform hidden sm:block">
                                 <span>Open Profile →</span>
                               </div>
                             </button>
                           ))}
                         </div>
                       ) : (
-                        <div className="suggestions-empty">
-                          <p>No alumni matching "<strong>{nameQuery}</strong>".</p>
-                          <p className="empty-tip">Check spelling or search by registered 10-digit mobile number using the tab above.</p>
+                        <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-center space-y-1">
+                          <p className="text-xs text-slate-300">No alumni matching "<strong>{nameQuery}</strong>".</p>
+                          <p className="text-[11px] text-slate-500">Check spelling or search by registered 10-digit mobile number using the tab above.</p>
                         </div>
                       )}
                     </div>
@@ -544,16 +573,16 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
 
               {/* Mobile Exact Search Box */}
               {searchMethod === 'mobile' && (
-                <form className="alumni-search-box" onSubmit={handleMobileSearch}>
-                  <label htmlFor="alumni-mobile-search-input" className="form-label">
+                <form className="space-y-3" onSubmit={handleMobileSearch}>
+                  <label htmlFor="alumni-mobile-search-input" className="block text-xs sm:text-sm font-semibold text-slate-200">
                     Enter your registered 10-digit mobile number:
                   </label>
-                  <div className="search-input-wrap">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       id="alumni-mobile-search-input"
                       type="tel"
                       maxLength={14}
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono outline-none focus:border-amber-500"
                       placeholder="e.g. 9829012345"
                       value={mobileQuery}
                       onChange={(e) => {
@@ -564,13 +593,15 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                     />
                     <button
                       type="submit"
-                      className="btn-search-mobile"
+                      className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm whitespace-nowrap flex items-center justify-center transition-colors disabled:opacity-50"
                       disabled={isSearchingMobile || mobileQuery.replace(/[^0-9]/g, '').length < 10}
                     >
                       {isSearchingMobile ? 'Searching...' : 'Open Profile →'}
                     </button>
                   </div>
-                  {mobileSearchError && <p className="form-error-text">{mobileSearchError}</p>}
+                  {mobileSearchError && (
+                    <p className="text-xs text-rose-400 font-medium">{mobileSearchError}</p>
+                  )}
                 </form>
               )}
             </div>
@@ -578,12 +609,12 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
 
           {/* STEP 2: COMPLETE PROFILE EDITOR */}
           {activeStep === 'edit' && selectedAlumnus && (
-            <form onSubmit={handleSaveProfile} className="alumni-edit-form">
+            <form onSubmit={handleSaveProfile} className="space-y-5">
               {/* Back to search if not opened from direct card */}
               {!initialAlumnus && (
                 <button
                   type="button"
-                  className="btn-back-to-search"
+                  className="inline-flex items-center min-h-[44px] text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer"
                   onClick={() => setActiveStep('find')}
                 >
                   ← Find another profile
@@ -591,62 +622,62 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
               )}
 
               {/* SECTION: Profile Photo & Headshot */}
-              <div className="profile-section-card profile-photo-hero-card">
-                <div className="section-title-row">
-                  <span className="section-icon">📸</span>
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2.5 text-sm sm:text-base font-bold text-amber-400">
+                  <span>📸</span>
                   <h3>Profile Photograph &amp; Headshot</h3>
                 </div>
 
-                <div className="profile-photo-editor-row">
+                <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
                   {/* Rectangular Photo with Rounded Corners */}
-                  <div className="photo-preview-wrap rectangular">
+                  <div className="relative shrink-0 w-32 h-40 sm:w-36 sm:h-44 rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-slate-950 shadow-lg flex items-center justify-center">
                     {photoPreview ? (
                       <img
                         src={photoPreview}
                         alt={formData.name || 'Alumnus Photo'}
-                        className="profile-photo-img rectangular-img"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="profile-photo-placeholder rectangular-placeholder">
-                        <span className="placeholder-icon">👤</span>
-                        <span className="placeholder-initials">
+                      <div className="flex flex-col items-center justify-center text-slate-500">
+                        <span className="text-3xl">👤</span>
+                        <span className="text-xs font-bold font-mono mt-1 text-slate-400">
                           {(formData.name || 'Alumnus').slice(0, 2).toUpperCase()}
                         </span>
                       </div>
                     )}
                     {isUploadingPhoto && (
-                      <div className="photo-uploading-overlay">
-                        <span className="spinner-sm">⏳</span>
+                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-amber-400 text-xs gap-1 font-semibold">
+                        <span className="animate-spin text-lg">⏳</span>
                         <span>Saving...</span>
                       </div>
                     )}
                   </div>
 
                   {/* Right side info panel utilizing the entire space */}
-                  <div className="photo-actions-wrap profile-photo-details-panel">
-                    <div className="photo-identity-header">
-                      <h4 className="photo-identity-name">{formData.name || selectedAlumnus.name}</h4>
-                      <div className="photo-identity-badges">
-                        <span className="photo-meta-badge badge-batch">
+                  <div className="flex-1 w-full space-y-3">
+                    <div>
+                      <h4 className="text-base sm:text-lg font-bold text-white">{formData.name || selectedAlumnus.name}</h4>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300">
                           🎓 Batch of {formData.year_of_passing}
                         </span>
-                        <span className="photo-meta-badge badge-discipline">
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
                           💻 {formData.engineering_discipline}
                         </span>
-                        <span className="photo-meta-badge badge-city">
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
                           📍 {formData.city || selectedAlumnus.city || 'Kota'}
                         </span>
-                        <span className="photo-meta-badge badge-phone">
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400">
                           📱 {selectedAlumnus.mobile}
                         </span>
                       </div>
                     </div>
 
-                    <p className="photo-hint">
+                    <p className="text-xs text-slate-400">
                       Add a clear portrait photo or take a fresh live selfie from your mobile camera or laptop so batchmates and professors can recognize you.
                     </p>
 
-                    <div className="photo-buttons-row">
+                    <div className="flex flex-wrap gap-2 items-center pt-1">
                       {/* Hidden camera input for mobile selfie */}
                       <input
                         type="file"
@@ -667,7 +698,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
 
                       <button
                         type="button"
-                        className="btn-photo-action btn-camera"
+                        className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 cursor-pointer bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40"
                         onClick={() => cameraInputRef.current?.click()}
                         disabled={isUploadingPhoto}
                         title="Take a selfie using camera"
@@ -677,7 +708,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
 
                       <button
                         type="button"
-                        className="btn-photo-action btn-gallery"
+                        className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploadingPhoto}
                         title="Upload from gallery or computer"
@@ -685,60 +716,60 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                         <span>📁 Upload File</span>
                       </button>
 
-                      <span className="photo-format-note">JPG, PNG • Auto-compressed</span>
+                      <span className="text-[11px] text-slate-500">JPG, PNG • Auto-compressed</span>
                     </div>
-                    {photoError && <p className="form-error-text">{photoError}</p>}
+                    {photoError && <p className="text-xs text-rose-400 font-medium">{photoError}</p>}
                   </div>
                 </div>
               </div>
 
               {/* SECTION: Personal & Contact Information */}
-              <div className="profile-section-card">
-                <div className="section-title-row">
-                  <span className="section-icon">📋</span>
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2.5 text-sm sm:text-base font-bold text-amber-400">
+                  <span>📋</span>
                   <h3>Personal &amp; Contact Details</h3>
                 </div>
 
-                <div className="alumni-form-grid">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Full Name */}
-                  <div className="form-group">
-                    <label htmlFor="edit-name" className="form-label">
-                      Full Name <span className="required-star">*</span>
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-name" className="block text-xs font-semibold text-slate-200">
+                      Full Name <span className="text-amber-400">*</span>
                     </label>
                     <input
                       id="edit-name"
                       type="text"
                       required
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
 
                   {/* Mobile (Registered Identity) */}
-                  <div className="form-group">
-                    <label htmlFor="edit-mobile" className="form-label">
-                      Registered Mobile Number <span className="read-only-tag">(Identity)</span>
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-mobile" className="block text-xs font-semibold text-slate-200">
+                      Registered Mobile Number <span className="text-slate-500 font-normal">(Identity)</span>
                     </label>
                     <input
                       id="edit-mobile"
                       type="text"
                       readOnly
                       disabled
-                      className="alumni-form-input input-disabled"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-400 font-mono cursor-not-allowed"
                       value={selectedAlumnus.mobile}
                     />
                   </div>
 
                   {/* Email Address */}
-                  <div className="form-group">
-                    <label htmlFor="edit-email" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-email" className="block text-xs font-semibold text-slate-200">
                       Email Address
                     </label>
                     <input
                       id="edit-email"
                       type="email"
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       placeholder="alumni@example.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -746,18 +777,18 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* Country */}
-                  <div className="form-group">
-                    <label htmlFor="edit-country" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-country" className="block text-xs font-semibold text-slate-200">
                       Country
                     </label>
                     <select
                       id="edit-country"
-                      className="alumni-form-select"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       value={formData.country}
                       onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     >
                       {COUNTRY_OPTIONS.map((c) => (
-                        <option key={c.value} value={c.value}>
+                        <option key={c.value} value={c.value} className="bg-slate-900">
                           {c.label}
                         </option>
                       ))}
@@ -765,19 +796,19 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* State */}
-                  <div className="form-group">
-                    <label htmlFor="edit-state" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-state" className="block text-xs font-semibold text-slate-200">
                       State / Province
                     </label>
                     {formData.country === 'India' ? (
                       <select
                         id="edit-state"
-                        className="alumni-form-select"
+                        className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                         value={formData.state}
                         onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                       >
                         {INDIAN_STATES.map((st) => (
-                          <option key={st} value={st}>
+                          <option key={st} value={st} className="bg-slate-900">
                             {st}
                           </option>
                         ))}
@@ -786,7 +817,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                       <input
                         id="edit-state"
                         type="text"
-                        className="alumni-form-input"
+                        className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                         placeholder="State or Region"
                         value={formData.state_other}
                         onChange={(e) => setFormData({ ...formData, state_other: e.target.value })}
@@ -795,14 +826,14 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* City */}
-                  <div className="form-group">
-                    <label htmlFor="edit-city" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-city" className="block text-xs font-semibold text-slate-200">
                       Current City
                     </label>
                     <input
                       id="edit-city"
                       type="text"
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       placeholder="e.g. Kota, Jaipur, Bengaluru, Pune, Delhi NCR..."
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
@@ -810,14 +841,14 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* Residential Address */}
-                  <div className="form-group full-width">
-                    <label htmlFor="edit-address" className="form-label">
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <label htmlFor="edit-address" className="block text-xs font-semibold text-slate-200">
                       Residential Address
                     </label>
                     <input
                       id="edit-address"
                       type="text"
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       placeholder="House / Apartment, Street, Colony..."
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -827,26 +858,26 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
               </div>
 
               {/* SECTION: College & Academic Background */}
-              <div className="profile-section-card">
-                <div className="section-title-row">
-                  <span className="section-icon">🎓</span>
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2.5 text-sm sm:text-base font-bold text-amber-400">
+                  <span>🎓</span>
                   <h3>College &amp; Academic Background (ECK / RTU Kota)</h3>
                 </div>
 
-                <div className="alumni-form-grid">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Year of Passing */}
-                  <div className="form-group">
-                    <label htmlFor="edit-passing-year" className="form-label">
-                      Year of Passing (Batch) <span className="required-star">*</span>
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-passing-year" className="block text-xs font-semibold text-slate-200">
+                      Year of Passing (Batch) <span className="text-amber-400">*</span>
                     </label>
                     <select
                       id="edit-passing-year"
-                      className="alumni-form-select"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       value={formData.year_of_passing}
                       onChange={(e) => setFormData({ ...formData, year_of_passing: Number(e.target.value) })}
                     >
                       {Array.from({ length: 50 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
-                        <option key={year} value={year}>
+                        <option key={year} value={year} className="bg-slate-900">
                           Batch of {year}
                         </option>
                       ))}
@@ -854,18 +885,18 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* Engineering Discipline */}
-                  <div className="form-group">
-                    <label htmlFor="edit-discipline" className="form-label">
-                      Engineering Discipline / Branch <span className="required-star">*</span>
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-discipline" className="block text-xs font-semibold text-slate-200">
+                      Engineering Discipline / Branch <span className="text-amber-400">*</span>
                     </label>
                     <select
                       id="edit-discipline"
-                      className="alumni-form-select"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       value={formData.engineering_discipline}
                       onChange={(e) => setFormData({ ...formData, engineering_discipline: e.target.value })}
                     >
                       {ENGINEERING_DISCIPLINES.map((discipline) => (
-                        <option key={discipline} value={discipline}>
+                        <option key={discipline} value={discipline} className="bg-slate-900">
                           {discipline}
                         </option>
                       ))}
@@ -873,14 +904,14 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {formData.engineering_discipline === 'Other' && (
-                    <div className="form-group full-width">
-                      <label htmlFor="edit-discipline-other" className="form-label">
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label htmlFor="edit-discipline-other" className="block text-xs font-semibold text-slate-200">
                         Specify Your Department / Branch
                       </label>
                       <input
                         id="edit-discipline-other"
                         type="text"
-                        className="alumni-form-input"
+                        className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                         placeholder="e.g. Biomedical, Metallurgy..."
                         value={formData.engineering_discipline_other}
                         onChange={(e) => setFormData({ ...formData, engineering_discipline_other: e.target.value })}
@@ -891,26 +922,26 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
               </div>
 
               {/* SECTION: Career & Professional Information */}
-              <div className="profile-section-card">
-                <div className="section-title-row">
-                  <span className="section-icon">💼</span>
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2.5 text-sm sm:text-base font-bold text-amber-400">
+                  <span>💼</span>
                   <h3>Career &amp; Professional Background</h3>
                 </div>
 
-                <div className="alumni-form-grid">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Employment Type */}
-                  <div className="form-group">
-                    <label htmlFor="edit-emp-type" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-emp-type" className="block text-xs font-semibold text-slate-200">
                       Employment Type
                     </label>
                     <select
                       id="edit-emp-type"
-                      className="alumni-form-select"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       value={formData.employment_type}
                       onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
                     >
                       {EMPLOYMENT_TYPES.map((type) => (
-                        <option key={type} value={type}>
+                        <option key={type} value={type} className="bg-slate-900">
                           {type}
                         </option>
                       ))}
@@ -918,18 +949,18 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* Industry Domain */}
-                  <div className="form-group">
-                    <label htmlFor="edit-ind-domain" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-ind-domain" className="block text-xs font-semibold text-slate-200">
                       Industry Domain
                     </label>
                     <select
                       id="edit-ind-domain"
-                      className="alumni-form-select"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       value={formData.industry_domain}
                       onChange={(e) => setFormData({ ...formData, industry_domain: e.target.value })}
                     >
                       {INDUSTRY_DOMAINS.map((domain) => (
-                        <option key={domain} value={domain}>
+                        <option key={domain} value={domain} className="bg-slate-900">
                           {domain}
                         </option>
                       ))}
@@ -937,14 +968,14 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* Current Organization / Company */}
-                  <div className="form-group">
-                    <label htmlFor="edit-org" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-org" className="block text-xs font-semibold text-slate-200">
                       Current Organization / Company Name
                     </label>
                     <input
                       id="edit-org"
                       type="text"
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       placeholder="e.g. Infosys, NTPC, Indian Railways, Own Venture..."
                       value={formData.organization}
                       onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
@@ -952,14 +983,14 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   </div>
 
                   {/* Work Location / Neighborhood */}
-                  <div className="form-group">
-                    <label htmlFor="edit-work-location" className="form-label">
+                  <div className="space-y-1.5">
+                    <label htmlFor="edit-work-location" className="block text-xs font-semibold text-slate-200">
                       Work Location / Office Neighborhood
                     </label>
                     <input
                       id="edit-work-location"
                       type="text"
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       placeholder="e.g. Whitefield, Gurgaon DLF, Hinjewadi, Vigyan Nagar..."
                       value={formData.work_location}
                       onChange={(e) => setFormData({ ...formData, work_location: e.target.value })}
@@ -969,22 +1000,22 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
               </div>
 
               {/* SECTION: Professional Networking & Links */}
-              <div className="profile-section-card">
-                <div className="section-title-row">
-                  <span className="section-icon">🔗</span>
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2.5 text-sm sm:text-base font-bold text-amber-400">
+                  <span>🔗</span>
                   <h3>Professional Links &amp; Community Connect</h3>
                 </div>
 
-                <div className="alumni-form-grid">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* LinkedIn Profile */}
-                  <div className="form-group full-width">
-                    <label htmlFor="edit-linkedin" className="form-label">
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <label htmlFor="edit-linkedin" className="block text-xs font-semibold text-slate-200">
                       LinkedIn Profile URL
                     </label>
                     <input
                       id="edit-linkedin"
                       type="url"
-                      className="alumni-form-input"
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 transition-colors"
                       placeholder="https://www.linkedin.com/in/your-profile"
                       value={formData.linkedin_url}
                       onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
@@ -994,14 +1025,22 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
               </div>
 
               {/* Feedback messages */}
-              {saveSuccessMsg && <div className="alumni-alert-success">{saveSuccessMsg}</div>}
-              {saveErrorMsg && <div className="alumni-alert-error">{saveErrorMsg}</div>}
+              {saveSuccessMsg && (
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs sm:text-sm font-medium">
+                  {saveSuccessMsg}
+                </div>
+              )}
+              {saveErrorMsg && (
+                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs sm:text-sm font-medium">
+                  {saveErrorMsg}
+                </div>
+              )}
 
               {/* Form Action Buttons */}
-              <div className="alumni-form-actions">
+              <div className="shrink-0 p-3 sm:p-4 bg-slate-950/80 border-t border-slate-800 flex items-center justify-end gap-3 mt-4 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6">
                 <button
                   type="button"
-                  className="btn-cancel"
+                  className="min-h-[44px] px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
                   onClick={onClose}
                   disabled={isSaving}
                 >
@@ -1009,7 +1048,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="btn-save-profile"
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors disabled:opacity-50"
                   disabled={isSaving || isUploadingPhoto}
                 >
                   {isSaving ? 'Saving Changes...' : '💾 Save Profile Updates'}
