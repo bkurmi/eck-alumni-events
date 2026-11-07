@@ -31,18 +31,18 @@ interface CommitteeMember {
 }
 
 const KOTA_CHAPTER_COMMITTEE: CommitteeMember[] = [
-  { name: 'Mukesh Singh', batchLetter: 'J', branch: 'Mechanical Engineering' },
-  { name: 'Hari Narayan Shukla', batchLetter: 'K', branch: 'Electronics & Communication' },
-  { name: 'Manoj Paliwal', batchLetter: 'L', branch: 'Mechanical Engineering' },
-  { name: 'Rajiv Varshney', batchLetter: 'P', branch: 'Electronics & Communication' },
-  { name: 'Pankaj Parashar', batchLetter: 'Q', branch: 'Civil Engineering' },
-  { name: 'Chetan Sharma', batchLetter: 'U', branch: 'Electronics & Communication' },
-  { name: 'Sanjay Verma', batchLetter: 'V', branch: 'Instrumentation & Control' },
-  { name: 'Vijeshwar Vishnoi', batchLetter: 'V', branch: 'Electrical Engineering' },
-  { name: 'Lokesh Gautam', batchLetter: 'W', branch: 'Electrical Engineering' },
-  { name: 'Bhawesh Kurmi', batchLetter: 'X', branch: 'Information Technology' },
-  { name: 'Shailendra Singh', batchLetter: 'Z', branch: 'Civil Engineering' },
-  { name: 'Mitesh Nagar', batchLetter: 'Z', branch: 'Civil Engineering' },
+  { name: 'Mukesh Singh', batchLetter: 'J', branch: 'Mech' },
+  { name: 'Hari Narayan Shukla', batchLetter: 'K', branch: 'ECE' },
+  { name: 'Manoj Paliwal', batchLetter: 'L', branch: 'Mech' },
+  { name: 'Rajiv Varshney', batchLetter: 'P', branch: 'ECE' },
+  { name: 'Pankaj Parashar', batchLetter: 'Q', branch: 'Civil' },
+  { name: 'Chetan Sharma', batchLetter: 'U', branch: 'ECE' },
+  { name: 'Sanjay Verma', batchLetter: 'V', branch: 'Inst.' },
+  { name: 'Vijeshwar Vishnoi', batchLetter: 'V', branch: 'Electrical' },
+  { name: 'Lokesh Gautam', batchLetter: 'W', branch: 'Electrical' },
+  { name: 'Bhawesh Kurmi', batchLetter: 'X', branch: 'IT' },
+  { name: 'Shailendra Singh', batchLetter: 'Z', branch: 'Civil' },
+  { name: 'Mitesh Nagar', batchLetter: 'Z', branch: 'Civil' },
 ];
 
 export const HomePage: React.FC = () => {
@@ -1087,11 +1087,10 @@ export const HomePage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Right: Full Branch Name with truncation ellipsis on mobile */}
-                  <div className="shrink-0 max-w-[125px] sm:max-w-[190px] text-right">
+                  {/* Right: Abbreviated Branch Badge */}
+                  <div className="shrink-0 text-right">
                     <span
-                      title={member.branch}
-                      className="inline-block max-w-full truncate text-[11px] sm:text-xs font-semibold text-slate-300 rounded-lg bg-slate-800/90 border border-slate-700/70 px-2.5 py-1"
+                      className="inline-block text-[11px] sm:text-xs font-semibold text-slate-300 rounded-lg bg-slate-800/90 border border-slate-700/70 px-2.5 py-1"
                     >
                       {member.branch}
                     </span>
