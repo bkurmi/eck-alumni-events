@@ -1,4 +1,5 @@
 // Pricing logic managed entirely in repository
+import type { EventPricingConfig } from '../types';
 
 export interface PricingBreakdownItem {
   label: string;
@@ -35,66 +36,82 @@ export const SPOT_PRICING_RULES = {
 } as const;
 
 /**
- * Calculates total reunion contribution based on attendee composition:
- * - 1 Adult: ₹800
- * - Couple (2 Adults): ₹1,500
- * - >2 Adults: ₹1,500 (couple) + ₹800 for each additional adult
- * - Kids under 10: Free (₹0)
- * - Kids above 10: ₹300 per child
+ * Returns a formatted summary string for UI badges (e.g., "₹800 Single · ₹1,500 Couple · ₹300 Kids (10+) · Free (<10)")
+ */
+export function formatPricingPillSummary(
+  pricingConfig?: EventPricingConfig | null,
+  baseFee?: number
+): string {
+  const single = pricingConfig?.single_adult ?? (typeof baseFee === 'number' && baseFee > 0 ? baseFee : PRICING_RULES.SINGLE_ADULT);
+  const couple = pricingConfig?.couple ?? (single > 0 ? single * 2 - 100 : PRICING_RULES.COUPLE);
+  const kid = pricingConfig?.child_above_7 ?? (pricingConfig as any)?.child_above_10 ?? Math.round(single * 0.375);
+  return `₹${single.toLocaleString('en-IN')} Single · ₹${couple.toLocaleString('en-IN')} Couple · ₹${kid.toLocaleString('en-IN')} Kids (10+) · Free (<10)`;
+}
+
+/**
+ * Calculates total reunion contribution based on attendee composition and event pricing config.
+ * Rate strictly derives from event's pricing_config or event's baseFee (e.g. ₹900) before any fallback.
  */
 export function calculateContribution(
   adults: number = 1,
   kidsAbove7: number = 0,
-  kidsUnder7: number = 0
+  kidsUnder7: number = 0,
+  pricingConfig?: EventPricingConfig | null,
+  baseFee?: number
 ): PricingBreakdown {
   const safeAdults = Math.max(0, Math.floor(adults || 0));
   const safeKidsAbove7 = Math.max(0, Math.floor(kidsAbove7 || 0));
   const safeKidsUnder7 = Math.max(0, Math.floor(kidsUnder7 || 0));
 
+  const singleAdultRate = pricingConfig?.single_adult ?? (typeof baseFee === 'number' && baseFee > 0 ? baseFee : PRICING_RULES.SINGLE_ADULT);
+  const coupleRate = pricingConfig?.couple ?? (singleAdultRate > 0 ? singleAdultRate * 2 - 100 : PRICING_RULES.COUPLE);
+  const extraAdultRate = pricingConfig?.extra_adult ?? singleAdultRate;
+  const kidAbove7Rate = pricingConfig?.child_above_7 ?? (pricingConfig as any)?.child_above_10 ?? Math.round(singleAdultRate * 0.375);
+
   let adultsAmount = 0;
   const items: PricingBreakdownItem[] = [];
 
   if (safeAdults === 1) {
-    adultsAmount = PRICING_RULES.SINGLE_ADULT;
+    adultsAmount = singleAdultRate;
     items.push({
       label: 'Single Adult',
       count: 1,
-      rateDescription: '₹800',
-      amount: PRICING_RULES.SINGLE_ADULT,
+      rateDescription: `₹${singleAdultRate.toLocaleString('en-IN')}`,
+      amount: singleAdultRate,
     });
   } else if (safeAdults === 2) {
-    adultsAmount = PRICING_RULES.COUPLE;
+    adultsAmount = coupleRate;
     items.push({
       label: 'Couple (2 Adults)',
       count: 2,
-      rateDescription: 'Special couple contribution',
-      amount: PRICING_RULES.COUPLE,
+      rateDescription: `₹${coupleRate.toLocaleString('en-IN')}`,
+      amount: coupleRate,
     });
   } else if (safeAdults > 2) {
     const extraAdults = safeAdults - 2;
-    const extraAmount = extraAdults * PRICING_RULES.EXTRA_ADULT;
-    adultsAmount = PRICING_RULES.COUPLE + extraAmount;
+    const extraAmount = extraAdults * extraAdultRate;
+    adultsAmount = coupleRate + extraAmount;
 
     items.push({
       label: 'Couple (First 2 Adults)',
       count: 2,
-      rateDescription: '₹1,500 base',
-      amount: PRICING_RULES.COUPLE,
+      rateDescription: `₹${coupleRate.toLocaleString('en-IN')} base`,
+      amount: coupleRate,
     });
     items.push({
       label: `Additional Adult${extraAdults > 1 ? 's' : ''}`,
       count: extraAdults,
-      rateDescription: `${extraAdults} × ₹${PRICING_RULES.EXTRA_ADULT}`,
+      rateDescription: `${extraAdults} × ₹${extraAdultRate.toLocaleString('en-IN')}`,
       amount: extraAmount,
     });
   }
 
-  const kidsAbove7Amount = safeKidsAbove7 * PRICING_RULES.KID_ABOVE_7;
+  const kidsAbove7Amount = safeKidsAbove7 * kidAbove7Rate;
   if (safeKidsAbove7 > 0) {
     items.push({
       label: `Child${safeKidsAbove7 > 1 ? 'ren' : ''} (10+ yrs)`,
       count: safeKidsAbove7,
-      rateDescription: `${safeKidsAbove7} × ₹${PRICING_RULES.KID_ABOVE_7}`,
+      rateDescription: `${safeKidsAbove7} × ₹${kidAbove7Rate.toLocaleString('en-IN')}`,
       amount: kidsAbove7Amount,
     });
   }
@@ -127,23 +144,24 @@ export function calculateContribution(
 }
 
 /**
- * Calculates Spot Entry contribution at event gate:
- * - ₹1,000 per adult (flat, no couple discounts)
- * - ₹500 per child above 10 years
- * - Free (₹0) for children under 10 years
- * Note: Applied ONLY for Spot Entry Walk-ins at the gate desk.
+ * Calculates Spot Entry contribution at event gate with optional event pricing config
  */
 export function calculateSpotContribution(
   adults: number = 1,
   kidsAbove10: number = 0,
-  kidsUnder10: number = 0
+  kidsUnder10: number = 0,
+  pricingConfig?: EventPricingConfig | null,
+  baseFee?: number
 ): PricingBreakdown {
   const safeAdults = Math.max(0, Math.floor(adults || 0));
   const safeKidsAbove10 = Math.max(0, Math.floor(kidsAbove10 || 0));
   const safeKidsUnder10 = Math.max(0, Math.floor(kidsUnder10 || 0));
 
-  const adultsAmount = safeAdults * SPOT_PRICING_RULES.ADULT;
-  const kidsAbove10Amount = safeKidsAbove10 * SPOT_PRICING_RULES.KID_ABOVE_10;
+  const spotAdultRate = pricingConfig?.spot_adult ?? (typeof baseFee === 'number' && baseFee > 0 ? Math.round(baseFee * 1.25) : SPOT_PRICING_RULES.ADULT);
+  const spotKidAbove10Rate = pricingConfig?.spot_child_above_10 ?? Math.round(spotAdultRate * 0.5);
+
+  const adultsAmount = safeAdults * spotAdultRate;
+  const kidsAbove10Amount = safeKidsAbove10 * spotKidAbove10Rate;
   const kidsUnder10Amount = 0;
 
   const items: PricingBreakdownItem[] = [];
@@ -152,7 +170,7 @@ export function calculateSpotContribution(
     items.push({
       label: safeAdults === 1 ? 'Spot Entry (1 Adult)' : `Spot Entry (${safeAdults} Adults)`,
       count: safeAdults,
-      rateDescription: safeAdults === 1 ? '₹1,000 per adult' : `${safeAdults} × ₹1,000`,
+      rateDescription: safeAdults === 1 ? `₹${spotAdultRate.toLocaleString('en-IN')} per adult` : `${safeAdults} × ₹${spotAdultRate.toLocaleString('en-IN')}`,
       amount: adultsAmount,
     });
   }
@@ -161,7 +179,7 @@ export function calculateSpotContribution(
     items.push({
       label: `Child${safeKidsAbove10 > 1 ? 'ren' : ''} (10+ yrs)`,
       count: safeKidsAbove10,
-      rateDescription: `${safeKidsAbove10} × ₹500`,
+      rateDescription: `${safeKidsAbove10} × ₹${spotKidAbove10Rate.toLocaleString('en-IN')}`,
       amount: kidsAbove10Amount,
     });
   }

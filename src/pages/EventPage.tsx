@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 import { EventCard } from '../components/EventCard';
 import { RegistrationForm } from '../components/RegistrationForm';
 import { SuccessPage } from '../components/SuccessPage';
@@ -14,6 +15,7 @@ import {
   getRegistrationStatusInfo,
   syncEventRegistrationStatus,
   isRegistrationClosed,
+  isEventConcluded,
 } from '../lib/eventStatus';
 import type {
   ECKEvent,
@@ -21,6 +23,18 @@ import type {
   RegistrationResult,
   ExistingRegistrationLookup,
 } from '../types';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Ticket,
+  Users,
+  Search,
+  Lock,
+  MessageSquare,
+  Utensils,
+  Globe,
+  Loader2,
+} from 'lucide-react';
 
 const DEFAULT_EVENT: ECKEvent = {
   id: 'mock-deepaura-2026',
@@ -32,12 +46,13 @@ const DEFAULT_EVENT: ECKEvent = {
   description:
     'Join fellow ECK and RTU alumni for an evening of nostalgic reunions, networking, cultural performances, gala dinner, and Diwali celebrations.',
   registration_fee: 800,
-  upi_id: '9799951857@upi',
+  upi_id: null,
   banner_image_url: '/deepaura-banner.jpg',
   tagline: '“दीप जले, यादें मुस्कुराएँ।”',
   theme_primary_color: '#f59e0b',
   theme_accent_color: '#d97706',
-  qr_image_url: '/qr-1.png',
+  qr_image_url: null,
+  upi_rotation_configs: null,
   status: 'OPEN',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -45,7 +60,6 @@ const DEFAULT_EVENT: ECKEvent = {
 
 export const EventPage: React.FC = () => {
   const { slug } = useParams<{ slug?: string }>();
-  const activeSlug = slug || 'deepaura-2k26';
   const showIdCards = isAlumniIdCardsEnabled();
 
   const [event, setEvent] = useState<ECKEvent>(DEFAULT_EVENT);
@@ -69,19 +83,61 @@ export const EventPage: React.FC = () => {
     async function loadEvent() {
       setLoading(true);
       try {
-        const [{ data, error }, regCount] = await Promise.all([
-          supabase
+        let rawEvent: ECKEvent | null = null;
+        let resolvedSlug = slug;
+
+        if (slug) {
+          const { data, error } = await supabase
             .from('events')
             .select('*')
-            .eq('event_slug', activeSlug)
-            .single(),
-          getEventRegistrationCount(activeSlug),
-        ]);
+            .eq('event_slug', slug)
+            .single();
 
-        const rawEvent: ECKEvent =
-          error || !data
-            ? { ...DEFAULT_EVENT, event_slug: activeSlug }
-            : (data as ECKEvent);
+          if (!error && data) {
+            rawEvent = data as ECKEvent;
+          }
+        } else {
+          // Automatic nearest active/upcoming event discovery on root path '/'
+          const { data: openEvents } = await supabase
+            .from('events')
+            .select('*')
+            .eq('status', 'OPEN')
+            .order('event_date', { ascending: true })
+            .limit(1);
+
+          if (openEvents && openEvents.length > 0) {
+            rawEvent = openEvents[0] as ECKEvent;
+          } else {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const { data: upcomingEvents } = await supabase
+              .from('events')
+              .select('*')
+              .gte('event_date', todayStr)
+              .order('event_date', { ascending: true })
+              .limit(1);
+
+            if (upcomingEvents && upcomingEvents.length > 0) {
+              rawEvent = upcomingEvents[0] as ECKEvent;
+            } else {
+              const { data: recentEvents } = await supabase
+                .from('events')
+                .select('*')
+                .order('event_date', { ascending: false })
+                .limit(1);
+
+              if (recentEvents && recentEvents.length > 0) {
+                rawEvent = recentEvents[0] as ECKEvent;
+              }
+            }
+          }
+        }
+
+        if (!rawEvent) {
+          rawEvent = { ...DEFAULT_EVENT, event_slug: resolvedSlug || DEFAULT_EVENT.event_slug };
+        }
+        resolvedSlug = rawEvent.event_slug;
+
+        const regCount = await getEventRegistrationCount(resolvedSlug);
 
         // Check database-driven registration deadline and maintain in Supabase events table
         const deadlineInfo = getRegistrationStatusInfo(rawEvent);
@@ -90,7 +146,7 @@ export const EventPage: React.FC = () => {
         }
 
         // Maintain in the Supabase events table
-        syncEventRegistrationStatus(activeSlug, rawEvent.status, rawEvent.registration_closes_at).catch(() => {});
+        syncEventRegistrationStatus(resolvedSlug, rawEvent.status, rawEvent.registration_closes_at).catch(() => {});
 
         const rotation = resolveActivePaymentConfig(rawEvent, regCount);
 
@@ -99,7 +155,7 @@ export const EventPage: React.FC = () => {
           setEvent({
             ...rawEvent,
             upi_id: rotation.activeConfig.upi_id,
-            qr_image_url: rotation.activeConfig.qr_image_url,
+            qr_image_url: rotation.activeConfig.qr_image_url || null,
           });
         }
       } catch (err) {
@@ -112,7 +168,7 @@ export const EventPage: React.FC = () => {
             ...DEFAULT_EVENT,
             status: fallbackStatus,
             upi_id: rotation.activeConfig.upi_id,
-            qr_image_url: rotation.activeConfig.qr_image_url,
+            qr_image_url: rotation.activeConfig.qr_image_url || null,
           });
         }
       } finally {
@@ -125,7 +181,7 @@ export const EventPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [activeSlug]);
+  }, [slug]);
 
   // Apply dynamic theming based on event config
   useEffect(() => {
@@ -147,17 +203,17 @@ export const EventPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Refresh live count right before registration to ensure up-to-date rotation
-    getEventRegistrationCount(activeSlug)
+    getEventRegistrationCount(event.event_slug)
       .then((count) => {
         setRegistrationCount(count);
         const rotation = resolveActivePaymentConfig(event, count);
         setEvent((prev) => ({
           ...prev,
           upi_id: rotation.activeConfig.upi_id,
-          qr_image_url: rotation.activeConfig.qr_image_url,
+          qr_image_url: rotation.activeConfig.qr_image_url || null,
         }));
       })
-      .catch(() => { });
+      .catch(() => {});
   };
 
   const handleOpenManageModal = () => {
@@ -187,7 +243,7 @@ export const EventPage: React.FC = () => {
       setEvent((prevEvent) => ({
         ...prevEvent,
         upi_id: rotation.activeConfig.upi_id,
-        qr_image_url: rotation.activeConfig.qr_image_url,
+        qr_image_url: rotation.activeConfig.qr_image_url || null,
       }));
       return nextCount;
     });
@@ -201,17 +257,17 @@ export const EventPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Ensure next registration in the same browser session gets latest rotation
-    getEventRegistrationCount(activeSlug)
+    getEventRegistrationCount(event.event_slug)
       .then((count) => {
         setRegistrationCount(count);
         const rotation = resolveActivePaymentConfig(event, count);
         setEvent((prev) => ({
           ...prev,
           upi_id: rotation.activeConfig.upi_id,
-          qr_image_url: rotation.activeConfig.qr_image_url,
+          qr_image_url: rotation.activeConfig.qr_image_url || null,
         }));
       })
-      .catch(() => { });
+      .catch(() => {});
   };
 
   const handleEditSubmittedRegistration = () => {
@@ -234,195 +290,259 @@ export const EventPage: React.FC = () => {
   };
 
   return (
-    <div className="app-layout">
+    <div className="min-h-screen w-full bg-[#0a0c16] text-slate-100 flex flex-col overflow-x-hidden">
       <Header
-        title="ECK-RTU Alumni Kota Chapter"
-        tagline={event.tagline || '“दीप जले, यादें मुस्कुराएँ।”'}
+        currentEventSlug={event.event_slug}
+        maxWidth="max-w-3xl"
       />
 
-      <main className="main-content">
-        <div className="content-container">
-          {loading ? (
-            <div className="page-loader">
-              <div className="spinner" />
-              <p>Loading event information...</p>
+      <main className="flex-1 w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center min-h-[45vh] gap-3 text-amber-400">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm font-medium text-slate-300">Loading event details...</p>
+          </div>
+        ) : currentStep === 'success' && submittedData ? (
+          <SuccessPage
+            event={event}
+            formData={submittedData.formData}
+            result={submittedData.result}
+            onReset={handleResetRegistration}
+            onEdit={handleEditSubmittedRegistration}
+          />
+        ) : currentStep === 'form' ? (
+          <div className="w-full space-y-4">
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => setCurrentStep('overview')}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 hover:text-amber-400 hover:bg-slate-900 border border-transparent hover:border-slate-800 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Event Details</span>
+              </button>
             </div>
-          ) : currentStep === 'success' && submittedData ? (
-            <SuccessPage
-              event={event}
-              formData={submittedData.formData}
-              result={submittedData.result}
-              onReset={handleResetRegistration}
-              onEdit={handleEditSubmittedRegistration}
-            />
-          ) : currentStep === 'form' ? (
-            <div className="form-view">
-              <div className="form-back-nav">
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep('overview')}
-                  className="btn-back-link"
-                >
-                  ← Back to Event Details
-                </button>
-              </div>
 
-              {event.status === 'CLOSED' || isRegistrationClosed(event) ? (
-                <div className="registration-closed-form-notice">
-                  <div className="closed-icon-big">🔒</div>
-                  <h2>Online Registration is Closed</h2>
-                  <p className="closed-lead">
-                    Online registrations for DeepAura 2K26 are closed as per schedule.
-                  </p>
-                  <div className="closed-spot-box">
-                    <h4>⚡ Spot Walk-in Registration at College Gate</h4>
-                    <p>
-                      Missed registering online? You can still attend! Please visit the Spot Walk-in Registration Desk at the ECK Campus Gate on the event day.
+            {event.status === 'CLOSED' || isRegistrationClosed(event) ? (
+              <div className="rounded-2xl border border-rose-500/30 bg-slate-900/90 p-5 sm:p-8 space-y-5 shadow-2xl backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                    <Lock className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-white">Online Registration is Closed</h2>
+                    <p className="text-xs sm:text-sm text-slate-300">
+                      Online registrations for {event.event_name} are closed as per schedule.
                     </p>
-                    <div className="spot-summary-pills">
-                      <span className="spot-rate-chip">Adults: ₹1,000 / person</span>
-                      <span className="spot-rate-chip">Kids (10+ yrs): ₹500</span>
-                      <span className="spot-rate-chip chip-free">Kids (&lt;10 yrs): Free</span>
-                    </div>
-                  </div>
-                  <div className="closed-actions">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep('overview')}
-                      className="btn btn-festive-primary"
-                    >
-                      Back to Event Details
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenManageModal}
-                      className="btn btn-lookup-trigger"
-                    >
-                      🔍 Lookup Existing Registration / Pass
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="form-event-summary-bar">
-                    <span className="summary-title">{event.event_name}</span>
-                    <span className="summary-fee">₹800 Single • ₹1,500 Couple</span>
-                  </div>
-
-                  <RegistrationForm
-                    event={event}
-                    onSuccess={handleRegistrationSuccess}
-                    initialData={preloadedFormData}
-                    existingRegistration={preloadedRegistration}
-                  />
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="overview-view">
-              <EventCard
-                event={event}
-                onRegisterClick={handleStartRegistration}
-                onManageRegistrationClick={handleOpenManageModal}
-              />
-
-              {/* Dedicated Highlight Card: Alumni Gate Pass & ID Card */}
-              {showIdCards && (
-                <section className="idpass-home-feature-card" aria-label="Alumni ID Card and Entry Pass">
-                  <div className="idpass-ticket-notch idpass-ticket-notch-left" aria-hidden="true" />
-                  <div className="idpass-ticket-notch idpass-ticket-notch-right" aria-hidden="true" />
-                  
-                  <div className="idpass-feature-inner">
-                    <div className="idpass-feature-top">
-                      <span className="idpass-badge-pill">
-                        <span className="idpass-badge-dot">●</span>
-                        <span className="idpass-badge-label">ENTRY PASS</span>
-                        <span className="idpass-badge-sep">•</span>
-                        <span className="idpass-badge-sub">Fast-Track Gate Entry</span>
-                      </span>
-                    </div>
-
-                    <div className="idpass-feature-body">
-                      <h3 className="idpass-title">
-                        <span className="idpass-icon-badge">🎟️</span>
-                        <span>Alumni Event Pass &amp; Digital ID</span>
-                      </h3>
-                      <p className="idpass-desc">
-                        Already registered? Download or view your verified QR pass on your phone for fast college gate entry.
-                      </p>
-                    </div>
-
-                    <div className="idpass-feature-cta-wrap">
-                      <Link to="/id-card" className="btn btn-idpass-feature-primary" id="btn-home-download-pass">
-                        <span className="btn-ticket-icon">🎟️</span>
-                        <span>Download / View Pass</span>
-                        <svg className="btn-arrow-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </Link>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {/* Event Highlights & Features for Alumni */}
-              <div className="event-perks-section">
-                <h3 className="section-title">What to Expect</h3>
-                <div className="perks-grid">
-                  <div className="perk-card">
-                    <div className="perk-emoji">🤝</div>
-                    <div className="perk-content">
-                      <h4>Batch Reunions</h4>
-                      <p>Reconnect with your classmates, professors, and juniors across all disciplines.</p>
-                    </div>
-                  </div>
-
-                  <div className="perk-card">
-                    <div className="perk-emoji">🎙️</div>
-                    <div className="perk-content">
-                      <h4>Nostalgia &amp; Stories</h4>
-                      <p>Relive college memories, hostel days, canteen addas, and campus traditions.</p>
-                    </div>
-                  </div>
-
-                  <div className="perk-card">
-                    <div className="perk-emoji">🍽️</div>
-                    <div className="perk-content">
-                      <h4>Gala Dinner</h4>
-                      <p>An authentic Rajasthani festive dinner spread with cultural celebrations.</p>
-                    </div>
-                  </div>
-
-                  <div className="perk-card">
-                    <div className="perk-emoji">🌐</div>
-                    <div className="perk-content">
-                      <h4>Alumni Directory</h4>
-                      <p>Grow our active professional and mentorship network across India and globally.</p>
-                    </div>
                   </div>
                 </div>
 
-                {event.status === 'OPEN' && !isRegistrationClosed() && (
-                  <div className="bottom-cta-wrap">
-                    <button
-                      type="button"
-                      onClick={handleStartRegistration}
-                      className="btn btn-festive-primary btn-large btn-block"
-                    >
-                      <span>Register for DeepAura 2K26</span>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5 space-y-3">
+                  <h4 className="text-sm sm:text-base font-bold text-amber-300 flex items-center gap-2">
+                    <span>⚡ Spot Walk-in Registration at College Gate</span>
+                  </h4>
+                  <p className="text-xs sm:text-sm text-slate-300">
+                    Missed registering online? You can still attend! Please visit the Spot Walk-in Registration Desk at the ECK Campus Gate on the event day.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <span className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-xs font-semibold text-amber-300">
+                      Adults: ₹{(event.pricing_config?.spot_adult || 1000).toLocaleString('en-IN')} / person
+                    </span>
+                    <span className="rounded-lg bg-slate-800 border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300">
+                      Kids (10+ yrs): ₹{(event.pricing_config?.spot_child_above_10 || 500).toLocaleString('en-IN')}
+                    </span>
+                    <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
+                      Kids (&lt;10 yrs): Free
+                    </span>
                   </div>
-                )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep('overview')}
+                    className="flex min-h-[48px] items-center justify-center rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-md transition-all hover:brightness-110 cursor-pointer active:scale-[0.99]"
+                  >
+                    Back to Event Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenManageModal}
+                    className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-medium text-slate-200 transition-all hover:bg-slate-700 hover:text-white cursor-pointer active:bg-slate-600"
+                  >
+                    <Search className="h-4 w-4 text-amber-400" />
+                    <span>Lookup Existing Registration / Pass</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                  <span className="text-sm font-semibold text-amber-200">{event.event_name}</span>
+                  <span className="text-xs sm:text-sm font-medium text-amber-300">
+                    {`₹${(event.pricing_config?.single_adult || event.registration_fee || 800).toLocaleString('en-IN')} Single • ₹${(event.pricing_config?.couple || 1500).toLocaleString('en-IN')} Couple`}
+                  </span>
+                </div>
+
+                <RegistrationForm
+                  event={event}
+                  onSuccess={handleRegistrationSuccess}
+                  initialData={preloadedFormData}
+                  existingRegistration={preloadedRegistration}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="w-full space-y-6 sm:space-y-8">
+            <EventCard
+              event={event}
+              onRegisterClick={handleStartRegistration}
+              onManageRegistrationClick={handleOpenManageModal}
+            />
+
+            {/* Dedicated Highlight Card: Alumni Gate Pass & ID Card - hidden once event concludes */}
+            {showIdCards && !isEventConcluded(event) && (
+              <section
+                className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-slate-900/90 to-orange-500/10 p-4 sm:p-6 shadow-xl backdrop-blur-md"
+                aria-label="Alumni ID Card and Entry Pass"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                      ENTRY PASS • Fast-Track Gate Entry
+                    </span>
+
+                    <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                      <Ticket className="h-5 w-5 text-amber-400" />
+                      <span>Alumni Event Pass &amp; Digital ID</span>
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+                      Already registered? Download or view your verified QR pass on your phone for fast college gate entry.
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 pt-2 sm:pt-0">
+                    <Link
+                      to="/id-card"
+                      className="inline-flex min-h-[48px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-5 py-3 text-sm font-bold !text-slate-950 shadow-md shadow-amber-500/25 transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer"
+                      id="btn-home-download-pass"
+                    >
+                      <Ticket className="h-4 w-4 text-slate-950" />
+                      <span className="!text-slate-950">Download / View Pass</span>
+                      <ArrowRight className="h-4 w-4 text-slate-950" />
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Alumni Directory & Help Portal Spotlight */}
+            <section
+              className="relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-slate-900/90 to-indigo-500/10 p-4 sm:p-6 shadow-xl backdrop-blur-md"
+              aria-label="Alumni Directory and Help"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                    ALUMNI NETWORK • Directory &amp; Help Desk
+                  </span>
+
+                  <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-400" />
+                    <span>Alumni Directory &amp; Help Connect</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+                    Looking for guidance in your engineering department or settling into a new city? Search alumni by department, location, or update your profile.
+                  </p>
+                </div>
+
+                <div className="shrink-0 pt-2 sm:pt-0">
+                  <Link
+                    to="/directory"
+                    className="inline-flex min-h-[48px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all hover:brightness-110 active:scale-[0.99]"
+                  >
+                    <Search className="h-4 w-4" />
+                    <span>Explore Alumni Directory</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            {/* Event Highlights & Features for Alumni */}
+            <div className="space-y-4">
+              <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">What to Expect</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex items-start gap-3.5 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm sm:text-base font-bold text-slate-100">Batch Reunions</h4>
+                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                      Reconnect with your classmates, professors, and juniors across all disciplines.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm sm:text-base font-bold text-slate-100">Nostalgia &amp; Stories</h4>
+                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                      Relive college memories, hostel days, canteen addas, and campus traditions.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Utensils className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm sm:text-base font-bold text-slate-100">Gala Dinner</h4>
+                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                      An authentic Rajasthani festive dinner spread with cultural celebrations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Globe className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm sm:text-base font-bold text-slate-100">Alumni Directory</h4>
+                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                      Grow our active professional and mentorship network across India and globally.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* Live Event Memories & Highlights */}
-              <EventMemoryWall event={event} />
+              {event.status === 'OPEN' && !isRegistrationClosed(event) && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleStartRegistration}
+                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 py-3.5 px-6 text-base font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer"
+                  >
+                    <span>Register for {event.event_name}</span>
+                    <ArrowRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* Live Event Memories & Highlights */}
+            <EventMemoryWall event={event} />
+          </div>
+        )}
       </main>
 
       {/* Self-service Manage Registration Modal */}
@@ -434,22 +554,7 @@ export const EventPage: React.FC = () => {
         onNewRegistration={handleStartRegistration}
       />
 
-      <footer className="site-footer">
-        <div className="footer-content">
-          <div className="footer-logos-row">
-            <img src="/logo-eck.png" alt="ECK Kota" className="footer-crest-img" width="44" height="44" />
-            <img src="/logo-rtu.png" alt="RTU Kota" className="footer-crest-img" width="44" height="44" />
-          </div>
-          <p className="footer-org-name">ECK-RTU Alumni Kota Chapter</p>
-          <p className="footer-tagline-text">“दीप जले, यादें मुस्कुराएँ।”</p>
-          <p className="footer-sub">
-            ECK-RTU Alumni DeepAura 2K26 • Kota, Rajasthan
-          </p>
-          <p className="footer-copyright">
-            © {new Date().getFullYear()} ECK-RTU Alumni Kota Chapter. All Rights Reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

@@ -1,5 +1,28 @@
 import React, { useState, useMemo } from 'react';
-import type { EventExpense, EventRegistration, PaymentVerification, Sponsorship } from '../types';
+import {
+  ArrowRightLeft,
+  Plus,
+  Search,
+  X,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Phone,
+  FileText,
+  Edit2,
+  Receipt,
+  PlusCircle,
+  MinusCircle,
+  CheckCircle2,
+} from 'lucide-react';
+import type {
+  EventExpense,
+  EventRegistration,
+  PaymentVerification,
+  Sponsorship,
+  ECKEvent,
+  ExpenseAccountConfig,
+} from '../types';
 import {
   formatINR,
   getExpenseCategoryIcon,
@@ -20,6 +43,8 @@ interface EventExpensesManagerProps {
   sponsorshipCount?: number;
   eventName?: string;
   eventId?: string;
+  event?: ECKEvent | null;
+  expenseAccountsConfig?: ExpenseAccountConfig[] | null;
   registrations?: EventRegistration[];
   verifications?: PaymentVerification[];
   sponsorships?: Sponsorship[];
@@ -40,6 +65,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   sponsorshipCount = 0,
   eventName = 'ECK-RTU Alumni DeepAura 2K26',
   eventId,
+  event,
+  expenseAccountsConfig,
   registrations = [],
   verifications = [],
   sponsorships = [],
@@ -76,13 +103,16 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       expenses,
       registrations,
       verifications,
-      sponsorships
+      sponsorships,
+      expenseAccountsConfig || event?.expense_accounts_config || undefined
     );
-  }, [expenses, registrations, verifications, sponsorships]);
+  }, [expenses, registrations, verifications, sponsorships, expenseAccountsConfig, event]);
 
-  // Aggregated Financial Metrics & Feasibility (excludes internal transfers so real budget is not distorted)
+  // Aggregated Financial Metrics & Feasibility (excludes internal transfers & campus legacy fund so real event budget is not distorted)
   const stats = useMemo(() => {
-    const realExpenses = expenses.filter((e) => e.category !== 'Internal Transfer');
+    const realExpenses = expenses.filter(
+      (e) => e.category !== 'Internal Transfer' && e.category !== 'Campus Legacy Fund'
+    );
     const totalItems = realExpenses.length;
     const totalExpected = realExpenses.reduce((sum, e) => sum + Number(e.expected_amount || 0), 0);
     const totalActual = realExpenses.reduce((sum, e) => sum + Number(e.actual_amount || 0), 0);
@@ -125,6 +155,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   // Filtered expenses based on active ledger tab, search, status & paying account
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
+      // Exclude Campus Legacy Fund from Event Expenses list (it is managed exclusively in Central Treasury)
+      if (e.category === 'Campus Legacy Fund') return false;
       const isTransfer = e.category === 'Internal Transfer';
 
       // 1. Filter by Active Ledger Tab (Expenses vs Transfers)
@@ -206,65 +238,68 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'settled':
-        return { label: 'Settled', bg: '#064e3b', color: '#6ee7b7', border: '#059669' };
+        return { label: 'Settled', bg: 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300' };
       case 'paid':
-        return { label: 'Paid', bg: '#065f46', color: '#a7f3d0', border: '#10b981' };
+        return { label: 'Paid', bg: 'bg-emerald-900/50 border-emerald-500/50 text-emerald-200' };
       case 'partially_paid':
-        return { label: 'Partial', bg: '#78350f', color: '#fde68a', border: '#d97706' };
+        return { label: 'Partial', bg: 'bg-amber-950/60 border-amber-500/40 text-amber-300' };
       case 'cancelled':
-        return { label: 'Cancelled', bg: '#450a0a', color: '#fca5a5', border: '#dc2626' };
+        return { label: 'Cancelled', bg: 'bg-red-950/60 border-red-500/40 text-red-300' };
       default:
-        return { label: 'Planned', bg: '#1e293b', color: '#cbd5e1', border: '#475569' };
+        return { label: 'Planned', bg: 'bg-slate-800 border-slate-700 text-slate-300' };
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="flex flex-col gap-4 text-slate-100">
       {/* 3 Stats Cards — responsive 1 col mobile, 3 cols desktop */}
-      <div className="stats-grid budget-stats-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Card 1: Total Available Funds */}
-        <div className="stat-card">
-          <span className="stat-label">Total Available Funds</span>
-          <span className="stat-value font-accent">₹{formatINR(stats.totalAvailableFunds)}</span>
-          <div className="stat-hint" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px' }}>
-            <span>
-              ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount} attending)` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
-            </span>
-            {totalHeadcount > 0 && (
-              <span style={{ color: '#38bdf8', fontWeight: 600, fontSize: '0.73rem' }}>
-                👥 {totalHeadcount} Total Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
-              </span>
-            )}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-lg flex flex-col items-center justify-center text-center">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            TOTAL AVAILABLE FUNDS
+          </span>
+          <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
+            ₹{formatINR(stats.totalAvailableFunds)}
+          </span>
+          <div className="text-amber-400 font-semibold text-xs">
+            ₹{formatINR(registrationAmount)} Regs{registrationCount > 0 ? ` (${registrationCount} attending)` : ''} • ₹{formatINR(sponsorshipAmount)} Sponsors{sponsorshipCount > 0 ? ` (${sponsorshipCount})` : ''}
           </div>
+          {totalHeadcount > 0 && (
+            <div className="text-sky-400 font-semibold text-xs flex items-center justify-center gap-1 mt-0.5">
+              <span>👥</span>
+              <span>
+                {totalHeadcount} Total Headcount {totalHeadcount > registrationCount ? `(${registrationCount} alumni + ${totalHeadcount - registrationCount} guests)` : ''}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Card 2: Expected Budget (Plan) with Projected Surplus/Deficit */}
         <div
-          className="stat-card"
-          style={stats.isDeficit ? { borderColor: 'rgba(239, 68, 68, 0.45)' } : undefined}
+          className={`p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center ${
+            stats.isDeficit ? 'border-red-500/40' : 'border-amber-500/30'
+          }`}
         >
-          <span className="stat-label">Expected Budget (Plan)</span>
-          <span className="stat-value">₹{formatINR(stats.totalExpected)}</span>
-          <div className="stat-hint" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '3px', alignItems: 'center' }}>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            EXPECTED BUDGET (PLAN)
+          </span>
+          <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
+            ₹{formatINR(stats.totalExpected)}
+          </span>
+          <div className="flex flex-col items-center gap-1 mt-0.5">
             <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '2px 8px',
-                borderRadius: '999px',
-                fontSize: '0.74rem',
-                fontWeight: 700,
-                backgroundColor: stats.isDeficit ? 'rgba(239, 68, 68, 0.16)' : 'rgba(16, 185, 129, 0.16)',
-                color: stats.isDeficit ? '#f87171' : '#34d399',
-                border: stats.isDeficit ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(16, 185, 129, 0.35)',
-              }}
+              className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                stats.isDeficit
+                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+              }`}
             >
               {stats.isDeficit
                 ? `Projected Deficit: -₹${formatINR(Math.abs(stats.fundingGap))}`
                 : `Projected Surplus: +₹${formatINR(stats.fundingGap)}`}
             </span>
-            <span>
+            <span className="text-amber-400 font-semibold text-xs">
               {stats.totalItems} planned line items
               {totalHeadcount > 0 && stats.totalExpected > 0 ? ` • ₹${formatINR(Math.round(stats.totalExpected / totalHeadcount))}/head` : ''}
             </span>
@@ -273,31 +308,29 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
         {/* Card 3: Real Paid Expenses with Real Surplus/Deficit */}
         <div
-          className="stat-card"
-          style={stats.liveCashBalance < 0 ? { borderColor: 'rgba(239, 68, 68, 0.45)' } : undefined}
+          className={`p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border shadow-lg flex flex-col items-center justify-center text-center ${
+            stats.liveCashBalance < 0 ? 'border-red-500/40' : 'border-amber-500/30'
+          }`}
         >
-          <span className="stat-label">Real Paid Expenses</span>
-          <span className="stat-value font-success">₹{formatINR(stats.totalActual)}</span>
-          <div className="stat-hint" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '3px', alignItems: 'center' }}>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            REAL PAID EXPENSES
+          </span>
+          <span className="text-2xl sm:text-[1.65rem] font-black text-white my-1 tracking-tight">
+            ₹{formatINR(stats.totalActual)}
+          </span>
+          <div className="flex flex-col items-center gap-1 mt-0.5">
             <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '2px 8px',
-                borderRadius: '999px',
-                fontSize: '0.74rem',
-                fontWeight: 700,
-                backgroundColor: stats.liveCashBalance >= 0 ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)',
-                color: stats.liveCashBalance >= 0 ? '#34d399' : '#f87171',
-                border: stats.liveCashBalance >= 0 ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)',
-              }}
+              className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                stats.liveCashBalance >= 0
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : 'bg-red-500/15 text-red-400 border-red-500/30'
+              }`}
             >
               {stats.liveCashBalance >= 0
-                ? `Actual Surplus: +₹${formatINR(stats.liveCashBalance)}`
+                ? `Live Cash Balance: +₹${formatINR(stats.liveCashBalance)}`
                 : `Actual Deficit: -₹${formatINR(Math.abs(stats.liveCashBalance))}`}
             </span>
-            <span>
+            <span className="text-amber-400 font-semibold text-xs">
               {stats.settledCount} settled{stats.actualVariance !== 0 ? ` • ₹${formatINR(Math.abs(stats.actualVariance))} ${stats.isUnderBudget ? 'saved vs budget' : 'over budget'}` : ''}
             </span>
           </div>
@@ -306,161 +339,84 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
       {/* Minimalist Funding Feasibility Track (Mobile Optimized) */}
       {stats.totalExpected > 0 && (
-        <div
-          style={{
-            backgroundColor: 'rgba(30, 41, 59, 0.6)',
-            borderRadius: '12px',
-            padding: '10px 14px',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-          }}
-        >
+        <div className="p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 shadow-lg flex flex-col gap-2.5">
           {/* Top Row: Status Pill & Target Budget */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <div className="flex items-center justify-between gap-2">
             <span
-              style={{
-                backgroundColor: stats.isDeficit ? 'rgba(239, 68, 68, 0.18)' : 'rgba(16, 185, 129, 0.18)',
-                border: stats.isDeficit ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.4)',
-                color: stats.isDeficit ? '#fca5a5' : '#86efac',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                padding: '2px 10px',
-                borderRadius: '999px',
-                letterSpacing: '0.2px',
-                whiteSpace: 'nowrap',
-              }}
+              className={`px-3 py-0.5 rounded-full text-xs font-bold border tracking-wide whitespace-nowrap ${
+                stats.isDeficit
+                  ? 'bg-red-500/15 border-red-500/30 text-red-300'
+                  : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+              }`}
             >
               {stats.fundedPct}% Funded
             </span>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-              Target: <strong style={{ color: '#cbd5e1' }}>₹{formatINR(stats.totalExpected)}</strong>
+            <span className="text-xs text-slate-400 whitespace-nowrap">
+              Target: <strong className="text-slate-200 font-bold">₹{formatINR(stats.totalExpected)}</strong>
             </span>
           </div>
 
           {/* Dual Segment Progress Bar */}
-          <div
-            style={{
-              height: '8px',
-              width: '100%',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: '999px',
-              overflow: 'hidden',
-              display: 'flex',
-            }}
-          >
+          <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden flex">
             <div
-              style={{
-                width: `${Math.min(stats.fundedPct, 100)}%`,
-                backgroundColor: '#10b981',
-                transition: 'width 0.4s ease',
-              }}
+              className="bg-emerald-500 transition-all duration-500"
+              style={{ width: `${Math.min(stats.fundedPct, 100)}%` }}
               title={`Collected Funds: ₹${formatINR(stats.totalAvailableFunds)}`}
             />
             {stats.isDeficit && (
               <div
-                style={{
-                  width: `${Math.max(100 - stats.fundedPct, 0)}%`,
-                  backgroundColor: '#ef4444',
-                  transition: 'width 0.4s ease',
-                }}
+                className="bg-red-500 transition-all duration-500"
+                style={{ width: `${Math.max(100 - stats.fundedPct, 0)}%` }}
                 title={`Deficit to Raise: ₹${formatINR(Math.abs(stats.fundingGap))}`}
               />
             )}
           </div>
 
-          {/* Bottom Labels (Single Line on Mobile) */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '0.76rem',
-              fontWeight: 600,
-              gap: '8px',
-            }}
-          >
-            <span style={{ color: '#86efac', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: '9px' }}>●</span> Collected: ₹{formatINR(stats.totalAvailableFunds)}
+          {/* Bottom Labels */}
+          <div className="flex items-center justify-between text-xs font-semibold gap-2">
+            <span className="text-emerald-400 inline-flex items-center gap-1.5 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <span>Collected: ₹{formatINR(stats.totalAvailableFunds)}</span>
             </span>
             <span
-              style={{
-                color: stats.isDeficit ? '#fca5a5' : '#34d399',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                whiteSpace: 'nowrap',
-              }}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap ${
+                stats.isDeficit ? 'text-red-400' : 'text-emerald-400'
+              }`}
             >
-              <span style={{ fontSize: '9px' }}>●</span>{' '}
-              {stats.isDeficit
-                ? `Deficit: ₹${formatINR(Math.abs(stats.fundingGap))}`
-                : `Surplus: +₹${formatINR(stats.fundingGap)}`}
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${stats.isDeficit ? 'bg-red-400' : 'bg-emerald-400'}`} />
+              <span>
+                {stats.isDeficit
+                  ? `Deficit: ₹${formatINR(Math.abs(stats.fundingGap))}`
+                  : `Surplus: +₹${formatINR(stats.fundingGap)}`}
+              </span>
             </span>
           </div>
         </div>
       )}
 
       {/* ── ACCOUNT SETTLEMENT & CASH IN HAND CARD ── */}
-      <div
-        style={{
-          backgroundColor: '#1e293b',
-          borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-lg">
         {/* Settlement Header */}
         <div
           onClick={() => setIsSettlementOpen((prev) => !prev)}
-          style={{
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '8px',
-            cursor: 'pointer',
-            backgroundColor: 'rgba(15, 23, 42, 0.5)',
-            userSelect: 'none',
-            flexWrap: 'wrap',
-          }}
+          className="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer bg-slate-950/60 hover:bg-slate-950/80 transition-colors select-none flex-wrap"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '18px' }}>💳</span>
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="text-xl shrink-0">💳</span>
             <div>
-              <h4
-                style={{
-                  margin: 0,
-                  fontSize: '0.94rem',
-                  fontWeight: 700,
-                  color: '#f8fafc',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <span>Account Settlement &amp; Net Balance</span>
-                <span
-                  style={{
-                    fontSize: '0.7rem',
-                    padding: '1px 7px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(99, 102, 241, 0.18)',
-                    color: '#a5b4fc',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                  }}
-                >
+              <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2 flex-wrap">
+                <span>Account Settlement & Net Balance</span>
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   Adjusted per Person
                 </span>
               </h4>
-              <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
+              <p className="text-xs text-slate-400 mt-0.5">
                 Total collections vs expenses disbursed from each account
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
             <button
               type="button"
               onClick={(e) => {
@@ -469,24 +425,9 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 setPresetFromAccount(undefined);
                 setIsTransferModalOpen(true);
               }}
-              style={{
-                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                minHeight: '44px',
-                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
-                whiteSpace: 'nowrap',
-              }}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-indigo-950/40 transition-colors"
             >
-              <span style={{ fontSize: '15px' }}>⇄</span>
+              <ArrowRightLeft className="w-4 h-4" />
               <span>Transfer Funds</span>
             </button>
 
@@ -497,39 +438,33 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                   e.stopPropagation();
                   setSelectedAccountFilter('all');
                 }}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  color: '#cbd5e1',
-                  fontSize: '0.74rem',
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                }}
+                className="min-h-[44px] px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition-colors"
               >
                 Clear Filter ✕
               </button>
             )}
-            <span style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>
-              {isSettlementOpen ? '▲ Hide' : '▼ View Breakdown'}
+
+            <span className="text-xs text-slate-300 font-semibold flex items-center gap-1 pl-1">
+              {isSettlementOpen ? (
+                <>
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                  <span className="hidden sm:inline">Hide</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <span className="hidden sm:inline">Breakdown</span>
+                </>
+              )}
             </span>
           </div>
         </div>
 
         {/* Settlement Content */}
         {isSettlementOpen && (
-          <div
-            style={{
-              padding: '12px 14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-            }}
-          >
-            {/* Account Cards Grid */}
-            <div className="settlement-accounts-grid">
+          <div className="p-3.5 sm:p-4 border-t border-slate-800/80 space-y-3">
+            {/* Account Cards Grid — clean 2 columns for optimal real-estate without truncation */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
               {settlementData.accounts.map((acc) => {
                 const isSelected =
                   selectedAccountFilter.toLowerCase() === acc.accountName.toLowerCase();
@@ -544,68 +479,20 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                         prev.toLowerCase() === acc.accountName.toLowerCase() ? 'all' : acc.accountName
                       )
                     }
-                    style={{
-                      backgroundColor: isSelected ? '#1e293b' : '#0c1322',
-                      borderRadius: '12px',
-                      padding: '14px 16px',
-                      border: isSelected
-                        ? '1.5px solid #6366f1'
-                        : '1px solid rgba(255, 255, 255, 0.08)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isSelected ? '0 0 12px rgba(99, 102, 241, 0.25)' : 'none',
-                      minWidth: 0,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = '#111c30';
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.16)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = '#0c1322';
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                      }
-                    }}
+                    className={`p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                      isSelected
+                        ? 'bg-slate-800 border-indigo-500 ring-2 ring-indigo-500/30 shadow-lg shadow-indigo-950/40'
+                        : 'bg-slate-950/60 hover:bg-slate-900 border-slate-800 hover:border-slate-700'
+                    }`}
                   >
                     {/* Header: Name, Bank & Status Pill */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '8px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexWrap: 'wrap' }}>
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            fontSize: '1.05rem',
-                            color: '#f8fafc',
-                            letterSpacing: '-0.2px',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                        <span className="font-bold text-sm sm:text-base text-white tracking-tight truncate">
                           {acc.accountName}
                         </span>
                         {acc.bankName && acc.bankName !== 'Other' && (
-                          <span
-                            style={{
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                              color: '#94a3b8',
-                              letterSpacing: '0.3px',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700/60">
                             {acc.bankName}
                           </span>
                         )}
@@ -613,202 +500,76 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
                       {/* Status Pill: Grey for SETTLED, Green for SURPLUS, Red for DUE */}
                       <span
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          padding: '3px 10px',
-                          borderRadius: '9999px',
-                          backgroundColor: isPositive
-                            ? 'rgba(16, 185, 129, 0.1)'
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shrink-0 border ${
+                          isPositive
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                             : isNegative
-                            ? 'rgba(239, 68, 68, 0.1)'
-                            : 'rgba(148, 163, 184, 0.12)',
-                          color: isPositive ? '#34d399' : isNegative ? '#f87171' : '#94a3b8',
-                          border: isPositive
-                            ? '1px solid rgba(16, 185, 129, 0.5)'
-                            : isNegative
-                            ? '1px solid rgba(239, 68, 68, 0.5)'
-                            : '1px solid rgba(148, 163, 184, 0.35)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          whiteSpace: 'nowrap',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.4px',
-                          flexShrink: 0,
-                        }}
+                            ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                            : 'bg-slate-800/80 text-slate-300 border-slate-700'
+                        }`}
                       >
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '13px',
-                            height: '13px',
-                            borderRadius: '50%',
-                            border: `1.5px solid ${isNegative ? '#f87171' : isPositive ? '#34d399' : '#94a3b8'}`,
-                            fontSize: '9px',
-                            fontWeight: 800,
-                            lineHeight: 1,
-                            color: isNegative ? '#f87171' : isPositive ? '#34d399' : '#94a3b8',
-                          }}
-                        >
-                          {isNegative ? '!' : '✓'}
-                        </span>
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
                         {isPositive ? 'SURPLUS' : isNegative ? 'DUE' : 'SETTLED'}
                       </span>
                     </div>
 
                     {/* Inflow vs Spent Row */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '0.86rem',
-                        gap: '8px',
-                      }}
-                    >
-                      {/* Inflow */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '15px',
-                            height: '15px',
-                            borderRadius: '50%',
-                            border: '1.5px solid #34d399',
-                            color: '#34d399',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            lineHeight: 1,
-                          }}
-                        >
-                          +
-                        </span>
-                        <span style={{ color: '#cbd5e1' }}>Inflow:</span>
-                        <strong style={{ color: '#34d399', fontWeight: 700, fontSize: '0.92rem' }}>
-                          ₹{formatINR(acc.inflow)}
-                        </strong>
+                    <div className="flex items-center justify-between text-xs gap-2 pt-1 font-bold">
+                      <div className="flex items-center gap-1 text-emerald-400">
+                        <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-slate-300 font-medium">Inflow:</span>
+                        <span>₹{formatINR(acc.inflow)}</span>
                       </div>
 
-                      {/* Spent */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '15px',
-                            height: '15px',
-                            borderRadius: '50%',
-                            border: '1.5px solid #f87171',
-                            color: '#f87171',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            lineHeight: 1,
-                          }}
-                        >
-                          −
-                        </span>
-                        <span style={{ color: '#cbd5e1' }}>Spent:</span>
-                        <strong style={{ color: '#f87171', fontWeight: 700, fontSize: '0.92rem' }}>
-                          ₹{formatINR(acc.outflow)}
-                        </strong>
+                      <div className="flex items-center gap-1 text-rose-400">
+                        <MinusCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-slate-300 font-medium">Spent:</span>
+                        <span>₹{formatINR(acc.outflow)}</span>
                       </div>
                     </div>
 
                     {/* Internal Transfers breakdown (if any) */}
                     {((acc.transferredIn || 0) > 0 || (acc.transferredOut || 0) > 0) && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: '0.78rem',
-                          backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                          border: '1px solid rgba(99, 102, 241, 0.22)',
-                          borderRadius: '6px',
-                          padding: '4px 10px',
-                          color: '#c7d2fe',
-                        }}
-                        title={`Transfers for ${acc.accountName}: +₹${formatINR(acc.transferredIn || 0)} received, -₹${formatINR(acc.transferredOut || 0)} sent`}
-                      >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                          <span>⇄ Transfers:</span>
+                      <div className="flex items-center justify-between text-[11px] bg-indigo-950/30 border border-indigo-500/20 rounded-lg px-2.5 py-1 text-indigo-300">
+                        <span className="flex items-center gap-1 font-semibold">
+                          <ArrowRightLeft className="w-3 h-3 text-indigo-400" />
+                          <span>Transfers:</span>
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
+                        <div className="flex items-center gap-2 font-bold">
                           {(acc.transferredIn || 0) > 0 && (
-                            <span style={{ color: '#34d399' }}>
-                              +₹{formatINR(acc.transferredIn || 0)}
-                            </span>
+                            <span className="text-emerald-400">+₹{formatINR(acc.transferredIn || 0)}</span>
                           )}
                           {(acc.transferredOut || 0) > 0 && (
-                            <span style={{ color: '#f87171' }}>
-                              -₹{formatINR(acc.transferredOut || 0)}
-                            </span>
+                            <span className="text-red-400">-₹{formatINR(acc.transferredOut || 0)}</span>
                           )}
                         </div>
                       </div>
                     )}
 
-                    {/* Dashed Separator */}
-                    <div style={{ borderTop: '1px dashed rgba(255, 255, 255, 0.1)', margin: '1px 0' }} />
-
                     {/* Dedicated Balance Pill Box */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        backgroundColor: '#0a0f1d',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        borderRadius: '8px',
-                        padding: '9px 14px',
-                      }}
-                    >
-                      <span style={{ color: '#94a3b8', fontSize: '0.92rem', fontWeight: 500 }}>
-                        Balance
-                      </span>
+                    <div className="flex items-center justify-between bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2">
+                      <span className="text-xs text-slate-400 font-medium">Balance</span>
                       <strong
-                        style={{
-                          color: isPositive ? '#34d399' : isNegative ? '#f87171' : '#cbd5e1',
-                          fontSize: '1.12rem',
-                          fontWeight: 700,
-                          letterSpacing: '0.2px',
-                        }}
+                        className={`text-sm sm:text-base font-bold ${
+                          isPositive ? 'text-emerald-400' : isNegative ? 'text-red-400' : 'text-white'
+                        }`}
                       >
                         {isPositive
-                          ? `+₹${formatINR(acc.netBalance)}`
+                          ? `₹${formatINR(acc.netBalance)}`
                           : isNegative
                           ? `-₹${formatINR(Math.abs(acc.netBalance))}`
                           : '₹0'}
                       </strong>
                     </div>
 
-                    {/* Footer: Expenses Count, Transfer Action & Filter Link */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '0.8rem',
-                        color: '#94a3b8',
-                        paddingTop: '2px',
-                        gap: '8px',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>☑</span>
-                        <span>
-                          {acc.expenseCount} {acc.expenseCount === 1 ? 'expense' : 'expenses'} paid
-                        </span>
-                      </div>
+                    {/* Footer Actions */}
+                    <div className="flex items-center justify-between text-xs text-slate-400 pt-1 gap-2 flex-wrap">
+                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <span>☑</span>
+                        <span>{acc.expenseCount} {acc.expenseCount === 1 ? 'expense' : 'expenses'} paid</span>
+                      </span>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -817,40 +578,21 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                             setPresetFromAccount(acc.accountName);
                             setIsTransferModalOpen(true);
                           }}
-                          style={{
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            border: '1px solid rgba(99, 102, 241, 0.35)',
-                            borderRadius: '6px',
-                            color: '#a5b4fc',
-                            fontSize: '0.74rem',
-                            fontWeight: 600,
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            minHeight: '34px',
-                          }}
+                          className="min-h-[36px] px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 text-[11px] font-semibold flex items-center gap-1 transition-colors"
                           title={`Transfer funds out from ${acc.accountName}`}
                         >
-                          <span>⇄</span>
+                          <ArrowRightLeft className="w-3 h-3" />
                           <span>Transfer</span>
                         </button>
 
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            color: isSelected ? '#a5b4fc' : '#cbd5e1',
-                            fontWeight: 600,
-                            textDecoration: 'underline',
-                            textUnderlineOffset: '2px',
-                          }}
+                        <span
+                          className={`text-[11px] font-semibold flex items-center gap-1 underline underline-offset-2 ${
+                            isSelected ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'
+                          }`}
                         >
-                          <span style={{ fontSize: '12px', textDecoration: 'none' }}>☰</span>
+                          <span>≡</span>
                           <span>{isSelected ? '✓ Filtered' : 'Filter by this'}</span>
-                        </div>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -860,45 +602,18 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
             {/* ── INTER-ACCOUNT TRANSFERS HISTORY SECTION ── */}
             {internalTransfers.length > 0 && (
-              <div
-                style={{
-                  marginTop: '10px',
-                  backgroundColor: '#0c1322',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(99, 102, 241, 0.25)',
-                  overflow: 'hidden',
-                }}
-              >
+              <div className="mt-3 rounded-xl bg-slate-950/60 border border-indigo-500/25 overflow-hidden">
                 <div
                   onClick={() => setIsTransfersHistoryOpen((prev) => !prev)}
-                  style={{
-                    padding: '10px 14px',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                  }}
+                  className="p-3 bg-indigo-950/20 hover:bg-indigo-950/30 flex items-center justify-between cursor-pointer select-none gap-2 flex-wrap"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '16px' }}>🔄</span>
-                    <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#e0e7ff' }}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <ArrowRightLeft className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs sm:text-sm font-bold text-indigo-200">
                       Inter-Account Transfer History ({internalTransfers.length})
                     </span>
-                    <span
-                      style={{
-                        fontSize: '0.72rem',
-                        backgroundColor: 'rgba(99, 102, 241, 0.25)',
-                        color: '#c7d2fe',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      Total Transferred: ₹
+                    <span className="text-[11px] bg-indigo-500/25 text-indigo-300 px-2 py-0.5 rounded-md font-bold font-mono">
+                      Total: ₹
                       {formatINR(
                         internalTransfers.reduce(
                           (sum, t) => sum + Number(t.actual_amount || 0),
@@ -907,13 +622,23 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                       )}
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.78rem', color: '#a5b4fc', fontWeight: 600 }}>
-                    {isTransfersHistoryOpen ? '▲ Hide' : '▼ View History'}
+                  <span className="text-xs text-indigo-300 font-semibold flex items-center gap-1">
+                    {isTransfersHistoryOpen ? (
+                      <>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                        <span>Hide</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                        <span>View History</span>
+                      </>
+                    )}
                   </span>
                 </div>
 
                 {isTransfersHistoryOpen && (
-                  <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div className="p-2 sm:p-3 space-y-2 border-t border-indigo-500/20">
                     {internalTransfers.map((tx) => {
                       const from = tx.paid_from_account || 'Unknown';
                       const to = tx.vendor_name || 'Unknown';
@@ -927,72 +652,32 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                             setSelectedTransfer(tx);
                             setIsTransferModalOpen(true);
                           }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '9px 12px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(255, 255, 255, 0.06)',
-                            fontSize: '0.84rem',
-                            cursor: 'pointer',
-                            gap: '8px',
-                            flexWrap: 'wrap',
-                            transition: 'background-color 0.15s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.12)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
-                          }}
+                          className="p-3 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-indigo-500/40 transition-colors cursor-pointer flex items-center justify-between gap-3 flex-wrap"
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '28px',
-                                height: '28px',
-                                borderRadius: '50%',
-                                backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                                color: '#a5b4fc',
-                                fontSize: '14px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              ⇄
-                            </span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
+                              <ArrowRightLeft className="w-4 h-4" />
+                            </div>
                             <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <strong style={{ color: '#f87171' }}>{from}</strong>
-                                <span style={{ color: '#94a3b8' }}>➔</span>
-                                <strong style={{ color: '#34d399' }}>{to}</strong>
+                              <div className="flex items-center gap-1.5 flex-wrap text-xs sm:text-sm">
+                                <strong className="text-red-400">{from}</strong>
+                                <span className="text-slate-500">➔</span>
+                                <strong className="text-emerald-400">{to}</strong>
                                 {tx.payment_mode && (
-                                  <span
-                                    style={{
-                                      fontSize: '0.7rem',
-                                      padding: '1px 6px',
-                                      borderRadius: '4px',
-                                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                                      color: '#94a3b8',
-                                    }}
-                                  >
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
                                     {tx.payment_mode}
                                   </span>
                                 )}
                               </div>
-                              <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '2px' }}>
+                              <div className="text-[11px] text-slate-400 mt-0.5">
                                 {tx.payment_date || 'No date'}
                                 {tx.notes ? ` • ${tx.notes}` : ''}
                               </div>
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <strong style={{ color: '#a5b4fc', fontSize: '0.96rem', fontWeight: 700 }}>
+                          <div className="flex items-center gap-3 ml-auto">
+                            <strong className="text-indigo-300 font-mono font-bold text-sm sm:text-base">
                               ₹{formatINR(amt)}
                             </strong>
                             {receiptUrls.length > 0 && (
@@ -1002,27 +687,15 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                                   e.stopPropagation();
                                   setPreviewImageUrl(receiptUrls[0]);
                                 }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '15px',
-                                  padding: '4px',
-                                }}
+                                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-sky-400 hover:text-sky-300"
                                 title="View transfer receipt"
                               >
-                                📎
+                                <Receipt className="w-4 h-4" />
                               </button>
                             )}
-                            <span
-                              style={{
-                                fontSize: '0.75rem',
-                                color: '#818cf8',
-                                textDecoration: 'underline',
-                                fontWeight: 600,
-                              }}
-                            >
-                              Edit ✏️
+                            <span className="text-xs text-indigo-400 hover:underline font-semibold flex items-center gap-1">
+                              <Edit2 className="w-3 h-3" />
+                              <span>Edit</span>
                             </span>
                           </div>
                         </div>
@@ -1032,35 +705,14 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 )}
               </div>
             )}
-
-
           </div>
         )}
       </div>
 
       {/* ── SECTION HEADER & PRIMARY ACTIONS ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px',
-          paddingTop: '2px',
-        }}
-      >
+      <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
         <div>
-          <h3
-            style={{
-              margin: 0,
-              fontSize: '1.05rem',
-              fontWeight: 800,
-              color: '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
+          <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
             <span>
               {activeLedgerTab === 'transfers'
                 ? 'Internal Transfers'
@@ -1069,34 +721,24 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 : 'Itemized Expense Ledger'}
             </span>
             <span
-              style={{
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background:
-                  activeLedgerTab === 'transfers'
-                    ? 'rgba(99, 102, 241, 0.2)'
-                    : 'rgba(16, 185, 129, 0.15)',
-                color: activeLedgerTab === 'transfers' ? '#c7d2fe' : '#6ee7b7',
-                border:
-                  activeLedgerTab === 'transfers'
-                    ? '1px solid rgba(99, 102, 241, 0.35)'
-                    : '1px solid rgba(16, 185, 129, 0.35)',
-              }}
+              className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                activeLedgerTab === 'transfers'
+                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/35'
+                  : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35'
+              }`}
             >
               {filteredExpenses.length} {activeLedgerTab === 'transfers' ? 'Transfers' : 'Items'}
             </span>
           </h3>
-          <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+          <p className="text-xs text-slate-400 mt-0.5">
             {activeLedgerTab === 'transfers'
               ? 'Coordinator-to-coordinator internal fund movements'
               : 'Vendor quotes, planned budgets & real event payments'}
           </p>
         </div>
 
-        {/* Action Buttons: Add Expense / New Transfer & Share Report */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           {activeLedgerTab === 'transfers' ? (
             <button
               type="button"
@@ -1105,49 +747,18 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 setPresetFromAccount(undefined);
                 setIsTransferModalOpen(true);
               }}
-              style={{
-                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '9px 15px',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                minHeight: '44px',
-                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.35)',
-                whiteSpace: 'nowrap',
-              }}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-indigo-950/40 transition-colors"
             >
-              <span>⇄</span>
+              <ArrowRightLeft className="w-4 h-4" />
               <span>New Transfer</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={onAddExpense}
-              style={{
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '9px 15px',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                minHeight: '44px',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
-                whiteSpace: 'nowrap',
-              }}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-colors"
             >
-              <span>➕</span>
+              <Plus className="w-4 h-4" />
               <span>Add Expense</span>
             </button>
           )}
@@ -1155,23 +766,7 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="btn btn-whatsapp-primary btn-sm"
-            style={{
-              backgroundColor: '#25D366',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '9px 14px',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              minHeight: '44px',
-              whiteSpace: 'nowrap',
-            }}
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#025907] via-[#087f10] to-[#0d9616] hover:from-[#036809] hover:via-[#0a8e13] hover:to-[#0fa81a] border border-[#0d9616]/60 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-950/50 transition-all cursor-pointer active:scale-[0.98]"
             title="Share itemized Budget report to WhatsApp"
           >
             <span>💬</span>
@@ -1181,55 +776,24 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       </div>
 
       {/* ── 2 TABS / SEGMENTED CONTROL: Expenses vs Internal Transfers ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          backgroundColor: '#0c1322',
-          padding: '4px',
-          borderRadius: '10px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          width: 'fit-content',
-          maxWidth: '100%',
-          overflowX: 'auto',
-        }}
-      >
+      <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveLedgerTab('expenses')}
-          style={{
-            padding: '8px 14px',
-            borderRadius: '8px',
-            border: 'none',
-            backgroundColor: activeLedgerTab === 'expenses' ? '#1e293b' : 'transparent',
-            color: activeLedgerTab === 'expenses' ? '#34d399' : '#94a3b8',
-            fontWeight: activeLedgerTab === 'expenses' ? 700 : 500,
-            fontSize: '0.84rem',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            boxShadow: activeLedgerTab === 'expenses' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
-            minHeight: '40px',
-          }}
+          className={`min-h-[40px] px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+            activeLedgerTab === 'expenses'
+              ? 'bg-slate-800 text-emerald-400 shadow-sm border border-slate-700'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
         >
           <span>📋</span>
           <span>Itemized Expenses</span>
           <span
-            style={{
-              fontSize: '0.72rem',
-              padding: '1px 7px',
-              borderRadius: '999px',
-              backgroundColor:
-                activeLedgerTab === 'expenses'
-                  ? 'rgba(52, 211, 153, 0.18)'
-                  : 'rgba(255, 255, 255, 0.06)',
-              color: activeLedgerTab === 'expenses' ? '#34d399' : '#64748b',
-              fontWeight: 700,
-            }}
+            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              activeLedgerTab === 'expenses'
+                ? 'bg-emerald-500/20 text-emerald-300'
+                : 'bg-slate-800 text-slate-400'
+            }`}
           >
             {stats.totalItems}
           </span>
@@ -1238,38 +802,20 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         <button
           type="button"
           onClick={() => setActiveLedgerTab('transfers')}
-          style={{
-            padding: '8px 14px',
-            borderRadius: '8px',
-            border: 'none',
-            backgroundColor: activeLedgerTab === 'transfers' ? '#1e293b' : 'transparent',
-            color: activeLedgerTab === 'transfers' ? '#a5b4fc' : '#94a3b8',
-            fontWeight: activeLedgerTab === 'transfers' ? 700 : 500,
-            fontSize: '0.84rem',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            boxShadow: activeLedgerTab === 'transfers' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
-            minHeight: '40px',
-          }}
+          className={`min-h-[40px] px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+            activeLedgerTab === 'transfers'
+              ? 'bg-slate-800 text-indigo-300 shadow-sm border border-slate-700'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
         >
           <span>🔄</span>
           <span>Internal Transfers</span>
           <span
-            style={{
-              fontSize: '0.72rem',
-              padding: '1px 7px',
-              borderRadius: '999px',
-              backgroundColor:
-                activeLedgerTab === 'transfers'
-                  ? 'rgba(99, 102, 241, 0.25)'
-                  : 'rgba(255, 255, 255, 0.06)',
-              color: activeLedgerTab === 'transfers' ? '#a5b4fc' : '#64748b',
-              fontWeight: 700,
-            }}
+            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              activeLedgerTab === 'transfers'
+                ? 'bg-indigo-500/20 text-indigo-300'
+                : 'bg-slate-800 text-slate-400'
+            }`}
           >
             {internalTransfers.length}
           </span>
@@ -1278,145 +824,60 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
         <button
           type="button"
           onClick={() => setActiveLedgerTab('all')}
-          style={{
-            padding: '8px 12px',
-            borderRadius: '8px',
-            border: 'none',
-            backgroundColor: activeLedgerTab === 'all' ? '#1e293b' : 'transparent',
-            color: activeLedgerTab === 'all' ? '#f8fafc' : '#64748b',
-            fontWeight: activeLedgerTab === 'all' ? 700 : 500,
-            fontSize: '0.84rem',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            boxShadow: activeLedgerTab === 'all' ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
-            minHeight: '40px',
-          }}
+          className={`min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            activeLedgerTab === 'all'
+              ? 'bg-slate-800 text-white shadow-sm border border-slate-700'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
         >
           <span>All</span>
-          <span
-            style={{
-              fontSize: '0.72rem',
-              padding: '1px 6px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
-              color: '#94a3b8',
-              fontWeight: 600,
-            }}
-          >
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-bold">
             {expenses.length}
           </span>
         </button>
       </div>
 
       {/* ── SEARCH & FILTER BAR (Mobile Responsive) ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          backgroundColor: '#1e293b',
-          padding: '8px 10px',
-          borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          width: '100%',
-          boxSizing: 'border-box',
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="flex items-center gap-2 bg-slate-900 p-2 sm:p-2.5 rounded-2xl border border-slate-800 w-full flex-wrap">
         {/* Search Input Box */}
-        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
-          <span
-            style={{
-              position: 'absolute',
-              left: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#64748b',
-              fontSize: '14px',
-              pointerEvents: 'none',
-            }}
-          >
-            🔍
-          </span>
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search expenses, vendor, payer..."
-            style={{
-              width: '100%',
-              padding: '8px 28px 8px 30px',
-              borderRadius: '8px',
-              backgroundColor: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#f8fafc',
-              fontSize: '16px',
-              outline: 'none',
-              minHeight: '40px',
-              boxSizing: 'border-box',
-            }}
+            className="w-full min-h-[40px] text-base sm:text-sm pl-9 pr-8 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-white placeholder-slate-500 outline-none focus:border-amber-500"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              style={{
-                position: 'absolute',
-                right: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                fontSize: '13px',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
               title="Clear search"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Filter Dropdowns container */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {/* Filter Dropdowns */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Account Filter Dropdown */}
           <select
             value={selectedAccountFilter}
             onChange={(e) => setSelectedAccountFilter(e.target.value)}
-            style={{
-              padding: '8px 10px',
-              borderRadius: '8px',
-              backgroundColor: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#f8fafc',
-              fontSize: '14px',
-              outline: 'none',
-              minHeight: '40px',
-              flexShrink: 0,
-              maxWidth: '150px',
-              minWidth: '115px',
-              boxSizing: 'border-box',
-              cursor: 'pointer',
-            }}
+            className="min-h-[40px] text-base sm:text-xs px-3 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-slate-200 outline-none focus:border-amber-500 cursor-pointer"
             title="Filter by paying account"
           >
-            <option value="all">💳 Account: All</option>
+            <option value="all" className="bg-slate-900">💳 Account: All</option>
             {settlementData.accounts.map((acc) => (
-              <option key={acc.accountId} value={acc.accountName}>
+              <option key={acc.accountId} value={acc.accountName} className="bg-slate-900">
                 {acc.accountName}
               </option>
             ))}
             {settlementData.unassignedExpenseTotal > 0 && (
-              <option value="unassigned">⚠️ Unassigned</option>
+              <option value="unassigned" className="bg-slate-900 text-red-400">⚠️ Unassigned</option>
             )}
           </select>
 
@@ -1424,48 +885,26 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            style={{
-              padding: '8px 10px',
-              borderRadius: '8px',
-              backgroundColor: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#f8fafc',
-              fontSize: '14px',
-              outline: 'none',
-              minHeight: '40px',
-              flexShrink: 0,
-              maxWidth: '135px',
-              minWidth: '105px',
-              boxSizing: 'border-box',
-              cursor: 'pointer',
-            }}
+            className="min-h-[40px] text-base sm:text-xs px-3 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-slate-200 outline-none focus:border-amber-500 cursor-pointer"
             title="Filter by expense status"
           >
-            <option value="all">⚡ Status: All</option>
-            <option value="planned">📝 Planned</option>
-            <option value="partially_paid">🟡 Partial</option>
-            <option value="paid">✅ Paid</option>
-            <option value="settled">🎉 Settled</option>
-            <option value="cancelled">❌ Cancelled</option>
+            <option value="all" className="bg-slate-900">⚡ Status: All</option>
+            <option value="planned" className="bg-slate-900">📝 Planned</option>
+            <option value="partially_paid" className="bg-slate-900">🟡 Partial</option>
+            <option value="paid" className="bg-slate-900">✅ Paid</option>
+            <option value="settled" className="bg-slate-900">🎉 Settled</option>
+            <option value="cancelled" className="bg-slate-900">❌ Cancelled</option>
           </select>
         </div>
       </div>
 
       {/* Main Expense Ledger List */}
       {filteredExpenses.length === 0 ? (
-        <div
-          style={{
-            backgroundColor: '#1e293b',
-            borderRadius: '14px',
-            padding: '40px 20px',
-            textAlign: 'center',
-            border: '1px dashed rgba(255, 255, 255, 0.15)',
-          }}
-        >
-          <span style={{ fontSize: '42px', display: 'block', marginBottom: '12px' }}>
+        <div className="p-8 sm:p-12 text-center rounded-2xl bg-slate-900/60 border border-dashed border-slate-800">
+          <span className="text-4xl block mb-3">
             {activeLedgerTab === 'transfers' ? '🔄' : '📊'}
           </span>
-          <h3 style={{ margin: '0 0 6px 0', fontSize: '1.15rem', color: '#f8fafc', fontWeight: 600 }}>
+          <h3 className="text-base sm:text-lg font-bold text-white mb-1">
             {activeLedgerTab === 'transfers'
               ? internalTransfers.length === 0
                 ? 'No Internal Transfers Recorded Yet'
@@ -1474,12 +913,12 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
               ? 'No Expense Items Recorded Yet'
               : 'No Matching Expenses Found'}
           </h3>
-          <p style={{ margin: '0 0 16px 0', color: '#94a3b8', fontSize: '0.88rem' }}>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto mb-4">
             {activeLedgerTab === 'transfers'
               ? 'Transfers between coordinators appear here without distorting event expenses.'
               : stats.totalItems === 0
               ? 'Start by entering expected budget items like Caterers, Tent, DJ, Lights, and ID cards.'
-              : 'Try adjusting your search query or category filters.'}
+              : 'Try adjusting your search query or filters.'}
           </p>
           {activeLedgerTab === 'transfers' && internalTransfers.length === 0 ? (
             <button
@@ -1489,42 +928,24 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                 setPresetFromAccount(undefined);
                 setIsTransferModalOpen(true);
               }}
-              style={{
-                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 18px',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                minHeight: '44px',
-              }}
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-sm shadow-lg shadow-indigo-950/40 inline-flex items-center gap-2"
             >
-              ⇄ Record First Transfer
+              <ArrowRightLeft className="w-4 h-4" />
+              <span>Record First Transfer</span>
             </button>
           ) : stats.totalItems === 0 ? (
             <button
               type="button"
               onClick={onAddExpense}
-              style={{
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 18px',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                minHeight: '44px',
-              }}
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-sm shadow-lg shadow-emerald-950/40 inline-flex items-center gap-2"
             >
-              ➕ Add First Expense Item
+              <Plus className="w-4 h-4" />
+              <span>Add First Expense Item</span>
             </button>
           ) : null}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className="space-y-2.5">
           {filteredExpenses.map((expense) => {
             const expAmt = Number(expense.expected_amount || 0);
             const actAmt = Number(expense.actual_amount || 0);
@@ -1548,58 +969,21 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                     onEditExpense(expense);
                   }
                 }}
-                style={{
-                  backgroundColor: '#1e293b',
-                  borderRadius: '10px',
-                  padding: '12px 16px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s, border-color 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#243248';
-                  e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1e293b';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                }}
+                className="p-3.5 sm:p-4 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer flex flex-col gap-2.5 shadow-sm"
               >
                 {/* ── TIER 1: Item Name, Category, Budget % & Status/Actions ── */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                    <span style={{ fontSize: '20px', flexShrink: 0, lineHeight: 1 }}>{categoryIcon}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
-                      <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: '#f8fafc' }}>
+                <div className="flex items-center justify-between gap-2.5 flex-wrap">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className="text-xl shrink-0 leading-none">{categoryIcon}</span>
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <h4 className="text-sm sm:text-base font-bold text-white tracking-tight">
                         {expense.item_name}
                       </h4>
-                      <span
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '0.72rem',
-                          color: '#cbd5e1',
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-[11px] font-medium whitespace-nowrap">
                         {expense.category}
                       </span>
                       {budgetSharePct > 0 && (
-                        <span style={{ color: '#818cf8', fontSize: '0.72rem', fontWeight: 600 }}>
+                        <span className="text-indigo-400 text-xs font-semibold">
                           ({budgetSharePct}% of budget)
                         </span>
                       )}
@@ -1607,142 +991,90 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                   </div>
 
                   {/* Actions & Status Badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    <span
-                      style={{
-                        backgroundColor: badge.bg,
-                        color: badge.color,
-                        border: `1px solid ${badge.border}`,
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        padding: '3px 8px',
-                        borderRadius: '999px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.3px',
-                      }}
-                    >
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${badge.bg}`}>
                       {badge.label}
                     </span>
-
-                    <span style={{ color: '#64748b', fontSize: '14px', cursor: 'pointer' }} title="Edit Item">
-                      ✏️
-                    </span>
+                    <Edit2 className="w-3.5 h-3.5 text-slate-500 hover:text-slate-300" />
                   </div>
                 </div>
 
                 {/* ── TIER 2: Context Bar (Vendor & Payment Details / Transfer Details) ── */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    padding: '6px 10px',
-                    backgroundColor: '#0f172a',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(255, 255, 255, 0.04)',
-                    fontSize: '0.78rem',
-                  }}
-                >
+                <div className="p-2 sm:px-3 rounded-lg bg-slate-950/70 border border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs">
                   {expense.category === 'Internal Transfer' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ color: '#a5b4fc', fontWeight: 600 }}>⇄ Transfer:</span>
-                      <strong style={{ color: '#f87171' }}>{expense.paid_from_account || 'Sender'}</strong>
-                      <span style={{ color: '#94a3b8' }}>➔</span>
-                      <strong style={{ color: '#34d399' }}>{expense.vendor_name || 'Receiver'}</strong>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-indigo-300 font-semibold flex items-center gap-1">
+                        <ArrowRightLeft className="w-3 h-3" /> Transfer:
+                      </span>
+                      <strong className="text-red-400">{expense.paid_from_account || 'Sender'}</strong>
+                      <span className="text-slate-500">➔</span>
+                      <strong className="text-emerald-400">{expense.vendor_name || 'Receiver'}</strong>
                     </div>
                   ) : (
-                    /* Left: Vendor */
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: '#cbd5e1' }}>
-                      {(expense.vendor_name || expense.vendor_phone) ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          <span style={{ color: '#94a3b8' }}>👤 Vendor:</span>
-                          <strong style={{ color: '#f1f5f9' }}>{expense.vendor_name || 'Vendor'}</strong>
+                    /* Vendor Info */
+                    <div className="flex items-center gap-2 flex-wrap text-slate-300">
+                      {expense.vendor_name || expense.vendor_phone ? (
+                        <span className="inline-flex items-center gap-1.5 flex-wrap">
+                          <span className="text-slate-400">Vendor:</span>
+                          <strong className="text-white">{expense.vendor_name || 'Vendor'}</strong>
                           {expense.vendor_phone && (() => {
                             const clean = expense.vendor_phone.replace(/\D/g, '').slice(-10);
                             const display = expense.vendor_phone.startsWith('+91')
                               ? expense.vendor_phone
                               : clean.length === 10
-                                ? `+91 ${clean}`
-                                : expense.vendor_phone;
+                              ? `+91 ${clean}`
+                              : expense.vendor_phone;
                             const tel = clean.length === 10 ? `+91${clean}` : expense.vendor_phone;
                             return (
                               <a
                                 href={`tel:${tel}`}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  marginLeft: '4px',
-                                  color: '#38bdf8',
-                                  textDecoration: 'none',
-                                  fontWeight: 600,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '2px',
-                                }}
+                                className="text-sky-400 hover:text-sky-300 inline-flex items-center gap-1 font-semibold ml-1"
                                 title={`Call ${display}`}
                               >
-                                📞 {display}
+                                <Phone className="w-3 h-3" />
+                                <span>{display}</span>
                               </a>
                             );
                           })()}
                         </span>
                       ) : (
-                        <span style={{ color: '#64748b', fontStyle: 'italic' }}>No vendor specified</span>
+                        <span className="text-slate-500 italic">No vendor specified</span>
                       )}
                     </div>
                   )}
 
                   {expense.payment_mode && (
-                    <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                      Mode: <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{expense.payment_mode}</span>
+                    <div className="text-slate-400 text-[11px]">
+                      Mode: <span className="text-slate-200 font-semibold">{expense.payment_mode}</span>
                     </div>
                   )}
                 </div>
 
                 {/* ── TIER 3: Financials & Budget Variance ── */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    flexWrap: 'wrap',
-                    fontSize: '0.82rem',
-                  }}
-                >
+                <div className="flex items-center gap-2.5 flex-wrap text-xs sm:text-sm">
                   {expense.category === 'Internal Transfer' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Transferred Amount: </span>
-                      <strong style={{ color: '#a5b4fc', fontSize: '1rem', fontWeight: 800 }}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-slate-400 text-xs">Transferred:</span>
+                      <strong className="text-indigo-300 font-mono font-bold text-base">
                         ₹{formatINR(actAmt)}
                       </strong>
-                      <span
-                        style={{
-                          backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                          color: '#c7d2fe',
-                          border: '1px solid rgba(99, 102, 241, 0.3)',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                        }}
-                      >
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-semibold">
                         Internal Coordinator Transfer
                       </span>
                     </div>
                   ) : (
                     <>
-                      {/* Expected, Actual & Variance */}
                       <div>
-                        <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Expected: </span>
-                        <strong style={{ color: '#93c5fd' }}>₹{formatINR(expAmt)}</strong>
+                        <span className="text-slate-400 text-xs">Expected: </span>
+                        <strong className="text-sky-300 font-mono font-bold">₹{formatINR(expAmt)}</strong>
                       </div>
 
-                      <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>│</span>
+                      <span className="text-slate-700">|</span>
 
                       <div>
-                        <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>Actual Paid: </span>
-                        <strong style={{ color: hasActual ? '#86efac' : '#64748b' }}>
+                        <span className="text-slate-400 text-xs">Actual Paid: </span>
+                        <strong className={`font-mono font-bold ${hasActual ? 'text-emerald-400' : 'text-slate-500'}`}>
                           {hasActual ? `₹${formatINR(actAmt)}` : '₹0'}
                         </strong>
                       </div>
@@ -1750,33 +1082,11 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                       {hasActual && (
                         <div>
                           {diff >= 0 ? (
-                            <span
-                              style={{
-                                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                                color: '#34d399',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.73rem',
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              +₹{formatINR(diff)} Saved (Under Budget)
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold whitespace-nowrap">
+                              +₹{formatINR(diff)} Saved
                             </span>
                           ) : (
-                            <span
-                              style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.73rem',
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
+                            <span className="px-2 py-0.5 rounded-md bg-red-500/15 text-red-400 border border-red-500/30 text-[11px] font-bold whitespace-nowrap">
                               -₹{formatINR(Math.abs(diff))} Over Budget
                             </span>
                           )}
@@ -1786,96 +1096,42 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                   )}
                 </div>
 
-                {/* ── TIER 3.5: Disbursed Line (Consistent on EVERY card - Single or Split!) ── */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    flexWrap: 'wrap',
-                    fontSize: '0.76rem',
-                  }}
-                >
-                  <span style={{ color: '#94a3b8', fontWeight: 600 }}>Disbursed:</span>
+                {/* ── TIER 3.5: Disbursed Line ── */}
+                <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                  <span className="text-slate-400 font-medium">Disbursed:</span>
                   {payerSummary.isSplit && payerSummary.splits.length > 0 ? (
                     payerSummary.splits.map((sp, sIdx) => {
                       return (
                         <span
                           key={sIdx}
-                          style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontSize: '0.72rem',
-                            color: '#cbd5e1',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            flexWrap: 'wrap',
-                          }}
+                          className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-[11px] inline-flex items-center gap-1"
                         >
                           <span>{sp.account.split('(')[0].replace(/💵|👤/g, '').trim()}:</span>
-                          <strong style={{ color: '#86efac' }}>₹{formatINR(sp.amount)}</strong>
+                          <strong className="text-emerald-400 font-mono font-bold">₹{formatINR(sp.amount)}</strong>
                         </span>
                       );
                     })
                   ) : expense.paid_from_account ? (
-                    <span
-                      style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.72rem',
-                        color: '#cbd5e1',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        flexWrap: 'wrap',
-                      }}
-                    >
+                    <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-[11px] inline-flex items-center gap-1">
                       <span>{expense.paid_from_account.split('(')[0].replace(/💵|👤/g, '').trim()}:</span>
-                      <strong style={{ color: '#86efac' }}>
+                      <strong className="text-emerald-400 font-mono font-bold">
                         ₹{formatINR(actAmt > 0 ? actAmt : expAmt)}
                       </strong>
                     </span>
                   ) : (
-                    <span
-                      style={{
-                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.72rem',
-                        color: '#fca5a5',
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
+                    <span className="px-2 py-0.5 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-semibold whitespace-nowrap">
                       ⚠️ Unassigned
                     </span>
                   )}
                 </div>
 
-                {/* ── TIER 4: Bills & Notes (Only if present) ── */}
+                {/* ── TIER 4: Bills & Notes ── */}
                 {(receiptUrls.length > 0 || expense.notes) && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '8px',
-                      paddingTop: '6px',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.04)',
-                      fontSize: '0.76rem',
-                    }}
-                  >
-                    {/* Direct Clickable Receipt Links */}
+                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    {/* Attached Bills */}
                     {receiptUrls.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Attached Bills:</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-slate-400 text-[11px]">Bills:</span>
                         {receiptUrls.map((url, rIdx) => (
                           <a
                             key={rIdx}
@@ -1883,25 +1139,12 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px',
-                              backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                              border: '1px solid rgba(56, 189, 248, 0.35)',
-                              color: '#38bdf8',
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              textDecoration: 'none',
-                              cursor: 'pointer',
-                              transition: 'background-color 0.15s',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={`Open original bill #${rIdx + 1} in new tab`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/30 text-sky-400 hover:bg-sky-500/25 text-[11px] font-semibold transition-colors"
+                            title={`Open original bill #${rIdx + 1}`}
                           >
-                            📄 Bill {receiptUrls.length > 1 ? `#${rIdx + 1}` : ''} ↗
+                            <FileText className="w-3 h-3" />
+                            <span>Bill {receiptUrls.length > 1 ? `#${rIdx + 1}` : ''}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
                           </a>
                         ))}
                       </div>
@@ -1909,15 +1152,8 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
 
                     {/* Notes */}
                     {expense.notes && (
-                      <div
-                        style={{
-                          color: '#94a3b8',
-                          fontStyle: 'italic',
-                          maxWidth: '100%',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        💬 "{expense.notes}"
+                      <div className="text-slate-400 italic text-[11px] max-w-full break-words">
+                        "{expense.notes}"
                       </div>
                     )}
                   </div>
@@ -1931,93 +1167,40 @@ export const EventExpensesManager: React.FC<EventExpensesManagerProps> = ({
       {/* Bill/Receipt Lightbox Modal */}
       {previewImageUrl && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.88)',
-            zIndex: 10000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setPreviewImageUrl(null)}
         >
           <div
-            style={{
-              position: 'relative',
-              maxWidth: '92vw',
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
+            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={previewImageUrl}
               alt="Receipt Bill"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '78vh',
-                borderRadius: '8px',
-                objectFit: 'contain',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-              }}
+              className="max-w-full max-h-[75vh] rounded-xl object-contain shadow-2xl border border-slate-800"
             />
-            <div
-              style={{
-                display: 'flex',
-                gap: '10px',
-                marginTop: '14px',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-              }}
-            >
+            <div className="flex gap-3 mt-4 flex-wrap justify-center">
               <a
                 href={previewImageUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
-                  color: '#38bdf8',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  cursor: 'pointer',
-                  minHeight: '40px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-300 text-sm font-semibold inline-flex items-center gap-1.5 hover:bg-sky-500/30 transition-colors"
               >
-                🔗 Open Original in New Tab ↗
+                <span>Open Original in New Tab</span>
+                <ExternalLink className="w-4 h-4" />
               </a>
               <button
                 type="button"
                 onClick={() => setPreviewImageUrl(null)}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                  border: 'none',
-                  color: '#ffffff',
-                  padding: '8px 18px',
-                  borderRadius: '8px',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '40px',
-                }}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition-colors"
               >
-                ✕ Close Preview
+                Close Preview
               </button>
             </div>
           </div>
         </div>
       )}
+
       {/* Inter-Account Transfer Modal */}
       <AccountTransferModal
         isOpen={isTransferModalOpen}

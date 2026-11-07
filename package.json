@@ -11,12 +11,17 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
+    "@tailwindcss/vite": "^4.3.4",
+    "clsx": "^2.1.1",
     "html-to-image": "^1.11.13",
     "html5-qrcode": "^2.3.8",
+    "lucide-react": "^1.68.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.4"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
@@ -24,6 +29,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
+    "playwright": "^1.64.1",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }

@@ -11,15 +11,6 @@ export interface ExpenseAccountOption {
 }
 
 export const KNOWN_EXPENSE_ACCOUNTS: ExpenseAccountOption[] = [
-  { id: 'Hari Narayan', label: 'Hari Narayan (SBI)', accountName: 'Hari Narayan', bankName: 'SBI', upiId: '9414177517@sbi' },
-  { id: 'Mitesh', label: 'Mitesh (Axis)', accountName: 'Mitesh', bankName: 'AXIS', upiId: 'jyotibala.nagar@axisbank' },
-  { id: 'Rajeev', label: 'Rajeev (ICICI)', accountName: 'Rajeev', bankName: 'ICICI', upiId: '9414936876@ibl' },
-  { id: 'Mukesh', label: 'Mukesh (YES)', accountName: 'Mukesh', bankName: 'YES', upiId: '9001017275@ybl' },
-  { id: 'Chetan', label: 'Chetan (UPI)', accountName: 'Chetan', bankName: 'UPI', upiId: '9799951857@upi' },
-  { id: 'Lokesh', label: 'Lokesh (ICICI)', accountName: 'Lokesh', bankName: 'ICICI', upiId: 'gautam.lucky-1@okicici' },
-  { id: 'Bhawesh', label: 'Bhawesh (UPI)', accountName: 'Bhawesh', bankName: 'UPI' },
-  { id: 'Manoj', label: 'Manoj (UPI)', accountName: 'Manoj', bankName: 'UPI' },
-  { id: 'Shailendra', label: 'Shailendra (UPI)', accountName: 'Shailendra', bankName: 'UPI' },
   { id: 'Cash in Hand', label: '💵 Cash in Hand / Spot Cash', accountName: 'Cash in Hand', bankName: 'Cash', isCash: true },
 ];
 
@@ -144,7 +135,8 @@ export function computeAccountSettlements(
   expenses: EventExpense[],
   registrations: any[] = [],
   verifications: any[] = [],
-  sponsorships: any[] = []
+  sponsorships: any[] = [],
+  customAccounts?: ExpenseAccountOption[]
 ): {
   accounts: AccountSettlement[];
   unassignedExpenseTotal: number;
@@ -152,15 +144,25 @@ export function computeAccountSettlements(
   totalOutflow: number;
   netEventBalance: number;
 } {
-  // 1. Map verifications by registration_id
+  // 1. Build combined known accounts list (defaults + event specific custom accounts)
+  const allKnownAccounts: ExpenseAccountOption[] = [...KNOWN_EXPENSE_ACCOUNTS];
+  if (Array.isArray(customAccounts) && customAccounts.length > 0) {
+    customAccounts.forEach((c) => {
+      if (!allKnownAccounts.some((k) => k.id.toLowerCase() === c.id.toLowerCase())) {
+        allKnownAccounts.push(c);
+      }
+    });
+  }
+
+  // 2. Map verifications by registration_id
   const verifByRegId = new Map<string, any>();
   verifications.forEach((v) => {
     verifByRegId.set(v.registration_id, v);
   });
 
-  // 2. Initialize settlement data for known accounts
+  // 3. Initialize settlement data for known accounts
   const settlementsMap = new Map<string, AccountSettlement>();
-  KNOWN_EXPENSE_ACCOUNTS.forEach((acc) => {
+  allKnownAccounts.forEach((acc) => {
     settlementsMap.set(acc.id.toLowerCase(), {
       accountId: acc.id,
       accountName: acc.accountName,
@@ -185,7 +187,12 @@ export function computeAccountSettlements(
     if (!clean) return null;
     const lower = clean.toLowerCase();
 
-    for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+    // Any variant of cash always resolves to the single 'Cash in Hand' account
+    if (lower.includes('cash')) {
+      return settlementsMap.get('cash in hand') || null;
+    }
+
+    for (const acc of allKnownAccounts) {
       const accId = acc.id.toLowerCase();
       const accName = acc.accountName.toLowerCase();
       if (
@@ -227,7 +234,7 @@ export function computeAccountSettlements(
         : Number(reg.amount || 0);
 
     let matched = false;
-    for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+    for (const acc of allKnownAccounts) {
       if (acc.upiId && upi === acc.upiId.toLowerCase()) {
         const item = settlementsMap.get(acc.id.toLowerCase());
         if (item) item.inflow += amount;
@@ -236,11 +243,29 @@ export function computeAccountSettlements(
       }
     }
 
-    // Untagged/unassigned collections (e.g. spot cash or cash entries) are attributed to Cash in Hand
+    // Untagged collections: genuine UPI IDs get resolved to their coordinator/account; all cash variants go to Cash in Hand
     if (!matched && amount > 0) {
-      const cashItem = settlementsMap.get('cash in hand');
-      if (cashItem) {
-        cashItem.inflow += amount;
+      const notes = ((verif?.notes || '') + ' ' + (reg?.notes || '')).toLowerCase();
+      const isExplicitCash =
+        !upi ||
+        upi === 'cash' ||
+        upi.includes('cash') ||
+        upi === 'spot' ||
+        notes.includes('(cash)') ||
+        notes.includes('spot cash');
+      if (!isExplicitCash) {
+        const upiItem = getOrCreateAccountItem(upi);
+        if (upiItem) {
+          upiItem.inflow += amount;
+        } else {
+          const cashItem = settlementsMap.get('cash in hand');
+          if (cashItem) cashItem.inflow += amount;
+        }
+      } else {
+        const cashItem = settlementsMap.get('cash in hand');
+        if (cashItem) {
+          cashItem.inflow += amount;
+        }
       }
     }
   });
@@ -250,7 +275,7 @@ export function computeAccountSettlements(
     const upi = (sp.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
     const amount = Number(sp.amount || 0);
     let matched = false;
-    for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+    for (const acc of allKnownAccounts) {
       if (acc.upiId && upi === acc.upiId.toLowerCase()) {
         const item = settlementsMap.get(acc.id.toLowerCase());
         if (item) item.inflow += amount;
@@ -259,11 +284,22 @@ export function computeAccountSettlements(
       }
     }
 
-    // Untagged/unassigned collections (e.g. spot cash or cash entries) are attributed to Cash in Hand
+    // Untagged collections: genuine UPI IDs get resolved to their coordinator/account; all cash variants go to Cash in Hand
     if (!matched && amount > 0) {
-      const cashItem = settlementsMap.get('cash in hand');
-      if (cashItem) {
-        cashItem.inflow += amount;
+      const isExplicitCash = !upi || upi.includes('cash') || upi === 'spot';
+      if (!isExplicitCash) {
+        const upiItem = getOrCreateAccountItem(upi);
+        if (upiItem) {
+          upiItem.inflow += amount;
+        } else {
+          const cashItem = settlementsMap.get('cash in hand');
+          if (cashItem) cashItem.inflow += amount;
+        }
+      } else {
+        const cashItem = settlementsMap.get('cash in hand');
+        if (cashItem) {
+          cashItem.inflow += amount;
+        }
       }
     }
   });
@@ -295,37 +331,9 @@ export function computeAccountSettlements(
       return;
     }
 
-    // Handle Campus Legacy Fund (Corpus Inflow vs Disbursement)
+    // Campus Legacy Fund is a permanent institutional endowment corpus managed exclusively
+    // in Central Treasury and must never be counted as event operational inflow or expense.
     if (expense.category === 'Campus Legacy Fund') {
-      const note = (expense.notes || '').toLowerCase();
-      const item = (expense.item_name || '').toLowerCase();
-      const isDisbursement =
-        item.includes('disbursement') ||
-        item.includes('scholarship') ||
-        item.includes('payout') ||
-        item.includes('grant') ||
-        note.includes('disbursement') ||
-        note.includes('scholarship') ||
-        note.includes('payout') ||
-        note.includes('grant');
-
-      const splits = getExpenseSplits(expense);
-      const targetAccounts = splits.length > 0
-        ? splits.map((s) => ({ rawName: s.account, amount: Number(s.amount || 0) }))
-        : [{ rawName: expense.paid_from_account || 'Mukesh', amount: actualAmt }];
-
-      targetAccounts.forEach(({ rawName, amount }) => {
-        const accItem = getOrCreateAccountItem(rawName);
-        if (accItem && amount > 0) {
-          if (isDisbursement) {
-            accItem.outflow += amount;
-            accItem.expenseCount += 1;
-          } else {
-            // Corpus addition / Inflow held by custodian (e.g. Mukesh)
-            accItem.inflow += amount;
-          }
-        }
-      });
       return;
     }
 
@@ -342,7 +350,7 @@ export function computeAccountSettlements(
       const rawName = (split.account || '').toLowerCase().trim();
       let matchedKey: string | null = null;
 
-      for (const acc of KNOWN_EXPENSE_ACCOUNTS) {
+      for (const acc of allKnownAccounts) {
         const accId = acc.id.toLowerCase();
         const accName = acc.accountName.toLowerCase();
         if (
@@ -722,8 +730,10 @@ export function buildExpensesWhatsAppMessage(
     ? `\n💰 *FUNDS & BUDGET FEASIBILITY:*\n• *Available Inflow:* ₹${formatINR(totalAvailableFunds)} (Regs: ₹${formatINR(registrationAmount)}${attendingDetails} + Sponsors: ₹${formatINR(sponsorshipAmount)})\n• *Planned Budget:* ₹${formatINR(totalExpected)}${costPerHead}\n• *Funding Status:* ${isDeficit ? `🚨 Deficit of -₹${formatINR(Math.abs(fundingGap))} (${coveragePct}% funded)` : `✅ Fully Funded (+₹${formatINR(fundingGap)} surplus)`}\n• *Real Paid Outflow:* ₹${formatINR(totalActual)}\n• *Live Cash Balance:* ₹${formatINR(liveCash)}`
     : `\n💰 *EXPENSE OVERVIEW:*\n• *Expected Budget:* ₹${formatINR(totalExpected)}\n• *Actual Paid:* ₹${formatINR(totalActual)}`;
 
-  // Real vendor expenses vs inter-account transfers
-  const realExpenses = expenses.filter((e) => e.category !== 'Internal Transfer');
+  // Real vendor expenses vs inter-account transfers (excludes institutional legacy fund)
+  const realExpenses = expenses.filter(
+    (e) => e.category !== 'Internal Transfer' && e.category !== 'Campus Legacy Fund'
+  );
   const transferItems = expenses.filter((e) => e.category === 'Internal Transfer');
 
   // Itemized listing

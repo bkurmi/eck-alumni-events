@@ -1,4 +1,5 @@
 import React from 'react';
+import { Camera, X, Sparkles } from 'lucide-react';
 
 interface UpiPaymentFlowModalProps {
   isOpen: boolean;
@@ -24,63 +25,71 @@ export const UpiPaymentFlowModal: React.FC<UpiPaymentFlowModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay upi-flow-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
       <div
-        className="modal-content upi-flow-modal-content welcome-back-compact"
+        className="relative w-full max-w-md rounded-2xl sm:rounded-3xl border border-amber-500/40 bg-slate-900 shadow-2xl overflow-hidden p-5 sm:p-6 space-y-5 my-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header upi-flow-modal-header welcome-header">
-          <div className="upi-modal-badge badge-welcome">
-            <span>🎉 Welcome Back!</span>
-          </div>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <span>Welcome Back!</span>
+          </span>
           <button
             type="button"
-            className="modal-close-btn"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
             onClick={onClose}
             aria-label="Close"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="modal-body upi-flow-modal-body">
-          <div className="welcome-hero-wrap">
-            <div className="welcome-icon-glow">📸</div>
-            <h3 className="upi-modal-title">Final Step: Upload Screenshot</h3>
-            <p className="upi-modal-subtitle">
-              Completed payment in your UPI app? Please upload your payment confirmation screenshot now to generate your official registration pass!
-            </p>
+        {/* Hero Content */}
+        <div className="text-center space-y-2">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shadow-lg shadow-amber-500/10">
+            <Camera className="h-7 w-7" />
           </div>
+          <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+            Final Step: Upload Screenshot
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-sm mx-auto">
+            Completed payment in your UPI app? Please upload your payment confirmation screenshot now to generate your official registration pass!
+          </p>
+        </div>
 
-          <div className="welcome-amount-pill">
-            <span>Amount: <strong>₹{amount}</strong></span>
-            <span>•</span>
-            <span>Alumnus: <strong>{alumniName}</strong></span>
-          </div>
+        {/* Amount Pill */}
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-2.5 text-xs text-slate-300">
+          <span>Amount: <strong className="text-amber-300 font-bold">₹{amount}</strong></span>
+          <span>•</span>
+          <span>Alumnus: <strong className="text-white font-semibold">{alumniName}</strong></span>
+        </div>
 
-          <div className="upi-modal-actions">
-            <button
-              type="button"
-              className="btn btn-festive-primary btn-block upi-proceed-btn"
-              onClick={onUploadScreenshot}
-              id="btn-welcome-upload-screenshot"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <span>📷 Select Screenshot from Gallery</span>
-            </button>
+        {/* Action Buttons */}
+        <div className="space-y-2.5 pt-1">
+          <button
+            type="button"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+            onClick={onUploadScreenshot}
+            id="btn-welcome-upload-screenshot"
+          >
+            <Camera className="h-4 w-4" />
+            <span>Select Screenshot from Gallery</span>
+          </button>
 
-            <button
-              type="button"
-              className="btn btn-ghost btn-block text-muted"
-              onClick={onClose}
-            >
-              I haven't paid yet / Do this later
-            </button>
-          </div>
+          <button
+            type="button"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-transparent px-4 py-2.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            onClick={onClose}
+          >
+            I haven't paid yet / Do this later
+          </button>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 export interface UpiPaymentConfig {
   upi_id: string;
-  qr_image_url: string;
+  qr_image_url?: string | null;
   account_name?: string;
 }
 
@@ -12,15 +12,38 @@ export interface EventMemoryMedia {
   instagram_url?: string | null;
 }
 
+export interface EventPricingConfig {
+  single_adult?: number;
+  couple?: number;
+  extra_adult?: number;
+  child_above_7?: number;
+  child_under_7?: number;
+  spot_adult?: number;
+  spot_child_above_10?: number;
+  spot_child_under_10?: number;
+}
+
+export interface ExpenseAccountConfig {
+  id: string;
+  label: string;
+  accountName: string;
+  bankName: string;
+  upiId?: string;
+  isCash?: boolean;
+}
+
 export interface ECKEvent {
   id: string;
   event_name: string;
+  short_name?: string | null;
   event_slug: string;
+  event_code?: string | null;
   event_date: string;
   event_time: string | null;
   location: string;
   description: string | null;
   registration_fee: number;
+  pricing_config?: EventPricingConfig | null;
   upi_id: string | null;
   banner_image_url: string | null;
   tagline: string | null;
@@ -28,6 +51,7 @@ export interface ECKEvent {
   theme_accent_color: string;
   qr_image_url: string | null;
   upi_rotation_configs?: UpiPaymentConfig[] | null;
+  expense_accounts_config?: ExpenseAccountConfig[] | null;
   registration_closes_at?: string | null;
   memory_media?: EventMemoryMedia | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'COMPLETED';
@@ -44,15 +68,74 @@ export interface Alumni {
   country?: string;
   city: string;
   state: string;
+  batch?: string | null;
   year_of_passing: number;
   engineering_discipline: string;
   organization: string | null;
+  designation?: string | null;
   employment_type?: string;
   industry_domain?: string;
   professional_category: string;
   work_location: string | null;
+  linkedin_url?: string | null;
+  photo_url?: string | null;
+  approval_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewed_at?: string | null;
+  rejection_reason?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AlumniRegistrationFormData {
+  name: string;
+  email: string;
+  mobile: string;
+  address: string;
+  country: string;
+  country_other?: string;
+  city: string;
+  state: string;
+  state_other?: string;
+  batch: string;
+  year_of_passing: number | '';
+  engineering_discipline: string;
+  engineering_discipline_other?: string;
+  organization: string;
+  designation: string;
+  employment_type: string;
+  employment_type_other?: string;
+  industry_domain: string;
+  industry_domain_other?: string;
+  work_location: string;
+  linkedin_url?: string;
+  photo_url?: string;
+}
+
+export interface AlumniDirectoryItem extends Alumni {
+  resolved_photo_url: string | null;
+  latest_event_registration_number?: string | null;
+}
+
+export interface UpdateAlumniPayload {
+  alumni_id: string;
+  mobile: string;
+  name: string;
+  email?: string | null;
+  batch?: string | null;
+  year_of_passing?: number | null;
+  engineering_discipline?: string | null;
+  organization?: string | null;
+  designation?: string | null;
+  employment_type?: string | null;
+  industry_domain?: string | null;
+  professional_category?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  address?: string | null;
+  work_location?: string | null;
+  linkedin_url?: string | null;
+  photo_url?: string | null;
 }
 
 export interface PaymentVerification {
@@ -144,10 +227,12 @@ export interface RegistrationFormData {
   city: string;
   state: string;
   state_other?: string;
+  batch?: string;
   year_of_passing: number | '';
   engineering_discipline: string;
   engineering_discipline_other?: string;
   organization: string;
+  designation?: string;
   // Professional info (Employment Type + Industry / Domain)
   employment_type: string;
   employment_type_other?: string;
@@ -196,6 +281,7 @@ export const EMPLOYMENT_TYPES = [
   'Full-time (Private)',
   'Full-time (Government / Public Sector)',
   'Self-Employed / Business Owner',
+  'Practicing Professional / Consultant',
   'Freelancer / Independent Contractor',
   'Student',
   'Retired',
@@ -204,6 +290,7 @@ export const EMPLOYMENT_TYPES = [
 ] as const;
 
 export const INDUSTRY_DOMAINS = [
+  // Existing options (100% preserved for complete backward compatibility)
   'Information Technology & Services',
   'Banking, Financial Services & Insurance (BFSI)',
   'Healthcare & Pharmaceuticals',
@@ -211,7 +298,37 @@ export const INDUSTRY_DOMAINS = [
   'Education & Academia',
   'Retail & E-Commerce',
   'Government & Public Administration',
+
+  // New additions derived directly from production alumni data
+  'Energy, Power & Utilities',
+  'Civil, Construction & Real Estate',
+  'Defense & Aerospace',
+  'Telecommunications & Networking',
+  'Automotive & Aviation',
+  'Mining, Minerals & Metallurgy',
+  'Chemicals, Petrochemicals, Oil & Gas',
+  'Consulting, Legal & Professional Services',
+
   'Other',
+] as const;
+
+export const COMMON_ORGANIZATIONS = [
+  'Allen Career Institute',
+  'RVUNL (Rajasthan Rajya Vidyut Utpadan Nigam)',
+  'KTPS Kota (Kota Thermal Power Station)',
+  'RRVPNL (Rajasthan Rajya Vidyut Prasaran Nigam)',
+  'JVVNL (Jaipur Vidyut Vitran Nigam)',
+  'Indian Railways',
+  'PWD Rajasthan (Public Works Department)',
+  'PHED Rajasthan (Public Health Engineering)',
+  'Rajasthan Technical University (RTU)',
+  'Government Polytechnic College Kota',
+  'BSNL',
+  'DCM Shriram',
+  'CFCL (Chambal Fertilisers and Chemicals)',
+  'Airports Authority of India (AAI)',
+  'UIT / KDA Kota',
+  'State Government of Rajasthan',
 ] as const;
 
 export const PROFESSIONAL_CATEGORIES = [
@@ -318,7 +435,7 @@ export const SPONSORSHIP_PAYMENT_MODES = [
 export type ExpenseStatus = 'planned' | 'partially_paid' | 'paid' | 'settled' | 'cancelled';
 
 export interface ExpensePaymentSplit {
-  account: string; // e.g. 'Hari Narayan (SBI)', 'Mitesh (Axis)', 'Cash in Hand', or custom
+  account: string; // e.g. 'Cash in Hand', 'Bank', or custom organizer account
   amount: number;
   date?: string | null; // e.g. '2026-10-30'
   mode?: string | null; // e.g. 'UPI', 'Cash', 'Bank Transfer', etc.

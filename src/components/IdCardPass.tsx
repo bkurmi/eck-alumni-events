@@ -1,6 +1,7 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 
 interface IdCardPassProps {
   registration: ExistingRegistrationLookup;
@@ -62,11 +63,15 @@ function formatSmartAttendeeName(rawName: string): { displayName: string; fontSi
 
 export const IdCardPass: React.FC<IdCardPassProps> = ({
   registration,
-  event: _event,
+  event,
   photoUrl,
   cardRef,
   hideQr = false,
 }) => {
+  const isConcluded = event?.status === 'CLOSED';
+  const eventTitle = (event?.short_name || event?.event_name || 'DEEPAURA 2K26').toUpperCase();
+  const eventTagline = event?.tagline || 'A ROYAL DIWALI REUNION';
+
   const alumni = registration.alumni;
   const rawMobile = alumni?.mobile || '';
   const cleanMobile = rawMobile.replace(/\D/g, '').slice(-10);
@@ -75,15 +80,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     formatSmartAttendeeName(alumni?.name || 'Alumnus');
   const regNumber = registration.registration_number || '';
   const branch = alumni?.engineering_discipline || '';
-  const batchYear = alumni?.year_of_passing ? String(alumni.year_of_passing) : '';
-  const category = alumni?.professional_category || 'Alumnus';
-  const badgeLabel = category.toLowerCase().includes('faculty')
-    ? 'FACULTY'
-    : category.toLowerCase().includes('guest')
-      ? 'GUEST'
-      : category.toLowerCase().includes('student')
-        ? 'STUDENT'
-        : 'ALUMNUS';
+  const batchYearOrName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : 'Alumnus');
   const totalCount = registration.number_of_attendees || 1;
   const adultsCount = registration.adults_count ?? 1;
   const kidsCount = (registration.children_above_7_count || 0) + (registration.children_under_7_count || 0);
@@ -97,20 +94,22 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     attendeesDesc += ` (Alumnus + ${totalCount - 1} Guest${totalCount - 1 > 1 ? 's' : ''})`;
   }
 
+  // Dynamic Date and Venue with elegant fallbacks
+  const eventDateFormatted = event?.event_date
+    ? new Date(event.event_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      (event.event_time ? `, ${event.event_time}` : ', 5:00 PM')
+    : '01 Nov 2026, 5:00 PM';
+  const rawVenue = event?.location || 'Agora Ground, RTU';
+  const eventVenueFormatted = rawVenue.replace(/,\s*ECK-RTU Campus.*$/i, '').trim() || 'Agora Ground, RTU';
+  const stubFooterDate = event?.event_date
+    ? new Date(event.event_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '01 Nov 2026';
+
   const [photoLoadFailed, setPhotoLoadFailed] = React.useState(false);
 
   React.useEffect(() => {
     setPhotoLoadFailed(false);
   }, [photoUrl, registration.registration_id, registration.registration_number]);
-
-  const getAttendeeInitials = (name?: string): string => {
-    if (!name) return 'ECK';
-    const clean = name.trim().replace(/^(mr\.?|mrs\.?|ms\.?|dr\.?|er\.?)\s+/i, '').trim();
-    const parts = clean.split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return 'ECK';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
 
   const photoSrc = photoUrl || registration.payment_screenshot_path ? (photoUrl || undefined) : undefined;
 
@@ -126,13 +125,20 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
         {/* Subtle starry sparklers overlay */}
         <div className="ticket-bg-stars" />
 
+        {/* Concluded Edition Keepsake Stamp */}
+        {isConcluded && (
+          <div className="ticket-v-concluded-banner" title="Event Concluded • Official Souvenir Keepsake">
+            <span className="concluded-banner-text">★ SOUVENIR KEEPSAKE • CONCLUDED EDITION ★</span>
+          </div>
+        )}
+
         {/* ============================================================
             1. TOP HEADER BANNER (Official Target Design)
             ============================================================ */}
         <div className="ticket-v-header-section">
           <img
             src="/card-header-official.jpg"
-            alt="ECK-RTU Alumni DeepAura 2K26"
+            alt={eventTitle}
             className="ticket-v-header-official-img"
           />
         </div>
@@ -159,17 +165,15 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                     onError={() => setPhotoLoadFailed(true)}
                   />
                 ) : (
-                  <div className="ticket-v-avatar-box">
-                    <div className="ticket-v-avatar-circle">
-                      <span className="ticket-v-avatar-initials">
-                        {getAttendeeInitials(alumni?.name || attendeeName)}
-                      </span>
-                    </div>
-                    <span className="ticket-v-avatar-badge">{badgeLabel}</span>
+                  <div className="ticket-v-photo-placeholder">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>PHOTO</span>
                   </div>
                 )}
               </div>
-              <span className="ticket-v-badge-pill">{badgeLabel}</span>
             </div>
 
             {/* Right Column: Key Details */}
@@ -186,8 +190,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-info-split-row">
                 <div className="ticket-v-batch-box">
                   <span className="ticket-v-label">Batch</span>
-                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
-                    <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
+                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYearOrName}${branch ? ` • ${branch}` : ''}`}>
+                    <strong>{batchYearOrName}</strong>{branch ? ` • ${branch}` : ''}
                   </p>
                 </div>
                 <div className="ticket-v-reg-box">
@@ -206,11 +210,11 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-meta-row">
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Date &amp; Time</span>
-                  <span className="ticket-v-meta-val">01 Nov 2026, 5:00 PM</span>
+                  <span className="ticket-v-meta-val">{eventDateFormatted}</span>
                 </div>
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Venue</span>
-                  <span className="ticket-v-meta-val">Agora Ground, RTU</span>
+                  <span className="ticket-v-meta-val">{eventVenueFormatted}</span>
                 </div>
               </div>
             </div>
@@ -241,13 +245,29 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
           </div>
 
           {/* Glowing diyas at stub top */}
-          <img src="/diya-golden-flame.png" alt="" className="ticket-v-stub-diya diya-stub-left" />
-          <img src="/diya-golden-flame.png" alt="" className="ticket-v-stub-diya diya-stub-right" />
+          <img
+            src="/diya-golden-flame.png"
+            alt=""
+            width={52}
+            height={38}
+            loading="eager"
+            decoding="sync"
+            className="ticket-v-stub-diya diya-stub-left"
+          />
+          <img
+            src="/diya-golden-flame.png"
+            alt=""
+            width={52}
+            height={38}
+            loading="eager"
+            decoding="sync"
+            className="ticket-v-stub-diya diya-stub-right"
+          />
 
           <div className="ticket-v-bottom-content">
             <h4 className="ticket-v-stub-title-sub">ECK-RTU</h4>
-            <h3 className="ticket-v-stub-title-main">DEEPAURA 2K26</h3>
-            <p className="ticket-v-stub-title-desc">A ROYAL DIWALI REUNION</p>
+            <h3 className="ticket-v-stub-title-main">{eventTitle}</h3>
+            <p className="ticket-v-stub-title-desc">{eventTagline.toUpperCase()}</p>
 
             {hideQr ? (
               <>
@@ -294,7 +314,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                     </div>
                     <span className="ticket-v-seal-brand">ECK-RTU</span>
                     <span className="ticket-v-seal-verified">★ VERIFIED ★</span>
-                    <span className="ticket-v-seal-event">DEEPAURA 2K26</span>
+                    <span className="ticket-v-seal-event">{eventTitle}</span>
                     <span className="ticket-v-seal-privacy">🔒 QR PROTECTED</span>
                   </div>
                 </div>
@@ -328,7 +348,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
             {/* Admit Pill Button with Star Sparkle */}
             <div className="ticket-v-admit-pill">
-              <span>VERIFIED / ADMIT {totalCount}</span>
+              <span>VERIFIED&nbsp;/&nbsp;ADMIT&nbsp;{totalCount}</span>
               <svg className="ticket-v-star-sparkle" viewBox="0 0 24 24" width="13" height="13" fill="#ffffff">
                 <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
               </svg>
@@ -336,7 +356,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
             {/* Footer Metadata */}
             <p className="ticket-v-footer-meta">
-              01 Nov 2026 • {regNumber} • {formattedShortName}
+              {stubFooterDate} • {regNumber} • {formattedShortName}
             </p>
           </div>
         </div>

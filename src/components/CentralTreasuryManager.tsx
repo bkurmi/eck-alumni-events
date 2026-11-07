@@ -5,9 +5,11 @@ import {
   computeAccountSettlements,
   saveExpenseToDb,
   deleteExpenseFromDb,
+  getExpenseSplits,
 } from '../lib/expenses';
 import { getRegistrationStatusInfo } from '../lib/eventStatus';
 import { AccountTransferModal } from './AccountTransferModal';
+import { ArrowLeftRight, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 interface CentralTreasuryManagerProps {
   expenses: EventExpense[];
@@ -36,23 +38,16 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
 
   // 1. Compute Master Account Settlements across all accounts
   const settlementData = useMemo(() => {
-    return computeAccountSettlements(expenses, registrations, verifications, sponsorships);
-  }, [expenses, registrations, verifications, sponsorships]);
+    return computeAccountSettlements(
+      expenses,
+      registrations,
+      verifications,
+      sponsorships,
+      (activeEvent as any)?.expense_accounts_config || undefined
+    );
+  }, [expenses, registrations, verifications, sponsorships, (activeEvent as any)?.expense_accounts_config]);
 
-  // 2. Total Liquid Cash across all coordinators
-  const totalLiquidAssets = useMemo(() => {
-    return settlementData.accounts.reduce((sum, a) => sum + a.netBalance, 0);
-  }, [settlementData.accounts]);
-
-  const cashInHandBalance = useMemo(() => {
-    return settlementData.accounts.find((a) => a.isCash)?.netBalance || 0;
-  }, [settlementData.accounts]);
-
-  const bankBalancesTotal = useMemo(() => {
-    return totalLiquidAssets - cashInHandBalance;
-  }, [totalLiquidAssets, cashInHandBalance]);
-
-  // 3. Campus Legacy Fund Ledger & Custodians
+  // 2. Campus Legacy Fund Ledger & Custodians (Independent Permanent Corpus)
   const legacyFund = useMemo(() => {
     const legacyRecords = expenses.filter(
       (e) => e.category === 'Campus Legacy Fund' && e.status !== 'cancelled'
@@ -96,53 +91,79 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
       .filter((e) => {
         if (e.category !== 'Internal Transfer' || e.status === 'cancelled') return false;
         const note = (e.notes || '').toLowerCase();
-        const receiver = (e.vendor_name || '').toLowerCase();
-        return (
-          (note.includes('legacy') || note.includes('corpus')) &&
-          receiver.includes('mukesh')
-        );
+        return note.includes('legacy') || note.includes('corpus');
       })
       .reduce((sum, e) => sum + Number(e.actual_amount || 0), 0);
 
     const totalCorpusPool = corpusInflows + transfersSweptIn;
     const netBalance = totalCorpusPool - disbursements;
 
-    // Custodians holding the Legacy Fund:
-    // Primary designated custodian is Mukesh (YES Bank)
-    const mukeshAcc = settlementData.accounts.find((a) =>
-      a.accountName.toLowerCase().includes('mukesh')
-    );
+    // Identify designated custodians holding the Legacy Fund from recorded transactions
+    const legacyHoldingAccountNames = new Set<string>();
+    legacyRecords.forEach((e) => {
+      if (e.paid_from_account) legacyHoldingAccountNames.add(e.paid_from_account.toLowerCase().trim());
+      getExpenseSplits(e).forEach((s) => {
+        if (s.account) legacyHoldingAccountNames.add(s.account.toLowerCase().trim());
+      });
+    });
+    expenses.forEach((e) => {
+      if (e.category === 'Internal Transfer' && e.status !== 'cancelled') {
+        const note = (e.notes || '').toLowerCase();
+        if ((note.includes('legacy') || note.includes('corpus')) && e.vendor_name) {
+          legacyHoldingAccountNames.add(e.vendor_name.toLowerCase().trim());
+        }
+      }
+    });
 
-    // If there is an explicit legacy balance recorded, Mukesh holds it; otherwise fallback to Mukesh's net balance
-    const effectiveMukeshLegacy = netBalance > 0 ? netBalance : (mukeshAcc?.netBalance || 0);
+    const custodianAcc = settlementData.accounts.find((a) =>
+      legacyHoldingAccountNames.has(a.accountName.toLowerCase().trim()) ||
+      legacyHoldingAccountNames.has(a.accountId.toLowerCase().trim()) ||
+      Array.from(legacyHoldingAccountNames).some(
+        (h) => a.accountName.toLowerCase().includes(h) || h.includes(a.accountName.toLowerCase())
+      )
+    ) || settlementData.accounts.find((a) => a.netBalance > 0);
+
+    const effectiveLegacy = netBalance > 0 ? netBalance : (custodianAcc?.netBalance || 0);
 
     const custodians: { name: string; bank: string; upiId?: string; amount: number; isCash?: boolean }[] = [];
-    if (effectiveMukeshLegacy > 0 || (mukeshAcc && mukeshAcc.netBalance > 0)) {
+    if (effectiveLegacy > 0 && custodianAcc) {
       custodians.push({
-        name: 'Mukesh',
-        bank: mukeshAcc?.bankName || 'YES Bank',
-        upiId: mukeshAcc?.upiId || '9001017275@ybl',
-        amount: effectiveMukeshLegacy,
-        isCash: false,
+        name: custodianAcc.accountName,
+        bank: custodianAcc.bankName || 'Bank',
+        upiId: custodianAcc.upiId || undefined,
+        amount: effectiveLegacy,
+        isCash: custodianAcc.isCash || false,
       });
     }
 
     return {
-      netBalance: effectiveMukeshLegacy,
+      netBalance: effectiveLegacy,
       disbursements,
       custodians,
     };
   }, [expenses, settlementData.accounts]);
 
-  // 4. Operational Events (DeepAura 2026 + any other events) & their active Custodians
+  // 3. Total Liquid Cash across all coordinators
+  const totalLiquidAssets = useMemo(() => {
+    const eventLiquid = settlementData.accounts.reduce((sum, a) => sum + a.netBalance, 0);
+    return eventLiquid + (legacyFund?.netBalance || 0);
+  }, [settlementData.accounts, legacyFund?.netBalance]);
+
+  const cashInHandBalance = useMemo(() => {
+    return settlementData.accounts.find((a) => a.isCash)?.netBalance || 0;
+  }, [settlementData.accounts]);
+
+  const bankBalancesTotal = useMemo(() => {
+    return totalLiquidAssets - cashInHandBalance;
+  }, [totalLiquidAssets, cashInHandBalance]);
+
+  // 4. Operational Events & their active Custodians
   const eventBlocks = useMemo(() => {
-    // List all events (active event first)
     const eventsList = allEvents.length > 0 ? allEvents : [activeEvent];
 
     return eventsList.map((ev) => {
       const isCurrent = ev.id === activeEvent.id;
 
-      // Calculate event-level inflows & real expenses
       const realEventExpenses = expenses.filter(
         (e) =>
           e.category !== 'Internal Transfer' &&
@@ -180,31 +201,15 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
       const totalInflow = verifiedRegAmount + totalSponsorAmount;
       const netSurplus = totalInflow - totalExpenses;
 
-      // Find who holds this event's funds:
-      // Any coordinator with positive netBalance (excluding Mukesh's legacy allocation)
       const eventCustodians = settlementData.accounts
-        .filter((a) => {
-          if (a.accountName.toLowerCase().includes('mukesh')) {
-            // Mukesh holds legacy fund; if he has balance beyond legacy, include him
-            const operationalSurplusWithMukesh = Math.max(0, a.netBalance - legacyFund.netBalance);
-            return operationalSurplusWithMukesh > 0;
-          }
-          return a.netBalance > 0;
-        })
-        .map((a) => {
-          const isMukesh = a.accountName.toLowerCase().includes('mukesh');
-          const holdingAmt = isMukesh
-            ? Math.max(0, a.netBalance - legacyFund.netBalance)
-            : a.netBalance;
-
-          return {
-            name: a.accountName,
-            bank: a.bankName,
-            upiId: a.upiId,
-            amount: holdingAmt,
-            isCash: a.isCash,
-          };
-        })
+        .filter((a) => a.netBalance > 0)
+        .map((a) => ({
+          name: a.accountName,
+          bank: a.bankName,
+          upiId: a.upiId,
+          amount: a.netBalance,
+          isCash: a.isCash,
+        }))
         .filter((c) => c.amount > 0);
 
       const deadlineInfo = getRegistrationStatusInfo(ev);
@@ -260,70 +265,31 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="flex flex-col gap-5 w-full text-left">
       {/* 💰 1. Big Hero Block: Total Liquid Cash (In Hand) */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0.98) 100%)',
-          borderRadius: '18px',
-          border: '1.5px solid rgba(16, 185, 129, 0.35)',
-          padding: '24px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '16px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span
-                style={{
-                  fontSize: '0.74rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.8px',
-                  color: '#6ee7b7',
-                  fontWeight: 700,
-                  backgroundColor: 'rgba(16, 185, 129, 0.18)',
-                  padding: '3px 10px',
-                  borderRadius: '999px',
-                  border: '1px solid rgba(16, 185, 129, 0.35)',
-                }}
-              >
-                ✓ Central Association Treasury
+      <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-emerald-500/30 shadow-xl flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs uppercase tracking-wider text-emerald-400 font-bold bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30 inline-flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>CENTRAL ASSOCIATION TREASURY</span>
               </span>
             </div>
 
-            <span style={{ fontSize: '0.92rem', color: '#94a3b8', fontWeight: 600 }}>
+            <span className="text-xs sm:text-sm text-slate-300 font-semibold block">
               Total Liquid Cash (In Hand)
             </span>
-            <div
-              style={{
-                fontSize: 'clamp(2rem, 5vw, 2.85rem)',
-                fontWeight: 900,
-                color: '#34d399',
-                lineHeight: 1.15,
-                marginTop: '4px',
-                letterSpacing: '-0.5px',
-              }}
-            >
+            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-emerald-400 tracking-tight mt-1">
               ₹{formatINR(totalLiquidAssets)}
             </div>
-            <div style={{ fontSize: '0.82rem', color: '#cbd5e1', marginTop: '6px' }}>
+            <div className="text-xs sm:text-sm text-slate-400 mt-2">
               ₹{formatINR(bankBalancesTotal)} across bank accounts • ₹{formatINR(cashInHandBalance)} cash in hand
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -331,24 +297,9 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
                 setPresetFromAccount(undefined);
                 setIsTransferModalOpen(true);
               }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 18px',
-                minHeight: '44px',
-                backgroundColor: '#3b82f6',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '0.9rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
-              }}
+              className="min-h-[44px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-blue-900/30 active:scale-[0.98] transition-all cursor-pointer"
             >
-              <span>🔄</span>
+              <ArrowLeftRight className="w-4 h-4" />
               <span>Transfer / Sweep Funds</span>
             </button>
 
@@ -357,23 +308,10 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
                 type="button"
                 onClick={onRefresh}
                 disabled={loading}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '12px 14px',
-                  minHeight: '44px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                  color: '#cbd5e1',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '10px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                }}
+                className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                 title="Refresh Balances"
               >
-                <span>🔄</span>
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
               </button>
             )}
@@ -382,98 +320,64 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
       </div>
 
       {/* 2. Grid of Dedicated Blocks: Legacy Fund + Event Blocks */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '16px',
-        }}
-      >
-        {/* 🌱 Block 1: Campus Legacy Fund (Permanent Corpus) */}
-        <div
-          style={{
-            background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(12, 19, 34, 0.98) 100%)',
-            borderRadius: '16px',
-            border: '1.5px solid rgba(59, 130, 246, 0.35)',
-            padding: '20px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-          }}
-        >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 🌱 Block 1: Campus Legacy Fund (Permanent Endowment) */}
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-blue-500/30 shadow-lg flex flex-col gap-3.5">
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '1.5rem' }}>🌱</span>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl">🌱</span>
               <div>
-                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8', fontWeight: 700 }}>
-                  Permanent Endowment
+                <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
+                  PERMANENT ENDOWMENT
                 </span>
-                <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+                <h2 className="text-base sm:text-lg font-bold text-white">
                   Campus Legacy Fund
                 </h2>
               </div>
             </div>
-            <span
-              style={{
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '999px',
-                backgroundColor: 'rgba(59, 130, 246, 0.16)',
-                color: '#93c5fd',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-              }}
-            >
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
               Corpus
             </span>
           </div>
 
-          {/* Big Fund Amount */}
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>Net Available Fund:</span>
-            <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#38bdf8' }}>
+          {/* Fund Amount */}
+          <div className="flex items-baseline justify-between border-b border-slate-800 pb-3">
+            <span className="text-xs text-slate-400 font-medium">Net Available Fund:</span>
+            <span className="text-2xl sm:text-3xl font-black text-sky-400 tracking-tight">
               ₹{formatINR(legacyFund.netBalance)}
             </span>
           </div>
 
-          {/* Custodians (Who is holding this money?) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', fontWeight: 700 }}>
-              👤 Fund Custodians (Holding Balance):
+          {/* Custodians */}
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1.5">
+              <span>👤</span>
+              <span>FUND CUSTODIANS (HOLDING BALANCE):</span>
             </span>
 
             {legacyFund.custodians.length === 0 ? (
-              <span style={{ fontSize: '0.82rem', color: '#64748b' }}>No active custodian balance recorded yet.</span>
+              <span className="text-xs text-slate-500">No active custodian balance recorded yet.</span>
             ) : (
               legacyFund.custodians.map((c, idx) => (
                 <div
                   key={idx}
-                  style={{
-                    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-                    borderRadius: '10px',
-                    padding: '10px 12px',
-                    border: '1px solid rgba(255, 255, 255, 0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                  }}
+                  className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-2.5"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '1rem' }}>{c.isCash ? '💵' : '🏦'}</span>
-                    <div>
-                      <strong style={{ color: '#f8fafc', fontSize: '0.9rem' }}>{c.name}</strong>
-                      <span style={{ fontSize: '0.74rem', color: '#94a3b8', marginLeft: '6px' }}>({c.bank})</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-lg shrink-0">{c.isCash ? '💵' : '🏦'}</span>
+                    <div className="min-w-0">
+                      <strong className="text-sm font-bold text-white block truncate">
+                        {c.name} <span className="text-xs text-slate-400 font-normal">({c.bank})</span>
+                      </strong>
                       {c.upiId && (
-                        <div style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
+                        <div className="text-[11px] text-slate-500 font-mono truncate">
                           {c.upiId}
                         </div>
                       )}
                     </div>
                   </div>
-                  <strong style={{ color: '#34d399', fontSize: '1.05rem', fontWeight: 800 }}>
+                  <strong className="text-base sm:text-lg font-bold text-emerald-400 shrink-0">
                     ₹{formatINR(c.amount)}
                   </strong>
                 </div>
@@ -482,110 +386,80 @@ export const CentralTreasuryManager: React.FC<CentralTreasuryManagerProps> = ({
           </div>
         </div>
 
-        {/* 🎪 Event Blocks: One Clean Block for Each Reunion Event */}
+        {/* 🎪 Event Blocks */}
         {eventBlocks.map((ev) => {
           const isSurplus = ev.netSurplus >= 0;
 
           return (
             <div
               key={ev.id}
-              style={{
-                background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(12, 19, 34, 0.98) 100%)',
-                borderRadius: '16px',
-                border: '1.5px solid rgba(245, 158, 11, 0.35)',
-                padding: '20px 20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-              }}
+              className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg flex flex-col gap-3.5"
             >
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '1.5rem' }}>🎪</span>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🎪</span>
                   <div>
-                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8', fontWeight: 700 }}>
-                      Reunion Event
+                    <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
+                      REUNION EVENT
                     </span>
-                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+                    <h2 className="text-base sm:text-lg font-bold text-white">
                       {ev.name}
                     </h2>
                   </div>
                 </div>
                 <span
-                  style={{
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                    backgroundColor:
-                      ev.status === 'CLOSED'
-                        ? 'rgba(239, 68, 68, 0.16)'
-                        : 'rgba(16, 185, 129, 0.16)',
-                    color: ev.status === 'CLOSED' ? '#f87171' : '#34d399',
-                    border: `1px solid ${
-                      ev.status === 'CLOSED'
-                        ? 'rgba(239, 68, 68, 0.3)'
-                        : 'rgba(16, 185, 129, 0.3)'
-                    }`,
-                  }}
+                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                    ev.status === 'CLOSED'
+                      ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  }`}
                 >
                   {ev.status}
                 </span>
               </div>
 
-              {/* Big Surplus / Balance Amount */}
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px' }}>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>Event Operational Surplus:</span>
+              {/* Event Surplus / Balance */}
+              <div className="flex items-baseline justify-between border-b border-slate-800 pb-3">
+                <span className="text-xs text-slate-400 font-medium">Event Operational Surplus:</span>
                 <span
-                  style={{
-                    fontSize: '1.85rem',
-                    fontWeight: 800,
-                    color: isSurplus ? '#34d399' : '#f87171',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={`text-2xl sm:text-3xl font-black tracking-tight whitespace-nowrap ${
+                    isSurplus ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
                 >
                   {isSurplus ? '' : '-'}₹{formatINR(Math.abs(ev.netSurplus))}
                 </span>
               </div>
 
-              {/* Custodians (Who is holding this surplus money?) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', fontWeight: 700 }}>
-                  👤 Custodians (Holding Leftover Cash):
+              {/* Custodians */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1.5">
+                  <span>👤</span>
+                  <span>CUSTODIANS (HOLDING LEFTOVER CASH):</span>
                 </span>
 
                 {ev.custodians.length === 0 ? (
-                  <span style={{ fontSize: '0.82rem', color: '#64748b' }}>All event funds settled or disbursed.</span>
+                  <span className="text-xs text-slate-500">All event funds settled or disbursed.</span>
                 ) : (
                   ev.custodians.map((c, idx) => (
                     <div
                       key={idx}
-                      style={{
-                        backgroundColor: 'rgba(30, 41, 59, 0.6)',
-                        borderRadius: '10px',
-                        padding: '10px 12px',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '10px',
-                      }}
+                      className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-2.5"
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '1rem' }}>{c.isCash ? '💵' : '🏦'}</span>
-                        <div>
-                          <strong style={{ color: '#f8fafc', fontSize: '0.9rem' }}>{c.name}</strong>
-                          <span style={{ fontSize: '0.74rem', color: '#94a3b8', marginLeft: '6px' }}>({c.bank})</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-lg shrink-0">{c.isCash ? '💵' : '🏦'}</span>
+                        <div className="min-w-0">
+                          <strong className="text-sm font-bold text-white block truncate">
+                            {c.name} <span className="text-xs text-slate-400 font-normal">({c.bank})</span>
+                          </strong>
                           {c.upiId && (
-                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
+                            <div className="text-[11px] text-slate-500 font-mono truncate">
                               {c.upiId}
                             </div>
                           )}
                         </div>
                       </div>
-                      <strong style={{ color: '#34d399', fontSize: '1.05rem', fontWeight: 800 }}>
+                      <strong className="text-base sm:text-lg font-bold text-emerald-400 shrink-0">
                         ₹{formatINR(c.amount)}
                       </strong>
                     </div>

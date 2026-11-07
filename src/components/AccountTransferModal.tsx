@@ -6,6 +6,7 @@ import {
   getPublicExpenseScreenshotUrl,
   type AccountSettlement,
 } from '../lib/expenses';
+import { ArrowLeftRight, X, AlertCircle, Trash2, ArrowRight } from 'lucide-react';
 
 interface AccountTransferModalProps {
   isOpen: boolean;
@@ -41,12 +42,11 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Build selectable accounts list from known accounts + active accounts
+  // Build selectable accounts list from active accounts + fallback known accounts
   const availableAccounts = useMemo(() => {
     const list: { id: string; name: string; label: string; balance: number }[] = [];
     const seen = new Set<string>();
 
-    // First include active accounts from settlements
     accounts.forEach((acc) => {
       const key = acc.accountName.toLowerCase().trim();
       if (!seen.has(key)) {
@@ -60,7 +60,6 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
       }
     });
 
-    // Then ensure all known accounts are present
     KNOWN_EXPENSE_ACCOUNTS.forEach((k) => {
       const key = k.accountName.toLowerCase().trim();
       if (!seen.has(key)) {
@@ -99,42 +98,38 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
       );
       setReceiptPreview(existingUrl);
     } else {
-      // Default new transfer
-      const defaultFrom =
+      const initialFrom =
         presetFromAccount ||
-        (availableAccounts.length > 0 ? availableAccounts[0].name : 'Hari Narayan');
-      setFromAccount(defaultFrom);
+        accounts.find((a) => a.netBalance > 0)?.accountName ||
+        availableAccounts[0]?.name ||
+        '';
 
-      const defaultTo =
+      const initialTo =
         availableAccounts.find(
-          (a) => a.name.toLowerCase() !== defaultFrom.toLowerCase()
-        )?.name || 'Mukesh';
-      setToAccount(defaultTo);
+          (a) => a.name.toLowerCase() !== initialFrom.toLowerCase()
+        )?.name || '';
 
+      setFromAccount(initialFrom);
+      setToAccount(initialTo);
       setAmount('');
       setTransferDate(new Date().toISOString().split('T')[0]);
       setPaymentMode('UPI');
       setReferenceNote('');
       setReceiptPreview(null);
     }
-  }, [isOpen, initialData, presetFromAccount, availableAccounts]);
+    setIsSubmitting(false);
+  }, [isOpen, initialData, presetFromAccount, accounts, availableAccounts]);
 
-  if (!isOpen) return null;
-
-  // Selected sender details & balance
   const senderAcc = availableAccounts.find(
     (a) => a.name.toLowerCase() === fromAccount.toLowerCase()
   );
-  const senderBalance = senderAcc ? senderAcc.balance : 0;
-
-  // Selected receiver details
   const receiverAcc = availableAccounts.find(
     (a) => a.name.toLowerCase() === toAccount.toLowerCase()
   );
 
+  const senderBalance = senderAcc?.balance || 0;
   const numAmount = Number(amount) || 0;
 
-  // Quick swap sender and receiver
   const handleSwap = () => {
     const temp = fromAccount;
     setFromAccount(toAccount);
@@ -142,12 +137,15 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setReceiptFile(file);
+    const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setErrorMsg('Screenshot file size exceeds 10MB.');
+        return;
+      }
+      setReceiptFile(file);
       setReceiptPreview(URL.createObjectURL(file));
-    } else {
-      setReceiptPreview(null);
+      setErrorMsg(null);
     }
   };
 
@@ -155,38 +153,38 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!fromAccount.trim()) {
-      setErrorMsg('Please select a sender account.');
+    if (!fromAccount) {
+      setErrorMsg('Please select a sender account (From).');
       return;
     }
-    if (!toAccount.trim()) {
-      setErrorMsg('Please select a receiver account.');
+    if (!toAccount) {
+      setErrorMsg('Please select a receiver account (To).');
       return;
     }
     if (fromAccount.toLowerCase() === toAccount.toLowerCase()) {
-      setErrorMsg('Sender and Receiver accounts must be different.');
+      setErrorMsg('Sender and receiver cannot be the same account.');
       return;
     }
-    if (numAmount <= 0) {
-      setErrorMsg('Please enter a valid transfer amount greater than ₹0.');
+    if (!numAmount || numAmount <= 0) {
+      setErrorMsg('Please enter a valid transfer amount greater than 0.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       const payload: Partial<EventExpense> = {
-        id: initialData?.id,
-        event_id: eventId || null,
-        item_name: `Transfer: ${fromAccount} ➔ ${toAccount}`,
+        ...(initialData?.id ? { id: initialData.id } : {}),
+        item_name: `Inter-Account Transfer (${fromAccount} ➔ ${toAccount})`,
         category: 'Internal Transfer',
-        expected_amount: 0,
+        expected_amount: numAmount,
         actual_amount: numAmount,
-        status: 'settled',
         paid_from_account: fromAccount,
-        vendor_name: toAccount, // stores target recipient
-        notes: referenceNote.trim() || `Inter-account transfer to ${toAccount}`,
-        payment_mode: paymentMode,
+        vendor_name: toAccount,
         payment_date: transferDate,
+        payment_mode: paymentMode,
+        notes: referenceNote.trim() || `Transferred from ${fromAccount} to ${toAccount}`,
+        status: 'settled',
+        event_id: eventId || null,
         payment_splits: [
           {
             account: fromAccount,
@@ -229,79 +227,27 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(5px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '12px',
-        overflowY: 'auto',
-      }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '480px',
-          backgroundColor: '#0f172a',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '94vh',
-        }}
-      >
+      <div className="w-full max-w-lg max-h-[94vh] sm:max-h-[85vh] bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-200">
         {/* Header */}
-        <div
-          style={{
-            padding: '16px 20px',
-            backgroundColor: 'rgba(30, 41, 59, 0.8)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '38px',
-                height: '38px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(99, 102, 241, 0.18)',
-                color: '#818cf8',
-                fontSize: '20px',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
-              }}
-            >
-              ⇄
-            </span>
+        <div className="p-4 sm:p-5 bg-slate-950/70 border-b border-slate-800/80 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-lg">
+              <ArrowLeftRight className="w-5 h-5" />
+            </div>
             <div>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: '1.08rem',
-                  fontWeight: 700,
-                  color: '#f8fafc',
-                }}
-              >
+              <h3 className="text-base sm:text-lg font-bold text-slate-100">
                 {initialData ? 'Edit Internal Transfer' : 'Transfer Funds Between Accounts'}
               </h3>
-              <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
+              <p className="text-xs text-slate-400">
                 Reshuffles coordinator cash/bank balances without inflating event expenses
               </p>
             </div>
@@ -311,98 +257,33 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '20px',
-              cursor: 'pointer',
-              padding: '6px',
-              borderRadius: '8px',
-              lineHeight: 1,
-              minWidth: '44px',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Close"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Form Body */}
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            padding: '16px 20px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          }}
-        >
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-4 text-left">
           {errorMsg && (
-            <div
-              style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                color: '#fca5a5',
-                fontSize: '0.82rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <span>⚠️</span>
-              <span>{errorMsg}</span>
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs sm:text-sm flex items-start gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span className="flex-1 font-medium">{errorMsg}</span>
             </div>
           )}
 
-          {/* Accounts Transfer Row (From ➔ To with Swap Button) */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr auto 1fr',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: '#1e293b',
-              padding: '12px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-          >
+          {/* Accounts Transfer Row */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 p-3 sm:p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800">
             {/* Sender (From) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  color: '#f87171',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}
-              >
+            <div className="flex flex-col gap-1 min-w-0">
+              <label className="text-[11px] font-bold text-rose-400 uppercase tracking-wider">
                 Debited (From)
               </label>
               <select
                 value={fromAccount}
                 onChange={(e) => setFromAccount(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 8px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  minHeight: '44px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
+                className="w-full min-h-[44px] px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-slate-100 text-sm font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
               >
                 {availableAccounts.map((acc) => (
                   <option key={`from-${acc.id}`} value={acc.name}>
@@ -410,13 +291,9 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
                   </option>
                 ))}
               </select>
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+              <span className="text-[11px] text-slate-400 truncate">
                 Balance:{' '}
-                <strong
-                  style={{
-                    color: senderBalance >= 0 ? '#34d399' : '#f87171',
-                  }}
-                >
+                <strong className={senderBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                   ₹{formatINR(senderBalance)}
                 </strong>
               </span>
@@ -427,55 +304,20 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
               type="button"
               onClick={handleSwap}
               title="Swap From and To"
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '50%',
-                width: '38px',
-                height: '38px',
-                color: '#cbd5e1',
-                fontSize: '16px',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                alignSelf: 'center',
-                marginTop: '12px',
-                transition: 'all 0.15s ease',
-              }}
+              className="w-9 h-9 mt-4 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-amber-400 flex items-center justify-center transition-colors cursor-pointer self-center"
             >
-              ⇄
+              <ArrowLeftRight className="w-4 h-4" />
             </button>
 
             {/* Receiver (To) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  color: '#34d399',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}
-              >
+            <div className="flex flex-col gap-1 min-w-0">
+              <label className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
                 Credited (To)
               </label>
               <select
                 value={toAccount}
                 onChange={(e) => setToAccount(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 8px',
-                  borderRadius: '8px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  minHeight: '44px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
+                className="w-full min-h-[44px] px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-slate-100 text-sm font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
               >
                 {availableAccounts
                   .filter((a) => a.name.toLowerCase() !== fromAccount.toLowerCase())
@@ -485,13 +327,9 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
                     </option>
                   ))}
               </select>
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+              <span className="text-[11px] text-slate-400 truncate">
                 Balance:{' '}
-                <strong
-                  style={{
-                    color: (receiverAcc?.balance || 0) >= 0 ? '#34d399' : '#f87171',
-                  }}
-                >
+                <strong className={(receiverAcc?.balance || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                   ₹{formatINR(receiverAcc?.balance || 0)}
                 </strong>
               </span>
@@ -499,28 +337,12 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
           </div>
 
           {/* Amount Input & Quick Chips */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label
-              style={{
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                color: '#e2e8f0',
-              }}
-            >
-              Transfer Amount (₹) <span style={{ color: '#f87171' }}>*</span>
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5">
+              Transfer Amount (₹) <span className="text-rose-400">*</span>
             </label>
-            <div style={{ position: 'relative' }}>
-              <span
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#94a3b8',
-                  fontSize: '1.1rem',
-                  fontWeight: 700,
-                }}
-              >
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg font-bold text-indigo-400 font-mono">
                 ₹
               </span>
               <input
@@ -530,46 +352,18 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="e.g. 10000"
-                style={{
-                  width: '100%',
-                  padding: '11px 12px 11px 32px',
-                  borderRadius: '8px',
-                  backgroundColor: '#1e293b',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  minHeight: '44px',
-                  outline: 'none',
-                }}
+                className="w-full min-h-[44px] pl-8 pr-4 py-2.5 bg-slate-950 text-indigo-400 font-bold font-mono text-lg rounded-xl border border-slate-800 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/60"
               />
             </div>
 
             {/* Quick Amount Chips */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '6px',
-                flexWrap: 'wrap',
-                marginTop: '4px',
-              }}
-            >
+            <div className="flex flex-wrap gap-1.5 mt-2">
               {[5000, 10000, 25000, 50000].map((chip) => (
                 <button
                   key={chip}
                   type="button"
                   onClick={() => setAmount(String(chip))}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#cbd5e1',
-                    fontSize: '0.74rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    minHeight: '32px',
-                  }}
+                  className="min-h-[32px] px-2.5 py-1 rounded-full text-xs font-semibold font-mono bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-300 transition-colors cursor-pointer"
                 >
                   ₹{formatINR(chip)}
                 </button>
@@ -578,17 +372,7 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setAmount(String(senderBalance))}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                    border: '1px solid rgba(99, 102, 241, 0.35)',
-                    color: '#a5b4fc',
-                    fontSize: '0.74rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    minHeight: '32px',
-                  }}
+                  className="min-h-[32px] px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 border border-indigo-500/35 text-indigo-300 hover:bg-indigo-500/25 transition-colors cursor-pointer"
                 >
                   Full Available (₹{formatINR(senderBalance)})
                 </button>
@@ -596,72 +380,34 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
             </div>
 
             {numAmount > senderBalance && senderBalance > 0 && (
-              <span
-                style={{
-                  fontSize: '0.74rem',
-                  color: '#fbbf24',
-                  marginTop: '2px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
+              <span className="text-xs text-amber-400 mt-1.5 block">
                 ⚠️ Note: Transfer amount exceeds {fromAccount}'s surplus balance (₹{formatINR(senderBalance)}).
               </span>
             )}
           </div>
 
           {/* Date & Mode Row */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '12px',
-            }}
-          >
-            {/* Transfer Date */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
-                Date <span style={{ color: '#f87171' }}>*</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5">
+                Date <span className="text-rose-400">*</span>
               </label>
               <input
                 type="date"
                 value={transferDate}
                 onChange={(e) => setTransferDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 10px',
-                  borderRadius: '8px',
-                  backgroundColor: '#1e293b',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  minHeight: '44px',
-                  outline: 'none',
-                }}
+                className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950 text-slate-100 rounded-xl text-base sm:text-sm border border-slate-800 focus:outline-none focus:border-indigo-500/60"
               />
             </div>
 
-            {/* Payment Mode */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5">
                 Payment Mode
               </label>
               <select
                 value={paymentMode}
                 onChange={(e) => setPaymentMode(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 10px',
-                  borderRadius: '8px',
-                  backgroundColor: '#1e293b',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
-                  fontSize: '1rem',
-                  minHeight: '44px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
+                className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950 text-slate-100 rounded-xl text-base sm:text-sm border border-slate-800 focus:outline-none focus:border-indigo-500/60 cursor-pointer"
               >
                 <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                 <option value="Bank Transfer (NEFT/IMPS)">Bank Transfer (IMPS/NEFT)</option>
@@ -671,9 +417,9 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
             </div>
           </div>
 
-          {/* Reference / Note */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
+          {/* Purpose / UTR */}
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5">
               Purpose / Reference Note / UTR
             </label>
             <input
@@ -681,52 +427,27 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
               value={referenceNote}
               onChange={(e) => setReferenceNote(e.target.value)}
               placeholder="e.g. Sent ₹10k for Catering Advance / UTR 42398..."
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                backgroundColor: '#1e293b',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                color: '#f8fafc',
-                fontSize: '1rem',
-                minHeight: '44px',
-                outline: 'none',
-              }}
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950 text-slate-100 placeholder-slate-500 rounded-xl text-base sm:text-sm border border-slate-800 focus:outline-none focus:border-indigo-500/60"
             />
           </div>
 
-          {/* Optional Receipt / Screenshot Upload */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
+          {/* Transfer Proof / Screenshot Upload */}
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-slate-200 mb-1.5">
               Transfer Proof / Screenshot (Optional)
             </label>
             <input
               type="file"
               accept="image/*,application/pdf"
               onChange={handleFileChange}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '8px',
-                backgroundColor: '#1e293b',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                color: '#94a3b8',
-                fontSize: '0.85rem',
-                minHeight: '44px',
-                cursor: 'pointer',
-              }}
+              className="w-full min-h-[44px] p-2 bg-slate-950 text-slate-400 rounded-xl border border-slate-800 text-xs sm:text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:text-xs cursor-pointer"
             />
             {receiptPreview && (
-              <div style={{ marginTop: '4px' }}>
+              <div className="mt-2">
                 <img
                   src={receiptPreview}
                   alt="Transfer Receipt Preview"
-                  style={{
-                    maxHeight: '120px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    objectFit: 'cover',
-                  }}
+                  className="max-h-24 rounded-lg border border-slate-700 object-cover"
                 />
               </div>
             )}
@@ -734,46 +455,19 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
 
           {/* Impact Preview Card */}
           {numAmount > 0 && fromAccount && toAccount && (
-            <div
-              style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.7)',
-                borderRadius: '10px',
-                padding: '12px 14px',
-                border: '1px dashed rgba(99, 102, 241, 0.35)',
-                fontSize: '0.82rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px',
-              }}
-            >
-              <span style={{ fontWeight: 700, color: '#a5b4fc' }}>
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-dashed border-indigo-500/35 text-xs flex flex-col gap-1.5">
+              <span className="font-bold text-indigo-300">
                 📊 Projected Post-Transfer Balances:
               </span>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ color: '#cbd5e1' }}>
-                  {fromAccount} (Debit -₹{formatINR(numAmount)}):
-                </span>
-                <strong style={{ color: senderBalance - numAmount >= 0 ? '#34d399' : '#f87171' }}>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>{fromAccount} (Debit -₹{formatINR(numAmount)}):</span>
+                <strong className={senderBalance - numAmount >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>
                   ₹{formatINR(senderBalance - numAmount)}
                 </strong>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ color: '#cbd5e1' }}>
-                  {toAccount} (Credit +₹{formatINR(numAmount)}):
-                </span>
-                <strong style={{ color: '#34d399' }}>
+              <div className="flex justify-between items-center text-slate-300">
+                <span>{toAccount} (Credit +₹{formatINR(numAmount)}):</span>
+                <strong className="text-emerald-400 font-mono">
                   ₹{formatINR((receiverAcc?.balance || 0) + numAmount)}
                 </strong>
               </div>
@@ -781,59 +475,27 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
           )}
 
           {/* Action Buttons */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: initialData ? 'space-between' : 'flex-end',
-              gap: '10px',
-              marginTop: '8px',
-              paddingTop: '12px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              flexWrap: 'wrap',
-            }}
-          >
-            {initialData && onDelete && (
+          <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2.5 shrink-0">
+            {initialData && onDelete ? (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={isSubmitting}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                  color: '#f87171',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 hover:bg-rose-500/20 transition-colors cursor-pointer"
               >
-                <span>🗑️</span>
+                <Trash2 className="w-3.5 h-3.5" />
                 <span>Delete</span>
               </button>
+            ) : (
+              <div />
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                  color: '#cbd5e1',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  minHeight: '44px',
-                }}
+                className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-300 font-semibold text-sm transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -841,25 +503,10 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  minHeight: '44px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
-                  opacity: isSubmitting ? 0.7 : 1,
-                }}
+                className="min-h-[44px] px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-sm inline-flex items-center gap-1.5 shadow-md shadow-indigo-600/30 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
                 <span>{isSubmitting ? 'Saving...' : initialData ? 'Update Transfer' : 'Record Transfer'}</span>
-                <span>➔</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -868,4 +515,3 @@ export const AccountTransferModal: React.FC<AccountTransferModalProps> = ({
     </div>
   );
 };
-

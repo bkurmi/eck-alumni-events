@@ -1,13 +1,25 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import type { EventRegistration, PaymentVerification, Sponsorship } from '../types';
-import { DEFAULT_UPI_CONFIGS, UPI_ACCOUNT_NAMES } from '../lib/paymentRotation';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import {
+  Search,
+  X,
+  Calendar,
+  Edit2,
+  Loader2,
+  ExternalLink,
+  ChevronDown,
+} from 'lucide-react';
+import type { EventRegistration, PaymentVerification, Sponsorship, ECKEvent } from '../types';
+import { getUpiAccountName, isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
+import { formatINR } from '../lib/expenses';
+import { getBatchFromPassingYear } from '../lib/batchUtils';
 
 interface UpiReconciliationReportProps {
   registrations: EventRegistration[];
   verifications: PaymentVerification[];
   sponsorships?: Sponsorship[];
+  event?: ECKEvent | null;
   onSaveVerification: (
     registrationId: string,
     upiId: string,
@@ -31,73 +43,109 @@ interface KnownAccount {
 
 const getPublicScreenshotUrl = (path: string | null | undefined) => {
   if (!path) return null;
-  const cleanPath = path.trim();
+  let cleanPath = path.trim().replace(/^["']|["']$/g, '');
   if (!cleanPath || cleanPath === 'manual-admin-entry') return null;
   if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
+  if (cleanPath.startsWith('payment-screenshots/')) {
+    cleanPath = cleanPath.replace(/^payment-screenshots\//, '');
+  }
   const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
   return data?.publicUrl || null;
 };
 
-
-
-// Receiving accounts tracked specifically for UPI Reconciliation Reporting
-const RECONCILIATION_ACCOUNTS: {
-  upi_id: string;
-  bankName: string;
-  accountName: string;
-  isSponsorAccount?: boolean;
-}[] = [
-    ...DEFAULT_UPI_CONFIGS.map((c, idx) => {
-      let bank = 'UPI';
-      const upi = c.upi_id.toLowerCase().trim();
-      if (upi.includes('sbi')) bank = 'SBI';
-      else if (upi.includes('axis')) bank = 'AXIS';
-      else if (upi.includes('ybl')) bank = 'YES';
-      else if (upi.includes('ibl') || upi.includes('icici')) bank = 'ICICI';
-      return {
-        upi_id: upi,
-        bankName: bank,
-        accountName: c.account_name || UPI_ACCOUNT_NAMES[upi] || `Account ${idx + 1}`,
-        isSponsorAccount: false,
-      };
-    }),
-    {
-      upi_id: '9799951857@upi',
-      bankName: 'UPI',
-      accountName: UPI_ACCOUNT_NAMES['9799951857@upi'] || 'Chetan',
-      isSponsorAccount: false,
-    },
-    {
-      upi_id: 'gautam.lucky-1@okicici',
-      bankName: 'ICICI',
-      accountName: UPI_ACCOUNT_NAMES['gautam.lucky-1@okicici'] || 'Lokesh',
-      isSponsorAccount: false,
-    },
-  ];
+// Format date strictly as DD-MM-YYYY
+const formatDDMMYYYY = (dateStr: string | null | undefined) => {
+  if (!dateStr || dateStr === 'No Date') return '—';
+  try {
+    const clean = dateStr.slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dateStr;
+  } catch {
+    return dateStr || '—';
+  }
+};
 
 export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = ({
   registrations,
   verifications,
   sponsorships = [],
+  event,
   onSaveVerification,
   onEditSponsorship,
-  currentUserEmail,
+  currentUserEmail: _currentUserEmail,
 }) => {
-  // Known accounts list specifically for reconciliation reporting
+  // Known accounts list dynamically merged from active event configs and actual recorded transactions
   const knownAccounts: KnownAccount[] = useMemo(() => {
-    return RECONCILIATION_ACCOUNTS.map((c) => ({
-      upi_id: c.upi_id.toLowerCase().trim(),
-      label: `${c.accountName} (${c.bankName})`,
-      badge: c.accountName,
-      bankName: c.bankName,
-      accountName: c.accountName,
-      isSponsorAccount: c.isSponsorAccount,
-    }));
-  }, []);
+    const list: KnownAccount[] = [];
+    const seen = new Set<string>();
 
-  // All filterable account keys: known accounts + 'unassigned'
+    // 1. Add event-specific configured UPI accounts first if present
+    if (event?.upi_rotation_configs && Array.isArray(event.upi_rotation_configs)) {
+      event.upi_rotation_configs.forEach((c) => {
+        const upi = (c.upi_id || '').toLowerCase().trim();
+        if (upi && !seen.has(upi) && !isCashAccount(upi)) {
+          seen.add(upi);
+          let bank = 'UPI';
+          if (upi.includes('sbi')) bank = 'SBI';
+          else if (upi.includes('axis')) bank = 'AXIS';
+          else if (upi.includes('ybl')) bank = 'YES';
+          else if (upi.includes('ibl') || upi.includes('icici')) bank = 'ICICI';
+          const accName = c.account_name || getUpiAccountName(upi, event) || 'UPI Account';
+          list.push({
+            upi_id: upi,
+            label: `${accName} (${bank})`,
+            badge: accName,
+            bankName: bank,
+            accountName: accName,
+            isSponsorAccount: false,
+          });
+        }
+      });
+    }
+
+    // 2. Add genuine UPI accounts recorded in verifications
+    verifications.forEach((v) => {
+      const upi = (v.upi_id || '').toLowerCase().trim();
+      if (upi && !seen.has(upi) && !isCashAccount(upi)) {
+        seen.add(upi);
+        const accName = getUpiAccountName(upi, event) || 'UPI Account';
+        list.push({
+          upi_id: upi,
+          label: `${accName} (${upi})`,
+          badge: accName,
+          bankName: 'UPI',
+          accountName: accName,
+          isSponsorAccount: false,
+        });
+      }
+    });
+
+    // 3. Add genuine UPI accounts recorded in sponsorships
+    sponsorships.forEach((s) => {
+      const upi = (s.receiving_upi_id || '').toLowerCase().trim();
+      if (upi && !seen.has(upi) && !isCashAccount(upi)) {
+        seen.add(upi);
+        const accName = getUpiAccountName(upi, event) || 'Sponsor Account';
+        list.push({
+          upi_id: upi,
+          label: `${accName} (${upi})`,
+          badge: accName,
+          bankName: 'UPI',
+          accountName: accName,
+          isSponsorAccount: true,
+        });
+      }
+    });
+
+    return list;
+  }, [event, verifications, sponsorships]);
+
+  // All filterable account keys: genuine known UPI accounts + canonical 'Cash in Hand'
   const allAccountKeys = useMemo(() => {
-    return [...knownAccounts.map((a) => a.upi_id), 'unassigned'];
+    return [...knownAccounts.map((a) => a.upi_id), CANONICAL_CASH_ACCOUNT];
   }, [knownAccounts]);
 
   // Selected QR Checkbox accounts (Multi-select)
@@ -127,6 +175,28 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   const [editAmount, setEditAmount] = useState<number>(800);
   const [editNotes, setEditNotes] = useState<string>('');
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState<boolean>(false);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close account dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (
+        accountDropdownRef.current &&
+        !accountDropdownRef.current.contains(e.target as Node)
+      ) {
+        setAccountDropdownOpen(false);
+      }
+    };
+    if (accountDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [accountDropdownOpen]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -149,28 +219,45 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   }, [verifications]);
 
   // Combine registration with verification record
-  // Date strictly comes from event_registrations (created_at)
   const enrichedList = useMemo(() => {
     return registrations.map((reg) => {
       const verif = verifByRegId.get(reg.id) || reg.payment_verifications?.[0];
-      const rawUpi = verif?.upi_id ? verif.upi_id.toLowerCase().trim() : null;
-      // If mapped to an official receiving UPI account, assign it; otherwise it's unassigned
-      const isKnown = rawUpi ? knownAccounts.some((a) => a.upi_id === rawUpi) : false;
-      const assignedUpi = isKnown ? rawUpi : null;
+      const rawUpi = verif?.upi_id ? verif.upi_id.trim() : null;
+
+      const isExplicitCash = isCashAccount(rawUpi) || isCashAccount(verif?.notes);
+      const isUntagged = !rawUpi && !isExplicitCash;
+
+      let assignedUpi: string;
+      let qrLabel: string;
+      if (isExplicitCash) {
+        assignedUpi = CANONICAL_CASH_ACCOUNT;
+        qrLabel = '💵 Cash in Hand';
+      } else if (rawUpi) {
+        const norm = rawUpi.toLowerCase();
+        const matchedAccount = knownAccounts.find((a) => a.upi_id === norm);
+        if (matchedAccount) {
+          assignedUpi = matchedAccount.upi_id;
+          qrLabel = matchedAccount.label;
+        } else {
+          assignedUpi = norm;
+          qrLabel = `${getUpiAccountName(norm, event)} (${norm})`;
+        }
+      } else {
+        assignedUpi = CANONICAL_CASH_ACCOUNT;
+        qrLabel = '⚠️ Untagged';
+      }
+
       const paymentDate = reg.created_at.slice(0, 10);
       const amount = verif ? Number(verif.amount) : Number(reg.amount || 0);
-
-      // Match friendly QR label
-      const matchedAccount = knownAccounts.find((a) => a.upi_id === assignedUpi);
-      const qrLabel = matchedAccount
-        ? matchedAccount.label
-        : '⚠️ Not Tagged';
 
       return {
         registration: reg,
         verification: verif,
         assignedUpi,
         qrLabel,
+        isExplicitCash,
+        isUntagged,
+        isCash: isExplicitCash || isUntagged,
         paymentDate,
         amount,
         verifiedBy: verif?.verified_by || null,
@@ -190,9 +277,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
       return timeB - timeA;
     });
-  }, [registrations, verifByRegId, knownAccounts]);
+  }, [registrations, verifByRegId, knownAccounts, event]);
 
-  // Attendance Counts for the filter chips
+  // Attendance Counts
   const attendanceCounts = useMemo(() => {
     return {
       all: enrichedList.length,
@@ -211,7 +298,7 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     return Array.from(set).sort().reverse();
   }, [enrichedList]);
 
-  // Individual Account Tallies (Reflects active attendance filter + sponsorships)
+  // Individual Account Tallies
   const accountStats = useMemo(() => {
     const stats: Record<
       string,
@@ -220,13 +307,13 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     knownAccounts.forEach((acc) => {
       stats[acc.upi_id] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
     });
-    stats['unassigned'] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
+    stats[CANONICAL_CASH_ACCOUNT] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
 
     enrichedList.forEach((item) => {
       if (attendanceFilter !== 'all' && item.registration.attendance_status !== attendanceFilter) {
         return;
       }
-      const key = item.assignedUpi || 'unassigned';
+      const key = item.assignedUpi || CANONICAL_CASH_ACCOUNT;
       if (!stats[key]) {
         stats[key] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
       }
@@ -235,7 +322,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     });
 
     sponsorships.forEach((s) => {
-      const key = (s.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
+      const raw = (s.receiving_upi_id || '').trim();
+      const key = isCashAccount(raw) || !raw ? CANONICAL_CASH_ACCOUNT : raw.toLowerCase();
       if (!stats[key]) {
         stats[key] = { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
       }
@@ -263,30 +351,25 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     setSelectedAccounts([]);
   };
 
-  // Filtered List based on:
-  // 1. Attendance Status Filter
-  // 2. Multi-Selected QR Checkboxes
-  // 3. Date Filter
-  // 4. Search Query
+  // Filtered List
   const filteredList = useMemo(() => {
     return enrichedList.filter((item) => {
-      // Attendance status filter
       if (attendanceFilter !== 'all' && item.registration.attendance_status !== attendanceFilter) {
         return false;
       }
 
-      // QR account filter
-      const key = item.assignedUpi || 'unassigned';
-      if (!selectedAccounts.includes(key)) {
+      const key = item.assignedUpi || CANONICAL_CASH_ACCOUNT;
+      const isSelected =
+        selectedAccounts.includes(key) ||
+        (key === CANONICAL_CASH_ACCOUNT && selectedAccounts.includes('unassigned'));
+      if (!isSelected) {
         return false;
       }
 
-      // Date filter
       if (selectedDateFilter !== 'all' && item.paymentDate !== selectedDateFilter) {
         return false;
       }
 
-      // Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const alumni = item.registration.alumni;
@@ -313,13 +396,18 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     });
   }, [enrichedList, attendanceFilter, selectedAccounts, selectedDateFilter, searchQuery]);
 
-  // Filtered sponsorships based on selected UPI accounts, search, and date
+  // Filtered sponsorships
   const filteredSponsorships = useMemo(() => {
     return (sponsorships || []).filter((s) => {
-      const rawUpi = (s.receiving_upi_id || 'gautam.lucky-1@okicici').toLowerCase().trim();
-      const isKnown = knownAccounts.some((a) => a.upi_id === rawUpi);
-      const upi = isKnown ? rawUpi : 'unassigned';
-      if (!selectedAccounts.includes(upi)) {
+      const rawUpi = (s.receiving_upi_id || '').trim();
+      const isCash = isCashAccount(rawUpi) || !rawUpi;
+      const norm = rawUpi.toLowerCase();
+      const isKnown = knownAccounts.some((a) => a.upi_id === norm);
+      const upi = isCash ? CANONICAL_CASH_ACCOUNT : isKnown ? norm : CANONICAL_CASH_ACCOUNT;
+      const isSelected =
+        selectedAccounts.includes(upi) ||
+        (upi === CANONICAL_CASH_ACCOUNT && selectedAccounts.includes('unassigned'));
+      if (!isSelected) {
         return false;
       }
 
@@ -343,9 +431,9 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
       return true;
     });
-  }, [sponsorships, selectedAccounts, searchQuery, selectedDateFilter]);
+  }, [sponsorships, selectedAccounts, searchQuery, selectedDateFilter, knownAccounts]);
 
-  // Totals for the currently active filtered view (Registrations + Sponsorships)
+  // Totals
   const currentTotals = useMemo(() => {
     const totalRegCount = filteredList.length;
     const regAmount = filteredList.reduce((sum, item) => sum + item.amount, 0);
@@ -361,15 +449,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     };
   }, [filteredList, filteredSponsorships]);
 
-  // Grouped by Date (Used when viewMode === 'daywise')
+  // Grouped by Date (Day-wise)
   const groupedByDate = useMemo(() => {
-    const groups: {
-      date: string;
-      items: typeof filteredList;
-      subtotalAmount: number;
-      subtotalCount: number;
-    }[] = [];
-
     const map = new Map<string, typeof filteredList>();
 
     filteredList.forEach((item) => {
@@ -382,41 +463,49 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
 
     const sortedDates = Array.from(map.keys()).sort().reverse();
 
-    sortedDates.forEach((d) => {
-      const items = map.get(d)!.sort((a, b) => {
-        const regA = a.registration.registration_number || '';
-        const regB = b.registration.registration_number || '';
-        if (regA && regB) {
-          const cmp = regB.localeCompare(regA, undefined, { numeric: true, sensitivity: 'base' });
-          if (cmp !== 0) return cmp;
-        }
-        const timeA = a.registration.created_at ? new Date(a.registration.created_at).getTime() : 0;
-        const timeB = b.registration.created_at ? new Date(b.registration.created_at).getTime() : 0;
-        return timeB - timeA;
-      });
+    return sortedDates.map((d) => {
+      const items = map.get(d)!;
       const subtotalAmount = items.reduce((sum, i) => sum + i.amount, 0);
-      groups.push({
+      return {
         date: d,
         items,
         subtotalAmount,
         subtotalCount: items.length,
-      });
+      };
     });
-
-    return groups;
   }, [filteredList]);
 
   // Open Edit Modal
   const handleOpenEdit = (item: (typeof enrichedList)[0]) => {
-    const initialUpi = item.assignedUpi || '';
-    const isKnown = knownAccounts.some((a) => a.upi_id === initialUpi);
+    const verifUpi = item.verification?.upi_id ? item.verification.upi_id.trim() : '';
+    const isExplicitCash = isCashAccount(verifUpi) || isCashAccount(item.verification?.notes);
+    const norm = verifUpi.toLowerCase();
+    const isKnown = norm ? knownAccounts.some((a) => a.upi_id === norm) : false;
+
+    // Check if this registration is untagged or has no verification record
+    const hasExistingTag = !item.isUntagged && !!verifUpi;
 
     setEditingReg({
       registration: item.registration,
       verification: item.verification,
     });
-    setEditUpiId(isKnown ? initialUpi : initialUpi ? 'custom' : knownAccounts[0]?.upi_id || '');
-    setEditCustomUpi(isKnown ? '' : initialUpi);
+    setAccountDropdownOpen(false);
+
+    // Default to NOTHING pre-selected if untagged or no verification record
+    if (!hasExistingTag) {
+      setEditUpiId('');
+      setEditCustomUpi('');
+    } else if (isExplicitCash) {
+      setEditUpiId(CANONICAL_CASH_ACCOUNT);
+      setEditCustomUpi('');
+    } else if (isKnown) {
+      setEditUpiId(norm);
+      setEditCustomUpi('');
+    } else {
+      setEditUpiId('custom');
+      setEditCustomUpi(verifUpi);
+    }
+
     setEditAmount(item.amount || item.registration.amount || 800);
     setEditNotes(item.verification?.notes || '');
   };
@@ -424,12 +513,23 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
   // Save Edit
   const handleSaveEdit = async () => {
     if (!editingReg) return;
-    const finalUpi = editUpiId === 'custom' ? editCustomUpi.trim().toLowerCase() : editUpiId.trim().toLowerCase();
 
-    if (!finalUpi) {
-      alert('Please select or specify a UPI ID');
+    if (!editUpiId || editUpiId === '') {
+      alert('⚠️ Receiving Account is mandatory! Please select an account or Cash in Hand.');
       return;
     }
+
+    if (editUpiId === 'custom' && !editCustomUpi.trim()) {
+      alert('⚠️ Please specify the Custom UPI ID (mandatory).');
+      return;
+    }
+
+    const finalUpi =
+      editUpiId === 'custom'
+        ? editCustomUpi.trim()
+        : isCashAccount(editUpiId)
+          ? CANONICAL_CASH_ACCOUNT
+          : editUpiId.trim();
 
     setSavingEdit(true);
     try {
@@ -441,10 +541,39 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       );
       if (ok) {
         setEditingReg(null);
+        setAccountDropdownOpen(false);
       }
     } finally {
       setSavingEdit(false);
     }
+  };
+
+  // Build WhatsApp Summary Text
+  const buildWhatsAppSummaryText = () => {
+    let text = `*${event?.event_name || 'ECK-RTU Alumni'} — UPI Reconciliation Report*\n`;
+    text += `📊 *View:* ${viewMode === 'daywise' ? 'Day-wise Breakdown' : 'Overall Consolidated'}\n`;
+    text += `🎟️ *Attendance Filter:* ${attendanceFilter.toUpperCase()}\n`;
+    text += `💰 *Selected Total:* ₹${formatINR(currentTotals.totalAmount)}\n`;
+    text += `👥 *Total Registrations:* ${currentTotals.totalRegCount} (₹${formatINR(currentTotals.regAmount)})\n`;
+    if (currentTotals.totalSponsorCount > 0) {
+      text += `🤝 *Total Sponsorships:* ${currentTotals.totalSponsorCount} (₹${formatINR(currentTotals.sponsorAmount)})\n`;
+    }
+    text += `📅 *Generated On:* ${new Date().toLocaleString('en-IN')}\n\n`;
+
+    if (viewMode === 'daywise') {
+      groupedByDate.forEach((group) => {
+        text += `\n🗓️ *Date: ${formatDDMMYYYY(group.date)}* (${group.subtotalCount} people • ₹${formatINR(group.subtotalAmount)})\n`;
+        group.items.forEach((item, idx) => {
+          text += `  ${idx + 1}. [${item.registration.registration_number}] ${item.registration.alumni?.name || 'Alumnus'} - ₹${item.amount} [${item.assignedUpi || 'Unassigned'}]\n`;
+        });
+      });
+    } else {
+      filteredList.forEach((item, idx) => {
+        text += `${idx + 1}. [${item.registration.registration_number}] ${item.registration.alumni?.name || 'Alumnus'} — ₹${item.amount} [${item.assignedUpi || 'Unassigned'}]\n`;
+      });
+    }
+
+    return text;
   };
 
   // CSV Export for filtered selection
@@ -525,8 +654,8 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       const adults = isNotAttending
         ? 0
         : (reg.adults_count !== undefined && reg.adults_count !== null
-            ? Number(reg.adults_count)
-            : Math.max(1, Number(reg.number_of_attendees || 1) - Number(reg.children_above_7_count || 0) - Number(reg.children_under_7_count || 0)));
+          ? Number(reg.adults_count)
+          : Math.max(1, Number(reg.number_of_attendees || 1) - Number(reg.children_above_7_count || 0) - Number(reg.children_under_7_count || 0)));
       const kidsAbove10 = isNotAttending ? 0 : Number(reg.children_above_7_count || 0);
       const kidsUnder10 = isNotAttending ? 0 : Number(reg.children_under_7_count || 0);
       const totalHeadcount = isNotAttending
@@ -565,66 +694,6 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     document.body.removeChild(link);
   };
 
-  // Build WhatsApp Summary Text
-  const buildWhatsAppSummaryText = () => {
-    const totalHeadcountSum = filteredList.reduce((acc, item) => {
-      const reg = item.registration;
-      if (reg.attendance_status === 'no') return acc;
-      const adults =
-        reg.adults_count !== undefined && reg.adults_count !== null
-          ? Number(reg.adults_count)
-          : Math.max(
-              1,
-              Number(reg.number_of_attendees || 1) -
-                Number(reg.children_above_7_count || 0) -
-                Number(reg.children_under_7_count || 0)
-            );
-      const k10 = Number(reg.children_above_7_count || 0);
-      const ku10 = Number(reg.children_under_7_count || 0);
-      return acc + (Number(reg.number_of_attendees) || adults + k10 + ku10);
-    }, 0);
-
-    let text = `*ECK-RTU Alumni DeepAura 2K26 — UPI Reconciliation Report*\n`;
-    text += `📊 *View:* ${viewMode === 'daywise' ? 'Day-wise Breakdown' : 'Overall Consolidated'}\n`;
-    text += `🎟️ *Attendance Filter:* ${attendanceFilter.toUpperCase()}\n`;
-    text += `💰 *Selected Total:* ₹${currentTotals.totalAmount.toLocaleString('en-IN')}\n`;
-    text += `👥 *Total Registrations:* ${currentTotals.totalRegCount} (${totalHeadcountSum} Attendees Headcount) • ₹${currentTotals.regAmount.toLocaleString('en-IN')}\n`;
-    if (currentTotals.totalSponsorCount > 0) {
-      text += `🤝 *Total Sponsorships:* ${currentTotals.totalSponsorCount} (₹${currentTotals.sponsorAmount.toLocaleString('en-IN')})\n`;
-    }
-    text += `📅 *Generated On:* ${new Date().toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    })}\n\n`;
-
-    if (viewMode === 'daywise') {
-      groupedByDate.forEach((group) => {
-        text += `\n🗓️ *Date: ${formatDDMMYYYY(group.date)}* (${group.subtotalCount} people • ₹${group.subtotalAmount.toLocaleString('en-IN')})\n`;
-        group.items.forEach((item, idx) => {
-          text += `  ${idx + 1}. [${item.registration.registration_number}] ${item.registration.alumni?.name || 'Alumnus'} - ₹${item.amount} [${item.assignedUpi || 'Unassigned'}]\n`;
-        });
-      });
-    } else {
-      filteredList.forEach((item, idx) => {
-        text += `${idx + 1}. [${item.registration.registration_number}] ${item.registration.alumni?.name || 'Alumnus'} — ₹${item.amount} [${item.assignedUpi || 'Unassigned'}] (Date: ${formatDDMMYYYY(item.paymentDate)})\n`;
-      });
-    }
-
-    if (filteredSponsorships.length > 0) {
-      text += `\n🤝 *Sponsorship Contributions (${filteredSponsorships.length}):*\n`;
-      filteredSponsorships.forEach((sp, idx) => {
-        text += `  ${idx + 1}. ${sp.sponsor_name} — ₹${Number(sp.amount || 0).toLocaleString('en-IN')} [${sp.receiving_upi_id || 'gautam.lucky-1@okicici'}]\n`;
-      });
-    }
-
-    return text;
-  };
-
-  // Copy WhatsApp Summary
   const handleCopySummary = () => {
     const text = buildWhatsAppSummaryText();
     navigator.clipboard.writeText(text);
@@ -632,7 +701,6 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     setTimeout(() => setCopiedSummary(false), 2500);
   };
 
-  // Broadcast / Share Report on WhatsApp
   const handleShareWhatsApp = () => {
     const text = buildWhatsAppSummaryText();
     const encoded = encodeURIComponent(text);
@@ -650,222 +718,110 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
     }
   };
 
-  // Format date display (e.g., Sun, 11 Oct 2026)
-  const formatDateDisplay = (dateStr: string) => {
-    if (!dateStr || dateStr === 'No Date') return 'No Date Recorded';
-    try {
-      const clean = dateStr.slice(0, 10);
-      const parts = clean.split('-');
-      if (parts.length === 3) {
-        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        return d.toLocaleDateString('en-IN', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        });
-      }
-      return dateStr;
-    } catch {
-      return dateStr;
-    }
-  };
-
-  // Format date strictly as DD-MM-YYYY
-  const formatDDMMYYYY = (dateStr: string | null | undefined) => {
-    if (!dateStr || dateStr === 'No Date') return '—';
-    try {
-      const clean = dateStr.slice(0, 10);
-      const parts = clean.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
-      return dateStr;
-    } catch {
-      return dateStr || '—';
-    }
-  };
-
-  // Render a Mobile-First Transaction Card for mobile screens (<= 640px)
-  const renderMobileCard = (item: (typeof enrichedList)[0], index: number) => {
-    const alumni = item.registration.alumni;
-    const isUnassigned = !item.assignedUpi;
-    const hasMultipleGuests =
-      item.registration.attendance_status === 'yes' && item.registration.number_of_attendees > 1;
-
-    return (
-      <div
-        key={item.registration.id}
-        className={`upi-m-card ${isUnassigned ? 'upi-m-card-unassigned' : 'upi-m-card-tagged'}`}
-        onClick={() => handleOpenEdit(item)}
-        style={{ cursor: 'pointer' }}
-        title="Tap to view & edit details"
-      >
-        {/* Card Header: Index, Reg ID, Date, Amount */}
-        <div className="upi-m-card-header">
-          <div className="upi-m-card-meta">
-            <span className="upi-m-card-idx font-mono">#{index + 1}</span>
-            <span className="reg-id-badge">{item.registration.registration_number}</span>
-            <span className="upi-m-card-date font-mono">{formatDDMMYYYY(item.paymentDate)}</span>
-          </div>
-          <div className="upi-m-card-amount font-accent">
-            ₹{item.amount.toLocaleString('en-IN')}
-          </div>
-        </div>
-
-        {/* Card Body: Alumnus Name & Academic Background */}
-        <div className="upi-m-card-body">
-          <div className="upi-m-name-row">
-            <h4 className="upi-m-name" title={alumni?.name || 'Unknown Alumni'}>
-              {alumni?.name || 'Unknown Alumni'}
-            </h4>
-            <span className={`status-pill pill-${item.registration.attendance_status}`}>
-              {item.registration.attendance_status === 'yes'
-                ? `Attending${hasMultipleGuests ? ` (${item.registration.number_of_attendees})` : ''}`
-                : item.registration.attendance_status === 'payment_pending'
-                  ? '⚠️ Payment Pending'
-                  : item.registration.attendance_status === 'maybe'
-                    ? 'Maybe'
-                    : 'No'}
-            </span>
-          </div>
-          <div className="upi-m-alumni-meta">
-            <span>Batch {alumni?.year_of_passing || '—'}</span>
-            <span className="meta-sep">•</span>
-            <span>{alumni?.engineering_discipline || '—'}</span>
-            {alumni?.city && (
-              <>
-                <span className="meta-sep">•</span>
-                <span>📍 {alumni.city}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Card Footer: Credited Account Tag & Edit Action */}
-        <div className="upi-m-card-footer">
-          <div className="upi-m-account-wrap">
-            <span className="upi-m-account-label">Credited To:</span>
-            {item.assignedUpi ? (
-              <span className="assigned-upi-pill" title={item.assignedUpi}>
-                <span className="upi-pill-dot" />
-                <span className="upi-pill-name">
-                  {item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}
-                </span>
-                <span className="upi-pill-raw font-mono">{item.assignedUpi}</span>
-              </span>
-            ) : (
-              <span className="unassigned-warning-pill">⚠️ Untagged</span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenEdit(item);
-            }}
-            className="upi-m-edit-btn"
-            title="Edit Receiving UPI Account"
-            aria-label="Edit UPI Account"
-          >
-            ✏️ Edit
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className="upi-report-container">
+    <div className="flex flex-col gap-4 text-slate-100">
       {/* ── WhatsApp Broadcast Banner ── */}
-      <div className="admin-mobile-share-banner">
-        <div className="admin-mobile-share-info">
-          <span className="admin-mobile-share-icon">💳</span>
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#0d2818]/90 via-[#0a1f14] to-slate-950 border border-[#0d9616]/60 shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl shrink-0">💳</span>
           <div>
-            <h3 className="admin-mobile-share-title">UPI WhatsApp Broadcast</h3>
-            <p className="admin-mobile-share-subtitle">
+            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              UPI WhatsApp Broadcast
+            </h3>
+            <p className="text-xs text-slate-300 mt-0.5">
               Share account-wise collections report to WhatsApp, copy summary or export CSV!
             </p>
           </div>
         </div>
-        <div className="admin-mobile-share-actions">
+
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="btn btn-whatsapp-primary btn-sm"
+            className="flex-1 sm:flex-none min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#025907] via-[#087f10] to-[#0d9616] hover:from-[#036809] hover:via-[#0a8e13] hover:to-[#0fa81a] border border-[#0d9616]/60 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-950/50 transition-all cursor-pointer active:scale-[0.98]"
             title="Broadcast report on WhatsApp"
           >
-            💬 Broadcast Report
+            <span>💬</span>
+            <span>Broadcast Report</span>
           </button>
           <button
             type="button"
             onClick={handleCopySummary}
-            className={`btn btn-secondary btn-sm ${copiedSummary ? 'btn-copied' : ''}`}
+            className="min-h-[44px] px-4 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             title="Copy WhatsApp text summary"
           >
-            {copiedSummary ? '✓ Copied' : '📋 Copy'}
+            <span>{copiedSummary ? '✓ Copied' : '📋 Copy'}</span>
           </button>
           <button
             type="button"
             onClick={handleExportCSV}
-            className="btn btn-secondary btn-sm"
+            className="min-h-[44px] px-4 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             title="Download CSV to open in Excel"
           >
-            📥 CSV
+            <span>📥</span>
+            <span>CSV</span>
           </button>
         </div>
       </div>
 
-
-      {/* ── VIEW MODE SWITCHER (Overall Flat View as First Option) ── */}
-      <div className="view-mode-toggle-card">
-        <div className="view-mode-toggle-label">
-          <span>Display Mode:</span>
-        </div>
-        <div className="view-mode-buttons">
+      {/* ── VIEW MODE SWITCHER ── */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5">
+        <span className="text-xs sm:text-sm font-bold text-amber-400 block">
+          Display Mode:
+        </span>
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            className={`view-toggle-btn ${viewMode === 'overall' ? 'active' : ''}`}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'overall'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
+              }`}
             onClick={() => setViewMode('overall')}
           >
-            📊 Overall Flat View
+            <span>📊</span>
+            <span>Overall Flat View</span>
           </button>
           <button
             type="button"
-            className={`view-toggle-btn ${viewMode === 'daywise' ? 'active' : ''}`}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'daywise'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-slate-950/70 text-slate-300 border border-slate-800 hover:bg-slate-800'
+              }`}
             onClick={() => setViewMode('daywise')}
           >
-            🗓️ Day-wise View
+            <span>📅</span>
+            <span>Day-wise View</span>
           </button>
         </div>
       </div>
 
       {/* ── MULTI-SELECT QR CODE CHECKBOXES ── */}
-      <div className="qr-checkbox-section">
-        <div className="qr-checkbox-header">
-          <span className="qr-checkbox-section-title">
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-xs sm:text-sm font-bold text-slate-200 uppercase tracking-wider">
             Select Receiving UPI ID Accounts ({selectedAccounts.length}/{allAccountKeys.length})
           </span>
-          <div className="qr-checkbox-quick-actions">
+          <div className="flex items-center gap-1.5 text-xs">
             <button
               type="button"
               onClick={selectAllAccounts}
-              className="btn-link-action"
+              className="text-amber-400 hover:underline font-bold cursor-pointer"
             >
               Select All
             </button>
-            <span className="divider">•</span>
+            <span className="text-slate-600">•</span>
             <button
               type="button"
               onClick={clearAllAccounts}
-              className="btn-link-action"
+              className="text-amber-400 hover:underline font-bold cursor-pointer"
             >
               Clear
             </button>
           </div>
         </div>
 
-        <div className="qr-checkbox-grid">
+        {/* 2-column responsive grid on mobile, 3 on desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5">
           {knownAccounts.map((acc) => {
             const isChecked = selectedAccounts.includes(acc.upi_id);
             const stats = accountStats[acc.upi_id] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
@@ -873,100 +829,152 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
             return (
               <label
                 key={acc.upi_id}
-                className={`qr-checkbox-card ${isChecked ? 'checked' : ''}`}
+                className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
+                  ? 'bg-slate-900/90 border-amber-500 shadow-sm'
+                  : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
+                  }`}
               >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => toggleAccount(acc.upi_id)}
-                  className="qr-native-checkbox"
-                />
-                <div className="qr-checkbox-info">
-                  <div className="qr-checkbox-top">
-                    <span className="qr-checkbox-badge">
-                      {acc.bankName}
-                    </span>
-                    <span className="qr-checkbox-count">
+                <div>
+                  <div className="flex items-center justify-between gap-1 text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleAccount(acc.upi_id)}
+                        className="w-4 h-4 rounded border-slate-700 text-amber-500 accent-amber-500 focus:ring-amber-500/30 cursor-pointer"
+                      />
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-[10px]">
+                        {acc.bankName}
+                      </span>
+                    </div>
+                    <span className="text-slate-400 font-mono text-[10px] sm:text-[11px] truncate">
                       {stats.sponsorCount > 0 && stats.count > 0
-                        ? `${stats.count} Reg + ${stats.sponsorCount} Spons`
+                        ? `${stats.count} Reg + ${stats.sponsorCount} S`
                         : stats.sponsorCount > 0
                           ? `${stats.sponsorCount} Spons`
                           : `${stats.count} Regs`}
                     </span>
                   </div>
-                  <div className="qr-checkbox-account-label">
-                    <strong className="qr-checkbox-name">{acc.accountName}</strong>
+                  <div className="mt-1.5">
+                    <strong className="block text-sm font-bold text-white truncate">
+                      {acc.accountName}
+                    </strong>
+                    <span className="block text-[11px] text-slate-400 font-mono truncate mt-0.5" title={acc.upi_id}>
+                      {acc.upi_id}
+                    </span>
                   </div>
-                  <span className="qr-checkbox-upi font-mono" title={acc.upi_id}>
-                    {acc.upi_id}
-                  </span>
-                  <span className="qr-checkbox-amount font-accent">
-                    ₹{stats.totalAmount.toLocaleString('en-IN')}
-                  </span>
+                </div>
+                <div className="font-black text-amber-400 text-base sm:text-lg mt-1.5 tracking-tight">
+                  ₹{formatINR(stats.totalAmount)}
                 </div>
               </label>
             );
           })}
 
-          {/* Unassigned Checkbox */}
-          <label className={`qr-checkbox-card unassigned ${selectedAccounts.includes('unassigned') ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={selectedAccounts.includes('unassigned')}
-              onChange={() => toggleAccount('unassigned')}
-              className="qr-native-checkbox"
-            />
-            <div className="qr-checkbox-info">
-              <div className="qr-checkbox-top">
-                <span className="qr-checkbox-badge badge-unassigned">💵 Cash</span>
-                <span className="qr-checkbox-count">{accountStats['unassigned']?.count || 0} Regs</span>
-              </div>
-              <div className="qr-checkbox-account-label">
-                <strong className="qr-checkbox-name">Cash in Hand</strong>
-              </div>
-              <span className="qr-checkbox-upi font-mono">Spot Cash / Untagged</span>
-              <span className="qr-checkbox-amount font-accent">
-                ₹{(accountStats['unassigned']?.totalAmount || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-          </label>
+          {/* Canonical Cash in Hand Checkbox */}
+          {(() => {
+            const isChecked = selectedAccounts.includes(CANONICAL_CASH_ACCOUNT) || selectedAccounts.includes('unassigned');
+            const stats = accountStats[CANONICAL_CASH_ACCOUNT] || { count: 0, totalAmount: 0, sponsorCount: 0, sponsorAmount: 0 };
+            return (
+              <label
+                className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isChecked
+                  ? 'bg-slate-900/90 border-amber-500 shadow-sm'
+                  : 'bg-slate-950/50 hover:bg-slate-900 border-slate-800 opacity-60'
+                  }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1 text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          toggleAccount(CANONICAL_CASH_ACCOUNT);
+                          if (selectedAccounts.includes('unassigned')) toggleAccount('unassigned');
+                        }}
+                        className="w-4 h-4 rounded border-slate-700 text-amber-500 accent-amber-500 focus:ring-amber-500/30 cursor-pointer"
+                      />
+                      <span className="px-1.5 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-500/30 font-semibold text-[10px]">
+                        💵 Cash
+                      </span>
+                    </div>
+                    <span className="text-slate-400 font-mono text-[10px] sm:text-[11px] truncate">
+                      {stats.count} Regs
+                    </span>
+                  </div>
+                  <div className="mt-1.5">
+                    <strong className="block text-sm font-bold text-white truncate">
+                      Cash in Hand
+                    </strong>
+                    <span className="block text-[11px] text-slate-400 truncate mt-0.5">
+                      Spot Cash / Untagged
+                    </span>
+                  </div>
+                </div>
+                <div className="font-black text-amber-400 text-base sm:text-lg mt-1.5 tracking-tight">
+                  ₹{formatINR(stats.totalAmount)}
+                </div>
+              </label>
+            );
+          })()}
         </div>
       </div>
 
-      {/* ── LIVE SELECTION BANNER (Always Prominent on Mobile) ── */}
-      <div className="live-selection-banner">
-        <div className="live-banner-top-row">
-          <div className="live-banner-left">
-            <span className="live-banner-icon">🎯</span>
+      {/* ── LIVE SELECTION BANNER (Section 3: Total Amount & Account Selection Summary) ── */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-950 border border-amber-500/30 shadow-xl flex flex-col gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl shrink-0">🎯</span>
             <div>
-              <span className="live-banner-title">
+              <div className="text-base sm:text-lg font-bold text-white tracking-tight">
                 {selectedAccounts.length === allAccountKeys.length
                   ? `All (${selectedAccounts.length}) UPI Accounts Selected`
-                  : `${selectedAccounts.length} UPI Account${selectedAccounts.length === 1 ? '' : 's'} Selected`}
-              </span>
-              <span className="live-banner-sub">
-                {currentTotals.totalRegCount} matching registrations
-                {currentTotals.totalSponsorCount > 0 ? ` + ${currentTotals.totalSponsorCount} sponsorships` : ''}
-              </span>
+                  : selectedAccounts.length === 0
+                    ? 'No Accounts Selected'
+                    : `${selectedAccounts.length} UPI Account${selectedAccounts.length === 1 ? '' : 's'} Selected`}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5">
+                {currentTotals.totalRegCount} matching registration{currentTotals.totalRegCount === 1 ? '' : 's'}
+                {currentTotals.totalSponsorCount > 0
+                  ? ` + ${currentTotals.totalSponsorCount} sponsorship${currentTotals.totalSponsorCount === 1 ? '' : 's'}`
+                  : ''}
+              </div>
             </div>
           </div>
-          <div className="live-banner-right">
-            <span className="live-banner-label">Total Amount</span>
-            <span className="live-banner-amount font-accent">₹{currentTotals.totalAmount.toLocaleString('en-IN')}</span>
+
+          <div className="flex flex-col sm:items-end shrink-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              TOTAL AMOUNT
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight">
+              ₹{formatINR(currentTotals.totalAmount)}
+            </div>
           </div>
         </div>
-        <div className="live-banner-chips-row">
+
+        <div className="pt-2 border-t border-slate-800/60">
           {selectedAccounts.length === allAccountKeys.length ? (
-            <span className="live-chip-all">✓ Showing all {allAccountKeys.length} receiving accounts (including Sponsorships)</span>
+            <span className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              ✓ Showing all {allAccountKeys.length} receiving accounts (including Sponsorships)
+            </span>
           ) : selectedAccounts.length === 0 ? (
-            <span className="live-chip-none">⚠️ No accounts selected (showing 0)</span>
+            <span className="inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-400">
+              ⚠️ No accounts selected (showing 0)
+            </span>
           ) : (
-            <div className="live-chips-container">
+            <div className="flex flex-wrap gap-1.5">
               {selectedAccounts.map((key) => {
                 const match = knownAccounts.find((a) => a.upi_id === key);
-                const label = match ? `${match.bankName} (${match.accountName})` : 'Untagged';
+                const label = match
+                  ? `${match.bankName} (${match.accountName})`
+                  : isCashAccount(key) || key === CANONICAL_CASH_ACCOUNT || key === 'unassigned'
+                    ? '💵 Cash in Hand'
+                    : key;
                 return (
-                  <span key={key} className="live-account-chip">
+                  <span
+                    key={key}
+                    className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800/90 border border-slate-700/80 text-slate-200"
+                  >
                     {label}
                   </span>
                 );
@@ -977,66 +985,58 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
       </div>
 
       {/* ── DEDICATED VIEW TOGGLE (REGISTRATIONS vs SPONSORSHIPS) ── */}
-      <div className="ledger-category-toggle-card">
-        <div className="ledger-toggle-buttons">
-          <button
-            type="button"
-            className={`ledger-tab-btn ${activeLedgerTab === 'registrations' ? 'active' : ''}`}
-            onClick={() => setActiveLedgerTab('registrations')}
-          >
-            🎟️ Alumni Registrations ({filteredList.length})
-          </button>
-          <button
-            type="button"
-            className={`ledger-tab-btn sponsor-tab ${activeLedgerTab === 'sponsorships' ? 'active' : ''}`}
-            onClick={() => setActiveLedgerTab('sponsorships')}
-          >
-            🤝 Sponsorships ({filteredSponsorships.length})
-          </button>
-        </div>
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800">
+        <button
+          type="button"
+          onClick={() => setActiveLedgerTab('registrations')}
+          className={`flex-1 min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap ${activeLedgerTab === 'registrations'
+            ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+            : 'text-slate-400 hover:text-slate-200'
+            }`}
+        >
+          <span>🎟️</span>
+          <span>Registrations ({filteredList.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveLedgerTab('sponsorships')}
+          className={`flex-1 min-h-[44px] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap ${activeLedgerTab === 'sponsorships'
+            ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+            : 'text-slate-400 hover:text-slate-200'
+            }`}
+        >
+          <span>🤝</span>
+          <span>Sponsorships ({filteredSponsorships.length})</span>
+        </button>
       </div>
 
       {/* ── ATTENDANCE STATUS FILTER CHIPS & TOOLBAR ── */}
-      <div className="upi-filter-section">
+      <div className="space-y-3">
         {activeLedgerTab === 'registrations' && (
-          <div className="filter-chips upi-attendance-chips">
-            <button
-              type="button"
-              className={`filter-chip ${attendanceFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setAttendanceFilter('all')}
-            >
-              All ({attendanceCounts.all})
-            </button>
-            <button
-              type="button"
-              className={`filter-chip ${attendanceFilter === 'yes' ? 'active' : ''}`}
-              onClick={() => setAttendanceFilter('yes')}
-            >
-              Attending ({attendanceCounts.yes})
-            </button>
-            <button
-              type="button"
-              className={`filter-chip ${attendanceFilter === 'maybe' ? 'active' : ''}`}
-              onClick={() => setAttendanceFilter('maybe')}
-            >
-              Maybe ({attendanceCounts.maybe})
-            </button>
-            <button
-              type="button"
-              className={`filter-chip ${attendanceFilter === 'no' ? 'active' : ''}`}
-              onClick={() => setAttendanceFilter('no')}
-            >
-              No ({attendanceCounts.no})
-            </button>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 w-full">
+            {(['all', 'yes', 'maybe', 'no'] as const).map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setAttendanceFilter(status)}
+                className={`min-h-[38px] px-4 py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap shrink-0 transition-colors cursor-pointer ${attendanceFilter === status
+                  ? 'border border-amber-500 bg-amber-500/10 text-amber-400 font-bold shadow-sm shadow-amber-500/10'
+                  : 'border border-slate-800 bg-slate-900/90 text-slate-300 font-semibold hover:bg-slate-800'
+                  }`}
+              >
+                {status === 'all' && `All (${attendanceCounts.all})`}
+                {status === 'yes' && `Attending (${attendanceCounts.yes})`}
+                {status === 'maybe' && `Maybe (${attendanceCounts.maybe})`}
+                {status === 'no' && `No (${attendanceCounts.no})`}
+              </button>
+            ))}
           </div>
         )}
 
-        <div className="upi-toolbar">
-          <div className="search-box upi-search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
+        {/* Toolbar: Search on left, Date on right in single row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
             <input
               type="text"
               placeholder={
@@ -1046,25 +1046,30 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
+              className="w-full min-h-[42px] text-base sm:text-sm pl-10 pr-9 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-white placeholder-slate-500 outline-none focus:border-amber-500 transition-colors"
             />
             {searchQuery && (
-              <button type="button" onClick={() => setSearchQuery('')} className="search-clear-btn">
-                ✕
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          <div className="upi-date-filter-wrap">
-            <label className="upi-filter-label">Date:</label>
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-auto justify-between sm:justify-start">
+            <span className="text-xs sm:text-sm font-bold text-slate-300 pl-1">Date:</span>
             <select
               value={selectedDateFilter}
               onChange={(e) => setSelectedDateFilter(e.target.value)}
-              className="upi-select-input"
+              className="flex-1 sm:flex-initial min-h-[42px] text-base sm:text-sm px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-amber-500 cursor-pointer font-medium"
             >
-              <option value="all">All Dates ({availableDates.length})</option>
+              <option value="all" className="bg-slate-900">All Dates ({availableDates.length})</option>
               {availableDates.map((d) => (
-                <option key={d} value={d}>
+                <option key={d} value={d} className="bg-slate-900">
                   {formatDDMMYYYY(d)}
                 </option>
               ))}
@@ -1073,682 +1078,923 @@ export const UpiReconciliationReport: React.FC<UpiReconciliationReportProps> = (
         </div>
       </div>
 
-      {/* ── REPORT CONTENT (REGISTRATIONS vs SPONSORSHIPS) ── */}
+      {/* ── REPORT CONTENT ── */}
       {activeLedgerTab === 'sponsorships' ? (
         filteredSponsorships.length === 0 ? (
-          <div className="empty-state-card" style={{ marginTop: '20px' }}>
-            <p className="empty-title">No sponsorship contributions found</p>
-            <p className="empty-desc">
-              Try checking Lokesh's UPI account above or clearing your search / date filters.
-            </p>
+          <div className="p-8 text-center rounded-2xl bg-slate-900/60 border border-dashed border-slate-800 text-slate-400 text-xs sm:text-sm">
+            No sponsorships found for current selection.
           </div>
         ) : (
-          <div className="upi-sponsorships-section">
-            <div
-              className="upi-date-header"
-              style={{
-                borderLeft: '4px solid #f59e0b',
-                background: 'rgba(245, 158, 11, 0.08)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '8px',
-              }}
-            >
-              <div className="upi-date-title-wrap" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="upi-calendar-icon" style={{ fontSize: '1.4rem' }}>🤝</span>
-                <div>
-                  <h3 className="upi-date-title" style={{ margin: 0, color: '#f59e0b', fontSize: '1.05rem', fontWeight: 700 }}>
-                    Sponsorship Contributions ({filteredSponsorships.length})
-                  </h3>
-                </div>
-              </div>
-              <div
-                className="upi-date-subtotal-badge"
-                style={{
-                  background: 'rgba(245, 158, 11, 0.15)',
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                }}
-              >
-                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                  <strong>{filteredSponsorships.length}</strong> {filteredSponsorships.length === 1 ? 'Sponsor' : 'Sponsors'}
-                </span>
-                <span className="divider" style={{ margin: '0 8px', opacity: 0.4 }}>•</span>
-                <span className="font-accent" style={{ color: '#f59e0b', fontWeight: 800 }}>
-                  ₹{currentTotals.sponsorAmount.toLocaleString('en-IN')}
-                </span>
-              </div>
-            </div>
-
-            {/* Desktop Table for Sponsorships */}
-            <div className="upi-table-responsive upi-desktop-only" style={{ marginTop: '4px' }}>
-              <table className="upi-report-table">
+          <div className="space-y-3">
+            {/* Desktop Table (High Real-Estate Density, zero horizontal scrollbar) */}
+            <div className="hidden md:block rounded-2xl border border-slate-800 bg-[#0d101d] shadow-xl overflow-hidden">
+              <table className="w-full text-left border-collapse table-fixed">
                 <thead>
-                  <tr>
-                    <th style={{ width: '26px', textAlign: 'center', padding: '8px 2px' }}>#</th>
-                    <th style={{ width: '150px', textAlign: 'center' }}>Sponsor</th>
-                    <th style={{ width: '84px', textAlign: 'right', padding: '8px 4px' }}>Amount</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>UPI ID</th>
-                    <th style={{ width: '90px', padding: '8px 4px', textAlign: 'center' }}>Date</th>
-                    <th style={{ width: '28px', textAlign: 'center', padding: '8px 2px' }} title="Edit Record">✏️</th>
+                  <tr className="border-b border-slate-800 bg-slate-950/90 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-2.5 px-2 w-[35px] text-center">#</th>
+                    <th className="py-2.5 px-2.5 w-[220px] text-left">Sponsor</th>
+                    <th className="py-2.5 px-2 w-[80px] text-left">Amount</th>
+                    <th className="py-2.5 px-2 w-[170px] text-center">UPI ID</th>
+                    <th className="py-2.5 px-2 w-[95px] text-center">Date</th>
+                    <th className="py-2.5 px-1.5 w-[35px] text-center">
+                      <Edit2 className="w-3.5 h-3.5 text-amber-500 mx-auto" />
+                    </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredSponsorships.map((sp, idx) => {
-                    return (
-                      <tr
-                        key={sp.id}
-                        onClick={() => onEditSponsorship?.(sp)}
-                        style={{ cursor: 'pointer' }}
-                        title="Click to view & edit details"
-                      >
-                        <td className="cell-muted font-mono" style={{ textAlign: 'center', padding: '6px 2px' }}>
-                          {idx + 1}
-                        </td>
-                        <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
-                          <strong className="alumni-name-text" style={{ color: '#f59e0b' }}>
-                            {sp.sponsor_name}
-                          </strong>
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '6px 4px' }}>
-                          <span className="amount-cell" style={{ color: '#f59e0b' }}>
-                            ₹{Number(sp.amount || 0).toLocaleString('en-IN')}
+                <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
+                  {filteredSponsorships.map((sp, idx) => (
+                    <tr
+                      key={sp.id}
+                      onClick={() => onEditSponsorship?.(sp)}
+                      className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
+                    >
+                      <td className="py-2 px-2 text-center text-slate-400 font-bold text-xs">{idx + 1}</td>
+                      <td className="py-2 px-2.5 align-middle overflow-hidden text-left">
+                        <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={sp.sponsor_name}>
+                          {sp.sponsor_name}
+                        </div>
+                        {(sp.contact_person || sp.category) && (
+                          <div className="text-[11px] text-slate-400 truncate">
+                            💼 {sp.contact_person || sp.category}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 text-left align-middle whitespace-nowrap">
+                        <span className="text-sm font-black text-amber-400">
+                          ₹{formatINR(Number(sp.amount || 0))}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 align-middle text-center whitespace-nowrap overflow-hidden">
+                        {isCashAccount(sp.receiving_upi_id) || sp.receiving_upi_id === CANONICAL_CASH_ACCOUNT ? (
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                            Cash in Hand
                           </span>
-                        </td>
-                        <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
-                          <span className="assigned-upi-pill" title={sp.receiving_upi_id || 'gautam.lucky-1@okicici'}>
-                            {sp.receiving_upi_id || 'gautam.lucky-1@okicici'}
+                        ) : !sp.receiving_upi_id ? (
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                            Untagged
                           </span>
-                        </td>
-                        <td style={{ padding: '6px 4px', textAlign: 'center', fontSize: '0.82rem' }} className="font-mono">
-                          {formatDDMMYYYY(sp.created_at)}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '6px 2px' }}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditSponsorship?.(sp);
-                            }}
-                            className="btn-edit-compact"
-                            title="Edit Sponsorship details"
-                            aria-label="Edit Sponsorship"
-                          >
-                            ✏️
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        ) : (
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate" title={sp.receiving_upi_id}>
+                            {sp.receiving_upi_id}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-300">
+                        {formatDDMMYYYY(sp.created_at)}
+                      </td>
+                      <td className="py-2 px-1.5 text-center align-middle whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditSponsorship?.(sp);
+                          }}
+                          className="p-1 text-amber-500 hover:text-amber-400 hover:scale-110 transition-all cursor-pointer inline-flex items-center justify-center"
+                          title="Edit Sponsorship"
+                          aria-label="Edit Sponsorship"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Mobile Cards for Sponsorships */}
-            <div className="upi-mobile-card-list upi-mobile-only" style={{ marginTop: '6px' }}>
-              {filteredSponsorships.map((sp, idx) => {
-                return (
-                  <div
-                    key={sp.id}
-                    className="upi-m-card upi-m-card-tagged"
-                    style={{ borderLeft: '3px solid #f59e0b', cursor: 'pointer' }}
-                    onClick={() => onEditSponsorship?.(sp)}
-                    title="Tap to view & edit details"
-                  >
-                    <div className="upi-m-card-header">
-                      <div className="upi-m-card-meta">
-                        <span className="upi-m-card-idx font-mono">#{idx + 1}</span>
-                        <span className="reg-id-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                          SPONSOR
-                        </span>
-                        <span className="upi-m-card-date font-mono">{formatDDMMYYYY(sp.created_at)}</span>
-                      </div>
-                      <div className="upi-m-card-amount font-accent" style={{ color: '#f59e0b' }}>
-                        ₹{Number(sp.amount || 0).toLocaleString('en-IN')}
-                      </div>
+            {/* Mobile Adaptive Cards */}
+            <div className="md:hidden space-y-3">
+              {filteredSponsorships.map((sp, idx) => (
+                <div
+                  key={sp.id}
+                  onClick={() => onEditSponsorship?.(sp)}
+                  className="p-4 rounded-2xl bg-[#111422] border border-slate-800/80 border-l-[3.5px] border-l-amber-500 shadow-md cursor-pointer hover:border-amber-500/40 transition-all flex flex-col gap-2"
+                >
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-400">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded">
+                        SPONSOR
+                      </span>
+                      <span className="font-mono text-xs text-slate-300 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded">
+                        {formatDDMMYYYY(sp.created_at)}
+                      </span>
                     </div>
-                    <div className="upi-m-card-body">
-                      <div className="upi-m-name-row">
-                        <h4 className="upi-m-name" style={{ color: '#f59e0b' }}>{sp.sponsor_name}</h4>
-                      </div>
-                    </div>
-                    <div className="upi-m-card-footer">
-                      <div className="upi-m-account-wrap">
-                        <span className="upi-m-account-label">UPI ID:</span>
-                        <span className="assigned-upi-pill">
-                          <span className="upi-pill-raw font-mono">{sp.receiving_upi_id || 'gautam.lucky-1@okicici'}</span>
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditSponsorship?.(sp);
-                        }}
-                        className="upi-m-edit-btn"
-                        title="Edit Sponsorship"
-                        aria-label="Edit Sponsorship"
-                      >
-                        ✏️ Edit
-                      </button>
+                    <div className="font-black text-amber-400 text-xl tracking-tight">
+                      ₹{formatINR(Number(sp.amount || 0))}
                     </div>
                   </div>
-                );
-              })}
-
-              {/* Mobile Sponsorship Total Summary Card */}
-              <div className="upi-grand-total-card upi-mobile-grand-total">
-                <div className="grand-total-left">
-                  <span className="grand-total-icon">🤝</span>
-                  <div>
-                    <h4 className="grand-total-title">Total Sponsorships</h4>
-                    <p className="grand-total-sub">
-                      {filteredSponsorships.length} {filteredSponsorships.length === 1 ? 'Sponsor' : 'Sponsors'}
-                    </p>
+                  <div className="font-bold text-amber-400 text-base">{sp.sponsor_name}</div>
+                  {(sp.contact_person || sp.category) && (
+                    <div className="text-xs text-slate-400">
+                      💼 {sp.contact_person || sp.category}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        CREDITED TO:
+                      </span>
+                      {isCashAccount(sp.receiving_upi_id) || sp.receiving_upi_id === CANONICAL_CASH_ACCOUNT ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-400">
+                          <span>💵</span>
+                          <span>Cash in Hand</span>
+                        </span>
+                      ) : !sp.receiving_upi_id ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-400">
+                          <span>⚠️</span>
+                          <span>Untagged</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[200px]">
+                          {sp.receiving_upi_id}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditSponsorship?.(sp);
+                      }}
+                      className="min-h-[38px] px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                      title="Edit Sponsorship"
+                    >
+                      <span>✏️</span>
+                      <span>Edit</span>
+                    </button>
                   </div>
                 </div>
-                <div className="grand-total-right">
-                  <span className="grand-total-amount" style={{ color: '#f59e0b' }}>
-                    ₹{currentTotals.sponsorAmount.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         )
       ) : filteredList.length === 0 ? (
-        <div className="empty-state-card" style={{ marginTop: '8px' }}>
-          <p className="empty-title">No registrations found for current selection</p>
-          <p className="empty-desc">
-            Try checking more UPI accounts above or clearing your search / attendance filters.
-          </p>
+        <div className="p-8 text-center rounded-2xl bg-slate-900/60 border border-dashed border-slate-800 text-slate-400 text-xs sm:text-sm">
+          No registrations found for current selection.
         </div>
       ) : viewMode === 'daywise' ? (
-        /* ════════════ DAY-WISE VIEW ════════════ */
-        <div className="upi-date-groups">
+        /* DAY-WISE VIEW */
+        <div className="space-y-4">
           {groupedByDate.map((group) => (
-            <div key={group.date} className="upi-date-group-card">
-              {/* Day Header */}
-              <div className="upi-date-header">
-                <div className="upi-date-title-wrap">
-                  <span className="upi-calendar-icon">🗓️</span>
-                  <div>
-                    <h3 className="upi-date-title">{formatDDMMYYYY(group.date)}</h3>
-                    <span className="upi-date-raw">{formatDateDisplay(group.date)}</span>
-                  </div>
+            <div key={group.date} className="rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-hidden">
+              <div className="p-3 sm:px-4 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-amber-400" />
+                  <span className="font-bold text-white text-sm">{formatDDMMYYYY(group.date)}</span>
+                  <span className="text-xs text-slate-400">({group.subtotalCount} attendees)</span>
                 </div>
-                <div className="upi-date-subtotal-badge">
-                  <span>
-                    <strong>{group.subtotalCount}</strong> {group.subtotalCount === 1 ? 'Person' : 'People'}
-                  </span>
-                  <span className="divider">•</span>
-                  <span className="font-accent">
-                    ₹<strong>{group.subtotalAmount.toLocaleString('en-IN')}</strong>
-                  </span>
+                <div className="text-sm sm:text-base font-black text-amber-400">
+                  Subtotal: ₹{formatINR(group.subtotalAmount)}
                 </div>
               </div>
 
-              {/* 1. Desktop Table (Screens > 640px) */}
-              <div className="upi-table-responsive upi-desktop-only">
-                <table className="upi-report-table">
+              {/* Desktop Table (High Real-Estate Density) */}
+              <div className="hidden md:block overflow-hidden">
+                <table className="w-full text-left border-collapse table-fixed">
                   <thead>
-                    <tr>
-                      <th style={{ width: '26px', textAlign: 'center', padding: '8px 2px' }}>#</th>
-                      <th style={{ width: '135px', textAlign: 'center' }}>Name</th>
-                      <th style={{ width: '84px', textAlign: 'right', padding: '8px 4px' }}>Amount</th>
-                      <th style={{ padding: '8px 4px', textAlign: 'center' }}>UPI ID</th>
-                      <th style={{ width: '82px', padding: '8px 4px', textAlign: 'center' }}>Reg ID</th>
-                      <th style={{ width: '28px', textAlign: 'center', padding: '8px 2px' }} title="Edit Record">✏️</th>
+                    <tr className="border-b border-slate-800 bg-slate-950/60 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="py-2.5 px-2 w-[35px] text-center">#</th>
+                      <th className="py-2.5 px-2.5 w-[220px] text-left">Name</th>
+                      <th className="py-2.5 px-2 w-[75px] text-left">Amount</th>
+                      <th className="py-2.5 px-2 w-[170px] text-center">UPI ID</th>
+                      <th className="py-2.5 px-2 w-[100px] text-center">Reg ID</th>
+                      <th className="py-2.5 px-1.5 w-[35px] text-center">
+                        <Edit2 className="w-3.5 h-3.5 text-amber-500 mx-auto" />
+                      </th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
                     {group.items.map((item, idx) => (
-                      <tr key={item.registration.id}>
-                        <td className="cell-muted font-mono" style={{ textAlign: 'center', padding: '6px 2px' }}>
-                          {idx + 1}
-                        </td>
-                        <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
-                          <strong className="alumni-name-text" title={item.registration.alumni?.name || 'Unknown Alumni'}>
+                      <tr
+                        key={item.registration.id}
+                        onClick={() => handleOpenEdit(item)}
+                        className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
+                      >
+                        <td className="py-2 px-2 text-center text-slate-400 font-bold text-xs">{idx + 1}</td>
+                        <td className="py-2 px-2.5 align-middle overflow-hidden text-left">
+                          <span className="font-bold text-white text-sm truncate block" title={item.registration.alumni?.name}>
                             {item.registration.alumni?.name || 'Unknown Alumni'}
-                          </strong>
+                          </span>
                         </td>
-                        <td style={{ textAlign: 'right', padding: '6px 4px' }}>
-                          <span className="amount-cell">₹{item.amount.toLocaleString('en-IN')}</span>
+                        <td className="py-2 px-2 text-left align-middle whitespace-nowrap">
+                          <span className="text-sm font-black text-amber-400">
+                            ₹{formatINR(item.amount)}
+                          </span>
                         </td>
-                        <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
-                          {item.assignedUpi ? (
-                            <span className="assigned-upi-pill" title={item.assignedUpi}>
+                        <td className="py-2 px-2 text-center align-middle whitespace-nowrap overflow-hidden">
+                          {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
+                            <span
+                              className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate"
+                              title={item.assignedUpi}
+                            >
                               {item.assignedUpi}
                             </span>
                           ) : (
-                            <span className="unassigned-warning-pill">Untagged</span>
+                            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                              Untagged
+                            </span>
                           )}
                         </td>
-                        <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                          <span className="reg-id-badge">{item.registration.registration_number}</span>
+                        <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 border border-amber-500/25 text-amber-400">
+                            {item.registration.registration_number}
+                          </span>
                         </td>
-                        <td style={{ textAlign: 'center', padding: '6px 2px' }}>
+                        <td className="py-2 px-1.5 text-center align-middle whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => handleOpenEdit(item)}
-                            className="btn-edit-compact"
-                            title="Edit UPI account and payment details"
-                            aria-label="Edit UPI account"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEdit(item);
+                            }}
+                            className="p-1 text-amber-500 hover:text-amber-400 hover:scale-110 transition-all cursor-pointer inline-flex items-center justify-center"
+                            title="Edit UPI ID"
+                            aria-label="Edit UPI ID"
                           >
-                            ✏️
+                            <Edit2 className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="subtotal-row">
-                      <td colSpan={2} style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '8px 4px' }}>
-                        Subtotal:
-                      </td>
-                      <td
-                        style={{
-                          textAlign: 'right',
-                          fontWeight: 800,
-                          fontSize: '0.94rem',
-                          color: 'var(--primary-light)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'visible',
-                          padding: '8px 4px',
-                        }}
-                        title={`₹${group.subtotalAmount.toLocaleString('en-IN')}`}
-                      >
-                        ₹{group.subtotalAmount.toLocaleString('en-IN')}
-                      </td>
-                      <td colSpan={3} style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', padding: '8px 4px' }}>
-                        {group.subtotalCount} {group.subtotalCount === 1 ? 'Alumnus' : 'Alumni'}
-                      </td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
 
-              {/* 2. Mobile Cards List (Screens <= 640px) */}
-              <div className="upi-mobile-card-list upi-mobile-only">
-                {group.items.map((item, idx) => renderMobileCard(item, idx))}
-                <div className="upi-m-subtotal-card">
-                  <span>Day Subtotal ({group.subtotalCount} {group.subtotalCount === 1 ? 'Person' : 'People'})</span>
-                  <span className="upi-m-subtotal-val font-accent">
-                    ₹{group.subtotalAmount.toLocaleString('en-IN')}
-                  </span>
-                </div>
+              {/* Mobile Adaptive Cards */}
+              <div className="md:hidden space-y-3">
+                {group.items.map((item, idx) => {
+                  const alumni = item.registration.alumni;
+
+                  return (
+                    <div
+                      key={item.registration.id}
+                      onClick={() => handleOpenEdit(item)}
+                      className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged
+                        ? 'border-l-[3.5px] border-l-emerald-500'
+                        : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
+                        }`}
+                    >
+                      {/* Header: #1, REG-00305, Date | Amount */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-slate-400">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded">
+                            {item.registration.registration_number}
+                          </span>
+                          <span className="font-mono text-xs text-slate-300 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded">
+                            {formatDDMMYYYY(item.paymentDate)}
+                          </span>
+                        </div>
+                        <div className="font-black text-amber-400 text-xl tracking-tight">
+                          ₹{formatINR(item.amount)}
+                        </div>
+                      </div>
+
+                      {/* Body: Name & Attendance Status Badge */}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <h4 className="text-base font-bold text-white truncate" title={alumni?.name}>
+                          {alumni?.name || 'Unknown Alumni'}
+                        </h4>
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${item.registration.attendance_status === 'yes'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : item.registration.attendance_status === 'payment_pending'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : item.registration.attendance_status === 'maybe'
+                              ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          }`}>
+                          {item.registration.attendance_status === 'yes' ? 'ATTENDING' : item.registration.attendance_status === 'maybe' ? 'MAYBE' : 'NOT ATTENDING'}
+                        </span>
+                      </div>
+
+                      {/* Alumnus Meta: Batch, Discipline & City */}
+                      <div className="text-xs text-slate-400">
+                        <span>Batch {alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '—')}</span>
+                        <span className="mx-1">•</span>
+                        <span>{alumni?.engineering_discipline || 'Other'}</span>
+                        {alumni?.city && (
+                          <>
+                            <span className="mx-1">•</span>
+                            <span>📍 {alumni.city}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Footer: Credited Account & Edit button */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            CREDITED TO:
+                          </span>
+                          {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[220px]" title={item.assignedUpi}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                              <span>{item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}</span>
+                              <span className="opacity-75 font-normal">{item.assignedUpi}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
+                              <span className="text-amber-400 text-xs">⚠️</span>
+                              <span>Untagged</span>
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEdit(item);
+                          }}
+                          className="min-h-[38px] px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                          title="Edit UPI Account"
+                        >
+                          <span>✏️</span>
+                          <span>Edit</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
-
-          {/* Grand Total Footer Card */}
-          <div className="upi-grand-total-card">
-            <div className="grand-total-left">
-              <span className="grand-total-icon">🏆</span>
-              <div>
-                <h4 className="grand-total-title">Total for Selected Accounts</h4>
-                <p className="grand-total-sub">
-                  {currentTotals.totalRegCount} Alumni
-                  {currentTotals.totalSponsorCount > 0 ? ` + ${currentTotals.totalSponsorCount} Sponsors` : ''} across {selectedAccounts.length} selected UPI account{selectedAccounts.length === 1 ? '' : 's'}
-                </p>
-              </div>
-            </div>
-            <div className="grand-total-right">
-              <span className="grand-total-amount">₹{currentTotals.totalAmount.toLocaleString('en-IN')}</span>
-            </div>
-          </div>
         </div>
       ) : (
-        /* ════════════ OVERALL FLAT VIEW ════════════ */
-        <div className="upi-overall-flat-card">
-          {/* 1. Desktop Table (Screens > 640px) */}
-          <div className="upi-table-responsive upi-desktop-only">
-            <table className="upi-report-table">
+        /* OVERALL FLAT VIEW */
+        <div className="space-y-3">
+          {/* Desktop Table (Matching production screenshot pixel-for-pixel) */}
+          <div className="hidden md:block rounded-2xl border border-slate-800 bg-[#0d101d] shadow-xl overflow-hidden">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr>
-                  <th style={{ width: '26px', textAlign: 'center', padding: '8px 2px' }}>#</th>
-                  <th style={{ width: '120px', padding: '8px 4px', textAlign: 'center' }}>Name</th>
-                  <th style={{ width: '84px', textAlign: 'right', padding: '8px 4px' }}>Amount</th>
-                  <th style={{ padding: '8px 4px', textAlign: 'center' }}>UPI ID</th>
-                  <th style={{ width: '82px', padding: '8px 4px', textAlign: 'center' }}>Reg ID</th>
-                  <th style={{ width: '96px', padding: '8px 4px', textAlign: 'center' }}>Date</th>
-                  <th style={{ width: '28px', textAlign: 'center', padding: '8px 2px' }} title="Edit Record">✏️</th>
+                <tr className="border-b border-slate-800 bg-slate-950/90 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-2 w-[35px] text-center">#</th>
+                  <th className="py-2.5 px-2.5 w-[220px] text-left">Name</th>
+                  <th className="py-2.5 px-2 w-[75px] text-left">Amount</th>
+                  <th className="py-2.5 px-2 w-[170px] text-center">UPI ID</th>
+                  <th className="py-2.5 px-2 w-[100px] text-center">Reg ID</th>
+                  <th className="py-2.5 px-2 w-[90px] text-center">Date</th>
+                  <th className="py-2.5 px-1.5 w-[35px] text-center">
+                    <Edit2 className="w-3.5 h-3.5 text-amber-500 mx-auto" />
+                  </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
                 {filteredList.map((item, idx) => (
                   <tr
                     key={item.registration.id}
                     onClick={() => handleOpenEdit(item)}
-                    style={{ cursor: 'pointer' }}
-                    title="Click to view & edit details"
+                    className="group hover:bg-slate-800/60 cursor-pointer transition-colors"
                   >
-                    <td className="cell-muted font-mono" style={{ textAlign: 'center', padding: '6px 2px' }}>
-                      {idx + 1}
-                    </td>
-                    <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
-                      <strong className="alumni-name-text" title={item.registration.alumni?.name || 'Unknown Alumni'}>
+                    <td className="py-2 px-2 text-center text-slate-400 font-bold text-xs">{idx + 1}</td>
+                    <td className="py-2 px-2.5 align-middle overflow-hidden text-left">
+                      <span className="font-bold text-white text-sm truncate block" title={item.registration.alumni?.name}>
                         {item.registration.alumni?.name || 'Unknown Alumni'}
-                      </strong>
+                      </span>
                     </td>
-                    <td style={{ textAlign: 'right', padding: '6px 4px' }}>
-                      <span className="amount-cell">₹{item.amount.toLocaleString('en-IN')}</span>
+                    <td className="py-2 px-2 text-left align-middle whitespace-nowrap">
+                      <span className="text-sm font-black text-amber-400">
+                        ₹{formatINR(item.amount)}
+                      </span>
                     </td>
-                    <td className="td-nowrap" style={{ padding: '6px 4px', textAlign: 'center' }}>
-                      {item.assignedUpi ? (
-                        <span className="assigned-upi-pill" title={item.assignedUpi}>
+                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap overflow-hidden">
+                      {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
+                        <span
+                          className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-normal bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 max-w-[160px] truncate"
+                          title={item.assignedUpi}
+                        >
                           {item.assignedUpi}
                         </span>
                       ) : (
-                        <span className="unassigned-warning-pill">Untagged</span>
+                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-normal bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                          Untagged
+                        </span>
                       )}
                     </td>
-                    <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                      <span className="reg-id-badge">{item.registration.registration_number}</span>
+                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 border border-amber-500/25 text-amber-400">
+                        {item.registration.registration_number}
+                      </span>
                     </td>
-                    <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                      <span className="date-cell font-mono">{formatDDMMYYYY(item.paymentDate)}</span>
+                    <td className="py-2 px-2 text-center align-middle whitespace-nowrap font-mono text-xs text-slate-300">
+                      {formatDDMMYYYY(item.paymentDate)}
                     </td>
-                    <td style={{ textAlign: 'center', padding: '6px 2px' }}>
+                    <td className="py-2 px-1.5 text-center align-middle whitespace-nowrap">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenEdit(item);
                         }}
-                        className="btn-edit-compact"
-                        title="Edit UPI account and payment details"
-                        aria-label="Edit UPI account"
+                        className="p-1 text-amber-500 hover:text-amber-400 hover:scale-110 transition-all cursor-pointer inline-flex items-center justify-center"
+                        title="Edit UPI ID"
+                        aria-label="Edit UPI ID"
                       >
-                        ✏️
+                        <Edit2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr className="subtotal-row" style={{ background: 'rgba(245, 158, 11, 0.1)' }}>
-                  <td colSpan={2} style={{ textAlign: 'center', fontWeight: 700, fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '8px 4px' }}>
-                    Grand Total:
-                  </td>
-                  <td
-                    style={{
-                      textAlign: 'right',
-                      fontWeight: 800,
-                      fontSize: '0.94rem',
-                      color: 'var(--primary-light)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'visible',
-                      padding: '8px 4px',
-                    }}
-                    title={`₹${currentTotals.totalAmount.toLocaleString('en-IN')}`}
-                  >
-                    ₹{currentTotals.totalAmount.toLocaleString('en-IN')}
-                  </td>
-                  <td colSpan={4} style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap', padding: '8px 4px' }}>
-                    {currentTotals.totalRegCount} Alumni{currentTotals.totalSponsorCount > 0 ? ` + ${currentTotals.totalSponsorCount} Sponsors` : ''}
-                  </td>
-                </tr>
-              </tfoot>
             </table>
           </div>
 
-          {/* 2. Mobile Cards List (Screens <= 640px) */}
-          <div className="upi-mobile-card-list upi-mobile-only" style={{ padding: '8px 0' }}>
-            {filteredList.map((item, idx) => renderMobileCard(item, idx))}
+          {/* Mobile Adaptive Cards */}
+          <div className="md:hidden space-y-3">
+            {filteredList.map((item, idx) => {
+              const alumni = item.registration.alumni;
 
-            {/* Mobile Grand Total Summary Card */}
-            <div className="upi-grand-total-card upi-mobile-grand-total">
-              <div className="grand-total-left">
-                <span className="grand-total-icon">🏆</span>
-                <div>
-                  <h4 className="grand-total-title">Total for Selected Accounts</h4>
-                  <p className="grand-total-sub">
-                    {currentTotals.totalRegCount} Alumni{currentTotals.totalSponsorCount > 0 ? ` • ${currentTotals.totalSponsorCount} Sponsors` : ''} • {selectedAccounts.length} Accounts
-                  </p>
+              return (
+                <div
+                  key={item.registration.id}
+                  onClick={() => handleOpenEdit(item)}
+                  className={`p-4 rounded-2xl bg-[#111422] border border-slate-800/80 shadow-md cursor-pointer transition-all flex flex-col gap-2 hover:border-amber-500/30 ${item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged
+                    ? 'border-l-[3.5px] border-l-emerald-500'
+                    : 'border-l-[3.5px] border-l-red-500 bg-gradient-to-br from-red-500/5 to-[#111422]'
+                    }`}
+                >
+                  {/* Header: #1, REG-00305, Date | Amount */}
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-slate-400">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded">
+                        {item.registration.registration_number}
+                      </span>
+                      <span className="font-mono text-xs text-slate-300 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded">
+                        {formatDDMMYYYY(item.paymentDate)}
+                      </span>
+                    </div>
+                    <div className="font-black text-amber-400 text-xl tracking-tight">
+                      ₹{formatINR(item.amount)}
+                    </div>
+                  </div>
+
+                  {/* Body: Name & Attendance Status Badge */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <h4 className="text-base font-bold text-white truncate" title={alumni?.name}>
+                      {alumni?.name || 'Unknown Alumni'}
+                    </h4>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${item.registration.attendance_status === 'yes'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : item.registration.attendance_status === 'payment_pending'
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        : item.registration.attendance_status === 'maybe'
+                          ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                      {item.registration.attendance_status === 'yes' ? 'ATTENDING' : item.registration.attendance_status === 'maybe' ? 'MAYBE' : 'NOT ATTENDING'}
+                    </span>
+                  </div>
+
+                  {/* Alumnus Meta: Batch, Discipline & City */}
+                  <div className="text-xs text-slate-400">
+                    <span>Batch {alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '—')}</span>
+                    <span className="mx-1">•</span>
+                    <span>{alumni?.engineering_discipline || 'Other'}</span>
+                    {alumni?.city && (
+                      <>
+                        <span className="mx-1">•</span>
+                        <span>📍 {alumni.city}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Footer: Credited Account & Edit button */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        CREDITED TO:
+                      </span>
+                      {item.assignedUpi && item.assignedUpi !== CANONICAL_CASH_ACCOUNT && !item.isUntagged ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 truncate max-w-[220px]" title={item.assignedUpi}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          <span>{item.qrLabel.split('(')[0]?.trim() || item.assignedUpi}</span>
+                          <span className="opacity-75 font-normal">{item.assignedUpi}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400">
+                          <span className="text-amber-400 text-xs">⚠️</span>
+                          <span>Untagged</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEdit(item);
+                      }}
+                      className="min-h-[38px] px-3 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-400 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                      title="Edit UPI Account"
+                    >
+                      <span>✏️</span>
+                      <span>Edit</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="grand-total-right">
-                <span className="grand-total-amount">₹{currentTotals.totalAmount.toLocaleString('en-IN')}</span>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* ── ASSIGN / EDIT UPI MODAL (Mobile-Optimized Bottom Sheet / Center Modal) ── */}
+      {/* ── EDIT UPI MODAL ── */}
       {editingReg && (
-        <div className="modal-overlay" onClick={() => !savingEdit && setEditingReg(null)}>
-          <div className="modal-content upi-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => {
+            if (!savingEdit) {
+              setEditingReg(null);
+              setAccountDropdownOpen(false);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative w-full max-w-md max-h-[85vh] sm:max-h-[80vh] flex flex-col bg-slate-900 border-t sm:border border-amber-500/30 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden text-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="shrink-0 flex items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-800 bg-slate-950/50">
               <div>
-                <span className="modal-tag">{editingReg.registration.registration_number}</span>
-                <h2 className="modal-title">Record / Change Receiving UPI ID</h2>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                  {editingReg.registration.registration_number}
+                </span>
+                <h2 className="text-sm sm:text-base font-bold text-white mt-0.5">
+                  Record / Change Receiving UPI ID
+                </h2>
               </div>
               <button
                 type="button"
-                className="modal-close-btn"
+                onClick={() => {
+                  setEditingReg(null);
+                  setAccountDropdownOpen(false);
+                }}
                 disabled={savingEdit}
-                onClick={() => setEditingReg(null)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-slate-400 hover:text-white cursor-pointer"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="modal-body upi-modal-body">
-              <div className="upi-modal-alumni-summary">
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                    <strong>{editingReg.registration.alumni?.name}</strong>
-                    <span className={`status-pill pill-${editingReg.registration.attendance_status}`}>
-                      {editingReg.registration.attendance_status === 'yes'
-                        ? 'Attending'
-                        : editingReg.registration.attendance_status === 'payment_pending'
-                          ? '⚠️ Payment Pending'
-                          : editingReg.registration.attendance_status === 'maybe'
-                            ? 'Maybe'
-                            : 'No'}
-                    </span>
-                  </div>
-                  <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    📞 {formatDisplayMobile(editingReg.registration.alumni?.mobile)} • Batch of{' '}
-                    {editingReg.registration.alumni?.year_of_passing} • 📅 {formatDDMMYYYY(editingReg.registration.created_at.slice(0, 10))}
-                    {editingReg.registration.attendance_status === 'yes' && (
-                      <>
-                        {` • 👥 ${editingReg.registration.number_of_attendees || 1} Total`}
-                        {editingReg.registration.adults_count !== undefined && (
-                          ` (${editingReg.registration.adults_count} Adult${editingReg.registration.adults_count > 1 ? 's' : ''}${editingReg.registration.children_above_7_count ? `, ${editingReg.registration.children_above_7_count} Kids 10+` : ''}${editingReg.registration.children_under_7_count ? `, ${editingReg.registration.children_under_7_count} Kids <10` : ''})`
-                        )}
-                      </>
-                    )}
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 tab-scrollbar space-y-3.5">
+              {/* Summary */}
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-2.5">
+                <div className="min-w-0 flex-1">
+                  <strong className="block text-white text-xs sm:text-sm font-bold truncate">
+                    {editingReg.registration.alumni?.name}
+                  </strong>
+                  <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
+                    Batch {editingReg.registration.alumni?.batch || (editingReg.registration.alumni?.year_of_passing ? getBatchFromPassingYear(editingReg.registration.alumni.year_of_passing) : '—')} • {formatDDMMYYYY(editingReg.registration.created_at)}
                   </span>
                 </div>
-                <span className="font-accent font-bold" style={{ fontSize: '1.15rem' }}>
+                <span className="text-sm sm:text-base font-mono font-bold text-emerald-400 shrink-0">
                   ₹{editingReg.registration.amount}
                 </span>
               </div>
 
-              {/* Additional Notes Display in Text Format */}
+              {/* Notes Display */}
               {editingReg.verification?.notes && (
-                <div
-                  className="upi-modal-notes-display"
-                  style={{
-                    background: 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                    borderRadius: '8px',
-                    padding: '10px 14px',
-                    marginTop: '12px',
-                    marginBottom: '16px',
-                    fontSize: '0.88rem',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <strong style={{ color: 'var(--accent, #f59e0b)', display: 'block', marginBottom: '4px' }}>
-                    📝 Additional Notes:
-                  </strong>
-                  <div style={{ color: 'var(--text-main, #fff)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {editingReg.verification.notes}
-                  </div>
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
+                  <strong className="block text-amber-400 mb-0.5 text-[11px]">📝 Notes:</strong>
+                  <span>{editingReg.verification.notes}</span>
                 </div>
               )}
 
               {/* Payment Screenshot Display */}
-              <div className="modal-screenshot-section" style={{ marginBottom: '20px' }}>
-                <h4 className="modal-section-title">
-                  Payment Receipts ({
-                    (editingReg.registration.payment_screenshot_path || '')
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean).length || 0
-                  })
-                </h4>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-200">
+                    📄 Attached Payment Screenshot(s)
+                  </label>
+                  {editingReg.registration.payment_screenshot_path && (
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {(editingReg.registration.payment_screenshot_path || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean).length}{' '}
+                      receipt(s)
+                    </span>
+                  )}
+                </div>
+
                 {editingReg.registration.payment_screenshot_path ? (
-                  <div className="multi-screenshots-container">
+                  <div className="space-y-2">
                     {(editingReg.registration.payment_screenshot_path || '')
                       .split(',')
                       .map((s) => s.trim())
                       .filter(Boolean)
-                      .map((singlePath, idx) => (
-                        <div key={idx} className="screenshot-display-box" style={{ marginBottom: '16px' }}>
-                          <span
-                            className="screenshot-item-label"
-                            style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: 'var(--primary-light)' }}
-                          >
-                            {idx === 0
-                              ? '📄 Receipt 1 (Initial Payment)'
-                              : `📄 Receipt ${idx + 1} (Additional Payment / Extra Attendees)`}
-                          </span>
-                          {singlePath === 'manual-admin-entry' ? (
-                            <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', border: '1px dashed #6366f1', borderRadius: '8px', color: '#a5b4fc', fontSize: '0.85rem', textAlign: 'center' }}>
+                      .map((singlePath, idx, arr) => {
+                        if (singlePath === 'manual-admin-entry') {
+                          return (
+                            <div
+                              key={idx}
+                              className="p-2.5 rounded-xl bg-indigo-500/10 border border-dashed border-indigo-500/30 text-indigo-300 text-xs text-center"
+                            >
                               ⚡ Manual Admin Entry (Direct verification, no screenshot uploaded)
                             </div>
-                          ) : (
-                            <>
-                              <img
-                                src={getPublicScreenshotUrl(singlePath) || ''}
-                                alt={`Payment screenshot ${idx + 1}`}
-                                className="modal-screenshot-img"
-                                onLoad={() => {
-                                  console.log(`[UPI Ledger Screenshot Loaded OK]:`, singlePath);
-                                }}
-                                onError={(e) => {
-                                  console.error(`[UPI Ledger Screenshot Load Failed]:`, {
-                                    path: singlePath,
-                                    resolvedUrl: getPublicScreenshotUrl(singlePath),
-                                    event: e,
-                                  });
-                                }}
-                              />
+                          );
+                        }
+
+                        const url = getPublicScreenshotUrl(singlePath);
+
+                        return (
+                          <div
+                            key={idx}
+                            className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-amber-400">
+                                {arr.length > 1
+                                  ? idx === 0
+                                    ? 'Receipt 1 (Initial Payment)'
+                                    : `Receipt ${idx + 1} (Additional / Top-up)`
+                                  : 'Payment Receipt'}
+                              </span>
+                              {url && (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 min-h-[44px] px-2.5 py-1 rounded-lg text-xs font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  <span>Open Full Image</span>
+                                </a>
+                              )}
+                            </div>
+
+                            {url ? (
                               <a
-                                href={getPublicScreenshotUrl(singlePath) || '#'}
+                                href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="btn btn-secondary btn-sm mt-3"
+                                className="block rounded-lg overflow-hidden border border-slate-800 bg-black/40 hover:border-amber-500/50 transition-colors group cursor-zoom-in"
+                                title="Click to open full screenshot in new tab"
                               >
-                                🔗 Open Original Screenshot #{idx + 1}
+                                <img
+                                  src={url}
+                                  alt={`Payment screenshot ${idx + 1}`}
+                                  className="w-full max-h-40 sm:max-h-52 object-contain rounded-lg group-hover:scale-[1.01] transition-transform duration-200"
+                                  loading="lazy"
+                                />
                               </a>
-                            </>
-                          )}
-                        </div>
-                      ))}
+                            ) : (
+                              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
+                                ⚠️ Could not resolve receipt image URL
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 ) : (
-                  <p className="text-muted" style={{ padding: '8px 0', fontSize: '0.85rem' }}>
-                    No screenshot attached (attendance status: {editingReg.registration.attendance_status}).
-                  </p>
+                  <div className="p-2.5 rounded-xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400 text-xs text-center">
+                    ℹ️ No payment screenshot attached to this registration.
+                  </div>
                 )}
               </div>
 
-              <div className="upi-modal-form">
-                <div className="upi-form-group">
-                  <label className="upi-form-label">Receiving UPI Account *</label>
-                  <select
-                    value={editUpiId}
-                    onChange={(e) => setEditUpiId(e.target.value)}
-                    className="upi-form-select"
-                  >
-                    {knownAccounts.map((acc) => {
-                      const name = acc.accountName || UPI_ACCOUNT_NAMES[acc.upi_id] || '';
-                      const hasName = name && name.toLowerCase().trim() !== acc.upi_id.toLowerCase().trim();
-                      const bankLabel = acc.bankName && acc.bankName !== 'UPI' ? ` (${acc.bankName})` : '';
-                      const displayText = hasName
-                        ? `${name} — ${acc.upi_id}${bankLabel}`
-                        : `${acc.upi_id}${bankLabel}`;
+              {/* Form fields */}
+              <div className="space-y-3">
+                <div ref={accountDropdownRef} className="relative">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-200">
+                      Receiving Account / Payment Mode <span className="text-rose-400">*</span>
+                    </label>
+                    {!editUpiId && (
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        Mandatory
+                      </span>
+                    )}
+                  </div>
 
-                      return (
-                        <option key={acc.upi_id} value={acc.upi_id}>
-                          {displayText}
-                        </option>
-                      );
-                    })}
-                    <option value="custom">✏️ Other / Custom UPI ID...</option>
-                  </select>
+                  {/* Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => setAccountDropdownOpen((prev) => !prev)}
+                    className={`w-full min-h-[44px] text-xs px-3 py-2 rounded-xl bg-slate-950 border flex items-center justify-between gap-2 transition-all cursor-pointer ${!editUpiId
+                        ? 'border-amber-500/60 ring-1 ring-amber-500/25 bg-amber-500/5 text-amber-300'
+                        : 'border-slate-700 hover:border-slate-600 text-white'
+                      }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1 truncate text-left">
+                      {!editUpiId ? (
+                        <span className="text-amber-300/90 font-medium truncate flex items-center gap-1.5 text-xs">
+                          <span>⚠️</span>
+                          <span>-- Select Receiving Account --</span>
+                        </span>
+                      ) : editUpiId === CANONICAL_CASH_ACCOUNT ? (
+                        <span className="text-emerald-400 font-semibold truncate text-xs flex items-center gap-1.5">
+                          <span>💵</span>
+                          <span>Cash in Hand (Physical / Spot Cash)</span>
+                        </span>
+                      ) : editUpiId === 'custom' ? (
+                        <span className="text-amber-300 font-semibold truncate text-xs flex items-center gap-1.5">
+                          <span>✏️</span>
+                          <span>Custom UPI: {editCustomUpi || '(Specify below)'}</span>
+                        </span>
+                      ) : (
+                        (() => {
+                          const acc = knownAccounts.find((a) => a.upi_id === editUpiId);
+                          return (
+                            <span className="text-xs text-slate-100 font-medium truncate flex items-center gap-1.5 w-full justify-between">
+                              <span className="font-semibold text-white truncate shrink-0 max-w-[50%]">
+                                {acc?.accountName || editUpiId}
+                              </span>
+                              <span className="text-[11px] font-mono text-slate-400 truncate flex-1 text-right">
+                                {editUpiId}
+                              </span>
+                            </span>
+                          );
+                        })()
+                      )}
+                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${accountDropdownOpen ? 'rotate-180 text-amber-400' : ''
+                        }`}
+                    />
+                  </button>
+
+                  {/* Dropdown Options Popup */}
+                  {accountDropdownOpen && (
+                    <div className="mt-1.5 w-full rounded-xl bg-slate-950 border border-slate-700 shadow-2xl overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="p-1 max-h-56 sm:max-h-64 overflow-y-auto tab-scrollbar space-y-0.5">
+                        {/* UPI Accounts Header */}
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/60 rounded">
+                          🏦 Receiving UPI Accounts
+                        </div>
+
+                        {knownAccounts.map((acc) => {
+                          const isSelected = editUpiId === acc.upi_id;
+                          return (
+                            <button
+                              type="button"
+                              key={acc.upi_id}
+                              onClick={() => {
+                                setEditUpiId(acc.upi_id);
+                                setAccountDropdownOpen(false);
+                              }}
+                              className={`w-full min-h-[44px] px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${isSelected
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                  : 'hover:bg-slate-900 text-slate-200 border border-transparent'
+                                }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                                <span
+                                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-amber-400 bg-amber-400' : 'border-slate-600'
+                                    }`}
+                                >
+                                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                                </span>
+                                <span className="text-[11px] sm:text-xs font-semibold text-slate-100 truncate shrink-0 max-w-[42%] sm:max-w-[48%]">
+                                  {acc.accountName}
+                                </span>
+                                <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 truncate flex-1 text-right">
+                                  {acc.upi_id}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+
+                        {/* Cash Collections Header */}
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/60 rounded mt-1">
+                          💵 Cash Collections
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditUpiId(CANONICAL_CASH_ACCOUNT);
+                            setAccountDropdownOpen(false);
+                          }}
+                          className={`w-full min-h-[44px] px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${editUpiId === CANONICAL_CASH_ACCOUNT
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'hover:bg-slate-900 text-slate-200 border border-transparent'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${editUpiId === CANONICAL_CASH_ACCOUNT ? 'border-amber-400 bg-amber-400' : 'border-slate-600'
+                                }`}
+                            >
+                              {editUpiId === CANONICAL_CASH_ACCOUNT && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
+                              )}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-semibold text-emerald-400 truncate">
+                              💵 Cash in Hand (Physical / Spot Cash)
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Custom Header */}
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-900/60 rounded mt-1">
+                          ✏️ Custom
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditUpiId('custom');
+                            setAccountDropdownOpen(false);
+                          }}
+                          className={`w-full min-h-[44px] px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${editUpiId === 'custom'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'hover:bg-slate-900 text-slate-200 border border-transparent'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${editUpiId === 'custom' ? 'border-amber-400 bg-amber-400' : 'border-slate-600'
+                                }`}
+                            >
+                              {editUpiId === 'custom' && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
+                              )}
+                            </span>
+                            <span className="text-[11px] sm:text-xs font-semibold text-amber-300 truncate">
+                              ✏️ Other / Custom UPI ID...
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {editUpiId === 'custom' && (
-                  <div className="upi-form-group">
-                    <label className="upi-form-label">Custom UPI ID *</label>
+                  <div className="animate-in fade-in slide-in-from-top-1 duration-150">
+                    <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                      Custom UPI ID <span className="text-rose-400">*</span>
+                    </label>
                     <input
                       type="text"
-                      placeholder="e.g. name@bank"
+                      placeholder="e.g. name@bank (Mandatory)"
                       value={editCustomUpi}
                       onChange={(e) => setEditCustomUpi(e.target.value)}
-                      className="upi-form-input font-mono"
-                      autoFocus
+                      className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/50 text-white font-mono outline-none focus:border-amber-400"
                     />
                   </div>
                 )}
 
-                <div className="upi-form-group">
-                  <label className="upi-form-label">Verified By</label>
-                  <div className="upi-verified-by-field">
-                    <div className="upi-verified-by-current">
-                      <span className="font-mono">👤 {currentUserEmail || 'Admin (You)'}</span>
-                      <span className="upi-badge-user-current">Logged In User</span>
-                    </div>
-                    {editingReg.verification?.verified_by && (
-                      <span className="upi-verified-by-prev">
-                        Record previously verified by: <strong>{editingReg.verification.verified_by}</strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="upi-form-group">
-                  <label className="upi-form-label">Additional Notes (Optional)</label>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                    Additional Notes (Optional)
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Verified via Bank passbook"
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
-                    className="upi-form-input"
+                    className="w-full min-h-[44px] text-base sm:text-sm px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="upi-modal-actions">
-              <button
-                type="button"
-                onClick={() => setEditingReg(null)}
-                disabled={savingEdit}
-                className="btn btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                disabled={savingEdit}
-                className="btn btn-primary"
-              >
-                {savingEdit ? 'Saving...' : '💾 Save UPI Record'}
-              </button>
+            {/* Footer */}
+            <div className="shrink-0 p-3 sm:p-4 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between gap-3">
+              <div className="text-[11px] text-slate-400 truncate">
+                {!editUpiId && (
+                  <span className="text-amber-400 font-medium">⚠️ Account selection is mandatory</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingReg(null);
+                    setAccountDropdownOpen(false);
+                  }}
+                  disabled={savingEdit}
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={savingEdit || !editUpiId || (editUpiId === 'custom' && !editCustomUpi.trim())}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {savingEdit ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>💾 Save UPI Record</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
