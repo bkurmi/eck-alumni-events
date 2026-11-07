@@ -60,6 +60,9 @@ const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit, o
   const hasPhoto = Boolean(photoUrl) && !photoLoadFailed;
   const rawBatch = alumnus.batch || (alumnus.year_of_passing ? getBatchFromPassingYear(alumnus.year_of_passing) : '');
   const batchLabel = rawBatch ? formatBatchLabel(rawBatch) : '';
+  const showPassingYearTag = Boolean(
+    alumnus.year_of_passing && (!batchLabel || !batchLabel.includes(String(alumnus.year_of_passing)))
+  );
 
   useEffect(() => {
     setPhotoLoadFailed(false);
@@ -110,7 +113,7 @@ const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit, o
         {/* Right Column: Key Details with expanded room so names do not truncate */}
         <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
           <div className="space-y-0.5 min-w-0">
-            {/* Header: Name, LinkedIn / Email, and Compact Batch Badge */}
+            {/* Header: Name and Quick Contact Links */}
             <div className="flex items-center justify-between gap-1.5 min-w-0">
               <h2
                 className="text-sm sm:text-base font-bold text-white leading-tight truncate cursor-pointer hover:text-amber-300 transition-colors"
@@ -144,22 +147,26 @@ const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit, o
                     <Mail className="h-3 w-3" />
                   </a>
                 )}
+              </div>
+            </div>
 
-                {batchLabel && (
+            {/* Discipline / Branch & Batch */}
+            <div className="flex items-center gap-1.5 text-xs truncate leading-snug min-w-0">
+              <span className="font-semibold text-amber-400/90 truncate" title={alumnus.engineering_discipline || 'Alumni'}>
+                {alumnus.engineering_discipline || 'Engineering'}
+              </span>
+              {batchLabel && (
+                <>
+                  <span className="text-slate-600 text-xs shrink-0 select-none">•</span>
                   <span
-                    className="inline-flex items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-amber-300 shrink-0 shadow-sm"
+                    className="inline-flex items-center rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-amber-300 shrink-0 shadow-sm leading-none"
                     title={batchLabel}
                   >
                     {batchLabel}
                   </span>
-                )}
-              </div>
+                </>
+              )}
             </div>
-
-            {/* Discipline / Branch */}
-            <p className="text-xs font-semibold text-amber-400/90 truncate leading-snug" title={alumnus.engineering_discipline || 'Alumni'}>
-              {alumnus.engineering_discipline || 'Engineering'}
-            </p>
 
             {/* Organization / Designation (Fixed slot keeps all rows aligned across cards) */}
             <div className="h-4 sm:h-4.5 flex items-center min-w-0">
@@ -186,9 +193,9 @@ const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit, o
 
           {/* Quick Meta Tags */}
           <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-[11px] pt-1 overflow-hidden max-h-[48px]">
-            {alumnus.year_of_passing ? (
+            {showPassingYearTag ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-amber-300 border border-amber-500/20 font-mono shrink-0">
-                🎓 Pass out {alumnus.year_of_passing}
+                🎓 {alumnus.year_of_passing}
               </span>
             ) : null}
 
