@@ -79,8 +79,36 @@ export interface Alumni {
   work_location: string | null;
   linkedin_url?: string | null;
   photo_url?: string | null;
+  approval_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewed_at?: string | null;
+  rejection_reason?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AlumniRegistrationFormData {
+  name: string;
+  email: string;
+  mobile: string;
+  address: string;
+  country: string;
+  country_other?: string;
+  city: string;
+  state: string;
+  state_other?: string;
+  batch: string;
+  year_of_passing: number | '';
+  engineering_discipline: string;
+  engineering_discipline_other?: string;
+  organization: string;
+  designation: string;
+  employment_type: string;
+  employment_type_other?: string;
+  industry_domain: string;
+  industry_domain_other?: string;
+  work_location: string;
+  linkedin_url?: string;
+  photo_url?: string;
 }
 
 export interface AlumniDirectoryItem extends Alumni {

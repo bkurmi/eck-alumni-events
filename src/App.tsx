@@ -6,6 +6,7 @@ import { IdCardPage } from './pages/IdCardPage';
 import { GatePage } from './pages/GatePage';
 import { FeedbackPage } from './pages/FeedbackPage';
 import { AlumniDirectoryPage } from './pages/AlumniDirectoryPage';
+import { AlumniRegistrationPage } from './pages/AlumniRegistrationPage';
 
 function App() {
   return (
@@ -17,6 +18,9 @@ function App() {
           <Route path="/events/:slug" element={<EventPage />} />
           <Route path="/directory" element={<AlumniDirectoryPage />} />
           <Route path="/alumni" element={<AlumniDirectoryPage />} />
+          <Route path="/register" element={<AlumniRegistrationPage />} />
+          <Route path="/register-alumni" element={<AlumniRegistrationPage />} />
+          <Route path="/join" element={<AlumniRegistrationPage />} />
           <Route path="/profile" element={<AlumniDirectoryPage autoOpenProfile />} />
           <Route path="/id-card" element={<IdCardPage />} />
           <Route path="/download-pass" element={<IdCardPage />} />

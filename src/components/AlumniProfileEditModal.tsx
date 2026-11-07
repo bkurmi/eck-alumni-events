@@ -654,7 +654,15 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                     </button>
                   </div>
                   {mobileSearchError && (
-                    <p className="text-xs text-rose-400 font-medium">{mobileSearchError}</p>
+                    <div className="space-y-2 pt-1">
+                      <p className="text-xs text-rose-400 font-medium">{mobileSearchError}</p>
+                      <a
+                        href="/register-alumni"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 text-xs font-semibold"
+                      >
+                        <span>Not registered yet? Register as a new Alumnus &rarr;</span>
+                      </a>
+                    </div>
                   )}
                 </form>
               )}

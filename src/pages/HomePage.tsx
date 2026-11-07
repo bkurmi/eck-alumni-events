@@ -23,6 +23,7 @@ import {
   Loader2,
   X,
   Camera,
+  UserPlus,
 } from 'lucide-react';
 
 interface CommitteeMember {
@@ -243,13 +244,21 @@ export const HomePage: React.FC = () => {
               </button>
             </div>
 
-            {/* Sub-link for profile update */}
-            <div className="mt-3.5 flex items-center gap-2 text-[11px] sm:text-xs text-slate-400">
+            {/* Sub-links for alumni registration & profile update */}
+            <div className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] sm:text-xs text-slate-400">
+              <Link
+                to="/register-alumni"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-amber-300 hover:text-amber-200 font-semibold underline underline-offset-4"
+              >
+                <UserPlus className="h-3.5 w-3.5 text-amber-400" />
+                <span>Not registered? Register as Alumni</span>
+              </Link>
+              <span className="hidden sm:inline text-slate-600">•</span>
               <Link
                 to="/profile"
-                className="inline-flex min-h-[44px] items-center gap-1.5 text-amber-400 hover:text-amber-300 font-medium underline underline-offset-4"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-slate-400 hover:text-slate-300 font-medium underline underline-offset-4"
               >
-                <span>Are you an ECK-RTU graduate? Update your alumni profile</span>
+                <span>Update Existing Profile</span>
                 <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
