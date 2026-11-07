@@ -1148,7 +1148,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
   // Render the horizontal attendee ID card with approval actions down below
   const renderAttendeeIdCardWithActions = (attendee: EventRegistration) => {
     const alumni = attendee.alumni;
-    const { displayName: attendeeName, fullName: originalFullName } =
+    const { displayName: attendeeName, fontSizeClass: nameSizeClass, fullName: originalFullName } =
       formatSmartAttendeeName(alumni?.name || 'Alumnus');
     const regNumber = attendee.registration_number || '';
     const branch = alumni?.engineering_discipline || '';
@@ -1172,72 +1172,94 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
       attendee.attendance_status === 'yes' ||
       attendee.payment_verifications?.some((v) => v.verified_status === 'VERIFIED');
 
+    // Dynamic Date & Venue with fallback
+    const eventDateFormatted = event?.event_date
+      ? new Date(event.event_date).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        }) + ', 5:00 PM'
+      : '01 Nov 2026, 5:00 PM';
+    const eventVenue = event?.location || 'Agora Ground, RTU';
+
     return (
-      <div className="w-full max-w-md mx-auto my-4 space-y-4" ref={statusResultRef}>
+      <div
+        className="w-full max-w-[480px] mx-auto my-2 space-y-3.5 [container-type:inline-size] [container-name:ticketcard]"
+        ref={statusResultRef}
+      >
         {/* ============================================================
-            ATTENDEE ID CARD (Exact Match to ID Pass & User Screenshot)
+            ATTENDEE ID CARD (Exact Match to ID Pass & User Screenshots)
             ============================================================ */}
-        <div className="relative w-full bg-[#071333] border-[1.5px] border-[#c9a038] rounded-xl p-2.5 sm:p-3 flex items-center gap-2.5 sm:gap-3 shadow-2xl">
+        <div className="ticket-v-attendee-card">
           {/* 4 Ornate Gold Corner Filigree Flourishes */}
-          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute top-[1px] left-[1px] w-[30px] h-[30px] pointer-events-none opacity-95" />
-          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute top-[1px] right-[1px] w-[30px] h-[30px] pointer-events-none opacity-95 -scale-x-100" />
-          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute bottom-[1px] left-[1px] w-[30px] h-[30px] pointer-events-none opacity-95 -scale-y-100" />
-          <img src="/gold-corner-filigree-exact.png" alt="" className="absolute bottom-[1px] right-[1px] w-[30px] h-[30px] pointer-events-none opacity-95 -scale-100" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tl" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-tr" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-bl" />
+          <img src="/gold-corner-filigree-exact.png" alt="" className="ticket-v-corner-flourish corner-br" />
 
           {/* Left Column: Photo & Avatar */}
-          <div className="w-20 shrink-0 flex flex-col items-center gap-1.5">
-            <div className="w-16 h-20 rounded-lg overflow-hidden border border-[#c9a038]/60 bg-slate-950 flex items-center justify-center">
+          <div className="ticket-v-photo-col">
+            <div className="ticket-v-photo-box">
               {verifiedAttendeePhoto && !photoLoadFailed ? (
                 <img
                   src={verifiedAttendeePhoto}
                   alt={attendeeName}
-                  className="w-full h-full object-cover"
+                  className="ticket-v-photo-img"
                   onError={() => setPhotoLoadFailed(true)}
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center text-amber-400">
-                  <div className="w-10 h-10 rounded-full bg-slate-800 border border-amber-500/30 flex items-center justify-center text-sm font-bold">
-                    {getAttendeeInitials(alumni?.name || attendeeName)}
+                <div className="ticket-v-avatar-box">
+                  <div className="ticket-v-avatar-circle">
+                    <span className="ticket-v-avatar-initials">
+                      {getAttendeeInitials(alumni?.name || attendeeName)}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono mt-1 text-amber-300 font-bold">ALUMNI</span>
+                  <span className="ticket-v-avatar-badge">ALUMNI</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Right Column: Key Details */}
-          <div className="flex-1 min-w-0 space-y-1 text-slate-200">
+          <div className="ticket-v-info-col">
             {/* Row 1: Attendee Name */}
-            <div>
-              <span className="text-[10px] text-amber-400/80 uppercase tracking-wider block font-semibold">Attendee Name</span>
-              <h3 className="text-sm sm:text-base font-bold text-white truncate" title={originalFullName}>
+            <div className="ticket-v-info-field ticket-v-name-row">
+              <span className="ticket-v-label">Attendee Name</span>
+              <h3 className={`ticket-v-val-name ${nameSizeClass}`} title={originalFullName}>
                 {attendeeName}
               </h3>
             </div>
 
             {/* Row 2: Batch & Registration No */}
-            <div className="flex items-center gap-3 text-xs">
-              <div>
-                <span className="text-[10px] text-amber-400/80 block font-semibold">Batch</span>
-                <p className="font-mono text-white font-bold">{batchYear}{branch ? ` • ${branch}` : ''}</p>
+            <div className="ticket-v-info-split-row">
+              <div className="ticket-v-batch-box">
+                <span className="ticket-v-label">Batch</span>
+                <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYear}${branch ? ` • ${branch}` : ''}`}>
+                  <strong>{batchYear}</strong>{branch ? ` • ${branch}` : ''}
+                </p>
               </div>
-              <div>
-                <span className="text-[10px] text-amber-400/80 block font-semibold">Registration No</span>
-                <span className="font-mono text-amber-300 font-bold">{regNumber}</span>
+              <div className="ticket-v-reg-box">
+                <span className="ticket-v-label">Registration No</span>
+                <span className="ticket-v-val-reg">{regNumber}</span>
               </div>
             </div>
 
             {/* Row 3: Attendees Count */}
-            <div>
-              <span className="text-[10px] text-amber-400/80 block font-semibold">No. of Attendees</span>
-              <p className="text-xs font-semibold text-emerald-400">{attendeesDesc}</p>
+            <div className="ticket-v-info-field">
+              <span className="ticket-v-label">No. of Attendees</span>
+              <p className="ticket-v-val-text ticket-v-highlight">{attendeesDesc}</p>
             </div>
 
             {/* Row 4: Date & Venue */}
-            <div className="flex items-center gap-2 text-[11px] text-slate-400 pt-0.5">
-              <span>01 Nov 2026, 5:00 PM</span>
-              <span>•</span>
-              <span>Agora Ground, RTU</span>
+            <div className="ticket-v-meta-row">
+              <div className="ticket-v-meta-item">
+                <span className="ticket-v-label">Date &amp; Time</span>
+                <span className="ticket-v-meta-val">{eventDateFormatted}</span>
+              </div>
+              <div className="ticket-v-meta-item">
+                <span className="ticket-v-label">Venue</span>
+                <span className="ticket-v-meta-val">{eventVenue}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1245,15 +1267,15 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         {/* ============================================================
             APPROVAL & ENTRY ACTIONS DOWN BELOW
             ============================================================ */}
-        <div className="space-y-2.5 pt-1">
+        <div className="w-full flex flex-col gap-2.5">
           {entryAllowedMsg ? (
             <>
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs sm:text-sm font-semibold text-center">
+              <div className="w-full py-2.5 px-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-semibold text-center flex items-center justify-center gap-2 leading-snug">
                 <span>{entryAllowedMsg}</span>
               </div>
               <button
                 type="button"
-                className="w-full min-h-[48px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full min-h-[44px] px-5 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 hover:border-white/35 text-slate-100 hover:text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
                 onClick={handleResetLookup}
               >
                 {activeSubTab === 'scanner' ? '📷 Scan Next Attendee →' : '🔍 Verify Next Attendee →'}
@@ -1263,12 +1285,14 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             <>
               {gateStatus.status === 'ALREADY_ENTERED' && (
                 <>
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-center font-medium">
-                    <span>⚠️ Already Admitted at {new Date(gateStatus.entry!.entered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} by {gateStatus.entry!.verified_by || 'Staff'}</span>
+                  <div className="w-full py-2.5 px-3.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-semibold text-center flex items-center justify-center gap-2 leading-snug">
+                    <span>
+                      ⚠️ Already Admitted at {new Date(gateStatus.entry!.entered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} by {gateStatus.entry!.verified_by || 'Staff'}
+                    </span>
                   </div>
                   <button
                     type="button"
-                    className="w-full min-h-[48px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2"
+                    className="w-full min-h-[44px] px-5 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 hover:border-white/35 text-slate-100 hover:text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
                     onClick={handleResetLookup}
                   >
                     {activeSubTab === 'scanner' ? '📷 Scan Next Attendee →' : '🔍 Verify Next Attendee →'}
@@ -1278,12 +1302,12 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
 
               {(!isPaid || gateStatus.status === 'PAYMENT_PENDING' || gateStatus.status === 'MAYBE') && (
                 <>
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-center font-medium">
+                  <div className="w-full py-2.5 px-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs sm:text-sm font-semibold text-center flex items-center justify-center gap-2 leading-snug">
                     <span>💳 Payment Pending (₹{attendee.amount || 0}) • Not Marked Paid</span>
                   </div>
                   <button
                     type="button"
-                    className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 active:scale-[0.99] flex items-center justify-center gap-2"
+                    className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
                     onClick={() =>
                       handleRedirectToSpot({
                         name: alumni?.name,
@@ -1302,7 +1326,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="w-full min-h-[44px] text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center"
+                    className="w-full min-h-[40px] text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center cursor-pointer"
                     onClick={handleResetLookup}
                   >
                     Cancel / Search Another
@@ -1314,7 +1338,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                 <>
                   <button
                     type="button"
-                    className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full min-h-[48px] px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     disabled={isVerifying}
                     onClick={() => handleAllowEntry(attendee)}
                   >
@@ -1322,7 +1346,7 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="w-full min-h-[44px] text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center"
+                    className="w-full min-h-[40px] text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center cursor-pointer"
                     onClick={handleResetLookup}
                   >
                     Cancel / Search Another
@@ -1502,7 +1526,13 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
         <div className="flex flex-col items-center justify-center w-full min-h-[360px] p-2 sm:p-4">
           {/* If attendee found via QR scan */}
           {verifiedAttendee ? (
-            renderAttendeeIdCardWithActions(verifiedAttendee)
+            <div className="w-full max-w-2xl bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl backdrop-blur-md">
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-1">Gate QR Verification</h3>
+              <p className="text-xs sm:text-sm text-slate-400 mb-4 sm:mb-6">
+                Scanned attendee delegate pass verification:
+              </p>
+              {renderAttendeeIdCardWithActions(verifiedAttendee)}
+            </div>
           ) : lookupNotFoundMsg ? (
             <div className="w-full max-w-lg mx-auto bg-slate-900/90 border border-amber-500/30 rounded-2xl p-5 text-center flex flex-col items-center gap-4 shadow-xl">
               <p className="text-sm sm:text-base text-slate-200 font-medium">🔍 {lookupNotFoundMsg}</p>
@@ -1667,9 +1697,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
             <div className="flex items-center bg-slate-950/80 border border-slate-800 p-1 rounded-xl mb-5 gap-1">
               <button
                 type="button"
-                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   manualLookupMode === 'reg_number'
-                    ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
                 onClick={() => {
@@ -1681,9 +1711,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </button>
               <button
                 type="button"
-                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   manualLookupMode === 'phone'
-                    ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
                 onClick={() => {
@@ -1695,9 +1725,9 @@ export const GateVerificationPortal: React.FC<GateVerificationPortalProps> = ({
               </button>
               <button
                 type="button"
-                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   manualLookupMode === 'name'
-                    ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
                 onClick={() => {
