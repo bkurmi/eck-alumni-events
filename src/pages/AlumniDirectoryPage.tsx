@@ -5,7 +5,7 @@ import { Footer } from '../components/Footer';
 import { AlumniProfileEditModal } from '../components/AlumniProfileEditModal';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { supabase } from '../lib/supabase';
-import { fetchAlumniDirectory } from '../lib/directory';
+import { fetchAlumniDirectory, lookupAlumniByMobile } from '../lib/directory';
 import { cleanMobileNumber } from '../lib/registrations';
 import type { AlumniDirectoryItem } from '../types';
 import { ENGINEERING_DISCIPLINES } from '../types';
@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Loader2,
   ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface AlumniDirectoryPageProps {
@@ -50,9 +51,10 @@ interface AlumniCardProps {
   alumnus: AlumniDirectoryItem;
   whatsAppUrl: string;
   onEdit: (alumnus: AlumniDirectoryItem) => void;
+  onAskHelp: (alumnus: AlumniDirectoryItem, whatsAppUrl: string) => void;
 }
 
-const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit }) => {
+const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit, onAskHelp }) => {
   const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
   const photoUrl = alumnus.resolved_photo_url || alumnus.photo_url;
   const hasPhoto = Boolean(photoUrl) && !photoLoadFailed;
@@ -89,18 +91,17 @@ const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit })
 
           {/* Compact Ask Help Button flush at bottom */}
           {whatsAppUrl ? (
-            <a
-              href={whatsAppUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full h-[24px] sm:h-[25px] inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-1 text-[10px] sm:text-[11px] font-semibold text-emerald-300 transition-colors shadow-sm shrink-0"
+            <button
+              type="button"
+              onClick={() => onAskHelp(alumnus, whatsAppUrl)}
+              className="w-full h-[26px] sm:h-[28px] inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-1 text-[10px] sm:text-[11px] font-semibold text-emerald-300 transition-colors shadow-sm shrink-0 cursor-pointer active:scale-98"
               title={`Send WhatsApp message to ${alumnus.name}`}
             >
-              <MessageCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+              <MessageCircle className="h-3 w-3 shrink-0" />
               <span>Ask Help</span>
-            </a>
+            </button>
           ) : (
-            <span className="w-full h-[24px] sm:h-[25px] inline-flex items-center justify-center text-[10px] text-slate-500 bg-slate-950/60 rounded-md border border-slate-800/80 px-1 text-center shrink-0">
+            <span className="w-full h-[26px] sm:h-[28px] inline-flex items-center justify-center text-[10px] text-slate-500 bg-slate-950/60 rounded-md border border-slate-800/80 px-1 text-center shrink-0">
               No Phone
             </span>
           )}
@@ -238,6 +239,14 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
     autoOpenProfile || searchParams.get('profile') === 'true' || searchParams.get('edit') === 'true'
   );
   const [alumnusToEdit, setAlumnusToEdit] = useState<AlumniDirectoryItem | null>(null);
+
+  // Phone verification state for Ask Help
+  const [isHelpVerifyModalOpen, setIsHelpVerifyModalOpen] = useState(false);
+  const [pendingHelpAlumnus, setPendingHelpAlumnus] = useState<AlumniDirectoryItem | null>(null);
+  const [pendingHelpUrl, setPendingHelpUrl] = useState<string>('');
+  const [verifyPhoneInput, setVerifyPhoneInput] = useState<string>('');
+  const [verifyPhoneError, setVerifyPhoneError] = useState<string>('');
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState<boolean>(false);
 
   useEffect(() => {
     if (autoOpenProfile || searchParams.get('profile') === 'true' || searchParams.get('edit') === 'true') {
@@ -437,6 +446,60 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
     return `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 
+  const handleAskHelp = (alumnus: AlumniDirectoryItem, whatsAppUrl: string) => {
+    const verifiedMobile = localStorage.getItem('eck_verified_mobile');
+    if (verifiedMobile && verifiedMobile.length === 10) {
+      window.open(whatsAppUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setPendingHelpAlumnus(alumnus);
+    setPendingHelpUrl(whatsAppUrl);
+    setVerifyPhoneInput('');
+    setVerifyPhoneError('');
+    setIsHelpVerifyModalOpen(true);
+  };
+
+  const handleConfirmPhoneForHelp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyPhoneError('');
+    const clean = cleanMobileNumber(verifyPhoneInput);
+    if (!clean || clean.length < 10) {
+      setVerifyPhoneError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    setIsVerifyingPhone(true);
+    try {
+      // 1. In-memory check against loaded alumni (0ms)
+      const inMemMatch = alumniList.find((a) => cleanMobileNumber(a.mobile) === clean);
+      if (inMemMatch) {
+        localStorage.setItem('eck_verified_mobile', clean);
+        setIsHelpVerifyModalOpen(false);
+        if (pendingHelpUrl) {
+          window.open(pendingHelpUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+
+      // 2. Database lookup fallback
+      const dbMatch = await lookupAlumniByMobile(clean);
+      if (dbMatch) {
+        localStorage.setItem('eck_verified_mobile', clean);
+        setIsHelpVerifyModalOpen(false);
+        if (pendingHelpUrl) {
+          window.open(pendingHelpUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+
+      setVerifyPhoneError('Mobile number not found in registered alumni records. Please enter your registered 10-digit number.');
+    } catch (err: any) {
+      setVerifyPhoneError(err?.message || 'Verification failed. Please try again.');
+    } finally {
+      setIsVerifyingPhone(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-[#0a0c16] text-slate-100 flex flex-col overflow-x-hidden selection:bg-amber-500 selection:text-slate-950">
       <Header maxWidth="max-w-3xl" />
@@ -629,6 +692,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
                     alumnus={alumnus}
                     whatsAppUrl={whatsAppUrl}
                     onEdit={handleEditClick}
+                    onAskHelp={handleAskHelp}
                   />
                 );
               })}
@@ -642,6 +706,114 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
         tagline={activeEvent?.tagline}
         location={activeEvent?.location}
       />
+
+      {/* Ask Help Phone Verification Modal */}
+      {isHelpVerifyModalOpen && pendingHelpAlumnus && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsHelpVerifyModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#0e1428] border border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl relative text-slate-100 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="help-verify-modal-title"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shrink-0">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 id="help-verify-modal-title" className="text-base font-bold text-white leading-tight">
+                    Alumni Verification Required
+                  </h3>
+                  <p className="text-[11px] text-amber-400/90 font-medium">
+                    Spam-Free Community Protection
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHelpVerifyModalOpen(false)}
+                className="min-h-[44px] min-w-[44px] rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center justify-center cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs sm:text-sm text-slate-300">
+              <p className="leading-relaxed">
+                To connect with <strong className="text-white">{pendingHelpAlumnus.name}</strong> on WhatsApp, please confirm your registered 10-digit mobile number.
+              </p>
+
+              <form onSubmit={handleConfirmPhoneForHelp} className="space-y-3.5 pt-1">
+                <div>
+                  <label htmlFor="verify-phone-input" className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Your Registered Mobile Number
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-sm font-semibold text-slate-400 pointer-events-none">
+                      +91
+                    </span>
+                    <input
+                      id="verify-phone-input"
+                      type="tel"
+                      maxLength={10}
+                      value={verifyPhoneInput}
+                      onChange={(e) => {
+                        setVerifyPhoneInput(e.target.value.replace(/\D/g, ''));
+                        setVerifyPhoneError('');
+                      }}
+                      placeholder="10-digit mobile number"
+                      className="w-full min-h-[44px] rounded-xl bg-slate-900 border border-slate-700 pl-12 pr-3 text-base text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      autoFocus
+                    />
+                  </div>
+                  {verifyPhoneError && (
+                    <p className="mt-1.5 text-xs text-rose-400 font-medium leading-relaxed">
+                      {verifyPhoneError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-3 text-[11px] text-slate-400 leading-relaxed">
+                  🛡️ <strong>Verified once per device:</strong> Once verified, you won't be prompted again on this phone or browser.
+                </div>
+
+                <div className="pt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsHelpVerifyModalOpen(false)}
+                    className="flex-1 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isVerifyingPhone || verifyPhoneInput.length < 10}
+                    className="flex-1 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {isVerifyingPhone ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MessageCircle className="h-4 w-4" />
+                        <span>Connect</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Profile & Photo Modal */}
       <AlumniProfileEditModal
