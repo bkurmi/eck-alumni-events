@@ -21,10 +21,12 @@ ALTER TABLE alumni DROP COLUMN IF EXISTS reviewed_by;
 NOTIFY pgrst, 'reload schema';
 
 -- 2. ONE-TIME BACKFILL: Auto-approve legacy alumni records
--- (Only updates legacy records where approval_status IS NULL; does not touch new PENDING or REJECTED records)
+-- Auto-approves existing alumni who were registered for events or have legacy records
 UPDATE alumni 
 SET approval_status = 'APPROVED' 
-WHERE approval_status IS NULL;
+WHERE approval_status IS NULL 
+   OR approval_status = 'PENDING'
+   OR id IN (SELECT alumni_id FROM event_registrations WHERE alumni_id IS NOT NULL);
 
 -- 3. ENSURE INDEXES FOR FAST FILTERING
 CREATE INDEX IF NOT EXISTS idx_alumni_approval_status ON alumni(approval_status);
