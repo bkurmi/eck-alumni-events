@@ -25,6 +25,7 @@ import {
 } from '../lib/expenses';
 import { supabase } from '../lib/supabase';
 import { isRealMobileNumber, formatDisplayMobile } from '../lib/registrations';
+import { formatBatchName } from '../lib/batchUtils';
 import { isAdminGatePortalEnabled } from '../lib/gate';
 import { isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 import { getRegistrationStatusInfo, syncEventRegistrationStatus } from '../lib/eventStatus';
@@ -526,7 +527,7 @@ export const AdminPage: React.FC = () => {
 
   const buildSingleAlumnusText = (reg: EventRegistration) => {
     const name = reg.alumni?.name || 'Alumnus';
-    const batch = reg.alumni?.year_of_passing ? `Class of ${reg.alumni.year_of_passing}` : '';
+    const batch = formatBatchName(reg.alumni?.batch, reg.alumni?.year_of_passing);
     const disc = reg.alumni?.engineering_discipline || '';
     const city = reg.alumni?.city ? `${reg.alumni.city}${reg.alumni?.state ? `, ${reg.alumni.state}` : ''}` : '';
     const count = reg.number_of_attendees || 1;
@@ -556,7 +557,7 @@ export const AdminPage: React.FC = () => {
       '',
       `🎫 *Registration ID:* ${reg.registration_number}`,
       `👤 *Alumni Name:* ${name}`,
-      batch ? `🎓 *Batch:* ${batch}${disc ? ` • ${disc}` : ''}` : '',
+      batch !== '—' ? `🎓 *Batch:* ${batch}${disc ? ` • ${disc}` : ''}` : '',
       city ? `📍 *Location:* ${city}` : '',
       `👥 *Attendees:* ${count} ${count === 1 ? 'Person' : 'People'}${count > 1 ? ` (Self + ${count - 1} accompanying)` : ''}`,
       `✨ *Attendance Status:* ${status.toUpperCase()}`,
@@ -626,7 +627,8 @@ export const AdminPage: React.FC = () => {
     const mobile = rawMobile.replace(/[^0-9]/g, '');
     const target = mobile.length === 10 ? `91${mobile}` : mobile;
     const name = reg.alumni?.name || 'Alumnus';
-    const batch = reg.alumni?.year_of_passing ? `Batch of ${reg.alumni.year_of_passing}` : '';
+    const rawBatch = formatBatchName(reg.alumni?.batch, reg.alumni?.year_of_passing);
+    const batch = rawBatch !== '—' ? rawBatch : '';
     const amount = reg.amount || 800;
     const text = `Namaste ${name} Ji! We noticed you started your registration for ${activeEvent.event_name}${batch ? ` (${batch})` : ''}, but the payment screenshot hasn't been uploaded yet. If you have completed your UPI payment of ₹${amount}, please reply with your screenshot here so we can confirm your official pass. Warm regards, ECK Alumni Team.`;
     window.open(`https://wa.me/${target}?text=${encodeURIComponent(text)}`, '_blank');
@@ -1486,8 +1488,8 @@ export const AdminPage: React.FC = () => {
                                                                           <div className="font-bold text-white group-hover:text-amber-400 transition-colors text-sm truncate" title={reg.alumni?.name}>
                                                                             {reg.alumni?.name || 'Unknown Alumni'}
                                                                           </div>
-                                                                          <div className="text-[11px] text-slate-400 truncate" title={`${reg.alumni?.year_of_passing || ''} ${reg.alumni?.engineering_discipline || ''}`}>
-                                                                            {reg.alumni?.year_of_passing || '—'} • {formatBranchShort(reg.alumni?.engineering_discipline)}
+                                                                          <div className="text-[11px] text-slate-400 truncate" title={`${formatBatchName(reg.alumni?.batch, reg.alumni?.year_of_passing)} ${reg.alumni?.engineering_discipline || ''}`}>
+                                                                            {formatBatchName(reg.alumni?.batch, reg.alumni?.year_of_passing)} • {formatBranchShort(reg.alumni?.engineering_discipline)}
                                                                           </div>
                                                                           {reg.alumni?.organization && (
                                                                             <div className="text-[10px] text-amber-400/80 truncate" title={reg.alumni.organization}>
@@ -1641,7 +1643,7 @@ export const AdminPage: React.FC = () => {
                                                                                 {reg.alumni?.name || 'Unknown Alumni'}
                                                                               </h3>
                                                                                 <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-                                                                                  Batch of {reg.alumni?.year_of_passing || '—'} • {reg.alumni?.engineering_discipline || 'Other'}
+                                                                                  {formatBatchName(reg.alumni?.batch, reg.alumni?.year_of_passing)} • {reg.alumni?.engineering_discipline || 'Other'}
                                                                                 </p>
                                                                                 <p className="text-xs text-slate-400 mt-1">
                                                                                   📞 {formatDisplayMobile(reg.alumni?.mobile)} • 📍 {reg.alumni?.city || '—'}, {reg.alumni?.state || ''}
@@ -1779,8 +1781,8 @@ export const AdminPage: React.FC = () => {
                                                                   </div>
 
                                                                   <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex flex-col gap-0.5">
-                                                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Year of Passing</span>
-                                                                    <span className="text-sm text-slate-200">Class of {selectedReg.alumni?.year_of_passing}</span>
+                                                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Batch</span>
+                                                                    <span className="text-sm text-slate-200">{formatBatchName(selectedReg.alumni?.batch, selectedReg.alumni?.year_of_passing)}{selectedReg.alumni?.year_of_passing ? ` (${selectedReg.alumni.year_of_passing})` : ''}</span>
                                                                   </div>
 
                                                                   <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex flex-col gap-0.5">
