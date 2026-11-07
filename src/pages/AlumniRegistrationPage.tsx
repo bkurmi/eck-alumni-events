@@ -6,6 +6,8 @@ import {
   MapPin,
   Briefcase,
   Camera,
+  Upload,
+  X,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -102,8 +104,8 @@ export const AlumniRegistrationPage: React.FC = () => {
     const targetMobile = customData?.mobile || formData.mobile;
 
     const cleanBatch = targetBatch ? targetBatch.replace(/^batch\s+/i, '').trim() : '';
-    const batchYearStr = cleanBatch && targetYear 
-      ? `${cleanBatch} (${targetYear})` 
+    const batchYearStr = cleanBatch && targetYear
+      ? `${cleanBatch} (${targetYear})`
       : (cleanBatch || (targetYear ? String(targetYear) : ''));
     const cleanMobile = cleanMobileNumber(targetMobile);
 
@@ -143,6 +145,7 @@ export const AlumniRegistrationPage: React.FC = () => {
     alumni_id?: string;
   } | null>(null);
 
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load organization suggestions
@@ -154,7 +157,7 @@ export const AlumniRegistrationPage: React.FC = () => {
           setOrgSuggestions(suggestions);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       isMounted = false;
     };
@@ -239,10 +242,26 @@ export const AlumniRegistrationPage: React.FC = () => {
         setFormError('Photo size is too large (max 10MB). Please select a smaller photo.');
         return;
       }
+      if (photoPreview && photoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(photoPreview);
+      }
       setPhotoFile(file);
       const previewUrl = URL.createObjectURL(file);
       setPhotoPreview(previewUrl);
+      setFormError(null);
     }
+    // Reset file input value to allow selecting or retaking with the same filename
+    e.target.value = '';
+  };
+
+  const handleRemovePhoto = () => {
+    if (photoPreview && photoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(photoPreview);
+    }
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   const scrollToError = (msg: string, fieldId?: string) => {
@@ -1272,36 +1291,57 @@ export const AlumniRegistrationPage: React.FC = () => {
                 </div>
               </section>
 
-              {/* SECTION 5: Profile Photo Upload (Optional) */}
+              {/* SECTION 5: Profile Photo / Selfie (Optional) */}
               <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 shadow-lg space-y-4">
                 <div className="border-b border-slate-800 pb-3">
                   <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                     <Camera className="h-5 w-5 text-amber-400" />
-                    <span>Profile Photo <span className="text-xs font-normal text-slate-400">(Recommended)</span></span>
+                    <span>Profile Photo / Selfie <span className="text-xs font-normal text-slate-400">(Recommended)</span></span>
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Your photo will be displayed on your verified Alumni Directory card upon committee approval.
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
                   {/* Photo Preview */}
-                  <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-2xl border-2 border-dashed border-amber-500/40 bg-slate-950 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-2xl border-2 border-dashed border-amber-500/40 bg-slate-950 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                     {photoPreview ? (
-                      <img
-                        src={photoPreview}
-                        alt="Preview"
-                        className="h-full w-full object-cover"
-                      />
+                      <>
+                        <img
+                          src={photoPreview}
+                          alt="Preview"
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          title="Remove photo"
+                          className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white flex items-center justify-center shadow-md transition-all active:scale-90"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </>
                     ) : (
                       <div className="text-center p-2 text-slate-500">
                         <Camera className="h-7 w-7 mx-auto mb-1 text-slate-600" />
-                        <span className="text-[10px] block">No Photo</span>
+                        <span className="text-[10px] block font-medium">No Photo</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 text-center sm:text-left space-y-2 w-full">
+                  <div className="flex-1 text-center sm:text-left space-y-3 w-full">
+                    {/* Hidden Native File & Camera Inputs */}
+                    {/* Option 1: Live Selfie Capture (front camera) */}
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+                    {/* Option 2: Gallery / File Upload */}
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1309,16 +1349,46 @@ export const AlumniRegistrationPage: React.FC = () => {
                       onChange={handlePhotoSelect}
                       className="hidden"
                     />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-xs sm:text-sm font-semibold text-amber-300 hover:bg-amber-500/20 active:bg-amber-500/30 transition-all w-full sm:w-auto"
-                    >
-                      <Camera className="h-4 w-4" />
-                      <span>{photoPreview ? 'Change Photo' : 'Upload Profile Photo'}</span>
-                    </button>
+
+                    {/* Dual Action Buttons: 1st Option = Take Selfie, 2nd Option = Upload Photo */}
+                    <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
+                      {/* 1st Option: Take Selfie */}
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 active:bg-amber-500/30 px-4 py-2.5 text-xs sm:text-sm font-semibold text-amber-300 transition-all cursor-pointer w-full sm:w-auto shadow-sm"
+                        title="Open camera to take a live selfie"
+                      >
+                        <Camera className="h-4 w-4 text-amber-400 shrink-0" />
+                        <span>{photoPreview ? 'Retake Selfie' : 'Take Selfie'}</span>
+                      </button>
+
+                      {/* 2nd Option: Upload Photo */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-750 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-200 transition-all cursor-pointer w-full sm:w-auto shadow-sm"
+                        title="Upload existing photo from device or gallery"
+                      >
+                        <Upload className="h-4 w-4 text-slate-400 shrink-0" />
+                        <span>{photoPreview ? 'Upload from Device' : 'Upload Photo'}</span>
+                      </button>
+
+                      {/* Remove Button (visible when photo is loaded) */}
+                      {photoPreview && (
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 active:bg-rose-500/30 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-rose-300 transition-all cursor-pointer w-full sm:w-auto"
+                        >
+                          <X className="h-4 w-4 text-rose-400 shrink-0" />
+                          <span>Remove</span>
+                        </button>
+                      )}
+                    </div>
+
                     <p className="text-[11px] text-slate-400">
-                      Supports JPG, PNG or WebP. Auto-compressed before upload.
+                      Take a live selfie or pick from gallery/files. Supports JPG, PNG or WebP (auto-compressed before upload).
                     </p>
                   </div>
                 </div>
@@ -1352,7 +1422,7 @@ export const AlumniRegistrationPage: React.FC = () => {
                   ) : (
                     <>
                       <ShieldCheck className="h-5 w-5" />
-                      <span>Submit Alumni Registration for Committee Approval</span>
+                      <span>Submit for Approval</span>
                     </>
                   )}
                 </button>
