@@ -30,6 +30,193 @@ interface AlumniDirectoryPageProps {
   autoOpenProfile?: boolean;
 }
 
+const getAttendeeInitials = (name?: string): string => {
+  if (!name) return 'AL';
+  const clean = name.trim().replace(/^(mr\.?|mrs\.?|ms\.?|dr\.?|er\.?)\s+/i, '').trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase() || 'AL';
+};
+
+const formatBatchLabel = (b: string): string => {
+  const trimmed = b.trim();
+  if (!trimmed) return '';
+  return trimmed.toLowerCase().startsWith('batch') ? trimmed : `Batch ${trimmed}`;
+};
+
+interface AlumniCardProps {
+  alumnus: AlumniDirectoryItem;
+  whatsAppUrl: string;
+  onEdit: (alumnus: AlumniDirectoryItem) => void;
+}
+
+const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit }) => {
+  const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
+  const photoUrl = alumnus.resolved_photo_url || alumnus.photo_url;
+  const hasPhoto = Boolean(photoUrl) && !photoLoadFailed;
+  const rawBatch = alumnus.batch || (alumnus.year_of_passing ? getBatchFromPassingYear(alumnus.year_of_passing) : '');
+  const batchLabel = rawBatch ? formatBatchLabel(rawBatch) : '';
+
+  useEffect(() => {
+    setPhotoLoadFailed(false);
+  }, [photoUrl]);
+
+  return (
+    <article className="h-[160px] sm:h-[168px] rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:p-3.5 hover:border-amber-500/30 transition-all shadow-md backdrop-blur-sm group flex flex-col justify-between overflow-hidden">
+      <div className="flex items-stretch gap-3 sm:gap-3.5 h-full min-w-0">
+        {/* Left Column: True 3:4 portrait photo (reduced width for sleek ID look) + compact Ask Help button */}
+        <div className="w-20 sm:w-[84px] shrink-0 flex flex-col justify-between h-full gap-1.5">
+          <div className="w-full flex-1 min-h-0 rounded-xl overflow-hidden border border-amber-500/30 bg-slate-950 flex items-center justify-center shadow-md relative">
+            {hasPhoto ? (
+              <img
+                src={photoUrl || ''}
+                alt={alumnus.name}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+                onError={() => setPhotoLoadFailed(true)}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-1.5 text-center w-full h-full bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 select-none">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800 border border-amber-500/40 flex items-center justify-center text-xs font-bold text-amber-300 shadow-inner">
+                  {getAttendeeInitials(alumnus.name)}
+                </div>
+                <span className="text-[8px] sm:text-[9px] font-mono mt-0.5 text-amber-400/80 font-bold tracking-wider">ALUMNI</span>
+              </div>
+            )}
+          </div>
+
+          {/* Compact Ask Help Button flush at bottom */}
+          {whatsAppUrl ? (
+            <a
+              href={whatsAppUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full h-[24px] sm:h-[25px] inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-1 text-[10px] sm:text-[11px] font-semibold text-emerald-300 transition-colors shadow-sm shrink-0"
+              title={`Send WhatsApp message to ${alumnus.name}`}
+            >
+              <MessageCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+              <span>Ask Help</span>
+            </a>
+          ) : (
+            <span className="w-full h-[24px] sm:h-[25px] inline-flex items-center justify-center text-[10px] text-slate-500 bg-slate-950/60 rounded-md border border-slate-800/80 px-1 text-center shrink-0">
+              No Phone
+            </span>
+          )}
+        </div>
+
+        {/* Right Column: Key Details with expanded room so names do not truncate */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
+          <div className="space-y-0.5 min-w-0">
+            {/* Header: Name, LinkedIn / Email, and Compact Batch Badge */}
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <h2
+                className="text-sm sm:text-base font-bold text-white leading-tight truncate cursor-pointer hover:text-amber-300 transition-colors"
+                title={`${alumnus.name} (Click to view profile)`}
+                onClick={() => onEdit(alumnus)}
+              >
+                {alumnus.name}
+              </h2>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {alumnus.linkedin_url && (
+                  <a
+                    href={alumnus.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-5 w-5 sm:h-5.5 sm:w-5.5 items-center justify-center rounded border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                    title="LinkedIn"
+                    aria-label="LinkedIn"
+                  >
+                    <Link2 className="h-3 w-3" />
+                  </a>
+                )}
+
+                {alumnus.email && (
+                  <a
+                    href={`mailto:${alumnus.email}?subject=ECK Alumni Connection`}
+                    className="flex h-5 w-5 sm:h-5.5 sm:w-5.5 items-center justify-center rounded border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                    title="Email"
+                    aria-label="Email"
+                  >
+                    <Mail className="h-3 w-3" />
+                  </a>
+                )}
+
+                {batchLabel && (
+                  <span
+                    className="inline-flex items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-amber-300 shrink-0 shadow-sm"
+                    title={batchLabel}
+                  >
+                    {batchLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Discipline / Branch */}
+            <p className="text-xs font-semibold text-amber-400/90 truncate leading-snug" title={alumnus.engineering_discipline || 'Alumni'}>
+              {alumnus.engineering_discipline || 'Engineering'}
+            </p>
+
+            {/* Organization / Designation (Fixed slot keeps all rows aligned across cards) */}
+            <div className="h-4 sm:h-4.5 flex items-center min-w-0">
+              {alumnus.organization || alumnus.designation ? (
+                <p
+                  className="text-xs text-slate-300 truncate flex items-center gap-1.5 min-w-0"
+                  title={[alumnus.designation, alumnus.organization].filter(Boolean).join(', ')}
+                >
+                  <Building className="h-3 w-3 text-slate-500 shrink-0" />
+                  <span className="truncate">
+                    {alumnus.designation && alumnus.organization
+                      ? `${alumnus.designation}, ${alumnus.organization}`
+                      : alumnus.organization || alumnus.designation}
+                  </span>
+                </p>
+              ) : (
+                <span className="text-[11px] text-slate-600/50 flex items-center gap-1 truncate select-none">
+                  <Building className="h-3 w-3 text-slate-700/50 shrink-0" />
+                  <span>ECK Alumnus</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Meta Tags */}
+          <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-[11px] pt-1 overflow-hidden max-h-[48px]">
+            {alumnus.year_of_passing ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-amber-300 border border-amber-500/20 font-mono shrink-0">
+                🎓 Pass out {alumnus.year_of_passing}
+              </span>
+            ) : null}
+
+            {(alumnus.city || alumnus.state) && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 px-1.5 py-0.5 text-slate-300 border border-slate-700/60 max-w-full truncate">
+                <MapPin className="h-2.5 w-2.5 text-amber-400 shrink-0" />
+                <span className="truncate">{alumnus.city || 'Kota'}{alumnus.state ? `, ${alumnus.state}` : ''}</span>
+              </span>
+            )}
+
+            {alumnus.work_location && alumnus.work_location !== alumnus.city && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 px-1.5 py-0.5 text-slate-300 border border-slate-700/60 max-w-full truncate">
+                <Briefcase className="h-2.5 w-2.5 text-blue-400 shrink-0" />
+                <span className="truncate">{alumnus.work_location}</span>
+              </span>
+            )}
+
+            {alumnus.employment_type && (
+              <span className="inline-flex items-center rounded-md bg-slate-800/90 px-1.5 py-0.5 text-slate-300 border border-slate-700/60 max-w-full truncate">
+                <span className="truncate">{alumnus.employment_type}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+};
+
 export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOpenProfile = false }) => {
   const [searchParams] = useSearchParams();
   const [alumniList, setAlumniList] = useState<AlumniDirectoryItem[]>([]);
@@ -436,145 +623,13 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
               {filteredAlumni.map((alumnus) => {
                 const whatsAppUrl = getWhatsAppHelpLink(alumnus);
-                const hasPhoto = Boolean(alumnus.resolved_photo_url || alumnus.photo_url);
-
                 return (
-                  <article
+                  <AlumniCard
                     key={alumnus.id}
-                    className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-4 hover:border-amber-500/30 transition-all shadow-md backdrop-blur-sm gap-3.5"
-                  >
-                    {/* Card Header & Avatar */}
-                    <div className="flex items-start gap-3">
-                      <div className="h-12 w-12 shrink-0 rounded-full border-2 border-amber-500/40 bg-slate-950 overflow-hidden shadow-sm">
-                        {hasPhoto ? (
-                          <img
-                            src={alumnus.resolved_photo_url || alumnus.photo_url || ''}
-                            alt={alumnus.name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-xs font-bold text-amber-400">
-                            {alumnus.name.slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <h2 className="text-sm sm:text-base font-bold text-white truncate" title={alumnus.name}>
-                            {alumnus.name}
-                          </h2>
-                          <span
-                            className="inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-semibold text-amber-300 shrink-0"
-                            title={`Batch ${alumnus.batch || getBatchFromPassingYear(alumnus.year_of_passing)}`}
-                          >
-                            Batch {alumnus.batch || getBatchFromPassingYear(alumnus.year_of_passing)}
-                          </span>
-                        </div>
-
-                        <div className="space-y-0.5 mt-0.5">
-                          <p className="text-xs font-medium text-amber-400/90 truncate" title={alumnus.engineering_discipline}>
-                            {alumnus.engineering_discipline}
-                          </p>
-                          {(alumnus.organization || alumnus.designation) && (
-                            <p
-                              className="text-xs text-slate-300 truncate flex items-center gap-1"
-                              title={[alumnus.designation, alumnus.organization].filter(Boolean).join(', ')}
-                            >
-                              <Building className="h-3 w-3 text-slate-500 shrink-0" />
-                              <span className="truncate">
-                                {alumnus.designation && alumnus.organization
-                                  ? `${alumnus.designation}, ${alumnus.organization}`
-                                  : alumnus.organization || alumnus.designation}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Meta Tags */}
-                    <div className="flex flex-wrap gap-1.5 text-[11px]">
-                      {alumnus.year_of_passing ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-amber-300 border border-amber-500/20 font-mono text-[11px]">
-                          🎓 Pass out {alumnus.year_of_passing}
-                        </span>
-                      ) : null}
-
-                      <span className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 px-2 py-0.5 text-slate-300 border border-slate-700/60">
-                        <MapPin className="h-3 w-3 text-amber-400" />
-                        <span>{alumnus.city || 'Kota'}{alumnus.state ? `, ${alumnus.state}` : ''}</span>
-                      </span>
-
-                      {alumnus.work_location && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 px-2 py-0.5 text-slate-300 border border-slate-700/60">
-                          <Briefcase className="h-3 w-3 text-blue-400" />
-                          <span>{alumnus.work_location}</span>
-                        </span>
-                      )}
-
-                      {alumnus.employment_type && (
-                        <span className="inline-flex items-center rounded-md bg-slate-800/90 px-2 py-0.5 text-slate-300 border border-slate-700/60">
-                          {alumnus.employment_type}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Action Buttons: Ask for Help, Email, LinkedIn, Edit */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
-                      {whatsAppUrl ? (
-                        <a
-                          href={whatsAppUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-3 py-2 text-xs font-semibold text-emerald-300 transition-colors"
-                          title={`Send a courteous WhatsApp message to ${alumnus.name}`}
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          <span>Ask Help</span>
-                        </a>
-                      ) : (
-                        <span className="flex-1 min-h-[44px] inline-flex items-center justify-center text-xs text-slate-500 bg-slate-900 rounded-xl border border-slate-800">
-                          No Phone
-                        </span>
-                      )}
-
-                      {alumnus.linkedin_url && (
-                        <a
-                          href={alumnus.linkedin_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-                          title={`LinkedIn`}
-                          aria-label="LinkedIn"
-                        >
-                          <Link2 className="h-4 w-4" />
-                        </a>
-                      )}
-
-                      {alumnus.email && (
-                        <a
-                          href={`mailto:${alumnus.email}?subject=ECK Alumni Connection`}
-                          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-                          title={`Email`}
-                          aria-label="Email"
-                        >
-                          <Mail className="h-4 w-4" />
-                        </a>
-                      )}
-
-                      <button
-                        type="button"
-                        className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-2 text-xs font-semibold text-amber-300 transition-colors cursor-pointer"
-                        onClick={() => handleEditClick(alumnus)}
-                        title="Open complete profile"
-                      >
-                        <User className="h-4 w-4" />
-                        <span>Profile</span>
-                      </button>
-                    </div>
-                  </article>
+                    alumnus={alumnus}
+                    whatsAppUrl={whatsAppUrl}
+                    onEdit={handleEditClick}
+                  />
                 );
               })}
             </div>
