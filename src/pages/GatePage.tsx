@@ -237,11 +237,7 @@ export const GatePage: React.FC = () => {
         />
       </main>
 
-      <Footer
-        eventName={activeEvent?.event_name}
-        tagline={activeEvent?.tagline}
-        location={activeEvent?.location}
-      />
+      <Footer />
     </div>
   );
 };

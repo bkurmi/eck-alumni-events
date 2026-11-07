@@ -4,7 +4,6 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { AlumniProfileEditModal } from '../components/AlumniProfileEditModal';
 import { SearchableSelect } from '../components/SearchableSelect';
-import { supabase } from '../lib/supabase';
 import { fetchAlumniDirectory, lookupAlumniByMobile } from '../lib/directory';
 import { cleanMobileNumber } from '../lib/registrations';
 import type { AlumniDirectoryItem } from '../types';
@@ -222,7 +221,6 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
   const [searchParams] = useSearchParams();
   const [alumniList, setAlumniList] = useState<AlumniDirectoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeEvent, setActiveEvent] = useState<{ event_name?: string; tagline?: string; location?: string } | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -272,23 +270,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
         }
       }
     }
-    async function loadActiveEvent() {
-      try {
-        const { data } = await supabase
-          .from('events')
-          .select('event_name, tagline, location')
-          .order('event_date', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (data && isMounted) {
-          setActiveEvent(data);
-        }
-      } catch {
-        // Non-blocking
-      }
-    }
     loadDirectory();
-    loadActiveEvent();
     return () => {
       isMounted = false;
     };
@@ -701,11 +683,7 @@ export const AlumniDirectoryPage: React.FC<AlumniDirectoryPageProps> = ({ autoOp
         </section>
       </main>
 
-      <Footer
-        eventName={activeEvent?.event_name}
-        tagline={activeEvent?.tagline}
-        location={activeEvent?.location}
-      />
+      <Footer />
 
       {/* Ask Help Phone Verification Modal */}
       {isHelpVerifyModalOpen && pendingHelpAlumnus && (

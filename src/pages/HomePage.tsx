@@ -153,11 +153,7 @@ export const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-[#080c18] text-slate-100 flex flex-col overflow-x-hidden selection:bg-amber-500 selection:text-slate-950">
       {/* Top Header - Unified max-w-3xl width */}
-      <Header
-        maxWidth="max-w-3xl"
-        title="ECK Alumni Association"
-        tagline="Kota Chapter"
-      />
+      <Header maxWidth="max-w-3xl" />
 
       {/* Main Container - 100% Consistent max-w-3xl width matching EventPage & Directory */}
       <main className="flex-1 w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-10 sm:space-y-14">
@@ -197,17 +193,20 @@ export const HomePage: React.FC = () => {
 
               <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                Engineering College Kota • Kota Chapter
+                ECK-RTU Alumni • Kota Chapter
               </div>
             </div>
 
             {/* Main Portal Title */}
             <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
-              Engineering College Kota{' '}
+              ECK-RTU{' '}
               <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">
                 Alumni Association
               </span>
             </h1>
+            <p className="mt-1.5 text-xs sm:text-sm md:text-base font-semibold text-slate-300">
+              Engineering College Kota <span className="text-slate-400 font-normal">(Now Rajasthan Technical University, Kota)</span>
+            </p>
 
             {/* Official Universal Tagline */}
             <div className="mt-3.5 inline-block rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/15 via-blue-500/10 to-amber-500/15 px-3.5 sm:px-5 py-2 shadow-md">
@@ -218,9 +217,9 @@ export const HomePage: React.FC = () => {
 
             {/* Clear Context Paragraph */}
             <p className="mt-4 text-xs sm:text-sm md:text-base text-slate-300 leading-relaxed max-w-2xl">
-              The official digital home for all graduates of <strong>Engineering College Kota (ECK-RTU)</strong>.
+              The official digital home for all graduates of <strong>Engineering College Kota (now Rajasthan Technical University — ECK-RTU)</strong>.
               Initiated, managed, and voluntarily maintained by the <strong>Kota Chapter</strong>, this platform
-              preserves four decades of heritage, connects alumni across batches, and unites our global community.
+              preserves four decades of heritage, connects alumni across all batches (from pioneer 1981 batches to RTU graduates), and unites our global community.
             </p>
 
             {/* Hero Quick Navigation CTAs */}
@@ -402,7 +401,7 @@ export const HomePage: React.FC = () => {
                       <Building2 className="h-4.5 w-4.5" />
                     </span>
                     <h3 className="text-sm sm:text-base font-bold text-white group-hover:text-amber-400 transition-colors">
-                      About ECK
+                      About ECK-RTU
                     </h3>
                   </div>
                   <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">
@@ -410,7 +409,7 @@ export const HomePage: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Foundation history, four decades of milestones, and the academic journey from ECK to RTU.
+                  Foundation history, four decades of milestones, and the academic journey from Engineering College Kota to RTU.
                 </p>
               </div>
               <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-amber-400">
@@ -608,23 +607,26 @@ export const HomePage: React.FC = () => {
               1. About the College
             </span>
             <h2 className="text-xl sm:text-3xl font-black text-white leading-tight">
-              Engineering College Kota (ECK-RTU)
+              Engineering College Kota & RTU (ECK-RTU)
             </h2>
             <p className="text-xs sm:text-sm font-medium text-amber-400/90 mt-1">
-              A Legacy of Four Decades on the Banks of Chambal
+              From Engineering College Kota (1981) to Rajasthan Technical University • Four Decades on the Banks of Chambal
             </p>
 
             <div className="mt-4 space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
               <p>
-                Established in <strong>1981</strong>, Engineering College Kota (ECK) was founded with the mission to
+                Established in <strong>1981</strong> as <strong>Engineering College Kota (ECK)</strong>, the campus was founded with the mission to
                 deliver world-class engineering education in Rajasthan. Situated near the historic Chambal River in
-                Kota, it quickly became a cradle of innovation, technical rigor, and spirited student life.
+                Kota, it quickly became a cradle of innovation, technical rigor, and spirited student camaraderie.
               </p>
               <p>
-                Over the decades, the institution grew into a powerhouse of talent, eventually evolving into the flagship
-                university campus of <strong>Rajasthan Technical University (RTU)</strong>. It has nurtured generations of
-                engineers who have spearheaded technological breakthroughs, founded leading enterprises, served in top civil
-                services, and held senior leadership positions across the globe.
+                In <strong>2006</strong>, the institution evolved into the apex university campus of <strong>Rajasthan Technical University (RTU)</strong>.
+                Over four decades, it has nurtured generations of engineers who have spearheaded technological breakthroughs, founded leading
+                enterprises, served in top civil administration, and held senior leadership positions across the globe.
+              </p>
+              <p className="text-amber-300/90 font-medium">
+                Whether you graduated when it was known as ECK or as RTU, we all share the exact same campus, the same memories, and one united
+                alumni family under the <strong>ECK-RTU Alumni Kota Chapter</strong>.
               </p>
             </div>
 
@@ -669,7 +671,7 @@ export const HomePage: React.FC = () => {
               Purpose of This Website
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl mx-auto leading-relaxed">
-              Initiated, managed, and maintained voluntarily by the alumni members of the <strong>Engineering College Kota – Kota Chapter</strong>.
+              Initiated, managed, and maintained voluntarily by the alumni members of the <strong>ECK-RTU Alumni Kota Chapter</strong>.
             </p>
           </div>
 
@@ -815,8 +817,8 @@ export const HomePage: React.FC = () => {
                 type="button"
                 onClick={() => setEventFilter('all')}
                 className={`min-h-[44px] px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${eventFilter === 'all'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
                   }`}
               >
                 All ({events.length})
@@ -825,8 +827,8 @@ export const HomePage: React.FC = () => {
                 type="button"
                 onClick={() => setEventFilter('upcoming')}
                 className={`min-h-[44px] px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${eventFilter === 'upcoming'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Upcoming ({upcomingEvents.length})
@@ -835,8 +837,8 @@ export const HomePage: React.FC = () => {
                 type="button"
                 onClick={() => setEventFilter('past')}
                 className={`min-h-[44px] px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${eventFilter === 'past'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Past ({pastEvents.length})
@@ -956,8 +958,8 @@ export const HomePage: React.FC = () => {
                         <Link
                           to={`/events/${ev.event_slug}`}
                           className={`w-full min-h-[44px] flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all ${isConcluded
-                              ? 'border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
-                              : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-sm'
+                            ? 'border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
+                            : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-sm'
                             }`}
                         >
                           <span>{isConcluded ? 'View Recap & Memories' : 'View Event & Register'}</span>
@@ -988,7 +990,7 @@ export const HomePage: React.FC = () => {
                 About Kota Chapter
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-white">
-                Initiated & Maintained by the Kota Chapter
+                Initiated & Maintained by the ECK-RTU Alumni Kota Chapter
               </h2>
               <p className="text-xs sm:text-sm text-amber-400/90 font-medium mt-0.5">
                 Local Heart • Global Alumni Family
@@ -996,8 +998,8 @@ export const HomePage: React.FC = () => {
 
               <div className="mt-3.5 space-y-2.5 text-xs sm:text-sm text-slate-300 leading-relaxed">
                 <p>
-                  While ECK alumni are making waves across the world, our home base in Kota remains the heartbeat of the fraternity.
-                  The <strong>ECK Alumni Kota Chapter</strong> is an active team of local alumni volunteers dedicated to:
+                  While ECK and RTU graduates are making waves across the world, our home base in Kota remains the heartbeat of the fraternity.
+                  The <strong>ECK-RTU Alumni Kota Chapter</strong> is an active team of local alumni volunteers dedicated to:
                 </p>
                 <ul className="space-y-1.5 pl-4 list-disc marker:text-amber-400">
                   <li>Organizing annual chapter reunions, festival meets, and batch get-togethers in Kota.</li>
@@ -1047,7 +1049,7 @@ export const HomePage: React.FC = () => {
                     Working Committee
                   </h3>
                   <p className="text-[11px] sm:text-xs text-amber-400/90 font-medium">
-                    ECK Alumni Kota Chapter • {KOTA_CHAPTER_COMMITTEE.length} Members
+                    ECK-RTU Alumni Kota Chapter • {KOTA_CHAPTER_COMMITTEE.length} Members
                   </p>
                 </div>
               </div>
@@ -1114,11 +1116,7 @@ export const HomePage: React.FC = () => {
       )}
 
       {/* Global Generic Footer with identical max-w-3xl constraint */}
-      <Footer
-        eventName="Engineering College Kota Alumni Association"
-        tagline="One College. Many Generations. One Alumni Family."
-        location="Kota Chapter • Kota, Rajasthan"
-      />
+      <Footer />
     </div>
   );
 };

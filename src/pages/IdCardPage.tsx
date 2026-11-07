@@ -178,11 +178,7 @@ export const IdCardPage: React.FC = () => {
             </div>
           </div>
         </main>
-        <Footer
-          eventName={activeEvent.event_name}
-          tagline={activeEvent.tagline}
-          location={activeEvent.location}
-        />
+        <Footer />
       </div>
     );
   }
@@ -1593,11 +1589,7 @@ export const IdCardPage: React.FC = () => {
         )}
       </main>
 
-      <Footer
-        eventName={activeEvent.event_name}
-        tagline={activeEvent.tagline}
-        location={activeEvent.location}
-      />
+      <Footer />
     </div>
   );
 };
