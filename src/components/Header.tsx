@@ -10,6 +10,7 @@ import {
   X,
   ChevronDown,
   Check,
+  UserPlus,
 } from 'lucide-react';
 
 interface EventSummary {
@@ -209,6 +210,14 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="whitespace-nowrap">Directory</span>
           </Link>
 
+          <Link
+            to="/register-alumni"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-2 text-sm font-semibold whitespace-nowrap bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 hover:border-amber-500/50 transition-all shrink-0"
+          >
+            <UserPlus className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="whitespace-nowrap">Join Alumni</span>
+          </Link>
+
           <a
             href="/admin"
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2.5 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all shadow-sm shrink-0 active:scale-95"
@@ -274,6 +283,15 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           <nav className="flex flex-col gap-2">
+            <Link
+              to="/register-alumni"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 active:bg-amber-500/25 transition-all"
+            >
+              <UserPlus className="h-5 w-5 text-amber-400 shrink-0" />
+              <span>Register as Alumni</span>
+            </Link>
+
             <Link
               to="/directory"
               onClick={() => setIsMobileMenuOpen(false)}

@@ -759,8 +759,11 @@ body {
   position: absolute;
   top: 4px;
   width: 52px;
-  height: auto;
+  height: 38px;
+  aspect-ratio: 76 / 56;
+  object-fit: contain;
   pointer-events: none;
+  z-index: 3;
   filter: drop-shadow(0 2px 8px rgba(254, 240, 138, 0.55));
 }
 

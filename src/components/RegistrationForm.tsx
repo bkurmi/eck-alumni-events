@@ -992,6 +992,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         }
       }
 
+      // Event registrations auto-approved as alumni per policy
+      try {
+        await supabase
+          .from('alumni')
+          .update({ approval_status: 'APPROVED' })
+          .eq('mobile', cleanMobile);
+      } catch (_) {
+        // Non-blocking
+      }
+
       const finalResult: RegistrationResult = {
         ...registrationResult,
         is_update: isUpdateMode || Boolean(registrationResult?.is_update),
@@ -1093,8 +1103,20 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
             Step 1 of 3
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Alumni Information</h2>
-          <p className="text-xs sm:text-sm text-slate-400">Please enter your alumni contact details.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Alumni Information</h2>
+              <p className="text-xs sm:text-sm text-slate-400">Please enter your alumni contact details.</p>
+            </div>
+            <a
+              href="/register-alumni"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] sm:text-xs text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2 self-start sm:self-auto min-h-[44px] flex items-center"
+            >
+              Not attending? Register as Alumni only &rarr;
+            </a>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1111,9 +1133,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               onChange={handleChange}
               placeholder="e.g. Er. Bhawesh Kurmi"
               required
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-name' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-name' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
               autoComplete="name"
             />
           </div>
@@ -1137,9 +1158,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 placeholder="10-digit number"
                 maxLength={10}
                 required
-                className={`w-full min-h-[44px] pl-12 pr-10 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                  errorFieldId === 'field-mobile' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-                }`}
+                className={`w-full min-h-[44px] pl-12 pr-10 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-mobile' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                  }`}
                 autoComplete="tel-national"
               />
               {checkingMobile && (
@@ -1181,9 +1201,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.email}
               onChange={handleChange}
               placeholder="alumni@example.com"
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-email' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-email' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
               autoComplete="email"
             />
           </div>
@@ -1199,9 +1218,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.batch || ''}
               onChange={handleChange}
               required
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-batch' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-batch' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
             >
               <option value="" disabled className="bg-slate-900 text-slate-400">
                 Select your Batch
@@ -1228,9 +1246,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.year_of_passing}
               onChange={handleChange}
               required
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-year' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-year' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
             >
               <option value="" disabled className="bg-slate-900 text-slate-400">
                 Select Year
@@ -1241,9 +1258,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-slate-400 leading-tight">
-              Pre-loaded based on your Batch. Change this if your graduation was delayed.
-            </p>
           </div>
 
           {/* Engineering Discipline */}
@@ -1257,9 +1271,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.engineering_discipline}
               onChange={handleChange}
               required
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-discipline' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-discipline' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
             >
               <option value="">Select Branch</option>
               {ENGINEERING_DISCIPLINES.map((discipline) => (
@@ -1284,9 +1297,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. M.Tech Thermal, MCA, Applied Sciences"
                 required
-                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                  errorFieldId === 'field-discipline-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-                }`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-discipline-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                  }`}
                 autoFocus
               />
             </div>
@@ -1305,9 +1317,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               rows={2}
               placeholder="House/Plot No., Street, Colony/Locality"
               required
-              className={`w-full min-h-[70px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors resize-y ${
-                errorFieldId === 'field-address' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[70px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors resize-y ${errorFieldId === 'field-address' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
             />
           </div>
 
@@ -1346,9 +1357,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. United States, United Kingdom, UAE, Singapore"
                 required
-                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                  errorFieldId === 'field-country-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-                }`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-country-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                  }`}
                 autoFocus
               />
             </div>
@@ -1366,9 +1376,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 value={formData.state}
                 onChange={handleChange}
                 required
-                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                  errorFieldId === 'field-state' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-                }`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-state' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                  }`}
               >
                 <option value="">Select State / UT</option>
                 {INDIAN_STATES.map((st) => (
@@ -1394,9 +1403,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. New State / UT"
                 required
-                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                  errorFieldId === 'field-state-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-                }`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-state-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                  }`}
                 autoFocus
               />
             </div>
@@ -1433,9 +1441,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               onChange={handleChange}
               placeholder={formData.country === 'India' ? 'e.g. Kota, Jaipur, Delhi' : 'e.g. Dubai, London, San Jose'}
               required
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-city' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-city' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
             />
           </div>
 
@@ -1450,9 +1457,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.employment_type}
               onChange={handleChange}
               required
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-employment-type' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-employment-type' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
             >
               <option value="">Select Employment Type</option>
               {EMPLOYMENT_TYPES.map((type) => (
@@ -1477,9 +1483,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. Armed Forces, Social Worker, Homemaker"
                 required
-                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                  errorFieldId === 'field-employment-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-                }`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-employment-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                  }`}
                 autoFocus
               />
             </div>
@@ -1496,9 +1501,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               value={formData.industry_domain}
               onChange={handleChange}
               required
-              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                errorFieldId === 'field-industry' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-industry' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                }`}
             >
               <option value="">Select Industry / Domain</option>
               {INDUSTRY_DOMAINS.map((domain) => (
@@ -1523,9 +1527,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 onChange={handleChange}
                 placeholder="e.g. Aerospace, Energy & Power, Media"
                 required
-                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${
-                  errorFieldId === 'field-industry-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
-                }`}
+                className={`w-full min-h-[44px] px-3.5 py-2.5 bg-slate-950/70 border rounded-xl text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors ${errorFieldId === 'field-industry-other' ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-700'
+                  }`}
                 autoFocus
               />
             </div>
@@ -1602,19 +1605,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 ${errorFieldId === 'attend-yes' ? 'p-1 rounded-xl ring-2 ring-rose-500' : ''}`}>
           <button
             type="button"
-            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${
-              formData.attendance_status === 'yes'
+            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${formData.attendance_status === 'yes'
                 ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
                 : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950/80'
-            }`}
+              }`}
             onClick={() => handleAttendanceChange('yes')}
             id="attend-yes"
           >
-            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${
-              formData.attendance_status === 'yes'
+            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${formData.attendance_status === 'yes'
                 ? 'bg-amber-500 border-amber-500 text-slate-950'
                 : 'border-slate-600'
-            }`}>
+              }`}>
               {formData.attendance_status === 'yes' ? '✓' : ''}
             </div>
             <div>
@@ -1625,19 +1626,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           <button
             type="button"
-            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${
-              formData.attendance_status === 'maybe'
+            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${formData.attendance_status === 'maybe'
                 ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
                 : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950/80'
-            }`}
+              }`}
             onClick={() => handleAttendanceChange('maybe')}
             id="attend-maybe"
           >
-            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${
-              formData.attendance_status === 'maybe'
+            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${formData.attendance_status === 'maybe'
                 ? 'bg-amber-500 border-amber-500 text-slate-950'
                 : 'border-slate-600'
-            }`}>
+              }`}>
               {formData.attendance_status === 'maybe' ? '✓' : ''}
             </div>
             <div>
@@ -1648,19 +1647,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
           <button
             type="button"
-            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${
-              formData.attendance_status === 'no'
+            className={`min-h-[56px] p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${formData.attendance_status === 'no'
                 ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
                 : 'bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950/80'
-            }`}
+              }`}
             onClick={() => handleAttendanceChange('no')}
             id="attend-no"
           >
-            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${
-              formData.attendance_status === 'no'
+            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-black ${formData.attendance_status === 'no'
                 ? 'bg-amber-500 border-amber-500 text-slate-950'
                 : 'border-slate-600'
-            }`}>
+              }`}>
               {formData.attendance_status === 'no' ? '✓' : ''}
             </div>
             <div>

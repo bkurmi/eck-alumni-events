@@ -42,6 +42,29 @@ function dataURLtoBlob(dataurl: string): Blob {
   return new Blob([u8arr], { type: mime });
 }
 
+// Ensure all images in DOM node are fully loaded & decoded before HTML canvas capture
+async function waitForImagesLoaded(element: HTMLElement): Promise<void> {
+  const images = Array.from(element.querySelectorAll('img'));
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete && img.naturalHeight > 0) {
+        return typeof img.decode === 'function' ? img.decode().catch(() => {}) : Promise.resolve();
+      }
+      return new Promise<void>((resolve) => {
+        const finish = () => {
+          if (typeof img.decode === 'function') {
+            img.decode().then(() => resolve()).catch(() => resolve());
+          } else {
+            resolve();
+          }
+        };
+        img.addEventListener('load', finish, { once: true });
+        img.addEventListener('error', () => resolve(), { once: true });
+      });
+    })
+  );
+}
+
 export const IdCardPage: React.FC = () => {
   const isEnabled = isAlumniIdCardsEnabled();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,6 +101,20 @@ export const IdCardPage: React.FC = () => {
   const cachedEntryDataUrlRef = useRef<string | null>(null);
   const cachedSocialBlobRef = useRef<Blob | null>(null);
   const cachedSocialDataUrlRef = useRef<string | null>(null);
+
+  // Preload static pass assets so they are hot in browser memory cache
+  useEffect(() => {
+    const assets = [
+      '/card-bg-vertical.jpg',
+      '/card-header-official.jpg',
+      '/gold-corner-filigree-exact.png',
+      '/diya-golden-flame.png',
+    ];
+    assets.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
   // Default Event Details
   const defaultEvent: ECKEvent = {
@@ -183,8 +220,9 @@ export const IdCardPage: React.FC = () => {
     );
   }
 
-  // Resolve existing photo from DB or directly from storage bucket if DB record lacks photo_url
+  // Resolve existing photo: always refer to alumni table photo first
   const resolvePhotoWithStorageFallback = async (reg: ExistingRegistrationLookup): Promise<string | null> => {
+    if (reg.alumni?.photo_url) return reg.alumni.photo_url;
     if (reg.photo_url) return reg.photo_url;
     if (!reg.alumni) return null;
 
@@ -545,6 +583,8 @@ export const IdCardPage: React.FC = () => {
       try {
         // 1. Pre-generate Social Pass (QR Protected with Royal Seal) for instant WhatsApp share
         if (socialCardRef.current && active) {
+          await waitForImagesLoaded(socialCardRef.current);
+          if (!active) return;
           const socialUrl = await toPng(socialCardRef.current, {
             quality: 0.95,
             pixelRatio: 2.5,
@@ -560,6 +600,8 @@ export const IdCardPage: React.FC = () => {
 
         // 2. Pre-generate Official Entry Pass (with QR Code) strictly when user is phone-verified!
         if (isPhoneVerified && entryCardRef.current && active) {
+          await waitForImagesLoaded(entryCardRef.current);
+          if (!active) return;
           const entryUrl = await toPng(entryCardRef.current, {
             quality: 0.95,
             pixelRatio: 2.5,
@@ -575,7 +617,7 @@ export const IdCardPage: React.FC = () => {
       } catch (err) {
         console.warn('Background pass image preparation warning:', err);
       }
-    }, 400);
+    }, 600);
 
     return () => {
       active = false;
@@ -620,7 +662,11 @@ export const IdCardPage: React.FC = () => {
 
       if (uploadRes.success && uploadRes.photoUrl) {
         setPhotoPreview(uploadRes.photoUrl);
-        setRegistration((prev) => (prev ? { ...prev, photo_url: uploadRes.photoUrl } : null));
+        setRegistration((prev) => (prev ? {
+          ...prev,
+          photo_url: uploadRes.photoUrl,
+          alumni: prev.alumni ? { ...prev.alumni, photo_url: uploadRes.photoUrl } : prev.alumni,
+        } : null));
       }
 
       // Smoothly scroll to the top of the active pass card so attendee sees their updated photo!
@@ -669,6 +715,7 @@ export const IdCardPage: React.FC = () => {
 
       let dataUrl = cachedUrl;
       if (!dataUrl && targetElement) {
+        await waitForImagesLoaded(targetElement);
         dataUrl = await toPng(targetElement, {
           quality: 0.95,
           pixelRatio: 2.5, // Crisp retina quality for phone screens
@@ -778,6 +825,7 @@ export const IdCardPage: React.FC = () => {
       // ALWAYS share the Privacy Protected Social Pass (where personal QR code is hidden & shielded)
       let blob = cachedSocialBlobRef.current;
       if (!blob && socialCardRef.current) {
+        await waitForImagesLoaded(socialCardRef.current);
         const dataUrl = await toPng(socialCardRef.current, {
           quality: 0.95,
           pixelRatio: 2.5,
@@ -986,7 +1034,7 @@ export const IdCardPage: React.FC = () => {
 
                     <form onSubmit={handleRegLookupSubmit} className="space-y-3">
                       <div className="flex items-center rounded-xl bg-slate-950/80 border border-slate-700 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 overflow-hidden">
-                        <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none" title={`Registration prefix ${(activeEvent.event_code || 'REG').toUpperCase()}-`}>
+                        <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none shrink-0" title={`Registration prefix ${(activeEvent.event_code || 'REG').toUpperCase()}-`}>
                           {(activeEvent.event_code || 'REG').toUpperCase()}-
                         </span>
                         <input
@@ -1000,13 +1048,13 @@ export const IdCardPage: React.FC = () => {
                             const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5);
                             setRegInput(cleaned);
                           }}
-                          className="flex-1 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
+                          className="flex-1 min-w-0 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
                           required
                           autoFocus
                         />
                         <button
                           type="submit"
-                          className="px-4 sm:px-5 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
+                          className="px-3.5 sm:px-5 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm shrink-0 whitespace-nowrap transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center"
                           disabled={loading}
                         >
                           {loading ? 'Finding...' : 'Get Pass →'}
@@ -1042,20 +1090,20 @@ export const IdCardPage: React.FC = () => {
 
                     <form onSubmit={handleLookup} className="space-y-3">
                       <div className="flex items-center rounded-xl bg-slate-950/80 border border-slate-700 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 overflow-hidden">
-                        <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none">+91</span>
+                        <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none shrink-0">+91</span>
                         <input
                           type="tel"
                           placeholder="10-digit number"
                           maxLength={10}
                           value={mobileInput}
                           onChange={(e) => setMobileInput(e.target.value.replace(/\D/g, ''))}
-                          className="flex-1 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
+                          className="flex-1 min-w-0 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
                           required
                           autoFocus
                         />
                         <button
                           type="submit"
-                          className="px-4 sm:px-5 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
+                          className="px-3.5 sm:px-5 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm shrink-0 whitespace-nowrap transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center"
                           disabled={loading}
                         >
                           {loading ? 'Finding...' : 'Get Pass →'}
@@ -1373,9 +1421,9 @@ export const IdCardPage: React.FC = () => {
                     left: '-9999px',
                     top: '0',
                     width: '430px',
-                    opacity: 0,
                     pointerEvents: 'none',
-                    zIndex: -1,
+                    zIndex: -9999,
+                    visibility: 'visible',
                   }}
                   aria-hidden="true"
                 >

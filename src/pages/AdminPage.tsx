@@ -14,6 +14,7 @@ import { CentralTreasuryManager } from '../components/CentralTreasuryManager';
 import { EventMemoryManagerModal } from '../components/EventMemoryManagerModal';
 import { ExpenseModal } from '../components/ExpenseModal';
 import { EventFeedbackManager } from '../components/EventFeedbackManager';
+import { AlumniApprovalManager } from '../components/AlumniApprovalManager';
 import {
   fetchSponsorshipsFromDb,
   saveSponsorshipToDb,
@@ -30,6 +31,7 @@ import { isAdminGatePortalEnabled } from '../lib/gate';
 import { isCashAccount, CANONICAL_CASH_ACCOUNT } from '../lib/paymentRotation';
 import { getRegistrationStatusInfo, syncEventRegistrationStatus } from '../lib/eventStatus';
 import { formatCategory } from '../lib/utils';
+import { fetchPendingAlumniApprovals } from '../lib/directory';
 import type { EventRegistration, ECKEvent, PaymentVerification, Sponsorship, EventExpense } from '../types';
 
 const DEFAULT_EVENT: ECKEvent = {
@@ -88,8 +90,9 @@ export const AdminPage: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'registrations' | 'sponsorships' | 'expenses' | 'treasury' | 'upi_report' | 'gate_portal' | 'feedback'
+    'registrations' | 'alumni_approvals' | 'sponsorships' | 'expenses' | 'treasury' | 'upi_report' | 'gate_portal' | 'feedback'
   >('registrations');
+  const [pendingAlumniCount, setPendingAlumniCount] = useState<number>(0);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [verifications, setVerifications] = useState<PaymentVerification[]>([]);
   const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
@@ -286,6 +289,7 @@ export const AdminPage: React.FC = () => {
       console.log(`[Admin Portal] Loaded ${list.length} registrations and ${verifList.length} verifications.`);
       setRegistrations(list);
       setVerifications(verifList);
+      fetchPendingAlumniApprovals().then((p) => setPendingAlumniCount(p.length)).catch(() => {});
       if (list.length > 0 && list[0]?.events) {
         const ev = { ...list[0].events };
         const deadlineInfo = getRegistrationStatusInfo(ev);
@@ -1005,6 +1009,31 @@ export const AdminPage: React.FC = () => {
 
                 <button
                   type="button"
+                  data-tab="alumni_approvals"
+                  data-active={activeTab === 'alumni_approvals'}
+                  className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${
+                    activeTab === 'alumni_approvals'
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                  }`}
+                  onClick={() => selectTab('alumni_approvals')}
+                >
+                  <span>🎓</span>
+                  <span className="hidden sm:inline">Alumni Approvals</span>
+                  <span className="sm:hidden">Approvals</span>
+                  {pendingAlumniCount > 0 ? (
+                    <span className="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-400 text-slate-950 animate-pulse shadow-sm">
+                      {pendingAlumniCount}
+                    </span>
+                  ) : (
+                    <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${activeTab === 'alumni_approvals' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                      Queue
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
                   data-tab="sponsorships"
                   data-active={activeTab === 'sponsorships'}
                   className={`min-h-[44px] shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors cursor-pointer ${activeTab === 'sponsorships'
@@ -1116,7 +1145,9 @@ export const AdminPage: React.FC = () => {
             </div>
 
             {/* TAB CONTENTS */}
-            {activeTab === 'gate_portal' ? (
+            {activeTab === 'alumni_approvals' ? (
+              <AlumniApprovalManager onApprovalCountChange={setPendingAlumniCount} />
+            ) : activeTab === 'gate_portal' ? (
               <div className="space-y-4">
                 <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-indigo-950/40 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
                   <div className="flex items-center gap-3">

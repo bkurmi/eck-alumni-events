@@ -710,7 +710,7 @@ export const FeedbackPage: React.FC = () => {
                     }}
                     className="flex items-center rounded-xl bg-slate-900 border border-slate-700 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 overflow-hidden"
                   >
-                    <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none">
+                    <span className="pl-3.5 pr-1 font-mono font-bold text-amber-400 text-base select-none pointer-events-none shrink-0">
                       {eventCode || 'REG'}-
                     </span>
                     <input
@@ -719,7 +719,7 @@ export const FeedbackPage: React.FC = () => {
                       pattern="[0-9]*"
                       maxLength={5}
                       placeholder="e.g. 212"
-                      className="flex-1 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
+                      className="flex-1 min-w-0 min-h-[44px] py-2.5 px-2 bg-transparent text-base text-white font-mono placeholder:text-slate-500 focus:outline-none"
                       value={regDigits}
                       onChange={(e) => {
                         const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 5);
@@ -732,7 +732,7 @@ export const FeedbackPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={lookingUp || !regDigits.trim()}
-                      className="px-4 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
+                      className="px-3.5 sm:px-4 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm shrink-0 whitespace-nowrap transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center"
                     >
                       {lookingUp ? 'Finding...' : 'Find →'}
                     </button>
