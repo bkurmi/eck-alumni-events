@@ -38,9 +38,14 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
   onProfileUpdated,
   allAlumni,
 }) => {
-  // Step: 'find' (lookup by name/mobile) or 'edit' (full profile view & editor)
-  const [activeStep, setActiveStep] = useState<'find' | 'edit'>('find');
+  // Step: 'find' (lookup by name/mobile), 'verify' (confirm phone), or 'edit' (full profile view & editor)
+  const [activeStep, setActiveStep] = useState<'find' | 'verify' | 'edit'>('find');
   const [searchMethod, setSearchMethod] = useState<'name' | 'mobile'>('name');
+
+  // Candidate alumnus awaiting phone verification
+  const [candidateAlumnus, setCandidateAlumnus] = useState<AlumniDirectoryItem | null>(null);
+  const [verifyMobileInput, setVerifyMobileInput] = useState('');
+  const [verifyMobileError, setVerifyMobileError] = useState('');
 
   // In-Memory pool for 0ms Algolia-like instant predictive search
   const [alumniPool, setAlumniPool] = useState<AlumniDirectoryItem[]>(allAlumni || []);
@@ -136,17 +141,59 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
       setMobileSearchError('');
       setSaveSuccessMsg('');
       setSaveErrorMsg('');
+      setCandidateAlumnus(null);
+      setVerifyMobileInput('');
+      setVerifyMobileError('');
       return;
     }
 
     if (initialAlumnus) {
-      loadAlumnusIntoForm(initialAlumnus);
+      initiateEditForAlumnus(initialAlumnus);
     } else {
       setActiveStep('find');
       setSelectedAlumnus(null);
+      setCandidateAlumnus(null);
       setPhotoPreview(null);
     }
   }, [isOpen, initialAlumnus]);
+
+  // Initiate edit flow - checks if phone verification is already completed
+  const initiateEditForAlumnus = (alumnus: AlumniDirectoryItem) => {
+    const verifiedMobile = localStorage.getItem('eck_verified_mobile');
+    const cleanTargetMobile = cleanMobileNumber(alumnus.mobile);
+
+    // If device is already verified and matches this alumnus, jump straight into edit mode!
+    if (verifiedMobile && cleanTargetMobile && verifiedMobile === cleanTargetMobile) {
+      loadAlumnusIntoForm(alumnus);
+      return;
+    }
+
+    // Otherwise, prompt phone verification
+    setCandidateAlumnus(alumnus);
+    setVerifyMobileInput('');
+    setVerifyMobileError('');
+    setActiveStep('verify');
+  };
+
+  const handleVerifyPhoneForEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyMobileError('');
+    const cleanInput = cleanMobileNumber(verifyMobileInput);
+    if (!cleanInput || cleanInput.length < 10) {
+      setVerifyMobileError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (!candidateAlumnus) return;
+
+    const targetMobile = cleanMobileNumber(candidateAlumnus.mobile);
+    if (cleanInput === targetMobile) {
+      localStorage.setItem('eck_verified_mobile', cleanInput);
+      loadAlumnusIntoForm(candidateAlumnus);
+    } else {
+      setVerifyMobileError('The mobile number does not match this alumnus profile. Please enter the registered 10-digit number.');
+    }
+  };
 
   // Load alumnus into edit form
   const loadAlumnusIntoForm = (alumnus: AlumniDirectoryItem) => {
@@ -248,6 +295,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
     // 1. Instant in-memory check (0ms)
     const matchInMem = alumniPool.find((a) => cleanMobileNumber(a.mobile) === clean);
     if (matchInMem) {
+      localStorage.setItem('eck_verified_mobile', clean);
       loadAlumnusIntoForm(matchInMem);
       return;
     }
@@ -257,6 +305,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
     try {
       const match = await lookupAlumniByMobile(clean);
       if (match) {
+        localStorage.setItem('eck_verified_mobile', clean);
         loadAlumnusIntoForm(match);
       } else {
         setMobileSearchError(`No alumnus found registered with mobile ${clean}.`);
@@ -444,11 +493,18 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
         <div className="shrink-0 flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-800 bg-slate-950/50">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              <span>👤</span> {activeStep === 'find' ? 'Open My Alumni Profile' : 'My Alumni Profile'}
+              <span>👤</span>{' '}
+              {activeStep === 'find'
+                ? 'Open My Alumni Profile'
+                : activeStep === 'verify'
+                ? 'Verify Registered Mobile'
+                : 'My Alumni Profile'}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
               {activeStep === 'find'
                 ? 'Search your name or mobile number to open your record and update your complete information.'
+                : activeStep === 'verify'
+                ? `Confirm registered phone number to edit profile for ${candidateAlumnus?.name}`
                 : `Editing profile for ${selectedAlumnus?.name} • Registered Mobile: ${selectedAlumnus?.mobile}`}
             </p>
           </div>
@@ -572,7 +628,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                               key={item.id}
                               type="button"
                               className="w-full min-h-[52px] p-3 text-left flex items-center gap-3 hover:bg-slate-900 transition-colors cursor-pointer group"
-                              onClick={() => loadAlumnusIntoForm(item)}
+                              onClick={() => initiateEditForAlumnus(item)}
                               role="option"
                               aria-selected="false"
                             >
@@ -652,6 +708,105 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   )}
                 </form>
               )}
+            </div>
+          )}
+
+          {/* STEP 1.5: PHONE VERIFICATION GATE */}
+          {activeStep === 'verify' && candidateAlumnus && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                className="inline-flex items-center min-h-[44px] text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer"
+                onClick={() => {
+                  setCandidateAlumnus(null);
+                  setActiveStep('find');
+                }}
+              >
+                ← Choose another profile
+              </button>
+
+              <div className="rounded-2xl border border-amber-500/30 bg-slate-950/70 p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-3.5 pb-3 border-b border-slate-800">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border-2 border-amber-500/40 flex items-center justify-center shrink-0 font-bold text-amber-300 text-sm shadow-md">
+                    {candidateAlumnus.resolved_photo_url || candidateAlumnus.photo_url ? (
+                      <img
+                        src={candidateAlumnus.resolved_photo_url || candidateAlumnus.photo_url || ''}
+                        alt={candidateAlumnus.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      candidateAlumnus.name.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-bold text-white truncate">
+                      {candidateAlumnus.name}
+                    </h3>
+                    <p className="text-xs text-amber-400 font-medium truncate">
+                      {candidateAlumnus.batch ? `Batch ${candidateAlumnus.batch}` : `Class of ${candidateAlumnus.year_of_passing}`} • {candidateAlumnus.engineering_discipline}
+                    </p>
+                    {candidateAlumnus.city && (
+                      <p className="text-[11px] text-slate-400 truncate">
+                        📍 {candidateAlumnus.city}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-3 sm:p-3.5 space-y-1 text-xs text-amber-200/90 leading-relaxed">
+                  <p className="font-semibold text-amber-300 flex items-center gap-1.5">
+                    <span>🔒</span> Security Verification Required
+                  </p>
+                  <p>
+                    To protect profile details from unauthorized edits, please confirm the 10-digit registered mobile number for this account.
+                  </p>
+                  {candidateAlumnus.mobile && (
+                    <p className="font-mono text-slate-300 text-[11px] pt-0.5">
+                      Registered number ends with: •••••• {cleanMobileNumber(candidateAlumnus.mobile).slice(-4)}
+                    </p>
+                  )}
+                </div>
+
+                <form onSubmit={handleVerifyPhoneForEdit} className="space-y-4 pt-1">
+                  <div>
+                    <label htmlFor="verify-modal-phone" className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Registered Mobile Number
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3.5 text-sm font-semibold text-slate-400 pointer-events-none">
+                        +91
+                      </span>
+                      <input
+                        id="verify-modal-phone"
+                        type="tel"
+                        maxLength={10}
+                        value={verifyMobileInput}
+                        onChange={(e) => {
+                          setVerifyMobileInput(e.target.value.replace(/\D/g, ''));
+                          setVerifyMobileError('');
+                        }}
+                        placeholder="10-digit mobile number"
+                        className="w-full min-h-[44px] rounded-xl bg-slate-900 border border-slate-700 pl-12 pr-4 text-base text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        autoFocus
+                      />
+                    </div>
+                    {verifyMobileError && (
+                      <p className="mt-1.5 text-xs text-rose-400 font-medium leading-relaxed">
+                        {verifyMobileError}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={verifyMobileInput.length < 10}
+                    className="w-full min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold text-xs sm:text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  >
+                    <span>Verify &amp; Edit Profile</span>
+                    <span>→</span>
+                  </button>
+                </form>
+              </div>
             </div>
           )}
 

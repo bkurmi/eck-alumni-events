@@ -35,12 +35,12 @@ const KOTA_CHAPTER_COMMITTEE: CommitteeMember[] = [
   { name: 'Hari Narayan Shukla', batchLetter: 'K', branch: 'ECE' },
   { name: 'Manoj Paliwal', batchLetter: 'L', branch: 'Mech' },
   { name: 'Rajiv Varshney', batchLetter: 'P', branch: 'ECE' },
-  { name: 'Pankaj Parashar', batchLetter: 'Q', branch: 'Civil' },
   { name: 'Chetan Sharma', batchLetter: 'U', branch: 'ECE' },
   { name: 'Sanjay Verma', batchLetter: 'V', branch: 'Inst.' },
   { name: 'Vijeshwar Vishnoi', batchLetter: 'V', branch: 'Electrical' },
   { name: 'Lokesh Gautam', batchLetter: 'W', branch: 'Electrical' },
   { name: 'Bhawesh Kurmi', batchLetter: 'X', branch: 'IT' },
+  { name: 'Pankaj Parashar', batchLetter: 'Z', branch: 'Civil' },
   { name: 'Shailendra Singh', batchLetter: 'Z', branch: 'Civil' },
   { name: 'Mitesh Nagar', batchLetter: 'Z', branch: 'Civil' },
 ];
