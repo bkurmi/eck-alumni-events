@@ -250,7 +250,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
     setSaveErrorMsg('');
   };
 
-  // Instant Algolia-like Predictive Search (0ms delay across all fields)
+  // Instant Predictive Search (by Name only)
   const filteredSuggestions = React.useMemo(() => {
     const raw = nameQuery.trim().toLowerCase();
     if (!raw) return [];
@@ -261,22 +261,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
     return alumniPool
       .filter((item) => {
         const name = (item.name || '').toLowerCase();
-        const branch = (item.engineering_discipline || '').toLowerCase();
-        const year = String(item.year_of_passing || '');
-        const city = (item.city || '').toLowerCase();
-        const org = (item.organization || '').toLowerCase();
-        const mobile = (item.mobile || '').replace(/\D/g, '');
-
-        // Match all tokens in any order (name, branch, year, city, org, or mobile)
-        return tokens.every(
-          (t) =>
-            name.includes(t) ||
-            branch.includes(t) ||
-            year.includes(t) ||
-            city.includes(t) ||
-            org.includes(t) ||
-            mobile.includes(t)
-        );
+        return tokens.every((t) => name.includes(t));
       })
       .slice(0, 25);
   }, [alumniPool, nameQuery]);
@@ -535,13 +520,6 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   onClick={() => setSearchMethod('name')}
                 >
                   <span>🔤 Search by Name</span>
-                  <span
-                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                      searchMethod === 'name' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
-                    }`}
-                  >
-                    Auto-suggest
-                  </span>
                 </button>
                 <button
                   type="button"
@@ -553,13 +531,6 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                   onClick={() => setSearchMethod('mobile')}
                 >
                   <span>📱 Search by Mobile</span>
-                  <span
-                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                      searchMethod === 'mobile' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'
-                    }`}
-                  >
-                    10 Digits
-                  </span>
                 </button>
               </div>
 
@@ -577,7 +548,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                       id="alumni-name-suggest-input"
                       type="text"
                       className="w-full min-h-[44px] text-base sm:text-sm pl-10 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-amber-500 font-medium placeholder:text-slate-500"
-                      placeholder="Type name (e.g. Bhawesh, Rahul), batch (2018), or branch..."
+                      placeholder="Type your name (e.g. Bhawesh, Rahul)..."
                       value={nameQuery}
                       onChange={(e) => setNameQuery(e.target.value)}
                       autoFocus
@@ -596,27 +567,6 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                       <span className="absolute right-10 top-1/2 -translate-y-1/2 text-xs text-amber-400">⏳</span>
                     )}
                   </div>
-
-                  {/* Empty state discovery hints when not typed yet */}
-                  {!nameQuery.trim() && (
-                    <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                      <p className="text-xs text-slate-300">
-                        ⚡ <strong>Instant Search:</strong> Start typing any name, branch, batch year, or city.
-                      </p>
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {['Computer', 'Electrical', 'Mechanical', 'Civil', 'Kota', 'Jaipur', 'Bengaluru', '2024', '2018'].map((tag) => (
-                          <button
-                            key={tag}
-                            type="button"
-                            className="inline-flex items-center min-h-[36px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-slate-700/60 hover:border-amber-500/40 text-xs font-medium cursor-pointer transition-colors"
-                            onClick={() => setNameQuery(tag)}
-                          >
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Instant 0ms Suggestion Dropdown List */}
                   {nameQuery.trim().length > 0 && (
