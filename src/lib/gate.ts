@@ -168,7 +168,39 @@ export async function uploadAndSaveAttendeePhoto(
       });
     }
 
-    // 2. Update registration record with photo_url
+    // 2. Always update master alumni table with photo_url first
+    try {
+      const cleanPhone = cleanMobileNumber(phone);
+      if (cleanPhone) {
+        await supabase
+          .from('alumni')
+          .update({
+            photo_url: photoUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .or(`mobile.eq.${cleanPhone},mobile.eq.+91${cleanPhone}`);
+      } else if (registrationId) {
+        const { data: regRec } = await supabase
+          .from('event_registrations')
+          .select('alumni_id')
+          .eq('id', registrationId)
+          .maybeSingle();
+
+        if (regRec?.alumni_id) {
+          await supabase
+            .from('alumni')
+            .update({
+              photo_url: photoUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', regRec.alumni_id);
+        }
+      }
+    } catch (alumniErr) {
+      console.warn('Alumni master photo update notice:', alumniErr);
+    }
+
+    // 3. Sync to registration record as well
     try {
       const { error: rpcError } = await supabase.rpc('update_attendee_photo_card', {
         p_registration_id: registrationId,
@@ -176,7 +208,6 @@ export async function uploadAndSaveAttendeePhoto(
       });
 
       if (rpcError) {
-        // Fallback direct table update
         await supabase
           .from('event_registrations')
           .update({
@@ -350,7 +381,7 @@ export async function verifyGateAttendee(
         number_of_attendees: reg.number_of_attendees,
         adults_count: reg.adults_count,
         children_above_7_count: reg.children_above_7_count,
-        photo_url: reg.photo_url,
+        photo_url: alumni.photo_url || reg.photo_url || null,
       };
     }
   } catch (err: any) {
@@ -630,6 +661,8 @@ export async function markIdCardDownloaded(registrationId: string): Promise<bool
  */
 export async function resolveAttendeePhoto(reg: any): Promise<string | null> {
   if (!reg) return null;
+  // Always refer to alumni table photo first
+  if (reg.alumni?.photo_url) return reg.alumni.photo_url;
   if (reg.photo_url) return reg.photo_url;
   if (!reg.alumni) return null;
 

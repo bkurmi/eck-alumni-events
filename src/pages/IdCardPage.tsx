@@ -220,8 +220,9 @@ export const IdCardPage: React.FC = () => {
     );
   }
 
-  // Resolve existing photo from DB or directly from storage bucket if DB record lacks photo_url
+  // Resolve existing photo: always refer to alumni table photo first
   const resolvePhotoWithStorageFallback = async (reg: ExistingRegistrationLookup): Promise<string | null> => {
+    if (reg.alumni?.photo_url) return reg.alumni.photo_url;
     if (reg.photo_url) return reg.photo_url;
     if (!reg.alumni) return null;
 
@@ -661,7 +662,11 @@ export const IdCardPage: React.FC = () => {
 
       if (uploadRes.success && uploadRes.photoUrl) {
         setPhotoPreview(uploadRes.photoUrl);
-        setRegistration((prev) => (prev ? { ...prev, photo_url: uploadRes.photoUrl } : null));
+        setRegistration((prev) => (prev ? {
+          ...prev,
+          photo_url: uploadRes.photoUrl,
+          alumni: prev.alumni ? { ...prev.alumni, photo_url: uploadRes.photoUrl } : prev.alumni,
+        } : null));
       }
 
       // Smoothly scroll to the top of the active pass card so attendee sees their updated photo!

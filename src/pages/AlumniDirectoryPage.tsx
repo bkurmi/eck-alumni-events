@@ -56,7 +56,7 @@ interface AlumniCardProps {
 
 const AlumniCard: React.FC<AlumniCardProps> = ({ alumnus, whatsAppUrl, onEdit, onAskHelp }) => {
   const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
-  const photoUrl = alumnus.resolved_photo_url || alumnus.photo_url;
+  const photoUrl = alumnus.photo_url || alumnus.resolved_photo_url;
   const hasPhoto = Boolean(photoUrl) && !photoLoadFailed;
   const rawBatch = alumnus.batch || (alumnus.year_of_passing ? getBatchFromPassingYear(alumnus.year_of_passing) : '');
   const batchLabel = rawBatch ? formatBatchLabel(rawBatch) : '';

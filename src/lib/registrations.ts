@@ -83,19 +83,24 @@ export async function lookupRegistrationByMobile(
 
     if (!error && data) {
       if (data.found) {
-        // Fallback: If database RPC did not return photo_url, query event_registrations directly
-        if (!data.photo_url && data.registration_id) {
+        // Master source of truth: Always refer to alumni table for photo
+        if (data.alumni?.photo_url) {
+          data.photo_url = data.alumni.photo_url;
+        } else if (data.alumni?.id) {
           try {
-            const { data: regPhoto } = await supabase
-              .from('event_registrations')
+            const { data: alumniPhoto } = await supabase
+              .from('alumni')
               .select('photo_url')
-              .eq('id', data.registration_id)
+              .eq('id', data.alumni.id)
               .maybeSingle();
-            if (regPhoto?.photo_url) {
-              data.photo_url = regPhoto.photo_url;
+            if (alumniPhoto?.photo_url) {
+              data.photo_url = alumniPhoto.photo_url;
+              if (data.alumni) {
+                data.alumni.photo_url = alumniPhoto.photo_url;
+              }
             }
           } catch {
-            // Silently continue if direct select is restricted
+            // Silently continue if select restricted
           }
         }
         return data as ExistingRegistrationLookup;
@@ -141,7 +146,7 @@ export async function lookupRegistrationByMobile(
             children_under_7_count: regData.children_under_7_count ?? 0,
             amount: regData.amount,
             payment_screenshot_path: regData.payment_screenshot_path,
-            photo_url: regData.photo_url || null,
+            photo_url: alumniData.photo_url || null,
             created_at: regData.created_at,
             updated_at: regData.updated_at,
             alumni: alumniData as Alumni,
@@ -266,7 +271,7 @@ export async function lookupRegistrationByRegNumber(
         children_under_7_count: regData.children_under_7_count ?? 0,
         amount: regData.amount,
         payment_screenshot_path: regData.payment_screenshot_path,
-        photo_url: regData.photo_url || null,
+        photo_url: (regData.alumni as Alumni)?.photo_url || null,
         created_at: regData.created_at,
         updated_at: regData.updated_at,
         alumni: regData.alumni as Alumni,
@@ -462,6 +467,7 @@ export async function fetchAllRegistrationsForLookup(
           address,
           organization,
           work_location,
+          photo_url,
           created_at,
           updated_at
         )
@@ -488,7 +494,7 @@ export async function fetchAllRegistrationsForLookup(
           children_under_7_count: reg.children_under_7_count ?? 0,
           amount: reg.amount,
           payment_screenshot_path: reg.payment_screenshot_path,
-          photo_url: reg.photo_url,
+          photo_url: reg.alumni?.photo_url || null,
           created_at: reg.created_at,
           updated_at: reg.updated_at,
           alumni: reg.alumni as Alumni,

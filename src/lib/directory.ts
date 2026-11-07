@@ -7,7 +7,7 @@ import { COMMON_ORGANIZATIONS } from '../types';
 import type { AlumniDirectoryItem, UpdateAlumniPayload, Alumni, AlumniRegistrationFormData } from '../types';
 
 /**
- * Normalizes an alumni record with its latest registration photo.
+ * Normalizes an alumni record with its photo strictly from the alumni table.
  */
 function normalizeAlumniWithPhoto(record: any): AlumniDirectoryItem {
   const registrations: any[] = Array.isArray(record.registrations)
@@ -19,14 +19,8 @@ function normalizeAlumniWithPhoto(record: any): AlumniDirectoryItem {
   // Sort registrations descending by created_at to get the latest
   registrations.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
-  // Find photo in alumni table first, then search registrations
-  let photo = record.photo_url || null;
-  if (!photo) {
-    const regWithPhoto = registrations.find((r) => r.photo_url && r.photo_url.trim() !== '');
-    if (regWithPhoto) {
-      photo = regWithPhoto.photo_url;
-    }
-  }
+  // Primary & authoritative source of truth: alumni table photo_url
+  const photo = record.photo_url || null;
 
   const latestReg = registrations[0];
   const passingYear = Number(record.year_of_passing) || 0;
@@ -74,7 +68,6 @@ export async function fetchAlumniDirectory(): Promise<AlumniDirectoryItem[]> {
         registrations:event_registrations (
           id,
           registration_number,
-          photo_url,
           created_at
         )
       `)
@@ -124,7 +117,6 @@ export async function searchAlumniSuggestions(
         registrations:event_registrations (
           id,
           registration_number,
-          photo_url,
           created_at
         )
       `)
@@ -213,7 +205,6 @@ export async function lookupAlumniByMobile(rawMobile: string): Promise<AlumniDir
         registrations:event_registrations (
           id,
           registration_number,
-          photo_url,
           created_at
         )
       `)
@@ -425,7 +416,6 @@ export async function fetchAllAlumniForAdmin(): Promise<AlumniDirectoryItem[]> {
         registrations:event_registrations (
           id,
           registration_number,
-          photo_url,
           created_at
         )
       `)

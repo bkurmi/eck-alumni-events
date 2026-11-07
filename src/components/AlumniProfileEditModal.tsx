@@ -244,7 +244,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
       linkedin_url: alumnus.linkedin_url || '',
     });
 
-    setPhotoPreview(alumnus.resolved_photo_url || alumnus.photo_url || null);
+    setPhotoPreview(alumnus.photo_url || alumnus.resolved_photo_url || null);
     setActiveStep('edit');
     setSaveSuccessMsg('');
     setSaveErrorMsg('');
@@ -404,7 +404,7 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
         address: formData.address.trim() || '',
         work_location: formData.work_location.trim() || null,
         linkedin_url: formData.linkedin_url.trim() || null,
-        photo_url: photoPreview || selectedAlumnus.resolved_photo_url || null,
+        photo_url: photoPreview || selectedAlumnus.photo_url || null,
       };
 
       const result = await saveAlumniProfile(payload);
@@ -583,9 +583,9 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
                               aria-selected="false"
                             >
                               <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800 border border-amber-500/30 flex items-center justify-center shrink-0 font-bold text-amber-400 text-sm">
-                                {item.resolved_photo_url ? (
+                                {item.photo_url || item.resolved_photo_url ? (
                                   <img
-                                    src={item.resolved_photo_url}
+                                    src={item.photo_url || item.resolved_photo_url || ''}
                                     alt={item.name}
                                     className="w-full h-full object-cover"
                                   />
@@ -686,9 +686,9 @@ export const AlumniProfileEditModal: React.FC<AlumniProfileEditModalProps> = ({
               <div className="rounded-2xl border border-amber-500/30 bg-slate-950/70 p-4 sm:p-5 space-y-4">
                 <div className="flex items-center gap-3.5 pb-3 border-b border-slate-800">
                   <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border-2 border-amber-500/40 flex items-center justify-center shrink-0 font-bold text-amber-300 text-sm shadow-md">
-                    {candidateAlumnus.resolved_photo_url || candidateAlumnus.photo_url ? (
+                    {candidateAlumnus.photo_url || candidateAlumnus.resolved_photo_url ? (
                       <img
-                        src={candidateAlumnus.resolved_photo_url || candidateAlumnus.photo_url || ''}
+                        src={candidateAlumnus.photo_url || candidateAlumnus.resolved_photo_url || ''}
                         alt={candidateAlumnus.name}
                         className="w-full h-full object-cover"
                       />
