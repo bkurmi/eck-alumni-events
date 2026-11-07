@@ -2010,11 +2010,7 @@ export const AdminPage: React.FC = () => {
                                                           }}
                                                         />
 
-                                                        <Footer
-                                                          eventName={activeEvent?.event_name}
-                                                          tagline={activeEvent?.tagline}
-                                                          location={activeEvent?.location}
-                                                        />
+                                                        <Footer />
                                                       </div>
                                                       );
 };

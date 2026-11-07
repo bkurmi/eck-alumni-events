@@ -292,8 +292,6 @@ export const EventPage: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-[#0a0c16] text-slate-100 flex flex-col overflow-x-hidden">
       <Header
-        title="ECK-RTU Alumni Kota Chapter"
-        tagline={event.tagline || '“दीप जले, यादें मुस्कुराएँ।”'}
         currentEventSlug={event.event_slug}
         maxWidth="max-w-3xl"
       />
@@ -556,11 +554,7 @@ export const EventPage: React.FC = () => {
         onNewRegistration={handleStartRegistration}
       />
 
-      <Footer
-        eventName={event.event_name}
-        tagline={event.tagline || '“दीप जले, यादें मुस्कुराएँ”'}
-        location="Kota, Rajasthan"
-      />
+      <Footer />
     </div>
   );
 };

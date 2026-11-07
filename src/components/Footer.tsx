@@ -6,23 +6,8 @@ interface FooterProps {
   location?: string | null;
 }
 
-export const Footer: React.FC<FooterProps> = ({
-  eventName,
-  tagline,
-  location,
-}) => {
+export const Footer: React.FC<FooterProps> = () => {
   const currentYear = new Date().getFullYear();
-  const displayEventName = eventName || 'ECK-RTU Alumni DeepAura 2K26';
-  const displayLocation = location || 'Kota, Rajasthan';
-
-  // Clean and format tagline to ensure beautiful Hindi quote representation
-  const cleanTagline = tagline
-    ? tagline.replace(/[।.]/g, '').trim()
-    : '“दीप जले, यादें मुस्कुराएँ”';
-
-  const formattedTagline = cleanTagline.startsWith('“') || cleanTagline.startsWith('"')
-    ? cleanTagline
-    : `“${cleanTagline}”`;
 
   return (
     <footer className="w-full border-t border-slate-800/80 bg-[#07080f] py-9 px-4 text-center mt-auto">
@@ -56,14 +41,14 @@ export const Footer: React.FC<FooterProps> = ({
           ECK-RTU Alumni Kota Chapter
         </h3>
 
-        {/* Traditional Slogan / Tagline in warm amber with Rozha One Devanagari styling */}
-        <p className="text-base sm:text-xl text-amber-400 font-['Rozha_One',serif] tracking-wide">
-          {formattedTagline}
+        {/* Universal Alumni Family Slogan in warm amber */}
+        <p className="text-base sm:text-xl text-amber-400 font-serif font-bold tracking-wide">
+          “One College Many Generations One Alumni Family”
         </p>
 
-        {/* Event Edition & Location in warm amber-gold tone */}
+        {/* Organization Subtitle & Location in warm amber-gold tone */}
         <p className="text-xs sm:text-sm text-amber-400/90 font-medium tracking-wide">
-          {displayEventName} • {displayLocation}
+          ECK-RTU Alumni Kota Chapter • Kota, Rajasthan
         </p>
 
         {/* Copyright notice in muted slate */}

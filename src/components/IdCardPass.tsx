@@ -80,16 +80,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     formatSmartAttendeeName(alumni?.name || 'Alumnus');
   const regNumber = registration.registration_number || '';
   const branch = alumni?.engineering_discipline || '';
-  const batchName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '');
-  const batchDisplay = batchName ? `Batch ${batchName}` : 'Alumnus';
-  const category = alumni?.professional_category || 'Alumnus';
-  const badgeLabel = category.toLowerCase().includes('faculty')
-    ? 'FACULTY'
-    : category.toLowerCase().includes('guest')
-      ? 'GUEST'
-      : category.toLowerCase().includes('student')
-        ? 'STUDENT'
-        : 'ALUMNUS';
+  const batchYearOrName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : 'Alumnus');
   const totalCount = registration.number_of_attendees || 1;
   const adultsCount = registration.adults_count ?? 1;
   const kidsCount = (registration.children_above_7_count || 0) + (registration.children_under_7_count || 0);
@@ -103,20 +94,22 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
     attendeesDesc += ` (Alumnus + ${totalCount - 1} Guest${totalCount - 1 > 1 ? 's' : ''})`;
   }
 
+  // Dynamic Date and Venue with elegant fallbacks
+  const eventDateFormatted = event?.event_date
+    ? new Date(event.event_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      (event.event_time ? `, ${event.event_time}` : ', 5:00 PM')
+    : '01 Nov 2026, 5:00 PM';
+  const rawVenue = event?.location || 'Agora Ground, RTU';
+  const eventVenueFormatted = rawVenue.replace(/,\s*ECK-RTU Campus.*$/i, '').trim() || 'Agora Ground, RTU';
+  const stubFooterDate = event?.event_date
+    ? new Date(event.event_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '01 Nov 2026';
+
   const [photoLoadFailed, setPhotoLoadFailed] = React.useState(false);
 
   React.useEffect(() => {
     setPhotoLoadFailed(false);
   }, [photoUrl, registration.registration_id, registration.registration_number]);
-
-  const getAttendeeInitials = (name?: string): string => {
-    if (!name) return 'ECK';
-    const clean = name.trim().replace(/^(mr\.?|mrs\.?|ms\.?|dr\.?|er\.?)\s+/i, '').trim();
-    const parts = clean.split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return 'ECK';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
 
   const photoSrc = photoUrl || registration.payment_screenshot_path ? (photoUrl || undefined) : undefined;
 
@@ -172,17 +165,15 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
                     onError={() => setPhotoLoadFailed(true)}
                   />
                 ) : (
-                  <div className="ticket-v-avatar-box">
-                    <div className="ticket-v-avatar-circle">
-                      <span className="ticket-v-avatar-initials">
-                        {getAttendeeInitials(alumni?.name || attendeeName)}
-                      </span>
-                    </div>
-                    <span className="ticket-v-avatar-badge">{badgeLabel}</span>
+                  <div className="ticket-v-photo-placeholder">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>PHOTO</span>
                   </div>
                 )}
               </div>
-              <span className="ticket-v-badge-pill">{badgeLabel}</span>
             </div>
 
             {/* Right Column: Key Details */}
@@ -199,8 +190,8 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-info-split-row">
                 <div className="ticket-v-batch-box">
                   <span className="ticket-v-label">Batch</span>
-                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchDisplay}${branch ? ` • ${branch}` : ''}`}>
-                    <strong>{batchDisplay}</strong>{branch ? ` • ${branch}` : ''}
+                  <p className="ticket-v-val-text ticket-v-val-batch" title={`${batchYearOrName}${branch ? ` • ${branch}` : ''}`}>
+                    <strong>{batchYearOrName}</strong>{branch ? ` • ${branch}` : ''}
                   </p>
                 </div>
                 <div className="ticket-v-reg-box">
@@ -219,11 +210,11 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
               <div className="ticket-v-meta-row">
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Date &amp; Time</span>
-                  <span className="ticket-v-meta-val">01 Nov 2026, 5:00 PM</span>
+                  <span className="ticket-v-meta-val">{eventDateFormatted}</span>
                 </div>
                 <div className="ticket-v-meta-item">
                   <span className="ticket-v-label">Venue</span>
-                  <span className="ticket-v-meta-val">Agora Ground, RTU</span>
+                  <span className="ticket-v-meta-val">{eventVenueFormatted}</span>
                 </div>
               </div>
             </div>
@@ -341,7 +332,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
             {/* Admit Pill Button with Star Sparkle */}
             <div className="ticket-v-admit-pill">
-              <span>VERIFIED / ADMIT {totalCount}</span>
+              <span>VERIFIED&nbsp;/&nbsp;ADMIT&nbsp;{totalCount}</span>
               <svg className="ticket-v-star-sparkle" viewBox="0 0 24 24" width="13" height="13" fill="#ffffff">
                 <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
               </svg>
@@ -349,7 +340,7 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
 
             {/* Footer Metadata */}
             <p className="ticket-v-footer-meta">
-              01 Nov 2026 • {regNumber} • {formattedShortName}
+              {stubFooterDate} • {regNumber} • {formattedShortName}
             </p>
           </div>
         </div>

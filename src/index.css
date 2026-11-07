@@ -159,6 +159,19 @@ body {
 /* ── Ticket Pass & Gate Desk Styles ── */
 /* ── Royal Boarding Pass Ticket & Gate Desk Styles ── */
 @layer components {
+.ticket-pass-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.vertical-pass-wrapper {
+  width: 100%;
+  max-width: 430px;
+  display: flex;
+  justify-content: center;
+}
+
 .ticket-vertical-card {
   width: 100%;
   max-width: 430px;
@@ -532,7 +545,7 @@ body {
 }
 
 .ticket-v-meta-val {
-  font-size: clamp(0.50rem, 2.7cqw, 0.65rem);
+  font-size: clamp(0.56rem, 2.7cqw, 0.70rem);
   font-weight: 600;
   color: #ffffff;
   display: block;
@@ -543,10 +556,35 @@ body {
   letter-spacing: -0.15px;
 }
 
-/* Container Queries for compact card widths (e.g. narrow mobile or resized windows) */
-@container ticketcard (max-width: 395px) {
+/* Container Queries for responsive card widths across mobile (360px) to full (500px) */
+@container ticketcard (max-width: 440px) {
   .ticket-v-attendee-section {
-    padding: 2px 8px 6px 8px;
+    padding: 2px 12px 6px 12px;
+  }
+
+  .ticket-v-attendee-card {
+    padding: 8px 10px 8px 8px;
+    gap: 10px;
+  }
+
+  .ticket-v-photo-col {
+    width: 80px;
+  }
+
+  .ticket-v-photo-box {
+    width: 80px;
+    height: 104px;
+  }
+
+  .ticket-v-corner-flourish {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@container ticketcard (max-width: 380px) {
+  .ticket-v-attendee-section {
+    padding: 2px 8px 5px 8px;
   }
 
   .ticket-v-attendee-card {
@@ -555,12 +593,17 @@ body {
   }
 
   .ticket-v-photo-col {
-    width: 74px;
+    width: 72px;
   }
 
   .ticket-v-photo-box {
-    width: 74px;
-    height: 96px;
+    width: 72px;
+    height: 94px;
+  }
+
+  .ticket-v-corner-flourish {
+    width: 24px;
+    height: 24px;
   }
 
   .ticket-v-badge-pill {
@@ -915,11 +958,20 @@ body {
   margin-top: 5px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+
+.ticket-v-admit-pill span {
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .ticket-v-star-sparkle {
   filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+  flex-shrink: 0;
 }
 
 .ticket-v-footer-meta {
@@ -929,37 +981,7 @@ body {
   letter-spacing: 0.04em;
   margin: 6px 0 0 0;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-}
-
-.ticket-v-qr-loading {
-  width: 118px;
-  height: 118px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #64748b;
-  font-weight: 700;
-}
-
-.ticket-v-admit-pill {
-  background: linear-gradient(90deg, #d4af37 0%, #fef08a 50%, #ca8a04 100%);
-  color: #3b1803;
-  padding: 4px 18px;
-  border-radius: 8px;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
-  margin-top: 6px;
-}
-
-.ticket-v-footer-meta {
-  font-size: 0.66rem;
-  color: #fde047;
-  letter-spacing: 0.08em;
-  margin: 8px 0 0 0;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-  font-weight: 600;
+  white-space: nowrap;
 }
 
 

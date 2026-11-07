@@ -524,7 +524,7 @@ export const FeedbackPage: React.FC = () => {
             </div>
           </div>
         </main>
-        <Footer eventName={eventName} tagline={eventTagline} />
+        <Footer />
       </div>
     );
   }
@@ -902,7 +902,7 @@ export const FeedbackPage: React.FC = () => {
         )}
       </main>
 
-      <Footer eventName={eventName} tagline={eventTagline} />
+      <Footer />
     </div>
   );
 };

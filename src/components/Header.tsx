@@ -28,8 +28,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  title = 'ECK-RTU Alumni Kota Chapter',
-  tagline = '“दीप जले, यादें मुस्कुराएँ।”',
   currentEventSlug,
   maxWidth = 'max-w-3xl',
 }) => {
@@ -95,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
         <Link
           to="/"
           className="group flex shrink-0 min-w-0 items-center gap-2.5 sm:gap-3 focus:outline-none"
-          aria-label="ECK-RTU Alumni Kota Chapter"
+          aria-label="ECK-RTU Alumni Association"
         >
           {/* Dual Crests */}
           <div className="flex shrink-0 -space-x-2 transition-transform group-hover:scale-105">
@@ -117,10 +115,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="flex min-w-0 flex-col leading-tight">
             <span className="text-sm sm:text-base font-bold tracking-tight text-slate-100 group-hover:text-amber-400 transition-colors whitespace-nowrap">
-              {title}
+              ECK-RTU Alumni Association
             </span>
             <span className="truncate text-[11px] sm:text-xs font-medium text-amber-400/90 whitespace-nowrap">
-              {tagline}
+              Kota Chapter
             </span>
           </div>
         </Link>
