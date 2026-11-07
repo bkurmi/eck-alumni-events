@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { EventRegistration, ECKEvent } from '../types';
 import { X, Copy, Check, MessageCircle, Share2 } from 'lucide-react';
+import { resolveBatchName, getBatchSortKey } from '../lib/batchUtils';
 
 interface ShareWhatsAppModalProps {
   isOpen: boolean;
@@ -85,24 +86,37 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
       (sum, r) => sum + (r.number_of_attendees || 1),
       0
     );
-    const batches = activeList
-      .map((r) => r.alumni?.year_of_passing)
-      .filter((y): y is number => Boolean(y))
-      .sort((a, b) => a - b);
+    const uniqueBatches = new Set<string>();
+    activeList.forEach((r) => {
+      const b = resolveBatchName(r.alumni?.batch, r.alumni?.year_of_passing);
+      if (b) {
+        uniqueBatches.add(b);
+      }
+    });
 
-    const minBatch = batches.length > 0 ? batches[0] : null;
-    const maxBatch = batches.length > 0 ? batches[batches.length - 1] : null;
+    const sortedBatchList = Array.from(uniqueBatches).sort((a, b) => getBatchSortKey(a) - getBatchSortKey(b));
+    const minBatch = sortedBatchList.length > 0 ? sortedBatchList[0] : null;
+    const maxBatch = sortedBatchList.length > 0 ? sortedBatchList[sortedBatchList.length - 1] : null;
 
-    return { totalCount, totalAttendees, minBatch, maxBatch };
+    let batchDisplay = '—';
+    if (minBatch && maxBatch) {
+      batchDisplay = minBatch === maxBatch ? minBatch : `${minBatch} - ${maxBatch}`;
+    }
+
+    return { totalCount, totalAttendees, batchDisplay };
   }, [activeList]);
 
   // Generate WhatsApp formatted text
   const generatedMessage = useMemo(() => {
     const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
     const lines: string[] = [];
+    const eventHeading = event?.event_name || 'ECK-RTU Alumni Event';
+    const eventTagline = event?.tagline || 'दीप जले, यादें मुस्कुराएँ।';
 
-    lines.push('🪔✨ *ECK-RTU Alumni DeepAura 2K26* ✨🪔');
-    lines.push('✨✨ *दीप जले, यादें मुस्कुराएँ।* ✨✨');
+    lines.push(`🪔✨ *${eventHeading}* ✨🪔`);
+    if (eventTagline) {
+      lines.push(`✨✨ *${eventTagline}* ✨✨`);
+    }
     lines.push('');
     lines.push(`📢 *Confirmed Attendee List (${listStats.totalCount} Alumni • ${listStats.totalAttendees} Total Attendees)*`);
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -110,16 +124,14 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     if (groupOption === 'grouped') {
       const batchMap = new Map<string, EventRegistration[]>();
       activeList.forEach((r) => {
-        const batchKey = r.alumni?.year_of_passing ? `Class of ${r.alumni.year_of_passing}` : 'Distinguished Alumni / Faculty';
+        const batchKey = resolveBatchName(r.alumni?.batch, r.alumni?.year_of_passing) || 'Distinguished Alumni / Faculty';
         const arr = batchMap.get(batchKey) || [];
         arr.push(r);
         batchMap.set(batchKey, arr);
       });
 
       const sortedBatches = Array.from(batchMap.keys()).sort((a, b) => {
-        const numA = parseInt(a.replace(/\D/g, ''), 10) || 9999;
-        const numB = parseInt(b.replace(/\D/g, ''), 10) || 9999;
-        return numA - numB;
+        return getBatchSortKey(a) - getBatchSortKey(b);
       });
 
       sortedBatches.forEach((batch) => {
@@ -153,10 +165,10 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
       activeList.forEach((r, idx) => {
         const a = r.alumni;
         const name = a?.name ? `*${a.name}*` : '*Alumnus*';
-        const batch = a?.year_of_passing ? `'${String(a.year_of_passing).slice(-2)}` : '';
+        const batchStr = resolveBatchName(a?.batch, a?.year_of_passing);
         const parts: string[] = [name];
 
-        if (batch) parts.push(`🎓 ${batch}`);
+        if (batchStr) parts.push(`🎓 ${batchStr}`);
         if (includeDiscipline && a?.engineering_discipline) parts.push(`_${a.engineering_discipline}_`);
         if (includeLocation && a?.city) parts.push(`📍 ${a.city}`);
         if (includeAttendees && r.number_of_attendees && r.number_of_attendees > 1) {
@@ -173,10 +185,11 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
       activeList.forEach((r) => {
         const a = r.alumni;
         const name = a?.name || 'Alumnus';
-        const batch = a?.year_of_passing ? `(${a.year_of_passing})` : '';
+        const batchStr = resolveBatchName(a?.batch, a?.year_of_passing);
+        const batch = batchStr ? ` (${batchStr})` : '';
         const loc = includeLocation && a?.city ? ` • ${a.city}` : '';
         const count = includeAttendees && r.number_of_attendees && r.number_of_attendees > 1 ? ` (+${r.number_of_attendees - 1})` : '';
-        lines.push(`• ${name} ${batch}${loc}${count}`);
+        lines.push(`• ${name}${batch}${loc}${count}`);
       });
     }
 
@@ -199,6 +212,7 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
     includeAttendees,
     includeRegNumber,
     includeEventLink,
+    event,
   ]);
 
   const characterCount = generatedMessage.length;
@@ -353,9 +367,9 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
                       : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
                   }`}
                   onClick={() => setGroupOption('grouped')}
-                  title="Group members by passing year"
+                  title="Group members by batch"
                 >
-                  🎓 Group by Batch / Year
+                  🎓 Group by Batch
                 </button>
                 <button
                   type="button"
@@ -479,8 +493,8 @@ export const ShareWhatsAppModal: React.FC<ShareWhatsAppModalProps> = ({
               <span className="text-[11px] text-slate-400 block uppercase">Total People</span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-              <span className="text-base font-bold text-amber-300 block">
-                {listStats.minBatch && listStats.maxBatch ? `${listStats.minBatch} - ${listStats.maxBatch}` : '—'}
+              <span className="text-base font-bold text-amber-300 block truncate" title={listStats.batchDisplay}>
+                {listStats.batchDisplay}
               </span>
               <span className="text-[11px] text-slate-400 block uppercase">Batches</span>
             </div>

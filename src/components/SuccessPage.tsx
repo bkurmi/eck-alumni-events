@@ -4,7 +4,7 @@ import { MessageCircle, ChevronRight, Sparkles } from 'lucide-react';
 import { isAlumniIdCardsEnabled } from '../lib/gate';
 import { isEventConcluded } from '../lib/eventStatus';
 import type { RegistrationFormData, RegistrationResult, ECKEvent } from '../types';
-import { getBatchFromPassingYear } from '../lib/batchUtils';
+import { getBatchFromPassingYear, formatBatchName } from '../lib/batchUtils';
 
 interface SuccessPageProps {
   event: ECKEvent;
@@ -25,7 +25,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
 
   const buildWhatsAppMessage = () => {
     const count = formData.number_of_attendees || 1;
-    const batchText = formData.batch ? `Batch ${formData.batch}` : (formData.year_of_passing ? `Batch ${getBatchFromPassingYear(formData.year_of_passing)}` : 'Alumnus');
+    const batchText = formatBatchName(formData.batch, formData.year_of_passing);
     const attendanceText = isAttending
       ? `${count} ${count === 1 ? 'Person' : 'Persons'}`
       : formData.attendance_status === 'maybe' ? 'Maybe' : 'Not Attending';
@@ -40,14 +40,16 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
     }
     const venue = event.location || 'ECK Campus, Kota';
     const eventLink = typeof window !== 'undefined' ? window.location.origin : 'https://eck-alumni.org';
+    const eventHeading = event?.event_name || 'ECK-RTU Alumni Event';
+    const eventTagline = event?.tagline || 'दीप जले, यादें मुस्कुराएँ।';
 
     const lines = [
-      '🪔✨ *ECK-RTU Alumni DeepAura 2K26* ✨🪔',
-      '✨✨ *दीप जले, यादें मुस्कुराएँ।* ✨✨',
+      `🪔✨ *${eventHeading}* ✨🪔`,
+      eventTagline ? `✨✨ *${eventTagline}* ✨✨` : '',
       '',
       '🎉 Registration Confirmed!',
       `🎫 ID: ${result.registration_number}`,
-      `👤 ${formData.name} | 🎓 ${batchText}`,
+      `👤 ${formData.name}${batchText !== '—' ? ` | 🎓 ${batchText}` : ''}`,
       `👥 Attendance: ${attendanceText}`,
       '',
       ...(isAttending && !isEventConcluded(event) ? [`🎟️ Gate Pass: ${eventLink}/id-card?reg=${result.registration_number}`, ''] : []),

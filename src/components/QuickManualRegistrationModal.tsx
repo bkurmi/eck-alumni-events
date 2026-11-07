@@ -27,6 +27,7 @@ import {
   getAllBatchOptions,
   getDefaultPassingYearForBatch,
   getBatchFromPassingYear,
+  formatBatchName,
 } from '../lib/batchUtils';
 
 interface QuickManualRegistrationModalProps {
@@ -42,6 +43,8 @@ interface CreatedRegistrationSummary {
   registration_number: string;
   name: string;
   mobile: string;
+  batch?: string;
+  discipline?: string;
   attendance_status: string;
   number_of_attendees: number;
   adults_count: number;
@@ -683,6 +686,8 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         registration_number: assignedRegNum,
         name: trimmedName,
         mobile: rawCleanMobile.length === 10 ? rawCleanMobile : '',
+        batch: batch || (resolvedYear ? getBatchFromPassingYear(resolvedYear) : ''),
+        discipline: engineeringDiscipline || undefined,
         attendance_status: attendanceStatus,
         number_of_attendees: totalAttendees,
         adults_count: adultsCount,
@@ -734,6 +739,7 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
       '',
       `🎫 *Registration ID:* ${summary.registration_number}`,
       `👤 *Alumnus Name:* ${summary.name}`,
+      summary.batch ? `🎓 *Batch:* ${formatBatchName(summary.batch)}${summary.discipline ? ` • ${summary.discipline}` : ''}` : '',
       summary.mobile ? `📞 *Mobile / WhatsApp:* ${summary.mobile}` : '',
       `👥 *Attendees:* ${summary.number_of_attendees} ${summary.number_of_attendees === 1 ? 'Person' : 'People'}${breakdownText}`,
       `✨ *Attendance Status:* ${summary.attendance_status.toUpperCase()}`,

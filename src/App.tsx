@@ -13,6 +13,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/events" element={<HomePage />} />
           <Route path="/events/:slug" element={<EventPage />} />
           <Route path="/directory" element={<AlumniDirectoryPage />} />
           <Route path="/alumni" element={<AlumniDirectoryPage />} />

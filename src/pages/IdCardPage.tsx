@@ -20,7 +20,7 @@ import {
 } from '../lib/gate';
 import { supabase } from '../lib/supabase';
 import { isEventConcluded } from '../lib/eventStatus';
-import { getBatchFromPassingYear } from '../lib/batchUtils';
+import { getBatchFromPassingYear, formatBatchName } from '../lib/batchUtils';
 import { ArrowLeft, Download, Camera, Check, Shield, Search, X, MessageCircle } from 'lucide-react';
 import type { ExistingRegistrationLookup, ECKEvent } from '../types';
 
@@ -713,8 +713,8 @@ export const IdCardPage: React.FC = () => {
     const name = alumni?.name || 'Alumnus';
     const regNum = registration.registration_number || 'Pass';
     const discipline = alumni?.engineering_discipline ? `${alumni.engineering_discipline}` : '';
-    const batchName = alumni?.batch || (alumni?.year_of_passing ? getBatchFromPassingYear(alumni.year_of_passing) : '');
-    const batch = batchName ? `Batch ${batchName}` : '';
+    const batchName = formatBatchName(alumni?.batch, alumni?.year_of_passing);
+    const batch = batchName !== '—' ? batchName : '';
     const branchAndBatch = [discipline, batch].filter(Boolean).join(' • ');
 
     const totalGuests =

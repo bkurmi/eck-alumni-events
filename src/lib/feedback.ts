@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { EventFeedback } from '../types';
+import { formatBatchName } from './batchUtils';
 
 export const isFeedbackEnabled = (): boolean => {
   const envVal = import.meta.env.VITE_ENABLE_FEEDBACK;
@@ -343,7 +344,8 @@ export function buildAlumniFeedbackShareMessage(options?: {
   const tagline = options?.tagline || '“दीप जले, यादें मुस्कुराएँ।”';
 
   const name = !isAnon && rawName ? rawName : '';
-  const batch = !isAnon && rawBatch ? `Batch of ${rawBatch}` : '';
+  const batchStr = !isAnon && rawBatch ? formatBatchName(rawBatch) : '';
+  const batch = batchStr !== '—' ? batchStr : '';
   const signature = [name, batch].filter(Boolean).join(' • ');
 
   const feedbackUrl =

@@ -37,7 +37,7 @@ export function getBatchFromPassingYear(year: number | string | null | undefined
  */
 export function getDefaultPassingYearForBatch(batch: string | null | undefined): number {
   if (!batch) return new Date().getFullYear();
-  const trimmed = batch.trim().toUpperCase();
+  const trimmed = batch.trim().replace(/^batch\s+/i, '').toUpperCase();
 
   // Single letter A-Z
   if (trimmed.length === 1 && trimmed >= 'A' && trimmed <= 'Z') {
@@ -117,7 +117,38 @@ export function formatBatchName(
   year?: number | string | null
 ): string {
   const numYear = Number(year) || 0;
-  const resolvedBatch = (batch && batch.trim() !== '') ? batch.trim() : (numYear ? getBatchFromPassingYear(numYear) : '');
+  let resolvedBatch = (batch && batch.trim() !== '') ? batch.trim() : (numYear ? getBatchFromPassingYear(numYear) : '');
   if (!resolvedBatch) return '—';
+  if (/^batch\s+/i.test(resolvedBatch)) {
+    return resolvedBatch;
+  }
   return `Batch ${resolvedBatch}`;
+}
+
+/**
+ * Resolves the canonical batch label with "Batch" prefix, e.g. "Batch A", "Batch 2018".
+ * Returns empty string if unknown.
+ */
+export function resolveBatchName(
+  batch?: string | null,
+  year?: number | string | null
+): string {
+  const numYear = Number(year) || 0;
+  const rawBatch = (batch && batch.trim() !== '')
+    ? batch.trim()
+    : (numYear ? getBatchFromPassingYear(numYear) : '');
+  if (!rawBatch) return '';
+  return /^batch\s+/i.test(rawBatch) ? rawBatch : `Batch ${rawBatch}`;
+}
+
+/**
+ * Returns a sort order for grouping batches chronologically:
+ * Batch A (1985), Batch B (1986)... Batch Z (2010), Batch 2011 (2011)...
+ * Distinguished/Faculty -> 99999.
+ */
+export function getBatchSortKey(batchNameOrKey: string): number {
+  if (!batchNameOrKey || batchNameOrKey.toLowerCase().includes('distinguished')) {
+    return 99999;
+  }
+  return getDefaultPassingYearForBatch(batchNameOrKey);
 }
