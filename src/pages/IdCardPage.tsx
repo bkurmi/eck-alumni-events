@@ -1356,7 +1356,7 @@ export const IdCardPage: React.FC = () => {
             </div>
 
             {/* Live Generated ID Cards */}
-            <div className="w-full flex flex-col items-center justify-center py-2">
+            <div className="w-full max-w-[430px] flex flex-col items-center justify-center py-2 mx-auto">
               <IdCardPass
                 registration={registration}
                 event={activeEvent}
@@ -1372,6 +1372,7 @@ export const IdCardPage: React.FC = () => {
                     position: 'fixed',
                     left: '-9999px',
                     top: '0',
+                    width: '430px',
                     opacity: 0,
                     pointerEvents: 'none',
                     zIndex: -1,
