@@ -245,8 +245,24 @@ export const IdCardPass: React.FC<IdCardPassProps> = ({
           </div>
 
           {/* Glowing diyas at stub top */}
-          <img src="/diya-golden-flame.png" alt="" className="ticket-v-stub-diya diya-stub-left" />
-          <img src="/diya-golden-flame.png" alt="" className="ticket-v-stub-diya diya-stub-right" />
+          <img
+            src="/diya-golden-flame.png"
+            alt=""
+            width={52}
+            height={38}
+            loading="eager"
+            decoding="sync"
+            className="ticket-v-stub-diya diya-stub-left"
+          />
+          <img
+            src="/diya-golden-flame.png"
+            alt=""
+            width={52}
+            height={38}
+            loading="eager"
+            decoding="sync"
+            className="ticket-v-stub-diya diya-stub-right"
+          />
 
           <div className="ticket-v-bottom-content">
             <h4 className="ticket-v-stub-title-sub">ECK-RTU</h4>

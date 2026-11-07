@@ -22,6 +22,7 @@ import {
   Globe2,
   Loader2,
   X,
+  Camera,
 } from 'lucide-react';
 
 interface CommitteeMember {
@@ -35,12 +36,12 @@ const KOTA_CHAPTER_COMMITTEE: CommitteeMember[] = [
   { name: 'Hari Narayan Shukla', batchLetter: 'K', branch: 'ECE' },
   { name: 'Manoj Paliwal', batchLetter: 'L', branch: 'Mech' },
   { name: 'Rajiv Varshney', batchLetter: 'P', branch: 'ECE' },
+  { name: 'Pankaj Parashar', batchLetter: 'Q', branch: 'Civil' },
   { name: 'Chetan Sharma', batchLetter: 'U', branch: 'ECE' },
   { name: 'Sanjay Verma', batchLetter: 'V', branch: 'Inst.' },
   { name: 'Vijeshwar Vishnoi', batchLetter: 'V', branch: 'Electrical' },
   { name: 'Lokesh Gautam', batchLetter: 'W', branch: 'Electrical' },
   { name: 'Bhawesh Kurmi', batchLetter: 'X', branch: 'IT' },
-  { name: 'Pankaj Parashar', batchLetter: 'Z', branch: 'Civil' },
   { name: 'Shailendra Singh', batchLetter: 'Z', branch: 'Civil' },
   { name: 'Mitesh Nagar', batchLetter: 'Z', branch: 'Civil' },
 ];
@@ -675,7 +676,7 @@ export const HomePage: React.FC = () => {
             </p>
           </div>
 
-          {/* 5 Purpose Cards with icon and title on same line */}
+          {/* 6 Purpose Cards with icon and title on same line */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Point 1 */}
             <div className="rounded-2xl border border-slate-800 bg-[#0d1428] p-4 sm:p-5 flex flex-col justify-between">
@@ -771,7 +772,7 @@ export const HomePage: React.FC = () => {
             </div>
 
             {/* Point 5 */}
-            <div className="rounded-2xl border border-slate-800 bg-[#0d1428] p-4 sm:p-5 flex flex-col justify-between sm:col-span-2">
+            <div className="rounded-2xl border border-slate-800 bg-[#0d1428] p-4 sm:p-5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2.5 mb-2">
                   <div className="h-8 w-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
@@ -788,8 +789,30 @@ export const HomePage: React.FC = () => {
                 to="/profile"
                 className="mt-3.5 flex min-h-[44px] items-center gap-1 text-xs font-semibold text-teal-400 hover:text-teal-300"
               >
-                <span>Update Your Profile & Connect with Batchmates →</span>
+                <span>Update Profile & Connect →</span>
               </Link>
+            </div>
+
+            {/* Point 6: Memories & Photo Gallery */}
+            <div className="rounded-2xl border border-slate-800 bg-[#0d1428] p-4 sm:p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="h-8 w-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                    <Camera className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-white">Memories & Photo Gallery</h3>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Cherish reunion snapshots and nostalgic batch memories. Each event features its own dedicated Memory Wall and gallery—visit any event to view or contribute photos.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => scrollToSection('events-section')}
+                className="mt-3.5 flex min-h-[44px] items-center gap-1 text-xs font-semibold text-rose-400 hover:text-rose-300 cursor-pointer"
+              >
+                <span>Browse Event Galleries →</span>
+              </button>
             </div>
           </div>
         </section>
