@@ -507,32 +507,35 @@ GRANT EXECUTE ON FUNCTION get_event_registration_count TO authenticated;
 
 
 -- ────────────────────────────────────────────────────────────
--- 9. STORAGE: payment-screenshots bucket (public)
+-- 9. STORAGE: event-assets bucket (public)
 -- ────────────────────────────────────────────────────────────
 
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('payment-screenshots', 'payment-screenshots', true)
+VALUES ('event-assets', 'event-assets', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
 DROP POLICY IF EXISTS "anon_upload_screenshots" ON storage.objects;
-CREATE POLICY "anon_upload_screenshots"
+DROP POLICY IF EXISTS "Public can upload event assets" ON storage.objects;
+CREATE POLICY "Public can upload event assets"
   ON storage.objects FOR INSERT TO public
-  WITH CHECK (bucket_id = 'payment-screenshots');
+  WITH CHECK (bucket_id = 'event-assets');
 
 DROP POLICY IF EXISTS "anon_update_screenshots" ON storage.objects;
-CREATE POLICY "anon_update_screenshots"
+DROP POLICY IF EXISTS "Public can update event assets" ON storage.objects;
+CREATE POLICY "Public can update event assets"
   ON storage.objects FOR UPDATE TO public
-  USING (bucket_id = 'payment-screenshots');
+  USING (bucket_id = 'event-assets');
 
 DROP POLICY IF EXISTS "public_read_screenshots" ON storage.objects;
-CREATE POLICY "public_read_screenshots"
+DROP POLICY IF EXISTS "Public can view event assets" ON storage.objects;
+CREATE POLICY "Public can view event assets"
   ON storage.objects FOR SELECT TO public
-  USING (bucket_id = 'payment-screenshots');
+  USING (bucket_id = 'event-assets');
 
 DROP POLICY IF EXISTS "admin_read_screenshots" ON storage.objects;
 CREATE POLICY "admin_read_screenshots"
   ON storage.objects FOR SELECT TO authenticated
-  USING (bucket_id = 'payment-screenshots');
+  USING (bucket_id = 'event-assets');
 
 
 -- ────────────────────────────────────────────────────────────

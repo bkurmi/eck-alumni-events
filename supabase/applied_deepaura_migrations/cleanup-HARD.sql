@@ -19,9 +19,10 @@ DROP FUNCTION IF EXISTS generate_registration_number CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at CASCADE;
 
 -- 4. Drop storage policies
-DROP POLICY IF EXISTS "anon_upload_screenshots" ON storage.objects;
-DROP POLICY IF EXISTS "public_read_screenshots" ON storage.objects;
+DROP POLICY IF EXISTS "Public can upload event assets" ON storage.objects;
+DROP POLICY IF EXISTS "Public can view event assets" ON storage.objects;
+DROP POLICY IF EXISTS "Public can update event assets" ON storage.objects;
 DROP POLICY IF EXISTS "admin_read_screenshots" ON storage.objects;
 
 -- Optional: Delete all uploaded screenshots from bucket (uncomment if desired)
--- DELETE FROM storage.objects WHERE bucket_id = 'payment-screenshots';
+-- DELETE FROM storage.objects WHERE bucket_id = 'event-assets';

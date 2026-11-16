@@ -46,10 +46,10 @@ const getPublicScreenshotUrl = (path: string | null | undefined) => {
   let cleanPath = path.trim().replace(/^["']|["']$/g, '');
   if (!cleanPath || cleanPath === 'manual-admin-entry') return null;
   if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
-  if (cleanPath.startsWith('payment-screenshots/')) {
-    cleanPath = cleanPath.replace(/^payment-screenshots\//, '');
+  if (cleanPath.startsWith('event-assets/')) {
+    cleanPath = cleanPath.replace(/^event-assets\//, '');
   }
-  const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
+  const { data } = supabase.storage.from('event-assets').getPublicUrl(cleanPath);
   return data?.publicUrl || null;
 };
 
