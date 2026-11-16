@@ -68,8 +68,8 @@ DECLARE
     '9001017275@ybl'
   ];
 
-  -- Single shared test screenshot path stored in the 'payment-screenshots' bucket
-  v_test_screenshot_path TEXT := 'deepaura-2k26/test_payment_screenshot.png';
+  -- Single shared test screenshot path stored in the 'event-assets' bucket
+  v_test_screenshot_path TEXT := 'deepaura-2k26/payments/test_payment_screenshot.png';
 
   v_idx INT;
   v_fname TEXT;

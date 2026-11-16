@@ -397,7 +397,7 @@ export async function verifyGateAttendee(
 }
 
 /**
- * Upload compressed spot payment proof screenshot to 'payment-screenshots' bucket
+ * Upload compressed spot payment proof screenshot to 'event-assets' bucket
  */
 export async function uploadSpotPaymentScreenshot(
   file: File,
@@ -410,10 +410,10 @@ export async function uploadSpotPaymentScreenshot(
     const cleanMobile = mobile.replace(/\D/g, '') || 'nomobile';
     const cleanName = (personName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const namePart = cleanName ? `_${cleanName}` : '';
-    const filePath = `${eventSlug}/spot_${cleanMobile}${namePart}_${Date.now()}.jpg`;
+    const filePath = `${eventSlug}/payments/spot_${cleanMobile}${namePart}_${Date.now()}.jpg`;
 
     const { data, error } = await supabase.storage
-      .from('payment-screenshots')
+      .from('event-assets')
       .upload(filePath, compressedBlob, {
         contentType: 'image/jpeg',
         cacheControl: '3600',

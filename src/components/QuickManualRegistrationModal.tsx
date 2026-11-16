@@ -545,11 +545,11 @@ export const QuickManualRegistrationModal: React.FC<QuickManualRegistrationModal
         const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
         const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanName = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'alumni';
-        const fileName = `${event.event_slug}/manual_${rawCleanMobile || 'nomobile'}_${cleanName}_${Date.now()}.${cleanExt}`;
+        const fileName = `${event.event_slug}/payments/manual_${rawCleanMobile || 'nomobile'}_${cleanName}_${Date.now()}.${cleanExt}`;
 
         try {
           const { data: uploadData, error: uploadErr } = await supabase.storage
-            .from('payment-screenshots')
+            .from('event-assets')
             .upload(fileName, screenshotFile, {
               cacheControl: '3600',
               upsert: true,

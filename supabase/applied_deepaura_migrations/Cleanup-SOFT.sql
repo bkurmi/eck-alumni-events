@@ -41,7 +41,7 @@ ALTER SEQUENCE IF EXISTS registration_seq RESTART WITH 1;
 -- Supabase blocks direct SQL deletion on storage.objects via protect_delete() trigger.
 -- To empty images (takes 5 seconds):
 -- Go to Supabase Dashboard → Storage → Open bucket → Click "Empty bucket"
--- for both 'payment-screenshots' and 'id-photos'.
+-- for both 'event-assets' and 'id-photos'.
 
 COMMIT;
 
@@ -64,4 +64,4 @@ SELECT 'gate_staff_pins (CLEARED)', COUNT(*)::TEXT FROM gate_staff_pins
 UNION ALL
 SELECT 'storage.objects (PAYMENT SLIPS & ID PHOTOS CLEARED)', COUNT(*)::TEXT 
   FROM storage.objects 
- WHERE bucket_id IN ('payment-screenshots', 'id-photos');
+ WHERE bucket_id IN ('event-assets', 'id-photos');

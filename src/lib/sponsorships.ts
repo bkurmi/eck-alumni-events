@@ -9,7 +9,7 @@ export function getPublicSponsorshipScreenshotUrl(path: string | null | undefine
   const cleanPath = path.trim();
   if (!cleanPath) return null;
   if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
-  const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
+  const { data } = supabase.storage.from('event-assets').getPublicUrl(cleanPath);
   return data?.publicUrl || null;
 }
 
@@ -25,11 +25,11 @@ export async function uploadSponsorshipScreenshot(
   const timestamp = Date.now();
   const fileExt = file.name.split('.').pop() || 'jpg';
   const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const fileName = `sponsorships/${eventSlug}/${cleanName}_${timestamp}.${cleanExt}`;
+  const fileName = `${eventSlug}/sponsorships/${cleanName}_${timestamp}.${cleanExt}`;
 
   try {
     const { data, error } = await supabase.storage
-      .from('payment-screenshots')
+      .from('event-assets')
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: true,

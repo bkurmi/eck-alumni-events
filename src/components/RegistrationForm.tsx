@@ -706,19 +706,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         const timestamp = Date.now();
         const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
         const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const fileName = `${event.event_slug}/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
+        const fileName = `${event.event_slug}/payments/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
 
         console.log('[Storage Upload] Uploading screenshot for existing registration:', {
           regNumber,
           fileName,
           fileSize: screenshotFile.size,
           mimeType: screenshotFile.type,
-          bucket: 'payment-screenshots',
+          bucket: 'event-assets',
         });
 
         try {
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('payment-screenshots')
+            .from('event-assets')
             .upload(fileName, screenshotFile, {
               cacheControl: '3600',
               upsert: true,
@@ -869,19 +869,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         const timestamp = Date.now();
         const fileExt = screenshotFile.name.split('.').pop() || 'jpg';
         const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const fileName = `${event.event_slug}/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
+        const fileName = `${event.event_slug}/payments/${regNumber}_${cleanName}_${timestamp}.${cleanExt}`;
 
         console.log('[Storage Upload] Uploading screenshot for new registration:', {
           regNumber,
           fileName,
           fileSize: screenshotFile.size,
           mimeType: screenshotFile.type,
-          bucket: 'payment-screenshots',
+          bucket: 'event-assets',
         });
 
         try {
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('payment-screenshots')
+            .from('event-assets')
             .upload(fileName, screenshotFile, {
               cacheControl: '3600',
               upsert: true,

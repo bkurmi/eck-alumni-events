@@ -60,8 +60,8 @@ export async function compressMemoryPhoto(file: File, maxDimension = 1600, quali
 }
 
 /**
- * Uploads a compressed event photo to Supabase storage bucket 'payment-screenshots'
- * under folder `memories/{eventSlug}/`.
+ * Uploads a compressed event photo to Supabase storage bucket 'event-assets'
+ * under folder `{eventSlug}/memories/`.
  */
 export async function uploadMemoryPhoto(
   file: File,
@@ -70,10 +70,10 @@ export async function uploadMemoryPhoto(
 ): Promise<string> {
   const compressedBlob = await compressMemoryPhoto(file);
   const cleanBase = file.name.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 15);
-  const fileName = `memories/${eventSlug}/mem_${Date.now()}_${index}_${cleanBase}.jpg`;
+  const fileName = `${eventSlug}/memories/mem_${Date.now()}_${index}_${cleanBase}.jpg`;
 
   const { data, error } = await supabase.storage
-    .from('payment-screenshots')
+    .from('event-assets')
     .upload(fileName, compressedBlob, {
       contentType: 'image/jpeg',
       cacheControl: '31536000', // cache for 1 year
@@ -87,7 +87,7 @@ export async function uploadMemoryPhoto(
 
   // Generate public URL
   const { data: publicData } = supabase.storage
-    .from('payment-screenshots')
+    .from('event-assets')
     .getPublicUrl(data?.path || fileName);
 
   return publicData?.publicUrl || fileName;

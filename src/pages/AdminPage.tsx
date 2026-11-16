@@ -791,7 +791,7 @@ export const AdminPage: React.FC = () => {
     const cleanPath = path.trim();
     if (!cleanPath || cleanPath === 'manual-admin-entry') return null;
     if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) return cleanPath;
-    const { data } = supabase.storage.from('payment-screenshots').getPublicUrl(cleanPath);
+    const { data } = supabase.storage.from('event-assets').getPublicUrl(cleanPath);
     return data?.publicUrl || null;
   };
 
